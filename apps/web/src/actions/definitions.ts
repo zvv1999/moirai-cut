@@ -208,3 +208,11 @@ export function getDefaultShortcuts(): Map<
 
 	return shortcuts;
 }
+
+/** Runtime guard for `TActionWithOptionalArgs`: an action that can be invoked with
+ *  no arguments (all args optional), which is what a persisted keybinding may name. */
+export function isActionWithOptionalArgs(
+	value: string,
+): value is TActionWithOptionalArgs {
+	return Object.hasOwn(ACTIONS, value);
+}

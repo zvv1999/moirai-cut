@@ -38,6 +38,20 @@ export type SingleCharacterShortcutKey = `${Key}`;
 
 export type ShortcutKey = ModifierBasedShortcutKey | SingleCharacterShortcutKey;
 
+const MODIFIERS: ReadonlySet<string> = new Set([
+	"ctrl", "alt", "shift", "ctrl+shift", "alt+shift", "ctrl+alt", "ctrl+alt+shift",
+]);
+
+/** Runtime guard for the `ShortcutKey` template-literal union (persisted keybindings
+ *  arrive as untrusted strings, so the type alone is not enough). */
+export function isShortcutKey(value: string): value is ShortcutKey {
+	const separator = value.lastIndexOf("+");
+	if (separator <= 0) return isKey(value);
+	return (
+		MODIFIERS.has(value.slice(0, separator)) && isKey(value.slice(separator + 1))
+	);
+}
+
 export type KeybindingConfig = {
 	[key in ShortcutKey]?: TActionWithOptionalArgs;
 };
