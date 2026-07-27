@@ -86,12 +86,36 @@ const projects = await call("list_projects");
 if (projects.isError || !projects.payload.ids?.length) {
   await bail(`No project files on disk: ${JSON.stringify(projects.payload)}`);
 }
-const projectId = projects.payload.ids[0];
 check(
   "list_projects reads the project directory with no browser",
   projects.payload.ids.length > 0 && typeof projects.payload.root === "string",
   `${projects.payload.ids.length} project(s) in ${projects.payload.root}`,
 );
+
+// A throwaway project of our own. Probing ids[0] — whatever happens to sort
+// first in the human's project directory — meant scribbling card-* clips into
+// a real project and demanding the human have exactly that one open in a tab.
+const createdProbe = await call("create_project", { name: `probe-file-${RUN}` });
+if (createdProbe.isError) await bail(`create_project failed: ${JSON.stringify(createdProbe.payload)}`);
+const projectId = createdProbe.payload.projectId;
+
+// Its own tab, so the follow/pixel checks depend on nothing the human did.
+// No Chrome on the port degrades those checks, not the file checks.
+const CDP_BASE = "http://127.0.0.1:9222";
+const WEB_BASE = process.env.OPENCUT_BASE_URL ?? "http://localhost:3000";
+const probeTab = await (async () => {
+  try {
+    const { evaluateInPage } = await import("./cdp.mjs");
+    const tab = await (await fetch(`${CDP_BASE}/json/new`, { method: "PUT" })).json();
+    await evaluateInPage({
+      webSocketDebuggerUrl: tab.webSocketDebuggerUrl,
+      expression: `location.href = ${JSON.stringify(`${WEB_BASE}/editor/${projectId}`)}`,
+    });
+    return tab;
+  } catch {
+    return null;
+  }
+})();
 
 // Start from a known slate. A probe that depends on whatever a previous run left
 // behind does not test what it claims to: leftover clips silently filled the
@@ -226,7 +250,7 @@ check(
 const editorFollowed = await (async () => {
   for (let attempt = 0; attempt < 20; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 1500));
-    const state = await call("get_state");
+    const state = await call("get_state", { projectId });
     if (state.isError) continue;
     const names = state.payload.tracks.flatMap((t) => t.elements).map((e) => e.name);
     if (names.includes("card-one") && names.includes("card-three")) return names;
@@ -329,7 +353,7 @@ if (editorFollowed) {
     const live = await (async () => {
       for (let attempt = 0; attempt < 25; attempt += 1) {
         await new Promise((resolve) => setTimeout(resolve, 1500));
-        const state = await call("get_state");
+        const state = await call("get_state", { projectId });
         const file = await call("read_project", { projectId });
         if (
           !state.isError &&
@@ -357,7 +381,7 @@ if (editorFollowed) {
       idempotencyKey: `equiv-split-${RUN}`,
     });
     if (applied.isError) return null;
-    return shape((await call("get_state")).payload);
+    return shape((await call("get_state", { projectId })).payload);
   })();
 
   check(
@@ -405,6 +429,9 @@ if (ours.length > 0) {
     `deleted ${ours.length}`,
   );
 }
+
+if (probeTab) await fetch(`${CDP_BASE}/json/close/${probeTab.id}`).catch(() => {});
+await call("delete_project", { projectId, confirm: true });
 
 await client.close();
 const failed = results.filter((r) => !r.ok);
