@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { AgentManager } from "../agent-manager";
 import {
+  InvalidOperationError,
   OperationConflictError,
   ProjectMismatchError,
   UnknownOperationError,
@@ -357,5 +358,44 @@ describe("effect verification", () => {
     const result = agent.applyOperation({ operation: OP, baseRevision: 0, idempotencyKey: "k1" });
     expect(result.applied).toBe(true);
     expect(result.noEffect).toBe(false);
+  });
+});
+
+describe("renderFrames contact sheets", () => {
+  test("rejects an invalid tile dimension before paying to render", async () => {
+    const { editor } = makeEditorStub();
+    let renders = 0;
+    // Runtime callers are JavaScript, so TypeScript's number annotation is not
+    // validation. The guard must run before the expensive renderer.
+    (editor as unknown as { renderer: unknown }).renderer = {
+      renderFrame: async () => {
+        renders += 1;
+        return { success: false, error: "should not render" };
+      },
+    };
+    const agent = new AgentManager(editor);
+
+    await expect(
+      agent.renderFrames({ atSeconds: [0], tile: true, maxDim: Number.NaN }),
+    ).rejects.toThrow(InvalidOperationError);
+    expect(renders).toBe(0);
+  });
+
+  test("keeps full frames capped at 8 and tiled frames capped at 24", async () => {
+    const { editor } = makeEditorStub();
+    (editor as unknown as { renderer: unknown }).renderer = {
+      renderFrame: async () => ({ success: false, error: "not reached" }),
+    };
+    const agent = new AgentManager(editor);
+
+    await expect(
+      agent.renderFrames({ atSeconds: Array.from({ length: 9 }, (_, i) => i) }),
+    ).rejects.toThrow("at most 8");
+    await expect(
+      agent.renderFrames({
+        atSeconds: Array.from({ length: 25 }, (_, i) => i),
+        tile: true,
+      }),
+    ).rejects.toThrow("at most 24");
   });
 });
