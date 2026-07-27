@@ -1,5 +1,6 @@
 import { EditorCore } from "@/core";
 import { projectStoreMode } from "./service";
+import { toast } from "sonner";
 
 /**
  * Keeps the open editor in step with the project file on disk.
@@ -15,17 +16,28 @@ import { projectStoreMode } from "./service";
  * human's, which is not an improvement.
  */
 
+export interface AgentPresenceState {
+  active: boolean;
+  actor: string | null;
+  events: Array<{ seq: number; at: number; summary: string; revision?: number }>;
+}
+
 export interface ProjectFileSyncState {
   externalRevision: number | null;
   /** True when disk moved ahead but local changes block an automatic reload. */
   blockedByUnsavedChanges: boolean;
+  /** Who else is editing, and what they last did. */
+  agent: AgentPresenceState;
 }
 
 const listeners = new Set<(state: ProjectFileSyncState) => void>();
 let state: ProjectFileSyncState = {
   externalRevision: null,
   blockedByUnsavedChanges: false,
+  agent: { active: false, actor: null, events: [] },
 };
+/** Highest event seq already toasted, so reconnects do not replay old toasts. */
+let toastedSeq = 0;
 
 function publish(next: Partial<ProjectFileSyncState>): void {
   state = { ...state, ...next };
@@ -62,17 +74,46 @@ export function watchProjectFile({ projectId }: { projectId: string }): () => vo
 
   source.onmessage = (event) => {
     if (disposed) return;
-    let payload: { type?: string; revision?: number };
+    let payload: {
+      type?: string;
+      revision?: number;
+      mediaChanged?: boolean;
+      agent?: AgentPresenceState & { seq: number };
+    };
     try {
       payload = JSON.parse(event.data) as typeof payload;
     } catch {
       return;
     }
-    if (payload.type !== "revision" || typeof payload.revision !== "number") return;
+    if (payload.type === "agent" && payload.agent) {
+      const incoming = payload.agent;
+      publish({ agent: { active: incoming.active, actor: incoming.actor, events: incoming.events } });
+      // Toast only what is genuinely new. The human's side of collaboration is
+      // trust, and a timeline that reorganises itself with no explanation reads
+      // as a bug — this line of text is the explanation.
+      for (const event of incoming.events) {
+        if (event.seq > toastedSeq) {
+          toastedSeq = event.seq;
+          toast(`${incoming.actor ?? "Agent"}: ${event.summary}`, {
+            ...(event.revision !== undefined ? { description: `revision ${event.revision}` } : {}),
+          });
+        }
+      }
+      return;
+    }
+    if (payload.type !== "revision" && payload.type !== "media") return;
 
     const editor = EditorCore.getInstance();
     const active = editor.project.getActiveOrNull();
     if (!active || active.metadata.id !== projectId) return;
+
+    // An import changes only the media index, never the document revision, so
+    // it gets its own event — reload the library in place and stop there.
+    if (payload.type === "media") {
+      void editor.media.loadProjectMedia({ projectId });
+      return;
+    }
+    if (typeof payload.revision !== "number") return;
 
     // Our own saves move the revision too. The adapter records what it wrote, so
     // anything at or below that number is this editor's own work echoing back.
@@ -87,12 +128,23 @@ export function watchProjectFile({ projectId }: { projectId: string }): () => vo
     publish({ externalRevision: payload.revision, blockedByUnsavedChanges: false });
     if (reloading) return;
     reloading = true;
-    // A full page reload, NOT an in-place loadProject. Three preview hooks read
-    // `scenes.getActiveScene()`, which throws rather than returning null, and
-    // tearing the scene down under a mounted preview crashes the app. Upstream
-    // never hits this because loading only ever happens before the preview
-    // mounts — a full reload keeps that ordering intact.
-    window.location.reload();
+    void (async () => {
+      try {
+        // New media first, so a clip inserted in the same batch as its import
+        // renders the moment the document lands rather than sitting invisible.
+        if (payload.mediaChanged) {
+          await editor.media.loadProjectMedia({ projectId });
+        }
+        // In-place swap: playhead, zoom and selection survive. The page-reload
+        // fallback remains only for the case where the swap itself fails.
+        const applied = await editor.project.applyExternalDocument();
+        if (!applied) window.location.reload();
+      } catch {
+        window.location.reload();
+      } finally {
+        reloading = false;
+      }
+    })();
   };
 
   source.onerror = () => {

@@ -92,10 +92,35 @@ function withProjectLock<T>(id: string, work: () => Promise<T>): Promise<T> {
 type Context = { params: Promise<{ segments?: string[] }> };
 
 export async function GET(_request: Request, { params }: Context) {
-  const id = idOf((await params).segments);
+  const segments = (await params).segments;
+  const id = idOf(segments);
   try {
     if (id === null) {
       return NextResponse.json({ root: PROJECTS_ROOT, ids: await listProjectIds() });
+    }
+    // GET <id>/revisions — the snapshot list, newest first.
+    if (segments && segments.length === 2 && segments[1] === "revisions") {
+      const projectId = segments[0];
+      const revDir = path.join(projectDir(projectId), "revisions");
+      const entries = await readdir(revDir).catch(() => [] as string[]);
+      const revisions = [];
+      for (const entry of entries.filter((f) => /^\d{6}\.json$/.test(f)).sort().reverse()) {
+        try {
+          const parsed = JSON.parse(await readFile(path.join(revDir, entry), "utf8"));
+          revisions.push({
+            revision: Number(entry.slice(0, 6)),
+            savedName: parsed.metadata?.name ?? null,
+            updatedAt: parsed.metadata?.updatedAt ?? null,
+            durationTicks: parsed.metadata?.duration ?? null,
+          });
+        } catch {
+          /* unreadable snapshot — skip */
+        }
+      }
+      return NextResponse.json({ revisions });
+    }
+    if (segments && segments.length > 1) {
+      return failed(new Error("Unknown project sub-resource"), 404);
     }
     const contents = await readFile(projectFile(id), "utf8");
     // Returned as text and parsed by the caller: re-serialising here would be a
@@ -161,6 +186,26 @@ async function writeProjectFile(id: string, body: string, ifMatch: string | null
 
     const dir = projectDir(id);
     await mkdir(dir, { recursive: true });
+
+    // Snapshot what is being replaced, BEFORE the rename. This is what makes an
+    // agent's batch reversible by a human: agent edits arrive via reload and are
+    // not in any tab's undo stack, so without these files a bad batch is simply
+    // permanent. Bounded to the newest 50 — a history that grows forever is a
+    // disk leak wearing a feature's clothes.
+    if (onDisk > 0) {
+      try {
+        const previous = await readFile(projectFile(id), "utf8");
+        const revDir = path.join(dir, "revisions");
+        await mkdir(revDir, { recursive: true });
+        await writeFile(path.join(revDir, `${String(onDisk).padStart(6, "0")}.json`), previous, "utf8");
+        const entries = (await readdir(revDir)).filter((f) => /^\d{6}\.json$/.test(f)).sort();
+        for (const stale of entries.slice(0, Math.max(0, entries.length - 50))) {
+          await rm(path.join(revDir, stale), { force: true });
+        }
+      } catch {
+        // A failed snapshot must not block the write itself.
+      }
+    }
     // Write-then-rename, so a crash mid-write cannot leave a truncated
     // project.json where a whole one used to be.
     // Per-request entropy, not just the pid: two concurrent PUTs for the same
@@ -174,6 +219,55 @@ async function writeProjectFile(id: string, body: string, ifMatch: string | null
   } catch (error) {
     return failed(error);
   }
+}
+
+export async function POST(request: Request, { params }: Context) {
+  const segments = (await params).segments;
+  // POST <id>/restore/<revision> — roll the document back to a snapshot.
+  if (!segments || segments.length !== 3 || segments[1] !== "restore") {
+    return failed(new Error("POST supports only <id>/restore/<revision>"), 405);
+  }
+  const [id, , revisionRaw] = segments;
+  const revisionNumber = Number(revisionRaw);
+  if (!Number.isInteger(revisionNumber) || revisionNumber <= 0) {
+    return failed(new Error(`Not a revision number: ${revisionRaw}`));
+  }
+  void request;
+  return withProjectLock(id, async () => {
+    try {
+      const snapshotPath = path.join(
+        projectDir(id),
+        "revisions",
+        `${String(revisionNumber).padStart(6, "0")}.json`,
+      );
+      const snapshot = await readFile(snapshotPath, "utf8").catch(() => null);
+      if (snapshot === null) {
+        return failed(new Error(`No snapshot for revision ${revisionNumber} (history keeps the newest 50)`), 404);
+      }
+      // Restoring goes FORWARD: the snapshot content becomes a NEW revision.
+      // Rewinding the counter would let a stale CAS token authorise a write.
+      const document = JSON.parse(snapshot) as Record<string, unknown>;
+      const onDisk = await currentRevision(id);
+      const revision = onDisk + 1;
+      const contents = JSON.stringify({ ...document, revision }, null, 2);
+      const dir = projectDir(id);
+      // Snapshot the current state too, so a restore is itself restorable.
+      try {
+        const current = await readFile(projectFile(id), "utf8");
+        const revDir = path.join(dir, "revisions");
+        await mkdir(revDir, { recursive: true });
+        await writeFile(path.join(revDir, `${String(onDisk).padStart(6, "0")}.json`), current, "utf8");
+      } catch {
+        /* best effort */
+      }
+      const temporary = path.join(dir, `.project.json.${randomUUID()}.tmp`);
+      await writeFile(temporary, contents, "utf8");
+      await rename(temporary, projectFile(id));
+      return NextResponse.json({ ok: true, restoredFrom: revisionNumber, revision });
+    } catch (error) {
+      return failed(error);
+    }
+  }) as Promise<NextResponse>;
 }
 
 export async function DELETE(_request: Request, { params }: Context) {

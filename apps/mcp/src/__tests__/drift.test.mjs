@@ -63,6 +63,7 @@ test("the server exposes the agent tool surface", async () => {
     "create_project", "delete_project",
     "start_export", "get_export", "cancel_export",
     "start_transcribe", "get_transcribe",
+    "wait_for_sync", "list_revisions", "restore_revision",
   ]) {
     assert.ok(registered.includes(name), `missing tool: ${name}`);
   }

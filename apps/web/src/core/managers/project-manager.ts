@@ -228,6 +228,82 @@ export class ProjectManager {
 		return this.fileConflict;
 	}
 
+	/**
+	 * Swap in the document as it now stands on disk, WITHOUT a page reload.
+	 *
+	 * The whole point is what it preserves: playhead, selection, zoom, scroll —
+	 * everything a full reload throws away, which is what made agent edits feel
+	 * like the floor moving under the human.
+	 *
+	 * Two hazards shape this code. First, `initializeScenes` must be the ONLY
+	 * scene mutation used: it assigns the new active scene atomically, so the
+	 * dozen render-time `getActiveScene()` callers never observe a null window
+	 * (a teardown-then-load sequence crashed TransformHandles for exactly that
+	 * reason). Second, applying a document NOTIFIES, and notifications feed the
+	 * autosave — which would write the same content back, bump the revision,
+	 * retrigger the watcher, and loop forever. Autosave is paused across the
+	 * swap; `markDirty` during pause is an early return, so nothing queues.
+	 */
+	async applyExternalDocument(): Promise<boolean> {
+		const activeId = this.active?.metadata.id;
+		if (!activeId) return false;
+
+		const loaded = await storageService.loadProject({ id: activeId });
+		if (!loaded || loaded.project.metadata.id !== activeId) return false;
+
+		const localViewState = this.active?.timelineViewState;
+		const playhead = this.editor.playback.getCurrentTime();
+		const selection = this.editor.selection.getSnapshot();
+
+		this.editor.save.pause();
+		try {
+			this.active = {
+				...loaded.project,
+				// Zoom and scroll are the human's local working state, not document
+				// content — the incoming file's copy may be from another writer.
+				...(localViewState ? { timelineViewState: localViewState } : {}),
+			};
+			this.editor.scenes.initializeScenes({
+				scenes: loaded.project.scenes,
+				currentSceneId: loaded.project.currentSceneId,
+			});
+
+			// The undo stack holds commands built against objects that no longer
+			// exist; undoing across a swap would resurrect a stale document.
+			this.editor.command.clear();
+			// Tab-held agent revisions are stale now too.
+			this.editor.agent.onDocumentSwitched();
+
+			// Selection survives only where the elements still do.
+			const liveIds = new Set(
+				loaded.project.scenes
+					.flatMap((scene) => [scene.tracks.main, ...scene.tracks.overlay, ...scene.tracks.audio])
+					.flatMap((track) => track.elements.map((element) => element.id)),
+			);
+			this.editor.selection.restoreSnapshot({
+				snapshot: {
+					selectedElements: selection.selectedElements.filter((ref) => liveIds.has(ref.elementId)),
+					selectedKeyframes: [],
+					keyframeSelectionAnchor: null,
+					selectedMaskPoints: null,
+				},
+			});
+
+			// Playhead stays put, clamped into the new cut.
+			const duration = this.editor.timeline.getTotalDuration();
+			this.editor.playback.seek({
+				time: (playhead > duration ? duration : playhead) as typeof playhead,
+			});
+
+			this.fileConflict = null;
+			this.updateMetadata(this.active);
+			this.notify();
+			return true;
+		} finally {
+			this.editor.save.resume();
+		}
+	}
+
 	/** What the file store last saw on disk, or null when not file-backed. */
 	getKnownFileRevision(projectId: string): number | null {
 		return storageService.getKnownProjectRevision(projectId);

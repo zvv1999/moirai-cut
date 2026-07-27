@@ -45,6 +45,20 @@ function rememberBatch(key, result) {
   }
 }
 
+/**
+ * Tell the editor's presence surface what just happened. Fire-and-forget: the
+ * human's badge is a courtesy, and a slow or absent editor must never make a
+ * tool call fail.
+ */
+function postActivity(projectId, summary, revision) {
+  const base = process.env.OPENCUT_BASE_URL ?? "http://localhost:3000";
+  fetch(`${base}/api/agent-activity/${encodeURIComponent(projectId)}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ actor: "Claude", summary, ...(revision !== undefined ? { revision } : {}) }),
+  }).catch(() => {});
+}
+
 const asText = (value) => ({
   content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
 });
@@ -421,6 +435,15 @@ export function createOpenCutMcpServer() {
           document: refreshDerivedMetadata({ document: working, now: new Date().toISOString() }),
           baseRevision: onDisk,
         });
+        {
+          const counts = {};
+          for (const entry of applied) counts[entry.type] = (counts[entry.type] ?? 0) + 1;
+          postActivity(
+            id,
+            Object.entries(counts).map(([type, n]) => (n > 1 ? `${type} ×${n}` : type)).join(", "),
+            revision,
+          );
+        }
         const result = {
           revision,
           applied,
@@ -477,7 +500,9 @@ export function createOpenCutMcpServer() {
     },
     async ({ projectId: id, filePath, name }) => {
       try {
-        return asText(await importMedia({ projectId: id, filePath, name }));
+        const imported = await importMedia({ projectId: id, filePath, name });
+        postActivity(id, `imported ${imported.name}`);
+        return asText(imported);
       } catch (error) {
         return asError({ code: error.code ?? "driver_error", message: error.message });
       }
@@ -555,6 +580,111 @@ export function createOpenCutMcpServer() {
       } catch (error) {
         return asError({ code: error.code ?? "driver_error", message: error.message });
       }
+    },
+  );
+
+  server.registerTool(
+    "list_revisions",
+    {
+      description:
+        "List a project's revision snapshots (the newest 50), newest first. Every write archives what it replaced, so any batch — yours or the human's — can be rolled back.",
+      inputSchema: { projectId: z.string().min(1) },
+      annotations: readOnly,
+    },
+    async ({ projectId: id }) => {
+      try {
+        const base = process.env.OPENCUT_BASE_URL ?? "http://localhost:3000";
+        const response = await fetch(`${base}/api/projects/${encodeURIComponent(id)}/revisions`);
+        if (!response.ok) return asError({ code: "request_failed", message: `${response.status}` });
+        return asText(await response.json());
+      } catch (error) {
+        return asError({ code: "driver_error", message: String(error?.message ?? error) });
+      }
+    },
+  );
+
+  server.registerTool(
+    "restore_revision",
+    {
+      description:
+        "Roll the project document back to a snapshot. Restoring goes FORWARD — the snapshot becomes a NEW revision, and the pre-restore state is itself snapshotted, so a restore can be undone by another restore. The open editor follows automatically.",
+      inputSchema: {
+        projectId: z.string().min(1),
+        revision: z.number().int().positive().describe("From list_revisions."),
+      },
+      annotations: mutating,
+    },
+    async ({ projectId: id, revision }) => {
+      try {
+        const base = process.env.OPENCUT_BASE_URL ?? "http://localhost:3000";
+        const response = await fetch(
+          `${base}/api/projects/${encodeURIComponent(id)}/restore/${revision}`,
+          { method: "POST" },
+        );
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          return asError({ code: "restore_failed", message: payload.error ?? `${response.status}` });
+        }
+        postActivity(id, `restored revision ${revision}`, payload.revision);
+        return asText(payload);
+      } catch (error) {
+        return asError({ code: "driver_error", message: String(error?.message ?? error) });
+      }
+    },
+  );
+
+  server.registerTool(
+    "wait_for_sync",
+    {
+      description:
+        "Block until the open editor has caught up with the project file, then return its state. Call this after edit_project when you are about to render, export, or hand over to a human — the editor follows the file asynchronously, and acting before it catches up means acting on the PREVIOUS cut. Replaces the poll-loop boilerplate every workflow used to carry.",
+      inputSchema: {
+        projectId: z.string().min(1),
+        revision: z
+          .number()
+          .int()
+          .nonnegative()
+          .optional()
+          .describe("Wait until the editor has loaded AT LEAST this file revision. Defaults to the file's current revision."),
+        timeoutSeconds: z.number().positive().max(120).default(45),
+      },
+      annotations: readOnly,
+    },
+    async ({ projectId: id, revision, timeoutSeconds }) => {
+      const deadline = Date.now() + timeoutSeconds * 1000;
+      let target = revision;
+      if (target === undefined) {
+        try {
+          const document = await readProject({ projectId: id });
+          target = typeof document.revision === "number" ? document.revision : 0;
+        } catch (error) {
+          return asError({ code: error.code ?? "driver_error", message: error.message });
+        }
+      }
+
+      let last = null;
+      while (Date.now() < deadline) {
+        const state = await bridge({ method: "getState", projectId: id });
+        if (!state.isError) {
+          const payload = JSON.parse(state.content[0].text);
+          last = payload;
+          if (
+            payload.projectId === id &&
+            typeof payload.loadedFileRevision === "number" &&
+            payload.loadedFileRevision >= target
+          ) {
+            return asText({ synced: true, waitedForRevision: target, state: payload });
+          }
+        }
+        // The editor reloads itself when the file moves, so transient
+        // bridge_missing windows are expected here, not failures.
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+      return asError({
+        code: "sync_timeout",
+        message: `The editor did not reach file revision ${target} within ${timeoutSeconds}s. It may be closed, on another project, or blocked by unsaved human edits.`,
+        lastSeen: last ? { projectId: last.projectId, loadedFileRevision: last.loadedFileRevision } : null,
+      });
     },
   );
 

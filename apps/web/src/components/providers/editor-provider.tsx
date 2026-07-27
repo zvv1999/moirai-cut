@@ -11,6 +11,7 @@ import { useTimelineStore } from "@/timeline/timeline-store";
 import { useEditorActions } from "@/actions/use-editor-actions";
 import { installAgentBridge } from "@/agent/bridge";
 import { watchProjectFile } from "@/services/storage/project-file-sync";
+import { AgentBadge } from "@/components/editor/agent-badge";
 import { loadFontAtlas } from "@/fonts/google-fonts";
 import {
 	initializeGpuRenderer,
@@ -165,5 +166,6 @@ function EditorRuntimeBindings() {
 
 	useEditorActions();
 	useKeybindingsListener();
-	return null;
+	// Fixed-position, so where it mounts in the tree is irrelevant.
+	return <AgentBadge />;
 }

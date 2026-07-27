@@ -1,4 +1,5 @@
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
+import { getAgentPresence } from "@/server/agent-activity";
 import { homedir } from "node:os";
 import path from "node:path";
 
@@ -21,6 +22,15 @@ const PROJECTS_ROOT =
   process.env.OPENCUT_PROJECTS_DIR ?? path.join(homedir(), "OpenCutProjects");
 const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/;
 const POLL_MS = 1000;
+
+async function readMediaVersion(id: string): Promise<number | null> {
+  try {
+    const info = await stat(path.join(PROJECTS_ROOT, id, "media", "index.json"));
+    return info.mtimeMs;
+  } catch {
+    return null;
+  }
+}
 
 async function readRevision(id: string): Promise<number | null> {
   try {
@@ -46,6 +56,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const stream = new ReadableStream({
     async start(controller) {
       let lastSent: number | null = await readRevision(id);
+      let lastMedia: number | null = await readMediaVersion(id);
+      let lastAgentSeq = -1;
+      let lastAgentActive: boolean | null = null;
       const send = (data: unknown) => {
         try {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
@@ -57,9 +70,27 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
       timer = setInterval(async () => {
         const revision = await readRevision(id);
-        if (revision === null || revision === lastSent) return;
-        lastSent = revision;
-        send({ type: "revision", revision });
+        const media = await readMediaVersion(id);
+        // Media changes do not bump the project revision by design — an import
+        // must not collide with the document's CAS — so the watcher needs its
+        // own signal, or a file-imported asset never appears without a reload.
+        const mediaChanged = media !== null && lastMedia !== null && media !== lastMedia;
+        if (media !== null) lastMedia = media;
+        if (revision !== null && revision !== lastSent) {
+          lastSent = revision;
+          send({ type: "revision", revision, mediaChanged });
+        } else if (mediaChanged) {
+          send({ type: "media", revision: lastSent });
+        }
+
+        // Presence rides the same stream: a separate poller in the page would
+        // just duplicate this loop.
+        const agent = getAgentPresence(id);
+        if (agent.seq !== lastAgentSeq || agent.active !== lastAgentActive) {
+          lastAgentSeq = agent.seq;
+          lastAgentActive = agent.active;
+          send({ type: "agent", agent });
+        }
       }, POLL_MS);
 
       // Abort fires on tab close, navigation, and HMR reload; without cleanup
