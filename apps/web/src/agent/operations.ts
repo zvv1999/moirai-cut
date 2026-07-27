@@ -193,6 +193,10 @@ export type Operation =
       params?: Record<string, unknown>;
     })
   | (ElementRefInput & {
+      type: "element.setParams";
+      params: Record<string, number | string | boolean>;
+    })
+  | (ElementRefInput & {
       type: "element.setMaskParams";
       maskId: string;
       params: Record<string, unknown>;
@@ -747,6 +751,29 @@ const COMMAND_FACTORIES: { [K in OperationType]: CommandFactory } = {
     });
   },
 
+  "element.setParams": (operation) => {
+    const { trackId, elementId, params } = operation as Extract<
+      Operation,
+      { type: "element.setParams" }
+    >;
+    if (!params || Object.keys(params).length === 0) {
+      throw new InvalidOperationError("element.setParams names no parameter to change");
+    }
+    // Merged over the current values, mirroring the masks approach: the patch
+    // replaces the whole params object, so writing only the named keys would
+    // erase everything else (content, color, ...).
+    const current = readElementParams({ trackId, elementId });
+    return new UpdateElementsCommand({
+      updates: [
+        {
+          trackId: requireId("trackId", trackId),
+          elementId: requireId("elementId", elementId),
+          patch: { params: { ...current, ...params } } as Partial<TimelineElement>,
+        },
+      ],
+    });
+  },
+
   "element.setMaskParams": (operation) => {
     const { trackId, elementId, maskId, params } = operation as Extract<
       Operation,
@@ -916,6 +943,19 @@ export function supportedOperationTypes(): OperationType[] {
  * knowing what is already there. Read at build time, which is the same tick the
  * command executes in.
  */
+function readElementParams({ trackId, elementId }: ElementRefInput): Record<string, unknown> {
+  const scene = EditorCore.getInstance().scenes.getActiveSceneOrNull();
+  if (!scene) return {};
+  const tracks = scene.tracks;
+  for (const track of [tracks.main, ...tracks.overlay, ...tracks.audio]) {
+    if (!track || track.id !== trackId) continue;
+    const element = track.elements.find((candidate) => candidate.id === elementId);
+    const params = (element as unknown as { params?: Record<string, unknown> })?.params;
+    return params && typeof params === "object" ? params : {};
+  }
+  return {};
+}
+
 function readMasks({ trackId, elementId }: ElementRefInput): Array<Record<string, unknown>> {
   const scene = EditorCore.getInstance().scenes.getActiveSceneOrNull();
   if (!scene) return [];
@@ -1029,6 +1069,7 @@ export function elementRefsOf(operation: Operation): ElementRefInput[] {
     case "element.removeEffectKeyframe":
     case "element.toggleSourceAudio":
     case "element.addMask":
+    case "element.setParams":
     case "element.setMaskParams":
     case "element.removeMask":
     case "element.toggleMaskInverted":

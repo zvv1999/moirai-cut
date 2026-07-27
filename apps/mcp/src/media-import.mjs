@@ -80,10 +80,49 @@ export async function probeMedia({ filePath }) {
   const audio = streams.find((s) => s.codec_type === "audio");
   const duration = Number(probed.format?.duration);
 
-  // A still image also reports a video stream, so the distinction is whether it
-  // has a real duration — matching how the editor classifies imports.
+  // Rotation. Phone footage carries a displaymatrix (stream side_data) and
+  // EXIF photos carry it at FRAME level — in both cases the stored pixels are
+  // sideways and every consumer displays them rotated. Reporting the unrotated
+  // dimensions here made a 1080x1920 portrait phone clip look like landscape,
+  // which flipped the project's adopted canvas the wrong way round.
+  let rotation = 0;
+  const streamRotation = (video?.side_data_list ?? []).find(
+    (entry) => typeof entry.rotation === "number",
+  );
+  if (streamRotation) {
+    rotation = streamRotation.rotation;
+  } else if (video) {
+    try {
+      const { stdout: frameOut } = await run("ffprobe", [
+        "-v", "error",
+        "-select_streams", "v:0",
+        "-read_intervals", "%+#1",
+        "-show_entries", "frame_side_data_list",
+        "-of", "json",
+        filePath,
+      ]);
+      const frame = JSON.parse(frameOut).frames?.[0];
+      const frameRotation = (frame?.side_data_list ?? []).find(
+        (entry) => typeof entry.rotation === "number",
+      );
+      if (frameRotation) rotation = frameRotation.rotation;
+    } catch {
+      /* no frame side data — keep 0 */
+    }
+  }
+  const isSideways = Math.abs(rotation) % 180 === 90;
+
+  // A still image also reports a video stream. Three tells, because none alone
+  // is reliable: an image codec; a single frame; or a sub-half-second "duration"
+  // (ffprobe reports one frame at 25fps as 0.04s for plain JPEGs, which slipped
+  // past a duration===0 check and classified photos as video).
+  const IMAGE_CODECS = new Set(["mjpeg", "png", "webp", "bmp", "tiff", "gif"]);
   const isStill =
-    Boolean(video) && (!Number.isFinite(duration) || duration === 0 || video.nb_frames === "1");
+    Boolean(video) &&
+    (IMAGE_CODECS.has(video.codec_name) ||
+      video.nb_frames === "1" ||
+      !Number.isFinite(duration) ||
+      duration < 0.5);
   const type = isStill ? "image" : video ? "video" : audio ? "audio" : null;
   if (!type) {
     throw new MediaImportError(`${filePath} has no video or audio stream`, "unsupported_media");
@@ -91,8 +130,9 @@ export async function probeMedia({ filePath }) {
 
   return {
     type,
-    width: video ? Number(video.width) : undefined,
-    height: video ? Number(video.height) : undefined,
+    // DISPLAY dimensions, not stored ones: a -90 rotation swaps them.
+    width: video ? Number(isSideways ? video.height : video.width) : undefined,
+    height: video ? Number(isSideways ? video.width : video.height) : undefined,
     // Seconds, matching MediaAsset.duration — NOT ticks. Absent for stills.
     durationSeconds: type === "image" || !Number.isFinite(duration) ? undefined : duration,
     // Stills get a synthetic frame rate from ffprobe (often 25/1). Reporting it

@@ -224,6 +224,7 @@ describe("operation registry", () => {
       { type: "element.removeEffectKeyframe", ...ref, effectId: "fx", paramKey: "intensity", keyframeId: "k" },
       { type: "element.toggleSourceAudio", ...ref },
       { type: "element.addMask", ...ref, maskType: "rectangle" },
+      { type: "element.setParams", ...ref, params: { fontSize: 7 } },
       { type: "element.setMaskParams", ...ref, maskId: "m", params: { feather: 5 } },
       { type: "element.removeMask", ...ref, maskId: "m" },
       { type: "element.toggleMaskInverted", ...ref, maskId: "m" },

@@ -281,6 +281,16 @@ export const OperationSchema = z
       .describe("Add a mask to a visual clip."),
     z
       .object({
+        type: z.literal("element.setParams"),
+        trackId,
+        elementId,
+        params: z
+          .record(z.union([z.number(), z.string(), z.boolean()]))
+          .describe("Merged over current values. For text: content, fontSize, color, fontFamily, textAlign..."),
+      })
+      .describe("Change a clip's static built-in params — restyle a caption, retint text, adjust volume."),
+    z
+      .object({
         type: z.literal("element.setMaskParams"),
         trackId,
         elementId,
@@ -394,6 +404,7 @@ export const SCHEMA_OPERATION_TYPES = [
   "element.removeEffectKeyframe",
   "element.toggleSourceAudio",
   "element.addMask",
+  "element.setParams",
   "element.setMaskParams",
   "element.removeMask",
   "element.toggleMaskInverted",

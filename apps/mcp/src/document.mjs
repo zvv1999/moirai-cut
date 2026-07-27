@@ -1089,6 +1089,20 @@ const OPERATIONS = {
     element.masks = [...(element.masks ?? []), { id: randomUUID(), type: op.maskType, params }];
   },
 
+  "element.setParams": (scene, op) => {
+    const { element } = findElement(scene, op);
+    if (!op.params || Object.keys(op.params).length === 0) {
+      throw new DocumentOperationError("element.setParams names no parameter to change");
+    }
+    for (const value of Object.values(op.params)) {
+      const kind = typeof value;
+      if (kind !== "number" && kind !== "string" && kind !== "boolean") {
+        throw new DocumentOperationError(`params values must be number/string/boolean; got ${kind}`);
+      }
+    }
+    element.params = { ...(element.params ?? {}), ...op.params };
+  },
+
   "element.setMaskParams": (scene, op) => {
     const { element } = findElement(scene, op);
     const mask = (element.masks ?? []).find((candidate) => candidate.id === op.maskId);
