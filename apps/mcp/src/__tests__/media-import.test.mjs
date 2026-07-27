@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
-import { omitArchivedOriginalStub } from "../media-import.mjs";
+import { omitArchivedOriginalStub } from "../media-index.mjs";
 
 test("archived proxy originals stay on disk but are omitted from the editor media index", () => {
   const index = {
