@@ -16,6 +16,10 @@ import { UpdateClipEffectParamsCommand } from "@/commands/timeline/element/effec
 import { ReorderClipEffectsCommand } from "@/commands/timeline/element/effects/reorder-effect";
 import { UpsertKeyframeCommand } from "@/commands/timeline/element/keyframes/upsert-keyframe";
 import { RemoveKeyframeCommand } from "@/commands/timeline/element/keyframes/remove-keyframe";
+import { RetimeKeyframeCommand } from "@/commands/timeline/element/keyframes/retime-keyframe";
+import { UpdateScalarKeyframeCurveCommand } from "@/commands/timeline/element/keyframes/update-scalar-keyframe-curve";
+import { UpsertEffectParamKeyframeCommand } from "@/commands/timeline/element/keyframes/upsert-effect-param-keyframe";
+import { RemoveEffectParamKeyframeCommand } from "@/commands/timeline/element/keyframes/remove-effect-param-keyframe";
 import { CreateSceneCommand } from "@/commands/scene/create-scene";
 import { DeleteSceneCommand } from "@/commands/scene/delete-scene";
 import { ToggleBookmarkCommand } from "@/commands/scene/toggle-bookmark";
@@ -141,6 +145,34 @@ export type Operation =
       keyframeId: string;
       /** Written into params when the last keyframe goes, so the look is kept. */
       valueAtPlayhead?: number | null;
+    })
+  | (ElementRefInput & {
+      type: "element.retimeKeyframe";
+      propertyPath: string;
+      keyframeId: string;
+      timeSeconds: number;
+    })
+  | (ElementRefInput & {
+      type: "element.setKeyframeCurve";
+      propertyPath: string;
+      keyframeId: string;
+      segmentToNext?: "step" | "linear" | "bezier";
+      tangentMode?: "auto" | "aligned" | "broken" | "flat";
+    })
+  | (ElementRefInput & {
+      type: "element.upsertEffectKeyframe";
+      effectId: string;
+      paramKey: string;
+      timeSeconds: number;
+      value: number;
+      interpolation?: "linear" | "hold" | "bezier";
+      keyframeId?: string;
+    })
+  | (ElementRefInput & {
+      type: "element.removeEffectKeyframe";
+      effectId: string;
+      paramKey: string;
+      keyframeId: string;
     })
   | (ElementRefInput & { type: "element.toggleSourceAudio" })
   | (ElementRefInput & { type: "element.removeMask"; maskId: string })
@@ -578,6 +610,69 @@ const COMMAND_FACTORIES: { [K in OperationType]: CommandFactory } = {
     });
   },
 
+  "element.retimeKeyframe": (operation) => {
+    const { trackId, elementId, propertyPath, keyframeId, timeSeconds } = operation as Extract<
+      Operation,
+      { type: "element.retimeKeyframe" }
+    >;
+    return new RetimeKeyframeCommand({
+      trackId: requireId("trackId", trackId),
+      elementId: requireId("elementId", elementId),
+      propertyPath: requireId("propertyPath", propertyPath),
+      keyframeId: requireId("keyframeId", keyframeId),
+      nextTime: toMediaTime("timeSeconds", timeSeconds),
+    });
+  },
+
+  "element.setKeyframeCurve": (operation) => {
+    const { trackId, elementId, propertyPath, keyframeId, segmentToNext, tangentMode } =
+      operation as Extract<Operation, { type: "element.setKeyframeCurve" }>;
+    const patch: { segmentToNext?: "step" | "linear" | "bezier"; tangentMode?: "auto" | "aligned" | "broken" | "flat" } = {};
+    if (segmentToNext !== undefined) patch.segmentToNext = segmentToNext;
+    if (tangentMode !== undefined) patch.tangentMode = tangentMode;
+    if (Object.keys(patch).length === 0) {
+      throw new InvalidOperationError("element.setKeyframeCurve names no field to change");
+    }
+    return new UpdateScalarKeyframeCurveCommand({
+      trackId: requireId("trackId", trackId),
+      elementId: requireId("elementId", elementId),
+      propertyPath: requireId("propertyPath", propertyPath),
+      // Scalar params have a single component, named "value" by the channel layout.
+      componentKey: "value",
+      keyframeId: requireId("keyframeId", keyframeId),
+      patch,
+    });
+  },
+
+  "element.upsertEffectKeyframe": (operation) => {
+    const { trackId, elementId, effectId, paramKey, timeSeconds, value, interpolation, keyframeId } =
+      operation as Extract<Operation, { type: "element.upsertEffectKeyframe" }>;
+    return new UpsertEffectParamKeyframeCommand({
+      trackId: requireId("trackId", trackId),
+      elementId: requireId("elementId", elementId),
+      effectId: requireId("effectId", effectId),
+      paramKey: requireId("paramKey", paramKey),
+      time: toMediaTime("timeSeconds", timeSeconds),
+      value,
+      ...(interpolation ? { interpolation } : {}),
+      ...(keyframeId ? { keyframeId } : {}),
+    });
+  },
+
+  "element.removeEffectKeyframe": (operation) => {
+    const { trackId, elementId, effectId, paramKey, keyframeId } = operation as Extract<
+      Operation,
+      { type: "element.removeEffectKeyframe" }
+    >;
+    return new RemoveEffectParamKeyframeCommand({
+      trackId: requireId("trackId", trackId),
+      elementId: requireId("elementId", elementId),
+      effectId: requireId("effectId", effectId),
+      paramKey: requireId("paramKey", paramKey),
+      keyframeId: requireId("keyframeId", keyframeId),
+    });
+  },
+
   "element.toggleSourceAudio": (operation) => {
     const { trackId, elementId } = operation as Extract<
       Operation,
@@ -750,6 +845,10 @@ export function elementRefsOf(operation: Operation): ElementRefInput[] {
     case "element.reorderEffect":
     case "element.upsertKeyframe":
     case "element.removeKeyframe":
+    case "element.retimeKeyframe":
+    case "element.setKeyframeCurve":
+    case "element.upsertEffectKeyframe":
+    case "element.removeEffectKeyframe":
     case "element.toggleSourceAudio":
     case "element.removeMask":
     case "element.toggleMaskInverted":

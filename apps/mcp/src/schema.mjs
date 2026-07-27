@@ -204,6 +204,46 @@ export const OperationSchema = z
       .describe(
         "Add or move a keyframe. A SINGLE keyframe freezes the property for the whole clip — write both ends to get movement.",
       ),
+    z.object({
+      type: z.literal("element.retimeKeyframe"),
+      trackId,
+      elementId,
+      propertyPath: z.string().min(1),
+      keyframeId: z.string().min(1),
+      timeSeconds: seconds("New position, from the CLIP's start. Clamped into the clip."),
+    }),
+    z
+      .object({
+        type: z.literal("element.setKeyframeCurve"),
+        trackId,
+        elementId,
+        propertyPath: z.string().min(1),
+        keyframeId: z.string().min(1),
+        segmentToNext: z.enum(["step", "linear", "bezier"]).optional(),
+        tangentMode: z.enum(["auto", "aligned", "broken", "flat"]).optional(),
+      })
+      .describe("Change how a keyframe eases into the next one. At least one field is required."),
+    z
+      .object({
+        type: z.literal("element.upsertEffectKeyframe"),
+        trackId,
+        elementId,
+        effectId: z.string().min(1).describe("From the clip's effects[] in get_state."),
+        paramKey: z.string().min(1).describe('e.g. "intensity" for blur.'),
+        timeSeconds: seconds("From the CLIP's start."),
+        value: z.number().finite(),
+        interpolation: z.enum(["linear", "hold", "bezier"]).optional(),
+        keyframeId: z.string().min(1).optional(),
+      })
+      .describe("Animate an effect's parameter over time — a blur that ramps up, for instance."),
+    z.object({
+      type: z.literal("element.removeEffectKeyframe"),
+      trackId,
+      elementId,
+      effectId: z.string().min(1),
+      paramKey: z.string().min(1),
+      keyframeId: z.string().min(1),
+    }),
     z
       .object({ type: z.literal("element.toggleSourceAudio"), trackId, elementId })
       .describe(
@@ -308,6 +348,10 @@ export const SCHEMA_OPERATION_TYPES = [
   "element.reorderEffect",
   "element.upsertKeyframe",
   "element.removeKeyframe",
+  "element.retimeKeyframe",
+  "element.setKeyframeCurve",
+  "element.upsertEffectKeyframe",
+  "element.removeEffectKeyframe",
   "element.toggleSourceAudio",
   "element.removeMask",
   "element.toggleMaskInverted",

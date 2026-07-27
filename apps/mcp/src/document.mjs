@@ -648,6 +648,120 @@ const OPERATIONS = {
     element.animations[path] = { ...channel, keys: keys.sort((a, b) => a.time - b.time) };
   },
 
+  "element.retimeKeyframe": (scene, op) => {
+    const { element } = findElement(scene, op);
+    const channel = element.animations?.[op.propertyPath];
+    const key = (channel?.keys ?? []).find((candidate) => candidate.id === op.keyframeId);
+    if (!key) {
+      throw new DocumentOperationError(
+        `No keyframe ${op.keyframeId} on ${op.propertyPath}.`,
+        "unresolved_reference",
+      );
+    }
+    const requested = toTicks("timeSeconds", op.timeSeconds);
+    key.time = Math.max(0, Math.min(requested, element.duration ?? 0));
+    channel.keys.sort((a, b) => a.time - b.time);
+  },
+
+  "element.setKeyframeCurve": (scene, op) => {
+    const { element } = findElement(scene, op);
+    const channel = element.animations?.[op.propertyPath];
+    const key = (channel?.keys ?? []).find((candidate) => candidate.id === op.keyframeId);
+    if (!key) {
+      throw new DocumentOperationError(
+        `No keyframe ${op.keyframeId} on ${op.propertyPath}.`,
+        "unresolved_reference",
+      );
+    }
+    const SEGMENTS = new Set(["step", "linear", "bezier"]);
+    const TANGENTS = new Set(["auto", "aligned", "broken", "flat"]);
+    if (op.segmentToNext !== undefined && !SEGMENTS.has(op.segmentToNext)) {
+      throw new DocumentOperationError(
+        `segmentToNext must be one of ${[...SEGMENTS].join(", ")}; got ${JSON.stringify(op.segmentToNext)}`,
+      );
+    }
+    if (op.tangentMode !== undefined && !TANGENTS.has(op.tangentMode)) {
+      throw new DocumentOperationError(
+        `tangentMode must be one of ${[...TANGENTS].join(", ")}; got ${JSON.stringify(op.tangentMode)}`,
+      );
+    }
+    if (op.segmentToNext === undefined && op.tangentMode === undefined) {
+      throw new DocumentOperationError("element.setKeyframeCurve names no field to change");
+    }
+    if (op.segmentToNext !== undefined) key.segmentToNext = op.segmentToNext;
+    if (op.tangentMode !== undefined) key.tangentMode = op.tangentMode;
+  },
+
+  "element.upsertEffectKeyframe": (scene, op) => {
+    const { element } = findElement(scene, op);
+    const effect = (element.effects ?? []).find((candidate) => candidate.id === op.effectId);
+    if (!effect) {
+      throw new DocumentOperationError(
+        `No effect ${op.effectId} on ${element.name}.`,
+        "unresolved_reference",
+      );
+    }
+    const known = EFFECT_DEFINITIONS[effect.type];
+    if (known && !(op.paramKey in known)) {
+      throw new DocumentOperationError(
+        `Effect ${effect.type} has no parameter ${JSON.stringify(op.paramKey)}. Known: ${Object.keys(known).join(", ")}`,
+      );
+    }
+    // The animation path for an effect param is a dotted address into the clip's
+    // own effects, which is why it lives beside the element's own animations.
+    const path = `effects.${op.effectId}.params.${op.paramKey}`;
+    if (typeof op.value !== "number" || !Number.isFinite(op.value)) {
+      throw new DocumentOperationError(`${path} takes a finite number; got ${JSON.stringify(op.value)}`);
+    }
+    const requested = toTicks("timeSeconds", op.timeSeconds);
+    const time = Math.max(0, Math.min(requested, element.duration ?? 0));
+
+    element.animations = element.animations ?? {};
+    const channel = element.animations[path] ?? { keys: [] };
+    const keys = [...(channel.keys ?? [])];
+    let index = op.keyframeId ? keys.findIndex((key) => key.id === op.keyframeId) : -1;
+    if (index === -1) index = keys.findIndex((key) => key.time === time);
+    if (index === -1) {
+      keys.push({
+        id: op.keyframeId ?? randomUUID(),
+        time,
+        value: op.value,
+        segmentToNext: op.interpolation ?? "linear",
+        tangentMode: "flat",
+      });
+    } else {
+      keys[index] = {
+        ...keys[index],
+        time,
+        value: op.value,
+        ...(op.interpolation ? { segmentToNext: op.interpolation } : {}),
+      };
+    }
+    element.animations[path] = { ...channel, keys: keys.sort((a, b) => a.time - b.time) };
+  },
+
+  "element.removeEffectKeyframe": (scene, op) => {
+    const { element } = findElement(scene, op);
+    const path = `effects.${op.effectId}.params.${op.paramKey}`;
+    const channel = element.animations?.[path];
+    if (!channel) {
+      throw new DocumentOperationError(`No keyframes on ${path}.`, "unresolved_reference");
+    }
+    const remaining = (channel.keys ?? []).filter((key) => key.id !== op.keyframeId);
+    if (remaining.length === (channel.keys ?? []).length) {
+      throw new DocumentOperationError(
+        `No keyframe ${op.keyframeId} on ${path}.`,
+        "unresolved_reference",
+      );
+    }
+    if (remaining.length > 0) {
+      element.animations[path] = { ...channel, keys: remaining };
+    } else {
+      delete element.animations[path];
+      if (Object.keys(element.animations).length === 0) delete element.animations;
+    }
+  },
+
   "element.removeKeyframe": (scene, op) => {
     const { element } = findElement(scene, op);
     const channel = element.animations?.[op.propertyPath];
