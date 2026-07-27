@@ -8,6 +8,8 @@ import type {
 	TTimelineViewState,
 } from "@/project/types";
 import type { ExportOptions, ExportResult, ExportState } from "@/export";
+import { EXPORT_MIME_TYPES } from "@/export/mime-types";
+import { safeExportName } from "@/agent/export-jobs";
 import { storageService } from "@/services/storage/service";
 import { ProjectConflictError } from "@/services/storage/file-adapter";
 import { toast } from "sonner";
@@ -330,7 +332,51 @@ export class ProjectManager {
 		};
 		this.notify();
 
+		// File-backed projects mirror the export next to the project file, so a
+		// human's export and an agent's land in the same exports/ folder and an
+		// agent can pick up what the human just rendered. Fire-and-forget: the
+		// browser download must not wait on it, and a failed mirror is a warning,
+		// not a failed export.
+		if (result.success && result.buffer) {
+			void this.mirrorExportToDisk({ options, buffer: result.buffer });
+		}
+
 		return result;
+	}
+
+	private async mirrorExportToDisk({
+		options,
+		buffer,
+	}: {
+		options: ExportOptions;
+		buffer: ArrayBuffer;
+	}): Promise<void> {
+		const project = this.active;
+		if (!project) return;
+		const id = project.metadata.id;
+		if (this.getKnownFileRevision(id) === null) return;
+		// Same name the browser download gets: a re-export overwrites, so the
+		// folder holds the human's LATEST render rather than one per attempt.
+		const name = `${safeExportName(project.metadata.name)}.${options.format}`;
+		try {
+			const response = await fetch(
+				`/api/exports/${encodeURIComponent(id)}/${encodeURIComponent(name)}`,
+				{
+					method: "PUT",
+					headers: {
+						"content-type":
+							EXPORT_MIME_TYPES[options.format as keyof typeof EXPORT_MIME_TYPES] ??
+							"application/octet-stream",
+					},
+					body: buffer,
+				},
+			);
+			if (!response.ok) {
+				console.warn(`Mirroring the export to disk failed: ${response.statusText}`);
+			}
+		} catch (error) {
+			console.warn("Mirroring the export to disk failed:", error);
+		}
 	}
 
 	cancelExport(): void {

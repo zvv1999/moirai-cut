@@ -62,7 +62,7 @@ export interface AgentBridge {
   redo(): BridgeResult<{ revision: number }>;
   /** Async: rendering is asynchronous, so this alone returns a promise. */
   renderFrames(request: { atSeconds: number[] }): Promise<BridgeResult<RenderFramesResult>>;
-  startExport(request: { options: ExportOptions }): BridgeResult<ExportJobState>;
+  startExport(request: { options: ExportOptions; name?: string }): BridgeResult<ExportJobState>;
   getExport(request: { jobId: string }): BridgeResult<ExportJobState | null>;
   listExports(): BridgeResult<ExportJobState[]>;
   cancelExport(request: { jobId: string }): BridgeResult<ExportJobState | null>;
@@ -143,7 +143,7 @@ export function installAgentBridge(): () => void {
     redo: () => guard(() => ({ revision: EditorCore.getInstance().agent.redo() })),
     renderFrames: (request) =>
       guardAsync(() => EditorCore.getInstance().agent.renderFrames(request)),
-    startExport: ({ options }) => guard(() => startExportJob({ options })),
+    startExport: ({ options, name }) => guard(() => startExportJob({ options, name })),
     getExport: ({ jobId }) => guard(() => getExportJob({ jobId })),
     listExports: () => guard(() => listExportJobs()),
     cancelExport: ({ jobId }) => guard(() => cancelExportJob({ jobId })),

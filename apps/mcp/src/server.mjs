@@ -785,11 +785,18 @@ export function createOpenCutMcpServer() {
         format: z.enum(["mp4", "webm"]).default("mp4"),
         quality: z.enum(["low", "medium", "high", "very_high"]).default("high"),
         includeAudio: z.boolean().default(true),
+        name: z
+          .string()
+          .min(1)
+          .optional()
+          .describe(
+            "Output file name (extension added from format). Used exactly, so re-exporting under the same name OVERWRITES — a predictable path for pipelines. Omit for '<project>-<jobid>.<format>', which never collides.",
+          ),
         projectId,
       },
       annotations: mutating,
     },
-    async ({ format, quality, includeAudio, projectId: id }) => {
+    async ({ format, quality, includeAudio, name, projectId: id }) => {
       // Refuse to export a cut the editor has not caught up to. The encode reads
       // the editor's in-memory document, so starting it while the tab is still
       // behind the file silently produces a video of the PREVIOUS edit — the
@@ -813,7 +820,7 @@ export function createOpenCutMcpServer() {
       }
       return bridge({
         method: "startExport",
-        args: [{ options: { format, quality, includeAudio } }],
+        args: [{ options: { format, quality, includeAudio }, ...(name ? { name } : {}) }],
         projectId: id,
       });
     },

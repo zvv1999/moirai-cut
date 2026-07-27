@@ -64,7 +64,18 @@ export function cancelExportJob({ jobId }: { jobId: string }): ExportJobState | 
 /**
  * Start an export. Returns as soon as the job is registered — the encode runs on.
  */
-export function startExportJob({ options }: { options: ExportOptions }): ExportJobState {
+/** Path-hostile characters become dashes; Unicode letters stay. */
+export function safeExportName(raw: string): string {
+  return raw.replace(/[^\p{L}\p{N}_.-]+/gu, "-").replace(/^-+|-+$/g, "") || "export";
+}
+
+export function startExportJob({
+  options,
+  name,
+}: {
+  options: ExportOptions;
+  name?: string;
+}): ExportJobState {
   const editor = EditorCore.getInstance();
   const project = editor.project.getActiveOrNull();
   if (!project) throw new Error("No active project to export");
@@ -109,14 +120,17 @@ export function startExportJob({ options }: { options: ExportOptions }): ExportJ
 
       // Upload rather than return: the buffer can be tens of megabytes, and the
       // caller wants a file it can hand to ffmpeg or a player anyway.
+      // A caller-chosen name is used exactly (so the output path is predictable
+      // and a re-export overwrites rather than accumulating); the default gets
+      // a job-id suffix so repeated exports of one project never collide.
       // Unicode letters stay; only path-hostile characters become dashes. The
       // ASCII-only version ground "reed 酒吧夜" into "reed-----".
-      const safeName = project.metadata.name
-        .replace(/[^\p{L}\p{N}_.-]+/gu, "-")
-        .replace(/^-+|-+$/g, "") || "export";
-      const name = `${safeName}-${jobId.slice(0, 8)}.${options.format}`;
+      const suffix = `.${options.format}`;
+      const fileName = name
+        ? safeExportName(name.endsWith(suffix) ? name.slice(0, -suffix.length) : name) + suffix
+        : `${safeExportName(project.metadata.name)}-${jobId.slice(0, 8)}${suffix}`;
       const response = await fetch(
-        `/api/exports/${encodeURIComponent(project.metadata.id)}/${encodeURIComponent(name)}`,
+        `/api/exports/${encodeURIComponent(project.metadata.id)}/${encodeURIComponent(fileName)}`,
         {
           method: "PUT",
           headers: {
