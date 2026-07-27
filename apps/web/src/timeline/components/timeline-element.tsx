@@ -94,7 +94,6 @@ const KEYFRAME_INDICATOR_MIN_WIDTH_PX = 40;
 const ELEMENT_RING_WIDTH_PX = 1.5;
 
 const PixelsPerSecondContext = createContext<number | null>(null);
-const THUMBNAIL_ASPECT_RATIO = 16 / 9;
 
 interface KeyframeIndicator {
 	time: MediaTime;
@@ -1105,7 +1104,6 @@ function TiledMediaContent({
 	}
 
 	const trackHeight = getTrackHeight({ type: track.type });
-	const tileWidth = trackHeight * THUMBNAIL_ASPECT_RATIO;
 
 	return (
 		<>
@@ -1115,7 +1113,10 @@ function TiledMediaContent({
 					backgroundColor: "var(--muted)",
 					backgroundImage: `url(${imageUrl})`,
 					backgroundRepeat: "repeat-x",
-					backgroundSize: `${tileWidth}px ${trackHeight}px`,
+					// `auto` width keeps the thumbnail's own aspect ratio. The old
+					// fixed 16:9 tile squashed portrait footage — every phone clip —
+					// into wide smears; landscape thumbs render exactly as before.
+					backgroundSize: `auto ${trackHeight}px`,
 					backgroundPosition: "left center",
 					pointerEvents: "none",
 				}}
