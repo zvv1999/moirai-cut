@@ -64,9 +64,18 @@ export function cancelExportJob({ jobId }: { jobId: string }): ExportJobState | 
 /**
  * Start an export. Returns as soon as the job is registered — the encode runs on.
  */
-/** Path-hostile characters become dashes; Unicode letters stay. */
+/**
+ * Path-hostile characters become dashes; Unicode letters stay. Capped so the
+ * full filename (plus "-<jobid>.<ext>") fits the exports route's 160-char
+ * limit — sliced by CODE POINT, because cutting a surrogate pair in half
+ * leaves a lone surrogate the route's \p{L} check then rejects. Leading dots
+ * are stripped too: the exports listing hides dotfiles.
+ */
 export function safeExportName(raw: string): string {
-  return raw.replace(/[^\p{L}\p{N}_.-]+/gu, "-").replace(/^-+|-+$/g, "") || "export";
+  const safe = raw
+    .replace(/[^\p{L}\p{N}_.-]+/gu, "-")
+    .replace(/^[.-]+|[.-]+$/g, "");
+  return [...safe].slice(0, 140).join("").replace(/[.-]+$/, "") || "export";
 }
 
 export function startExportJob({
