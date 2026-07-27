@@ -109,7 +109,12 @@ export function startExportJob({ options }: { options: ExportOptions }): ExportJ
 
       // Upload rather than return: the buffer can be tens of megabytes, and the
       // caller wants a file it can hand to ffmpeg or a player anyway.
-      const name = `${project.metadata.name.replace(/[^A-Za-z0-9_.-]/g, "-")}-${jobId.slice(0, 8)}.${options.format}`;
+      // Unicode letters stay; only path-hostile characters become dashes. The
+      // ASCII-only version ground "reed 酒吧夜" into "reed-----".
+      const safeName = project.metadata.name
+        .replace(/[^\p{L}\p{N}_.-]+/gu, "-")
+        .replace(/^-+|-+$/g, "") || "export";
+      const name = `${safeName}-${jobId.slice(0, 8)}.${options.format}`;
       const response = await fetch(
         `/api/exports/${encodeURIComponent(project.metadata.id)}/${encodeURIComponent(name)}`,
         {

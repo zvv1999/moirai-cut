@@ -15,10 +15,14 @@ import path from "node:path";
 
 const PROJECTS_ROOT =
   process.env.OPENCUT_PROJECTS_DIR ?? path.join(homedir(), "OpenCutProjects");
-const SAFE = /^[A-Za-z0-9_.-]{1,160}$/;
+// Unicode letters allowed — export names carry project titles in any language.
+// "." is in the set, so ".." would pass the regex: refuse dot-only names
+// explicitly, or the name joins to the parent directory.
+const SAFE = /^[\p{L}\p{N}_.-]{1,160}$/u;
+const isSafeName = (value: string) => SAFE.test(value) && !/^\.+$/.test(value);
 
 function exportsDir(projectId: string): string {
-  if (!SAFE.test(projectId)) throw new Error(`Unsafe project id: ${JSON.stringify(projectId)}`);
+  if (!isSafeName(projectId)) throw new Error(`Unsafe project id: ${JSON.stringify(projectId)}`);
   return path.join(PROJECTS_ROOT, projectId, "exports");
 }
 
@@ -48,7 +52,7 @@ export async function GET(_request: Request, { params }: Context) {
       return NextResponse.json({ dir, files });
     }
     const target = name[0];
-    if (!SAFE.test(target)) return failed(new Error("Unsafe export name"));
+    if (!isSafeName(target)) return failed(new Error("Unsafe export name"));
     const file = path.join(dir, target);
     const info = await stat(file);
     return new NextResponse(new Uint8Array(await readFile(file)), {
@@ -69,7 +73,7 @@ export async function PUT(request: Request, { params }: Context) {
   const { projectId, name } = await params;
   try {
     const target = name?.[0];
-    if (!target || !SAFE.test(target)) return failed(new Error("PUT requires a safe export name"));
+    if (!target || !isSafeName(target)) return failed(new Error("PUT requires a safe export name"));
     const dir = exportsDir(projectId);
     await mkdir(dir, { recursive: true });
     // Write-then-rename so a caller polling the directory never sees a
