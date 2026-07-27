@@ -573,6 +573,15 @@ export function insertPointIntoFreeformSegment({
 	const p123 = lerpPoint({ a: p12, b: p23, t: clampedT });
 	const splitPoint = lerpPoint({ a: p012, b: p123, t: clampedT });
 
+	// A straight segment (no bezier handles) must stay straight: give the
+	// inserted point corner handles instead of the collinear de Casteljau
+	// handles, so dragging it later keeps both halves as line segments.
+	const isStraightSegment =
+		startPoint.outX === 0 &&
+		startPoint.outY === 0 &&
+		endPoint.inX === 0 &&
+		endPoint.inY === 0;
+
 	const nextPoints = [...points];
 	nextPoints[indices.startIndex] = {
 		...startPoint,
@@ -588,10 +597,10 @@ export function insertPointIntoFreeformSegment({
 		id: pointId,
 		x: splitPoint.x,
 		y: splitPoint.y,
-		inX: p012.x - splitPoint.x,
-		inY: p012.y - splitPoint.y,
-		outX: p123.x - splitPoint.x,
-		outY: p123.y - splitPoint.y,
+		inX: isStraightSegment ? 0 : p012.x - splitPoint.x,
+		inY: isStraightSegment ? 0 : p012.y - splitPoint.y,
+		outX: isStraightSegment ? 0 : p123.x - splitPoint.x,
+		outY: isStraightSegment ? 0 : p123.y - splitPoint.y,
 	});
 	return nextPoints;
 }

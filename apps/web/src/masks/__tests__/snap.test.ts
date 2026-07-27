@@ -147,6 +147,49 @@ function buildFreeformPathMaskParams(
 	};
 }
 
+/**
+ * Bun's test host has neither OffscreenCanvas nor document, so
+ * getTextMeasurementContext() cannot create a real 2d context. This fake
+ * provides the few members measureTextLayout touches (save/restore, font,
+ * textBaseline, measureText) with deterministic metrics so the text mask
+ * snap pipeline can run. Only installed for the duration of a test.
+ */
+const FAKE_TEXT_METRIC_CHAR_WIDTH = 10;
+
+class FakeTextMeasurementCanvas {
+	getContext(contextId: string) {
+		if (contextId !== "2d") {
+			return null;
+		}
+		return {
+			font: "",
+			textBaseline: "alphabetic",
+			save() {},
+			restore() {},
+			measureText(content: string) {
+				return {
+					width: content.length * FAKE_TEXT_METRIC_CHAR_WIDTH,
+				} as TextMetrics;
+			},
+		};
+	}
+}
+
+function withFakeTextMeasurementCanvas<T>(run: () => T): T {
+	const globalScope = globalThis as { OffscreenCanvas?: unknown };
+	const originalOffscreenCanvas = globalScope.OffscreenCanvas;
+	globalScope.OffscreenCanvas = FakeTextMeasurementCanvas;
+	try {
+		return run();
+	} finally {
+		if (originalOffscreenCanvas === undefined) {
+			delete globalScope.OffscreenCanvas;
+		} else {
+			globalScope.OffscreenCanvas = originalOffscreenCanvas;
+		}
+	}
+}
+
 function sortSegment(
 	segment: [{ x: number; y: number }, { x: number; y: number }],
 ): [{ x: number; y: number }, { x: number; y: number }] {
@@ -365,14 +408,16 @@ describe("mask snapping", () => {
 			centerX: 0.03,
 			centerY: -0.04,
 		});
-		const result = textMaskDefinition.interaction.snap?.({
-			handleId: { kind: "position" },
-			startParams: params,
-			proposedParams: params,
-			bounds,
-			canvasSize,
-			snapThreshold,
-		});
+		const result = withFakeTextMeasurementCanvas(() =>
+			textMaskDefinition.interaction.snap?.({
+				handleId: { kind: "position" },
+				startParams: params,
+				proposedParams: params,
+				bounds,
+				canvasSize,
+				snapThreshold,
+			}),
+		);
 
 		expect(result?.params.centerX).toBe(0);
 		expect(result?.params.centerY).toBe(0);
