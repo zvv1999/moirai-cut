@@ -190,6 +190,15 @@ export async function DELETE(_request: Request, { params }: Context) {
         assetPath(projectId, id, entry.ext),
         path.join(trash, `${id}.${entry.ext}`),
       ).catch(() => undefined);
+      // A proxied still has an archived original beside it, outside the index;
+      // trash it too or deleting the asset leaves an orphan on disk.
+      const original = (entry as { original?: { ext?: string } }).original;
+      if (original?.ext && SAFE_EXT.test(original.ext)) {
+        await rename(
+          assetPath(projectId, `${id}-original`, original.ext),
+          path.join(trash, `${id}-original.${original.ext}`),
+        ).catch(() => undefined);
+      }
       delete index[id];
       await writeIndex(projectId, index);
     }

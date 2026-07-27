@@ -190,6 +190,47 @@ export async function makeThumbnailDataUrl({ filePath, type, width, height, dura
   }
 }
 
+/**
+ * Cameras hand over 8K stills; the editor decodes the served asset on every
+ * preview frame. Above this long edge a still gets a downsampled proxy as the
+ * SERVED asset, and the untouched original is archived beside it.
+ */
+const PROXY_LONG_EDGE = 3840;
+
+async function makeStillProxy({ filePath, ext }) {
+  // PNG keeps alpha; everything else re-encodes to a high-quality JPEG (which
+  // also covers formats ffmpeg can decode but not encode, like HEIC).
+  const png = ext === "png";
+  const outExt = png ? "png" : "jpg";
+  const temp = join(tmpdir(), `oc-proxy-${Date.now()}-${Math.random().toString(36).slice(2)}.${outExt}`);
+  const args = [
+    "-y", "-v", "error", "-i", filePath, "-frames:v", "1",
+    "-vf", `scale=w=${PROXY_LONG_EDGE}:h=${PROXY_LONG_EDGE}:force_original_aspect_ratio=decrease:force_divisible_by=2`,
+    ...(png ? [] : ["-q:v", "2"]),
+    temp,
+  ];
+  try {
+    await run("ffmpeg", args);
+    const bytes = await readFile(temp);
+    // Reprobe rather than compute: EXIF orientation and rounding both change
+    // the answer, and the index dims MUST match the served pixels or every
+    // transform and mask in the editor lands off-target.
+    const reprobed = await probeMedia({ filePath: temp });
+    return {
+      bytes,
+      ext: outExt,
+      mimeType: png ? "image/png" : "image/jpeg",
+      width: reprobed.width,
+      height: reprobed.height,
+    };
+  } catch {
+    // No proxy is a slow preview, not a failed import.
+    return null;
+  } finally {
+    await unlink(temp).catch(() => {});
+  }
+}
+
 export async function importMedia({ projectId, filePath, name, base = process.env.OPENCUT_BASE_URL ?? "http://localhost:3000" }) {
   const bytes = await readFile(filePath).catch((error) => {
     throw new MediaImportError(`Cannot read ${filePath}: ${error.message}`, "file_unreadable");
@@ -201,9 +242,33 @@ export async function importMedia({ projectId, filePath, name, base = process.en
   const ext = (extname(fileName).slice(1) || "bin").toLowerCase();
   const mimeType = MIME_BY_EXT[ext] ?? "application/octet-stream";
 
+  let served = { bytes, ext, mimeType, width: probed.width, height: probed.height };
+  let original = null;
+  if (
+    probed.type === "image" &&
+    probed.width && probed.height &&
+    Math.max(probed.width, probed.height) > PROXY_LONG_EDGE
+  ) {
+    const proxy = await makeStillProxy({ filePath, ext });
+    if (proxy) {
+      // Original first, under "<assetId>-original": archived bytes, findable on
+      // disk, deliberately NOT in the index — the editor and every consumer see
+      // only the proxy, whose dims the index reports.
+      const originalResponse = await fetch(
+        `${base}/api/media/${encodeURIComponent(projectId)}/${encodeURIComponent(`${assetId}-original`)}?ext=${encodeURIComponent(ext)}`,
+        { method: "PUT", headers: { "content-type": mimeType }, body: bytes },
+      );
+      if (originalResponse.ok) {
+        original = { ext, width: probed.width, height: probed.height, sizeBytes: bytes.length };
+        served = proxy;
+      }
+      // If archiving failed, serve the original rather than orphaning it.
+    }
+  }
+
   const bytesResponse = await fetch(
-    `${base}/api/media/${encodeURIComponent(projectId)}/${encodeURIComponent(assetId)}?ext=${encodeURIComponent(ext)}`,
-    { method: "PUT", headers: { "content-type": mimeType }, body: bytes },
+    `${base}/api/media/${encodeURIComponent(projectId)}/${encodeURIComponent(assetId)}?ext=${encodeURIComponent(served.ext)}`,
+    { method: "PUT", headers: { "content-type": served.mimeType }, body: served.bytes },
   );
   if (!bytesResponse.ok) {
     throw new MediaImportError(
@@ -221,18 +286,21 @@ export async function importMedia({ projectId, filePath, name, base = process.en
     id: assetId,
     name: fileName,
     type: probed.type,
-    size: bytes.length,
+    size: served.bytes.length,
     lastModified: Date.now(),
-    ext,
-    mimeType,
-    ...(probed.width ? { width: probed.width } : {}),
-    ...(probed.height ? { height: probed.height } : {}),
+    // Served asset's ext/mime/dims, which for a proxied still differ from the
+    // original's: the index must describe the pixels the editor will decode.
+    ext: served.ext,
+    mimeType: served.mimeType,
+    ...(served.width ? { width: served.width } : {}),
+    ...(served.height ? { height: served.height } : {}),
     ...(probed.durationSeconds !== undefined ? { duration: probed.durationSeconds } : {}),
     // MediaAssetData.fps is a NUMBER — the editor calls floatToFrameRate(asset.fps).
     // Storing the rational here would make that call receive an object and the
     // project would silently keep its default frame rate.
     ...(probed.fps ? { fps: probed.fps.numerator / probed.fps.denominator } : {}),
     hasAudio: probed.hasAudio,
+    ...(original ? { original } : {}),
   };
   const thumbnailUrl = await makeThumbnailDataUrl({
     filePath,
@@ -251,7 +319,17 @@ export async function importMedia({ projectId, filePath, name, base = process.en
     throw new MediaImportError(`Writing the media index failed: ${writeResponse.statusText}`);
   }
 
-  return { assetId, ...probed, name: fileName, sizeBytes: bytes.length, mimeType };
+  // Report the SERVED asset — its dims are what timeline math sees. The
+  // original's facts ride along under `original` when a proxy was made.
+  return {
+    assetId,
+    ...probed,
+    ...(served.width ? { width: served.width, height: served.height } : {}),
+    name: fileName,
+    sizeBytes: served.bytes.length,
+    mimeType: served.mimeType,
+    ...(original ? { proxied: true, original } : {}),
+  };
 }
 
 /** 29.97 is 30000/1001, not 29.97 — report both so a caller can be exact. */
