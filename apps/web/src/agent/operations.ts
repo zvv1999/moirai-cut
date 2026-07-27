@@ -35,6 +35,7 @@ import type { TProjectSettings } from "@/project/types";
 import type { MediaTime } from "@/wasm";
 import { EditorCore } from "@/core";
 import { generateUUID } from "@/utils/id";
+import { buildMaskParamPath } from "@/animation/mask-param-channel";
 import type { Command } from "@/commands";
 import type { CreateTimelineElement, TimelineElement, TrackType } from "@/timeline/types";
 import { toMediaTime } from "./time";
@@ -164,6 +165,15 @@ export type Operation =
   | (ElementRefInput & {
       type: "element.upsertEffectKeyframe";
       effectId: string;
+      paramKey: string;
+      timeSeconds: number;
+      value: number;
+      interpolation?: "linear" | "hold" | "bezier";
+      keyframeId?: string;
+    })
+  | (ElementRefInput & {
+      type: "element.upsertMaskKeyframe";
+      maskId: string;
       paramKey: string;
       timeSeconds: number;
       value: number;
@@ -671,6 +681,24 @@ const COMMAND_FACTORIES: { [K in OperationType]: CommandFactory } = {
     });
   },
 
+  "element.upsertMaskKeyframe": (operation) => {
+    const { trackId, elementId, maskId, paramKey, timeSeconds, value, interpolation, keyframeId } =
+      operation as Extract<Operation, { type: "element.upsertMaskKeyframe" }>;
+    // Same command as every other keyframe — only the path shape differs.
+    return new UpsertKeyframeCommand({
+      trackId: requireId("trackId", trackId),
+      elementId: requireId("elementId", elementId),
+      propertyPath: buildMaskParamPath({
+        maskId: requireId("maskId", maskId),
+        paramKey: requireId("paramKey", paramKey),
+      }),
+      time: toMediaTime("timeSeconds", timeSeconds),
+      value,
+      ...(interpolation ? { interpolation } : {}),
+      ...(keyframeId ? { keyframeId } : {}),
+    });
+  },
+
   "element.removeEffectKeyframe": (operation) => {
     const { trackId, elementId, effectId, paramKey, keyframeId } = operation as Extract<
       Operation,
@@ -997,6 +1025,7 @@ export function elementRefsOf(operation: Operation): ElementRefInput[] {
     case "element.retimeKeyframe":
     case "element.setKeyframeCurve":
     case "element.upsertEffectKeyframe":
+    case "element.upsertMaskKeyframe":
     case "element.removeEffectKeyframe":
     case "element.toggleSourceAudio":
     case "element.addMask":

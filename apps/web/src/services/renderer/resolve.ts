@@ -1,6 +1,9 @@
 import { mediaTimeToSeconds, roundMediaTime } from "@/wasm";
 import { getElementLocalTime } from "@/animation";
 import { resolveEffectParamsAtTime } from "@/animation/effect-param-channel";
+import { resolveMaskParamsAtTime } from "@/animation/mask-param-channel";
+import type { Mask } from "@/masks/types";
+import type { ParamValues } from "@/params";
 import {
 	buildGaussianBlurPasses,
 	intensityToSigma,
@@ -174,6 +177,25 @@ function resolveVisualState({
 		localTime,
 		transform,
 		opacity,
+		// Sampled values are overlaid on the authored params rather than replacing
+		// them: a freeform mask carries a `path` array that is not a ParamValue
+		// and must survive untouched. Only the scalar keys a mask definition
+		// declares can be keyframed, so the overlay never widens the shape.
+		masks: (params.masks ?? []).map(
+			(mask) =>
+				({
+					...mask,
+					params: {
+						...mask.params,
+						...resolveMaskParamsAtTime({
+							maskId: mask.id,
+							params: mask.params as unknown as ParamValues,
+							animations: params.animations,
+							localTime,
+						}),
+					},
+				}) as unknown as Mask,
+		),
 		effectPasses: resolveEffectPassGroups({
 			effects: params.effects,
 			animations: params.animations,

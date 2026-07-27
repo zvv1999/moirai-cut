@@ -220,6 +220,7 @@ describe("operation registry", () => {
       { type: "element.retimeKeyframe", ...ref, propertyPath: "opacity", keyframeId: "k", timeSeconds: 1 },
       { type: "element.setKeyframeCurve", ...ref, propertyPath: "opacity", keyframeId: "k", segmentToNext: "bezier" },
       { type: "element.upsertEffectKeyframe", ...ref, effectId: "fx", paramKey: "intensity", timeSeconds: 0, value: 10 },
+      { type: "element.upsertMaskKeyframe", ...ref, maskId: "m", paramKey: "feather", timeSeconds: 0, value: 5 },
       { type: "element.removeEffectKeyframe", ...ref, effectId: "fx", paramKey: "intensity", keyframeId: "k" },
       { type: "element.toggleSourceAudio", ...ref },
       { type: "element.addMask", ...ref, maskType: "rectangle" },

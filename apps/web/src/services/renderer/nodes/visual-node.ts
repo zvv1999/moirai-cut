@@ -23,6 +23,12 @@ export interface ResolvedVisualNodeState {
 	transform: Transform;
 	opacity: number;
 	effectPasses: EffectPass[][];
+	/**
+	 * Masks with any keyframed parameters sampled at `localTime`. Resolved here
+	 * alongside transform and opacity so the compositor never has to decide
+	 * whether it is looking at a static or an animated value.
+	 */
+	masks: Mask[];
 }
 
 export interface ResolvedVisualSourceNodeState extends ResolvedVisualNodeState {

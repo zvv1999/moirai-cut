@@ -25,7 +25,9 @@ import {
 	getElementParam,
 } from "@/params/registry";
 import type { TimelineElement } from "@/timeline";
-import { isVisualElement } from "@/timeline/element-utils";
+import { parseMaskParamPath } from "@/animation/mask-param-channel";
+import { getMaskDefinition, registerDefaultMasks } from "@/masks";
+import { isMaskableElement, isVisualElement } from "@/timeline/element-utils";
 
 export interface AnimationPathDescriptor {
 	channelLayout: ParamChannelLayout;
@@ -174,6 +176,54 @@ function buildEffectParamDescriptor({
 	});
 }
 
+function buildMaskParamDescriptor({
+	element,
+	maskId,
+	paramKey,
+}: {
+	element: TimelineElement;
+	maskId: string;
+	paramKey: string;
+}): AnimationPathDescriptor | null {
+	if (!isMaskableElement(element)) {
+		return null;
+	}
+
+	const mask = element.masks?.find((candidate) => candidate.id === maskId);
+	if (!mask) {
+		return null;
+	}
+
+	registerDefaultMasks();
+	const definition = getMaskDefinition(mask.type);
+	const param = definition.params.find((candidate) => candidate.key === paramKey);
+	if (!param) {
+		return null;
+	}
+
+	return buildParamDescriptor({
+		param: param as ParamDefinition,
+		// Mask param objects are not index-signature compatible with ParamValues —
+		// a freeform mask carries a `path` array alongside its scalars. Only the
+		// keys the definition declares are addressable, and those are all scalars,
+		// so reading them through ParamValues is sound.
+		baseParams: mask.params as unknown as ParamValues,
+		setParams: (params) =>
+			({
+				...element,
+				masks:
+					element.masks?.map((candidate) =>
+						candidate.id !== maskId
+							? candidate
+							: {
+									...candidate,
+									params: { ...candidate.params, ...params },
+								},
+					) ?? element.masks,
+			}) as TimelineElement,
+	});
+}
+
 export function resolveAnimationTarget({
 	element,
 	path,
@@ -203,6 +253,15 @@ export function resolveAnimationTarget({
 			element,
 			effectId: effectParamTarget.effectId,
 			paramKey: effectParamTarget.paramKey,
+		});
+	}
+
+	const maskParamTarget = parseMaskParamPath({ propertyPath: path });
+	if (maskParamTarget) {
+		return buildMaskParamDescriptor({
+			element,
+			maskId: maskParamTarget.maskId,
+			paramKey: maskParamTarget.paramKey,
 		});
 	}
 

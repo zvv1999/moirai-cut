@@ -601,3 +601,36 @@ test("masks do not attach to audio", () => {
     DocumentOperationError,
   );
 });
+
+test("mask parameters can be keyframed", () => {
+  // This needed an engine change: resolveAnimationTarget could not address a
+  // mask, and the compositor read the authored params rather than the resolved
+  // ones, so an animated mask never moved.
+  const withMask = doc({
+    main: [element({ id: "A", masks: [{ id: "m1", type: "ellipse", params: { centerX: 0, feather: 0 } }] })],
+  });
+  const ref = { trackId: "main", elementId: "A" };
+
+  const animated = apply(withMask, {
+    type: "element.upsertMaskKeyframe", ...ref, maskId: "m1",
+    paramKey: "centerX", timeSeconds: 0, value: -0.35,
+  });
+  const path = "masks.m1.params.centerX";
+  assert.equal(animated.scenes[0].tracks.main.elements[0].animations[path].keys[0].value, -0.35);
+
+  // A parameter the mask type does not declare must be refused, not written.
+  assert.throws(
+    () => apply(withMask, {
+      type: "element.upsertMaskKeyframe", ...ref, maskId: "m1",
+      paramKey: "nonsense", timeSeconds: 0, value: 1,
+    }),
+    DocumentOperationError,
+  );
+  assert.throws(
+    () => apply(withMask, {
+      type: "element.upsertMaskKeyframe", ...ref, maskId: "nope",
+      paramKey: "centerX", timeSeconds: 0, value: 1,
+    }),
+    DocumentOperationError,
+  );
+});

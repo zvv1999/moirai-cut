@@ -385,7 +385,9 @@ function buildMaskArtifacts({
 	mask: LayerMaskDescriptor | null;
 	strokeLayer: FrameItemDescriptor | null;
 } {
-	const mask = node.params.masks?.[0];
+	// The RESOLVED masks, not node.params.masks: the latter holds the static
+	// authored values, so an animated feather or position would never move.
+	const mask = node.resolved?.masks?.[0] ?? node.params.masks?.[0];
 	if (!mask) {
 		return { mask: null, strokeLayer: null };
 	}

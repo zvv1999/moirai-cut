@@ -236,6 +236,19 @@ export const OperationSchema = z
         keyframeId: z.string().min(1).optional(),
       })
       .describe("Animate an effect's parameter over time — a blur that ramps up, for instance."),
+    z
+      .object({
+        type: z.literal("element.upsertMaskKeyframe"),
+        trackId,
+        elementId,
+        maskId: z.string().min(1),
+        paramKey: z.string().min(1).describe('e.g. "feather", "centerX", "width", "rotation".'),
+        timeSeconds: seconds("From the CLIP's start."),
+        value: z.number().finite().describe("Geometry is normalised: width 0.6 = 60% of the element."),
+        interpolation: z.enum(["linear", "hold", "bezier"]).optional(),
+        keyframeId: z.string().min(1).optional(),
+      })
+      .describe("Animate a mask parameter over time — a reveal, a moving spotlight, a softening edge."),
     z.object({
       type: z.literal("element.removeEffectKeyframe"),
       trackId,
@@ -377,6 +390,7 @@ export const SCHEMA_OPERATION_TYPES = [
   "element.retimeKeyframe",
   "element.setKeyframeCurve",
   "element.upsertEffectKeyframe",
+  "element.upsertMaskKeyframe",
   "element.removeEffectKeyframe",
   "element.toggleSourceAudio",
   "element.addMask",

@@ -784,6 +784,53 @@ const OPERATIONS = {
     element.animations[path] = { ...channel, keys: keys.sort((a, b) => a.time - b.time) };
   },
 
+  "element.upsertMaskKeyframe": (scene, op) => {
+    const { element } = findElement(scene, op);
+    const mask = (element.masks ?? []).find((candidate) => candidate.id === op.maskId);
+    if (!mask) {
+      throw new DocumentOperationError(
+        `No mask ${op.maskId} on ${element.name}.`,
+        "unresolved_reference",
+      );
+    }
+    const shape = MASK_SHAPES[mask.type] ?? { defaults: {} };
+    const known = new Set([...Object.keys(BASE_MASK_PARAMS), ...Object.keys(shape.defaults)]);
+    if (!known.has(op.paramKey)) {
+      throw new DocumentOperationError(
+        `A ${mask.type} mask has no keyframable parameter ${JSON.stringify(op.paramKey)}. Known: ${[...known].join(", ")}`,
+      );
+    }
+    if (typeof op.value !== "number" || !Number.isFinite(op.value)) {
+      throw new DocumentOperationError(`mask ${op.paramKey} takes a finite number`);
+    }
+
+    const path = `masks.${op.maskId}.params.${op.paramKey}`;
+    const requested = toTicks("timeSeconds", op.timeSeconds);
+    const time = Math.max(0, Math.min(requested, element.duration ?? 0));
+    element.animations = element.animations ?? {};
+    const channel = element.animations[path] ?? { keys: [] };
+    const keys = [...(channel.keys ?? [])];
+    let index = op.keyframeId ? keys.findIndex((key) => key.id === op.keyframeId) : -1;
+    if (index === -1) index = keys.findIndex((key) => key.time === time);
+    if (index === -1) {
+      keys.push({
+        id: op.keyframeId ?? randomUUID(),
+        time,
+        value: op.value,
+        segmentToNext: op.interpolation ?? "linear",
+        tangentMode: "flat",
+      });
+    } else {
+      keys[index] = {
+        ...keys[index],
+        time,
+        value: op.value,
+        ...(op.interpolation ? { segmentToNext: op.interpolation } : {}),
+      };
+    }
+    element.animations[path] = { ...channel, keys: keys.sort((a, b) => a.time - b.time) };
+  },
+
   "element.removeEffectKeyframe": (scene, op) => {
     const { element } = findElement(scene, op);
     const path = `effects.${op.effectId}.params.${op.paramKey}`;
