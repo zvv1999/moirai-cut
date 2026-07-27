@@ -634,3 +634,216 @@ test("mask parameters can be keyframed", () => {
     DocumentOperationError,
   );
 });
+
+test("ripple delete closes gaps on the deleted clip's own track only", () => {
+  const before = doc({
+    main: [
+      element({ id: "A", startTime: 0 }),
+      element({ id: "B", startTime: 2 * S }),
+      element({ id: "C", startTime: 4 * S }),
+    ],
+    audio: [
+      {
+        id: "a1",
+        type: "audio",
+        name: "Audio",
+        muted: false,
+        elements: [{ ...element({ id: "M", startTime: 4 * S }), type: "audio", mediaId: "m2" }],
+      },
+    ],
+  });
+  const after = apply(before, {
+    type: "element.rippleDelete",
+    elements: [{ trackId: "main", elementId: "B" }],
+  });
+  const byId = Object.fromEntries(elementsOf(after).map((e) => [e.id, e]));
+  assert.equal(byId.B, undefined);
+  assert.equal(byId.A.startTime, 0, "clips before the cut do not move");
+  assert.equal(byId.C.startTime, 2 * S, "clips after the cut slide left by the deleted duration");
+  assert.equal(byId.M.startTime, 4 * S, "other tracks are untouched — this is not a global ripple");
+});
+
+test("ripple delete of several clips shifts by the sum of spans strictly before each survivor", () => {
+  const before = doc({
+    main: [
+      element({ id: "A", startTime: 0 }),
+      element({ id: "B", startTime: 2 * S }),
+      element({ id: "C", startTime: 4 * S }),
+      element({ id: "D", startTime: 6 * S }),
+    ],
+  });
+  const after = apply(before, {
+    type: "element.rippleDelete",
+    elements: [
+      { trackId: "main", elementId: "A" },
+      { trackId: "main", elementId: "C" },
+    ],
+  });
+  const byId = Object.fromEntries(elementsOf(after).map((e) => [e.id, e]));
+  assert.equal(byId.B.startTime, 0, "one deleted span (A) precedes B");
+  assert.equal(byId.D.startTime, 2 * S, "two deleted spans (A and C) precede D");
+});
+
+test("append lands at the end of the timeline, or of the named track", () => {
+  const before = doc({
+    main: [element({ id: "A", startTime: 0 })],
+    audio: [
+      {
+        id: "a1",
+        type: "audio",
+        name: "Audio",
+        muted: false,
+        elements: [
+          { ...element({ id: "M", startTime: 0, duration: 7 * S }), type: "audio", mediaId: "m2" },
+        ],
+      },
+    ],
+  });
+  const everywhere = apply(before, {
+    type: "element.append",
+    element: { type: "video", name: "tail", mediaId: "m1", durationSeconds: 1, sourceDurationSeconds: 10 },
+  });
+  const appended = elementsOf(everywhere).find((e) => e.name === "tail");
+  assert.equal(appended.startTime, 7 * S, "global end is the audio track's end, not main's");
+
+  const scoped = apply(before, {
+    type: "element.append",
+    element: { type: "video", name: "tail", mediaId: "m1", durationSeconds: 1, sourceDurationSeconds: 10 },
+    trackId: "main",
+  });
+  const scopedTail = elementsOf(scoped).find((e) => e.name === "tail");
+  assert.equal(scopedTail.startTime, 2 * S, "scoped to main, the end is main's end");
+
+  assert.throws(
+    () => apply(before, {
+      type: "element.append",
+      element: { type: "video", name: "tail", mediaId: "m1", durationSeconds: 1 },
+      trackId: "nope",
+    }),
+    /No track/,
+  );
+});
+
+test("crossfade slides the incoming clip onto an overlay lane and fades it in", () => {
+  const before = doc({
+    main: [
+      element({ id: "OUT", startTime: 0 }),
+      element({ id: "IN", startTime: 2 * S, duration: 3 * S }),
+    ],
+  });
+  const after = apply(before, {
+    type: "element.crossfade",
+    fromTrackId: "main",
+    fromElementId: "OUT",
+    toTrackId: "main",
+    toElementId: "IN",
+    durationSeconds: 1,
+  });
+  const scene = after.scenes[0];
+  assert.equal(scene.tracks.main.elements.length, 1, "the incoming clip left the main track");
+  assert.equal(scene.tracks.overlay.length, 1, "a new overlay lane was created for it");
+  const moved = scene.tracks.overlay[0].elements.find((e) => e.id === "IN");
+  assert.equal(moved.startTime, 1 * S, "slid back by the overlap");
+  const keys = moved.animations.opacity.keys;
+  assert.deepEqual(
+    keys.map((k) => [k.time, k.value]),
+    [[0, 0], [1 * S, 1]],
+    "fade-in spans exactly the overlap, in element-local time",
+  );
+  // The outgoing clip is untouched.
+  assert.equal(scene.tracks.main.elements[0].id, "OUT");
+  assert.equal(scene.tracks.main.elements[0].startTime, 0);
+});
+
+test("crossfade upserts over existing opacity keys instead of dropping them", () => {
+  const before = doc({
+    main: [
+      element({ id: "OUT", startTime: 0 }),
+      element({
+        id: "IN",
+        startTime: 2 * S,
+        duration: 3 * S,
+        animations: {
+          opacity: {
+            keys: [
+              { id: "k0", time: 0, value: 0.5, segmentToNext: "linear", tangentMode: "flat" },
+              { id: "kLate", time: 2 * S, value: 0.2, segmentToNext: "linear", tangentMode: "flat" },
+            ],
+          },
+        },
+      }),
+    ],
+  });
+  const after = apply(before, {
+    type: "element.crossfade",
+    fromTrackId: "main",
+    fromElementId: "OUT",
+    toTrackId: "main",
+    toElementId: "IN",
+    durationSeconds: 1,
+  });
+  const moved = tracksOf(after).flatMap((t) => t.elements).find((e) => e.id === "IN");
+  const keys = moved.animations.opacity.keys;
+  assert.deepEqual(
+    keys.map((k) => [k.time, k.value]),
+    [[0, 0], [1 * S, 1], [2 * S, 0.2]],
+    "the key at 0 is replaced, the later key survives",
+  );
+});
+
+test("crossfade refuses non-adjacent, oversized, and non-visual arrangements", () => {
+  const gap = doc({
+    main: [element({ id: "OUT", startTime: 0 }), element({ id: "IN", startTime: 3 * S })],
+  });
+  assert.throws(
+    () => apply(gap, {
+      type: "element.crossfade",
+      fromTrackId: "main", fromElementId: "OUT",
+      toTrackId: "main", toElementId: "IN",
+      durationSeconds: 1,
+    }),
+    /adjacent/,
+  );
+
+  const tight = doc({
+    main: [
+      element({ id: "OUT", startTime: 0 }),
+      element({ id: "IN", startTime: 2 * S, duration: 1 * S }),
+    ],
+  });
+  assert.throws(
+    () => apply(tight, {
+      type: "element.crossfade",
+      fromTrackId: "main", fromElementId: "OUT",
+      toTrackId: "main", toElementId: "IN",
+      durationSeconds: 1.5,
+    }),
+    /longer than the incoming/,
+  );
+
+  const audio = doc({
+    audio: [
+      {
+        id: "a1",
+        type: "audio",
+        name: "Audio",
+        muted: false,
+        elements: [
+          { ...element({ id: "OUT", startTime: 0 }), type: "audio", mediaId: "m2" },
+          { ...element({ id: "IN", startTime: 2 * S }), type: "audio", mediaId: "m2" },
+        ],
+      },
+    ],
+  });
+  assert.throws(
+    () => apply(audio, {
+      type: "element.crossfade",
+      fromTrackId: "a1",
+      fromElementId: "OUT",
+      toTrackId: "a1",
+      toElementId: "IN",
+      durationSeconds: 1,
+    }),
+    /must be visual/,
+  );
+});

@@ -1131,6 +1131,113 @@ const OPERATIONS = {
     mask.params = { ...mask.params, ...op.params };
   },
 
+  "element.rippleDelete": (scene, op) => {
+    const refs = requireRefs(op.elements);
+    // Group by track: ripple is a same-track promise. Cross-track ripple sounds
+    // helpful until it silently desyncs captions from the footage they caption.
+    const byTrack = new Map();
+    for (const ref of refs) {
+      const { track, element } = findElement(scene, ref);
+      if (!byTrack.has(track.id)) byTrack.set(track.id, { track, spans: [] });
+      byTrack.get(track.id).spans.push({ start: element.startTime, duration: element.duration, id: element.id });
+    }
+    for (const { track, spans } of byTrack.values()) {
+      const deletedIds = new Set(spans.map((span) => span.id));
+      const sorted = [...spans].sort((a, b) => a.start - b.start);
+      track.elements = (track.elements ?? [])
+        .filter((element) => !deletedIds.has(element.id))
+        .map((element) => {
+          // Shift left by the total length of deleted material BEFORE this clip.
+          let shift = 0;
+          for (const span of sorted) {
+            if (span.start + span.duration <= element.startTime) shift += span.duration;
+          }
+          return shift > 0 ? { ...element, startTime: element.startTime - shift } : element;
+        });
+    }
+  },
+
+  "element.append": (scene, op) => {
+    const element = buildElement({ ...op.element, startTimeSeconds: 0 });
+    // End of the named track, or of the whole timeline: "put it after everything"
+    // without making the caller do the arithmetic read_project already implies.
+    let end = 0;
+    const tracks = op.trackId
+      ? allTracks(scene.tracks).filter((track) => track.id === op.trackId)
+      : allTracks(scene.tracks);
+    if (op.trackId && tracks.length === 0) {
+      throw new DocumentOperationError(`No track ${op.trackId}`, "unresolved_reference");
+    }
+    for (const track of tracks) {
+      for (const existing of track.elements ?? []) {
+        end = Math.max(end, existing.startTime + existing.duration);
+      }
+    }
+    element.startTime = end;
+    const placed = placeElement(scene, element, op.trackId);
+    element.startTime = enforceMainTrackStart({
+      tracks: scene.tracks,
+      targetTrackId: placed.id,
+      requestedStartTime: element.startTime,
+      excludeElementId: element.id,
+    });
+  },
+
+  "element.crossfade": (scene, op) => {
+    const from = findElement(scene, { trackId: op.fromTrackId, elementId: op.fromElementId });
+    const to = findElement(scene, { trackId: op.toTrackId, elementId: op.toElementId });
+    const overlap = toTicks("durationSeconds", op.durationSeconds);
+    if (!(overlap > 0)) throw new DocumentOperationError("crossfade durationSeconds must be > 0");
+    if (overlap >= to.element.duration) {
+      throw new DocumentOperationError("crossfade longer than the incoming clip");
+    }
+    const fromEnd = from.element.startTime + from.element.duration;
+    if (to.element.startTime !== fromEnd) {
+      throw new DocumentOperationError(
+        `crossfade needs adjacent clips: ${from.element.name} ends at ${toSeconds(fromEnd)}s but ${to.element.name} starts at ${toSeconds(to.element.startTime)}s`,
+      );
+    }
+    if (!VISUAL_ELEMENT_TYPES.has(to.element.type)) {
+      throw new DocumentOperationError("crossfade fades opacity; the incoming clip must be visual");
+    }
+
+    // The editor has no transition primitive, so a crossfade IS this recipe:
+    // slide the incoming clip back over the outgoing one's tail — on an overlay
+    // track, because tracks refuse overlaps — and fade it in with two opacity
+    // keyframes. Spelling the recipe here makes it one operation instead of
+    // three that every caller would get subtly wrong.
+    const incoming = { ...clone(to.element), startTime: to.element.startTime - overlap };
+    incoming.animations = incoming.animations ?? {};
+    // Upsert semantics, matching the page path exactly: a key already sitting
+    // at 0 or at the overlap point is REPLACED, every other existing key is
+    // kept. Filtering keys out here while the page path preserved them would
+    // make the two implementations disagree on any pre-animated clip.
+    const existingKeys = (incoming.animations.opacity?.keys ?? []).filter(
+      (key) => key.time !== 0 && key.time !== overlap,
+    );
+    incoming.animations.opacity = {
+      ...(incoming.animations.opacity ?? {}),
+      keys: [
+        { id: randomUUID(), time: 0, value: 0, segmentToNext: "linear", tangentMode: "flat" },
+        { id: randomUUID(), time: overlap, value: 1, segmentToNext: "linear", tangentMode: "flat" },
+        ...existingKeys,
+      ].sort((a, b) => a.time - b.time),
+    };
+    // Remove from wherever it was, then place on an overlay lane with room.
+    to.track.elements.splice(to.index, 1);
+    scene.tracks.overlay = scene.tracks.overlay ?? [];
+    const lane =
+      scene.tracks.overlay.find(
+        (track) => track.type === TRACK_FOR_ELEMENT[incoming.type] && trackHasRoom(track, incoming),
+      ) ?? null;
+    if (lane) lane.elements.push(incoming);
+    else {
+      const created = newTrack(TRACK_FOR_ELEMENT[incoming.type]);
+      created.elements.push(incoming);
+      scene.tracks.overlay.unshift(created);
+    }
+  },
+
   "element.removeMask": (scene, op) => {
     const { element } = findElement(scene, op);
     const before = (element.masks ?? []).length;

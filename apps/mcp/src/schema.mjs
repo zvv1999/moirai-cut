@@ -98,6 +98,39 @@ export const OperationSchema = z
       .describe("Add a clip to the timeline."),
     z.object({ type: z.literal("element.delete"), elements: z.array(elementRef).min(1) }),
     z
+      .object({ type: z.literal("element.rippleDelete"), elements: z.array(elementRef).min(1) })
+      .describe(
+        "Delete clips AND close the gaps they leave: everything later on the same track slides left by the deleted duration. Other tracks are untouched.",
+      ),
+    z
+      .object({
+        type: z.literal("element.append"),
+        element: elementDraft.extend({
+          startTimeSeconds: z
+            .number()
+            .finite()
+            .nonnegative()
+            .optional()
+            .describe("Ignored — append computes the start time. Accepted so a generic draft can be passed through."),
+        }),
+        trackId: trackId
+          .optional()
+          .describe("Scope: append after the last clip ON THIS TRACK. Omit to append after the last clip on ANY track."),
+      })
+      .describe("Add a clip at the current end of the timeline — no start time to compute."),
+    z
+      .object({
+        type: z.literal("element.crossfade"),
+        fromTrackId: trackId.describe("Track of the outgoing clip."),
+        fromElementId: elementId.describe("The clip being faded away from. It is not modified."),
+        toTrackId: trackId.describe("Track of the incoming clip."),
+        toElementId: elementId.describe("The clip fading in. Must currently start exactly where the outgoing clip ends."),
+        durationSeconds: seconds("Overlap length. Must be shorter than the incoming clip."),
+      })
+      .describe(
+        "Crossfade between two adjacent clips: the incoming clip slides back over the outgoing one's tail on an overlay track and fades in with opacity keyframes. The incoming clip must be visual (video/image/text/sticker).",
+      ),
+    z
       .object({
         type: z.literal("element.move"),
         moves: z
@@ -384,6 +417,9 @@ export const SCHEMA_OPERATION_TYPES = [
   "track.toggleVisibility",
   "scene.rename",
   "element.insert",
+  "element.rippleDelete",
+  "element.append",
+  "element.crossfade",
   "element.delete",
   "element.move",
   "element.split",

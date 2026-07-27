@@ -15,6 +15,7 @@ import { ToggleClipEffectCommand } from "@/commands/timeline/element/effects/tog
 import { UpdateClipEffectParamsCommand } from "@/commands/timeline/element/effects/update-effect-params";
 import { ReorderClipEffectsCommand } from "@/commands/timeline/element/effects/reorder-effect";
 import { UpsertKeyframeCommand } from "@/commands/timeline/element/keyframes/upsert-keyframe";
+import { BatchCommand } from "@/commands/batch-command";
 import { RemoveKeyframeCommand } from "@/commands/timeline/element/keyframes/remove-keyframe";
 import { RetimeKeyframeCommand } from "@/commands/timeline/element/keyframes/retime-keyframe";
 import { UpdateScalarKeyframeCurveCommand } from "@/commands/timeline/element/keyframes/update-scalar-keyframe-curve";
@@ -186,6 +187,22 @@ export type Operation =
       paramKey: string;
       keyframeId: string;
     })
+  | { type: "element.rippleDelete"; elements: ElementRefInput[] }
+  | {
+      type: "element.append";
+      // Append's whole point is that the caller has no start time to compute —
+      // the draft's startTimeSeconds is optional and ignored.
+      element: Omit<ElementDraftInput, "startTimeSeconds"> & { startTimeSeconds?: number };
+      trackId?: string;
+    }
+  | {
+      type: "element.crossfade";
+      fromTrackId: string;
+      fromElementId: string;
+      toTrackId: string;
+      toElementId: string;
+      durationSeconds: number;
+    }
   | (ElementRefInput & { type: "element.toggleSourceAudio" })
   | (ElementRefInput & {
       type: "element.addMask";
@@ -717,6 +734,137 @@ const COMMAND_FACTORIES: { [K in OperationType]: CommandFactory } = {
     });
   },
 
+  "element.rippleDelete": (operation) => {
+    const { elements } = operation as Extract<Operation, { type: "element.rippleDelete" }>;
+    const refs = requireRefs(elements);
+    // Delete, then close every gap on the same track — one BatchCommand, so it
+    // is one undo and the reactors run once over the finished state.
+    const scene = EditorCore.getInstance().scenes.getActiveSceneOrNull();
+    if (!scene) throw new UnresolvedReferenceError("No active scene");
+    const tracks = [scene.tracks.main, ...scene.tracks.overlay, ...scene.tracks.audio];
+    const moves: Array<{ sourceTrackId: string; targetTrackId: string; elementId: string; newStartTime: MediaTime }> = [];
+    for (const track of tracks) {
+      const deleted = track.elements.filter((el) =>
+        refs.some((ref) => ref.trackId === track.id && ref.elementId === el.id),
+      );
+      if (deleted.length === 0) continue;
+      const spans = deleted
+        .map((el) => ({ start: el.startTime as number, duration: el.duration as number }))
+        .sort((a, b) => a.start - b.start);
+      for (const el of track.elements) {
+        if (deleted.includes(el)) continue;
+        let shift = 0;
+        for (const span of spans) {
+          if (span.start + span.duration <= (el.startTime as number)) shift += span.duration;
+        }
+        if (shift > 0) {
+          moves.push({
+            sourceTrackId: track.id,
+            targetTrackId: track.id,
+            elementId: el.id,
+            newStartTime: ((el.startTime as number) - shift) as MediaTime,
+          });
+        }
+      }
+    }
+    const commands: Command[] = [new DeleteElementsCommand({ elements: refs })];
+    if (moves.length > 0) commands.push(new MoveElementCommand({ moves }));
+    return new BatchCommand(commands);
+  },
+
+  "element.append": (operation) => {
+    const { element, trackId } = operation as Extract<Operation, { type: "element.append" }>;
+    const scene = EditorCore.getInstance().scenes.getActiveSceneOrNull();
+    if (!scene) throw new UnresolvedReferenceError("No active scene");
+    const tracks = [scene.tracks.main, ...scene.tracks.overlay, ...scene.tracks.audio].filter(
+      (track) => !trackId || track.id === trackId,
+    );
+    if (trackId && tracks.length === 0) throw new UnresolvedReferenceError(`No track ${trackId}`);
+    let end = 0;
+    for (const track of tracks) {
+      for (const existing of track.elements) {
+        end = Math.max(end, (existing.startTime as number) + (existing.duration as number));
+      }
+    }
+    return new InsertElementCommand({
+      element: buildElementDraft({ ...element, startTimeSeconds: end / 120_000 }),
+      placement: trackId ? { mode: "explicit", trackId } : { mode: "auto" },
+    });
+  },
+
+  "element.crossfade": (operation) => {
+    const { fromTrackId, fromElementId, toTrackId, toElementId, durationSeconds } =
+      operation as Extract<Operation, { type: "element.crossfade" }>;
+    const scene = EditorCore.getInstance().scenes.getActiveSceneOrNull();
+    if (!scene) throw new UnresolvedReferenceError("No active scene");
+    const tracks = [scene.tracks.main, ...scene.tracks.overlay, ...scene.tracks.audio];
+    const locate = (tid: string, eid: string) => {
+      const track = tracks.find((t) => t.id === tid);
+      const el = track?.elements.find((candidate) => candidate.id === eid);
+      if (!track || !el) throw new UnresolvedReferenceError(`No element ${eid} on track ${tid}`);
+      return { track, el };
+    };
+    const from = locate(fromTrackId, fromElementId);
+    const to = locate(toTrackId, toElementId);
+    const overlap = toMediaTime("durationSeconds", durationSeconds);
+    if ((overlap as number) >= (to.el.duration as number)) {
+      throw new InvalidOperationError("crossfade longer than the incoming clip");
+    }
+    const fromEnd = (from.el.startTime as number) + (from.el.duration as number);
+    if ((to.el.startTime as number) !== fromEnd) {
+      throw new InvalidOperationError("crossfade needs adjacent clips");
+    }
+
+    const wanted = { video: "video", image: "video", text: "text", sticker: "graphic", graphic: "graphic" }[
+      to.el.type as string
+    ];
+    if (!wanted) throw new InvalidOperationError("crossfade fades opacity; the incoming clip must be visual");
+    const newStart = ((to.el.startTime as number) - (overlap as number)) as MediaTime;
+    const span = { startTime: newStart as number, duration: to.el.duration as number };
+    // The clip being moved doesn't block its own landing spot — the file layer
+    // removes it before checking room, so its current lane is a candidate too.
+    const lane = scene.tracks.overlay.find(
+      (track) =>
+        track.type === wanted &&
+        !track.elements.some(
+          (el) =>
+            el.id !== toElementId &&
+            span.startTime < (el.startTime as number) + (el.duration as number) &&
+            span.startTime + span.duration > (el.startTime as number),
+        ),
+    );
+    const createId = lane ? null : generateUUID();
+    return new BatchCommand([
+      new MoveElementCommand({
+        moves: [
+          {
+            sourceTrackId: toTrackId,
+            elementId: toElementId,
+            targetTrackId: lane?.id ?? (createId as string),
+            newStartTime: newStart,
+          },
+        ],
+        ...(createId ? { createTracks: [{ id: createId, type: wanted as "video", index: 0 }] } : {}),
+      }),
+      new UpsertKeyframeCommand({
+        trackId: lane?.id ?? (createId as string),
+        elementId: toElementId,
+        propertyPath: "opacity",
+        time: 0 as MediaTime,
+        value: 0,
+        interpolation: "linear",
+      }),
+      new UpsertKeyframeCommand({
+        trackId: lane?.id ?? (createId as string),
+        elementId: toElementId,
+        propertyPath: "opacity",
+        time: overlap,
+        value: 1,
+        interpolation: "linear",
+      }),
+    ]);
+  },
+
   "element.toggleSourceAudio": (operation) => {
     const { trackId, elementId } = operation as Extract<
       Operation,
@@ -1047,6 +1195,7 @@ export class UnresolvedReferenceError extends Error {
 export function elementRefsOf(operation: Operation): ElementRefInput[] {
   switch (operation.type) {
     case "element.delete":
+    case "element.rippleDelete":
     case "element.split":
     case "element.duplicate":
       return operation.elements;
@@ -1082,6 +1231,8 @@ export function elementRefsOf(operation: Operation): ElementRefInput[] {
     case "bookmark.move":
     case "bookmark.update":
     case "project.updateSettings":
+    case "element.append":
+    case "element.crossfade":
     case "element.insert":
     case "track.add":
     case "track.remove":
