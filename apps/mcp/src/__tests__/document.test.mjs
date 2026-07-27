@@ -476,3 +476,66 @@ test("project settings change only what is named, and mark a custom canvas", () 
   assert.deepEqual(after.settings.fps, { numerator: 30, denominator: 1 }, "fps untouched");
   assert.throws(() => apply(doc(), { type: "project.updateSettings" }), DocumentOperationError);
 });
+
+test("source audio separation builds a matching audio clip, and re-attaching only flips the flag", () => {
+  const withVideo = doc({
+    main: [element({ id: "V", startTime: S, duration: 3 * S, trimStart: S, params: { volume: -6 } })],
+  });
+  const ref = { trackId: "main", elementId: "V" };
+
+  const separated = apply(withVideo, { type: "element.toggleSourceAudio", ...ref });
+  const audio = separated.scenes[0].tracks.audio[0].elements[0];
+  // The extracted clip must line up with its source exactly, or it drifts.
+  assert.equal(audio.type, "audio");
+  assert.equal(audio.sourceType, "upload");
+  assert.equal(audio.mediaId, "m1");
+  assert.equal(audio.startTime, S);
+  assert.equal(audio.duration, 3 * S);
+  assert.equal(audio.trimStart, S);
+  assert.equal(audio.params.volume, -6, "volume carries over in dB");
+  assert.equal(separated.scenes[0].tracks.main.elements[0].isSourceAudioEnabled, false);
+
+  // Re-attaching flips the flag and deliberately leaves the audio clip alone —
+  // the human may have edited it by then.
+  const reattached = apply(separated, { type: "element.toggleSourceAudio", ...ref });
+  assert.equal(reattached.scenes[0].tracks.main.elements[0].isSourceAudioEnabled, true);
+  assert.equal(reattached.scenes[0].tracks.audio.length, 1, "the extracted clip is kept");
+});
+
+test("masks are addressable and freeform-only where that matters", () => {
+  const withMask = doc({
+    main: [
+      element({
+        id: "A",
+        masks: [
+          { id: "m1", type: "rectangle", params: { inverted: false } },
+          { id: "m2", type: "freeform", params: { points: [{ id: "p1" }, { id: "p2" }] } },
+        ],
+      }),
+    ],
+  });
+  const ref = { trackId: "main", elementId: "A" };
+
+  const flipped = apply(withMask, { type: "element.toggleMaskInverted", ...ref, maskId: "m1" });
+  assert.equal(flipped.scenes[0].tracks.main.elements[0].masks[0].params.inverted, true);
+
+  // Point editing is meaningless on a shape mask.
+  assert.throws(
+    () => apply(withMask, { type: "element.deleteMaskPoints", ...ref, maskId: "m1", pointIds: ["p1"] }),
+    DocumentOperationError,
+  );
+  const trimmed = apply(withMask, {
+    type: "element.deleteMaskPoints", ...ref, maskId: "m2", pointIds: ["p1"],
+  });
+  assert.deepEqual(
+    trimmed.scenes[0].tracks.main.elements[0].masks[1].params.points.map((p) => p.id),
+    ["p2"],
+  );
+
+  const removed = apply(withMask, { type: "element.removeMask", ...ref, maskId: "m1" });
+  assert.equal(removed.scenes[0].tracks.main.elements[0].masks.length, 1);
+  assert.throws(
+    () => apply(withMask, { type: "element.removeMask", ...ref, maskId: "nope" }),
+    DocumentOperationError,
+  );
+});

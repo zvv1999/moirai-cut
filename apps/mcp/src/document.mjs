@@ -801,6 +801,113 @@ const OPERATIONS = {
     document.settings = { ...document.settings, ...updates };
   },
 
+  "element.toggleSourceAudio": (scene, op, document, context) => {
+    const { element, track } = findElement(scene, op);
+    if (element.type !== "video") {
+      throw new DocumentOperationError(
+        `Only a video clip has source audio to separate; ${element.name} is ${element.type}.`,
+      );
+    }
+    void track;
+
+    // isSourceAudioEnabled defaults to true when absent, so "separated" is the
+    // explicit false — not merely a missing field.
+    const enabled = element.isSourceAudioEnabled !== false;
+    if (!enabled) {
+      // Re-attaching only flips the flag back. The editor deliberately does NOT
+      // delete the audio element it produced — the human may have edited it.
+      element.isSourceAudioEnabled = true;
+      return;
+    }
+
+    const asset = context?.mediaIndex?.[element.mediaId];
+    // canExtractSourceAudio: hasAudio === false is a hard no; unknown is allowed
+    // through, because loadMediaAsset drops hasAudio and the editor's own gate
+    // therefore does not bite for a reloaded asset either.
+    if (asset && asset.hasAudio === false) {
+      throw new DocumentOperationError(`${element.name}'s media has no audio track.`);
+    }
+    if (!(element.duration > 0)) {
+      throw new DocumentOperationError(`${element.name} has no duration to extract.`);
+    }
+
+    const separated = {
+      id: randomUUID(),
+      type: "audio",
+      sourceType: "upload",
+      mediaId: element.mediaId,
+      name: element.name,
+      duration: element.duration,
+      startTime: element.startTime,
+      trimStart: element.trimStart,
+      trimEnd: element.trimEnd,
+      ...(element.sourceDuration !== undefined ? { sourceDuration: element.sourceDuration } : {}),
+      params: {
+        volume: typeof element.params?.volume === "number" ? element.params.volume : 0,
+        muted: element.params?.muted === true,
+      },
+      ...(element.retime
+        ? { retime: { rate: element.retime.rate, maintainPitch: element.retime.maintainPitch } }
+        : {}),
+    };
+    placeElement(scene, separated, undefined);
+    element.isSourceAudioEnabled = false;
+  },
+
+  "element.removeMask": (scene, op) => {
+    const { element } = findElement(scene, op);
+    const before = (element.masks ?? []).length;
+    element.masks = (element.masks ?? []).filter((mask) => mask.id !== op.maskId);
+    if (element.masks.length === before) {
+      throw new DocumentOperationError(
+        `No mask ${op.maskId} on ${element.name}.`,
+        "unresolved_reference",
+      );
+    }
+    if (element.masks.length === 0) delete element.masks;
+  },
+
+  "element.toggleMaskInverted": (scene, op) => {
+    const { element } = findElement(scene, op);
+    const mask = (element.masks ?? []).find((candidate) => candidate.id === op.maskId);
+    if (!mask) {
+      throw new DocumentOperationError(
+        `No mask ${op.maskId} on ${element.name}.`,
+        "unresolved_reference",
+      );
+    }
+    mask.params = { ...mask.params, inverted: !mask.params?.inverted };
+  },
+
+  "element.deleteMaskPoints": (scene, op) => {
+    const { element } = findElement(scene, op);
+    const mask = (element.masks ?? []).find((candidate) => candidate.id === op.maskId);
+    if (!mask) {
+      throw new DocumentOperationError(
+        `No mask ${op.maskId} on ${element.name}.`,
+        "unresolved_reference",
+      );
+    }
+    if (mask.type !== "freeform") {
+      throw new DocumentOperationError(
+        `Only a freeform mask has editable points; ${op.maskId} is ${mask.type}.`,
+      );
+    }
+    const ids = new Set(op.pointIds ?? []);
+    if (ids.size === 0) {
+      throw new DocumentOperationError("element.deleteMaskPoints needs at least one pointId");
+    }
+    const points = mask.params?.points ?? [];
+    const remaining = points.filter((point) => !ids.has(point.id));
+    if (remaining.length === points.length) {
+      throw new DocumentOperationError(
+        `None of those point ids are on mask ${op.maskId}.`,
+        "unresolved_reference",
+      );
+    }
+    mask.params = { ...mask.params, points: remaining };
+  },
+
   "element.duplicate": (scene, op) => {
     for (const ref of requireRefs(op.elements)) {
       const { element } = findElement(scene, ref);
@@ -1133,7 +1240,7 @@ export function applyOperationToDocument({ document, operation, mediaIndex }) {
 
   const next = clone(document);
   const scene = activeScene(next);
-  handler(scene, operation, next);
+  handler(scene, operation, next, { mediaIndex });
   if (operation.type === "element.insert") {
     const inserted = allTracks(scene.tracks)
       .flatMap((track) => track.elements ?? [])
@@ -1221,6 +1328,19 @@ export function describeDocument({ document }) {
       ...(element.mediaId ? { mediaId: element.mediaId } : {}),
       ...(typeof element.hidden === "boolean" ? { hidden: element.hidden } : {}),
       ...(element.effectType ? { effectType: element.effectType } : {}),
+      // maskId is how every mask operation addresses its target.
+      ...(Array.isArray(element.masks) && element.masks.length > 0
+        ? {
+            masks: element.masks.map((mask) => ({
+              id: mask.id,
+              type: mask.type,
+              inverted: Boolean(mask.params?.inverted),
+              ...(Array.isArray(mask.params?.points)
+                ? { pointIds: mask.params.points.map((point) => point.id) }
+                : {}),
+            })),
+          }
+        : {}),
       ...(element.params && Object.keys(element.params).length > 0
         ? { params: element.params }
         : {}),

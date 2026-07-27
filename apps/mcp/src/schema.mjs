@@ -205,6 +205,29 @@ export const OperationSchema = z
         "Add or move a keyframe. A SINGLE keyframe freezes the property for the whole clip — write both ends to get movement.",
       ),
     z
+      .object({ type: z.literal("element.toggleSourceAudio"), trackId, elementId })
+      .describe(
+        "Split a video clip's own audio onto its own audio track, or re-attach it. Re-attaching only flips the flag — it does not delete an audio clip you may have edited.",
+      ),
+    z
+      .object({ type: z.literal("element.removeMask"), trackId, elementId, maskId: z.string().min(1) })
+      .describe("Remove a mask. Mask ids come from the clip's masks[] in get_state."),
+    z.object({
+      type: z.literal("element.toggleMaskInverted"),
+      trackId,
+      elementId,
+      maskId: z.string().min(1),
+    }),
+    z
+      .object({
+        type: z.literal("element.deleteMaskPoints"),
+        trackId,
+        elementId,
+        maskId: z.string().min(1),
+        pointIds: z.array(z.string().min(1)).min(1),
+      })
+      .describe("Freeform masks only. Point ids come from the mask's pointIds in get_state."),
+    z
       .object({ type: z.literal("scene.create"), name: z.string().min(1) })
       .describe("Add a scene. Never the main scene — a project has exactly one."),
     z
@@ -285,6 +308,10 @@ export const SCHEMA_OPERATION_TYPES = [
   "element.reorderEffect",
   "element.upsertKeyframe",
   "element.removeKeyframe",
+  "element.toggleSourceAudio",
+  "element.removeMask",
+  "element.toggleMaskInverted",
+  "element.deleteMaskPoints",
   "scene.create",
   "scene.delete",
   "bookmark.toggle",

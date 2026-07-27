@@ -23,6 +23,10 @@ import { RemoveBookmarkCommand } from "@/commands/scene/remove-bookmark";
 import { MoveBookmarkCommand } from "@/commands/scene/move-bookmark";
 import { UpdateBookmarkCommand } from "@/commands/scene/update-bookmark";
 import { UpdateProjectSettingsCommand } from "@/commands/project/update-project-settings";
+import { ToggleSourceAudioSeparationCommand } from "@/commands/timeline/element/toggle-source-audio-separation";
+import { RemoveMaskCommand } from "@/commands/timeline/element/masks/remove-mask";
+import { ToggleMaskInvertedCommand } from "@/commands/timeline/element/masks/toggle-mask-inverted";
+import { DeleteFreeformPathMaskPointsCommand } from "@/commands/timeline/element/masks/delete-custom-mask-points";
 import type { TProjectSettings } from "@/project/types";
 import type { MediaTime } from "@/wasm";
 import type { Command } from "@/commands";
@@ -137,6 +141,14 @@ export type Operation =
       keyframeId: string;
       /** Written into params when the last keyframe goes, so the look is kept. */
       valueAtPlayhead?: number | null;
+    })
+  | (ElementRefInput & { type: "element.toggleSourceAudio" })
+  | (ElementRefInput & { type: "element.removeMask"; maskId: string })
+  | (ElementRefInput & { type: "element.toggleMaskInverted"; maskId: string })
+  | (ElementRefInput & {
+      type: "element.deleteMaskPoints";
+      maskId: string;
+      pointIds: string[];
     })
   | { type: "scene.create"; name: string }
   | { type: "scene.delete"; sceneId: string }
@@ -566,6 +578,58 @@ const COMMAND_FACTORIES: { [K in OperationType]: CommandFactory } = {
     });
   },
 
+  "element.toggleSourceAudio": (operation) => {
+    const { trackId, elementId } = operation as Extract<
+      Operation,
+      { type: "element.toggleSourceAudio" }
+    >;
+    // Positional object, unlike its siblings.
+    return new ToggleSourceAudioSeparationCommand({
+      trackId: requireId("trackId", trackId),
+      elementId: requireId("elementId", elementId),
+    });
+  },
+
+  "element.removeMask": (operation) => {
+    const { trackId, elementId, maskId } = operation as Extract<
+      Operation,
+      { type: "element.removeMask" }
+    >;
+    return new RemoveMaskCommand({
+      trackId: requireId("trackId", trackId),
+      elementId: requireId("elementId", elementId),
+      maskId: requireId("maskId", maskId),
+    });
+  },
+
+  "element.toggleMaskInverted": (operation) => {
+    const { trackId, elementId, maskId } = operation as Extract<
+      Operation,
+      { type: "element.toggleMaskInverted" }
+    >;
+    return new ToggleMaskInvertedCommand({
+      trackId: requireId("trackId", trackId),
+      elementId: requireId("elementId", elementId),
+      maskId: requireId("maskId", maskId),
+    });
+  },
+
+  "element.deleteMaskPoints": (operation) => {
+    const { trackId, elementId, maskId, pointIds } = operation as Extract<
+      Operation,
+      { type: "element.deleteMaskPoints" }
+    >;
+    if (!Array.isArray(pointIds) || pointIds.length === 0) {
+      throw new InvalidOperationError("element.deleteMaskPoints needs at least one pointId");
+    }
+    return new DeleteFreeformPathMaskPointsCommand({
+      trackId: requireId("trackId", trackId),
+      elementId: requireId("elementId", elementId),
+      maskId: requireId("maskId", maskId),
+      pointIds,
+    });
+  },
+
   "scene.create": (operation) => {
     const { name } = operation as Extract<Operation, { type: "scene.create" }>;
     return new CreateSceneCommand({ name: requireId("name", name) });
@@ -686,6 +750,10 @@ export function elementRefsOf(operation: Operation): ElementRefInput[] {
     case "element.reorderEffect":
     case "element.upsertKeyframe":
     case "element.removeKeyframe":
+    case "element.toggleSourceAudio":
+    case "element.removeMask":
+    case "element.toggleMaskInverted":
+    case "element.deleteMaskPoints":
       return [{ trackId: operation.trackId, elementId: operation.elementId }];
     case "scene.create":
     case "scene.delete":
