@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { callBridge, CdpError, findEditorTarget } from "./cdp.mjs";
+import { callBridge, CdpError, findEditorTarget, openEditorTab, closeEditorTab } from "./cdp.mjs";
 import { OperationSchema } from "./schema.mjs";
 import {
   applyOperationToDocument,
@@ -33,6 +33,13 @@ const projectId = z
   .min(1)
   .optional()
   .describe("Pin to one editor tab by project id. Omit to use the only open editor tab.");
+
+/**
+ * Tabs THIS process opened via open_editor. close_editor refuses to close any
+ * other tab without force — the tool cannot otherwise tell an agent scratch
+ * tab from the one the human is working in.
+ */
+const agentOpenedTabs = new Set();
 
 /** Bounded replay memory for edit_project, so a retry cannot double-apply. */
 const IDEMPOTENCY_LIMIT = 128;
@@ -77,13 +84,23 @@ const asError = (value) => ({
  */
 async function bridge({ method, args = [], projectId: id, target }) {
   let response;
-  try {
-    response = await callBridge({ method, args, projectId: id, target });
-  } catch (error) {
-    if (error instanceof CdpError) {
-      return asError({ code: error.code, message: error.message, hint: error.hint });
+  // bridge_missing comes from inside the page BEFORE the method is invoked —
+  // the bindings unmount/remount for a beat during page load, and the bridge
+  // vanishes with them — so a short bounded retry cannot double-apply anything
+  // and turns a normal-operation gap into a non-event instead of an error.
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      response = await callBridge({ method, args, projectId: id, target });
+    } catch (error) {
+      if (error instanceof CdpError) {
+        return asError({ code: error.code, message: error.message, hint: error.hint });
+      }
+      return asError({ code: "driver_error", message: String(error?.message ?? error) });
     }
-    return asError({ code: "driver_error", message: String(error?.message ?? error) });
+    const flap =
+      response.value?.ok === false && response.value?.error?.code === "bridge_missing";
+    if (!flap || attempt >= 3) break;
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
   const result = response.value;
   // Positive check for success, not `ok === false` for failure: anything that is
@@ -334,13 +351,19 @@ export function createOpenCutMcpServer() {
     "read_project",
     {
       description:
-        "Read a project file: revision, scene, and every track with its clips. This is the state to compose operations against when editing the file directly.",
-      inputSchema: { projectId: z.string().min(1).describe("From list_projects.") },
+        "Read a project file: revision, scene, and every track with its clips. This is the state to compose operations against when editing the file directly. detail=summary answers 'what is this project' in a screenful — track spans and counts, no per-clip payload — survey first, then full-read only if needed.",
+      inputSchema: {
+        projectId: z.string().min(1).describe("From list_projects."),
+        detail: z
+          .enum(["full", "summary"])
+          .optional()
+          .describe("summary drops the per-clip payload (keyframes, masks, params) and reports per-track spans and counts instead. Default full."),
+      },
       annotations: readOnly,
     },
-    async ({ projectId: id }) => {
+    async ({ projectId: id, detail }) => {
       try {
-        return asText(describeDocument({ document: await readProject({ projectId: id }) }));
+        return asText(describeDocument({ document: await readProject({ projectId: id }), detail }));
       } catch (error) {
         return asError({ code: error.code ?? "driver_error", message: error.message });
       }
@@ -459,6 +482,63 @@ export function createOpenCutMcpServer() {
           message: error.message,
           ...(error.detail ? { detail: error.detail } : {}),
         });
+      }
+    },
+  );
+
+  server.registerTool(
+    "open_editor",
+    {
+      description:
+        "Open (or find) an editor tab for a project in the debug Chrome, and wait until it is drivable. This is what makes render_frames and start_export work with nobody at the keyboard — they need a live page, but not a human to have clicked the project open. Reuses an existing tab for the project.",
+      inputSchema: {
+        projectId: z.string().min(1).describe("From list_projects."),
+      },
+      annotations: mutating,
+    },
+    async ({ projectId: id }) => {
+      try {
+        const { alreadyOpen, target, createdTabId } = await openEditorTab({
+          projectId: id,
+          onTabCreated: (tabId) => agentOpenedTabs.add(tabId),
+        });
+        if (createdTabId) agentOpenedTabs.add(createdTabId);
+        return asText({ ok: true, alreadyOpen, url: target.url });
+      } catch (error) {
+        return asError({ code: error.code ?? "driver_error", message: error.message, hint: error.hint });
+      }
+    },
+  );
+
+  server.registerTool(
+    "close_editor",
+    {
+      description:
+        "Close the project's editor tab in the debug Chrome. Refuses to close a tab this server did not open (a human may be working in it) unless force is set. Use after a headless open_editor → render/export sequence to clean up.",
+      inputSchema: {
+        projectId: z.string().min(1),
+        force: z
+          .boolean()
+          .optional()
+          .describe("Close the tab even though this server did not open it. Only when certain no human is using it."),
+      },
+      annotations: mutating,
+    },
+    async ({ projectId: id, force }) => {
+      try {
+        const target = await findEditorTarget({ projectId: id });
+        if (!agentOpenedTabs.has(target.id) && force !== true) {
+          return asError({
+            code: "not_agent_tab",
+            message: `The editor tab for ${id} was not opened by this server — a human may be working in it.`,
+            hint: "Pass force: true if you are certain it should close anyway.",
+          });
+        }
+        const result = await closeEditorTab({ projectId: id });
+        agentOpenedTabs.delete(result.tabId);
+        return asText(result);
+      } catch (error) {
+        return asError({ code: error.code ?? "driver_error", message: error.message, hint: error.hint });
       }
     },
   );
@@ -802,7 +882,12 @@ export function createOpenCutMcpServer() {
       // behind the file silently produces a video of the PREVIOUS edit — the
       // job reports success and the file is simply wrong.
       const state = await bridge({ method: "getState", projectId: id });
-      if (!state.isError) {
+      // Fail CLOSED: if the staleness check cannot run, refuse the export.
+      // Skipping the guard and starting anyway is how a mid-reload editor
+      // quietly renders a video of the previous cut — the exact outcome the
+      // guard exists to stop.
+      if (state.isError) return state;
+      {
         const payload = JSON.parse(state.content[0].text);
         if (payload.projectId && typeof payload.loadedFileRevision === "number") {
           const onDisk = await readProject({ projectId: payload.projectId })

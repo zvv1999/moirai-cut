@@ -847,3 +847,52 @@ test("crossfade refuses non-adjacent, oversized, and non-visual arrangements", (
     /must be visual/,
   );
 });
+
+test("summary detail keeps the addressing surface and drops the per-clip payload", async () => {
+  const { describeDocument } = await import("../document.mjs");
+  const before = doc({
+    main: [
+      element({ id: "A", startTime: 0 }),
+      {
+        ...element({ id: "B", startTime: 2 * S, duration: 3 * S }),
+        masks: [{ id: "m1", type: "rectangle", params: {} }],
+        effects: [{ id: "fx1", type: "blur", params: {} }],
+        animations: { opacity: { keys: [
+          { id: "k1", time: 0, value: 0 },
+          { id: "k2", time: S, value: 1 },
+        ] } },
+      },
+    ],
+  });
+  const summary = describeDocument({ document: before, detail: "summary" });
+  const main = summary.tracks.find((t) => t.id === "main");
+  assert.equal(main.elements, undefined, "no per-clip payload in a summary");
+  assert.equal(main.elementCount, 2);
+  assert.equal(main.spanSeconds, 5, "span is the furthest clip end");
+  assert.deepEqual(main.elementTypes, { video: 2 });
+  assert.equal(main.keyframeCount, 2);
+  assert.equal(main.maskCount, 1);
+  assert.equal(main.effectCount, 1);
+
+  const full = describeDocument({ document: before });
+  assert.ok(Array.isArray(full.tracks[0].elements), "default stays full");
+});
+
+test("summary never invents timing for corrupt elements", async () => {
+  const { describeDocument } = await import("../document.mjs");
+  const before = doc({
+    main: [
+      { ...element({ id: "OK", startTime: 0, duration: 2 * S }) },
+      { ...element({ id: "BAD" }), startTime: null, duration: 240000 },
+    ],
+  });
+  const summary = describeDocument({ document: before, detail: "summary" });
+  const main = summary.tracks.find((t) => t.id === "main");
+  assert.equal(main.spanSeconds, 2, "the corrupt element is excluded, not coerced to zero");
+
+  const allBad = describeDocument({
+    document: doc({ main: [{ ...element({ id: "B" }), startTime: null, duration: null }] }),
+    detail: "summary",
+  });
+  assert.equal(allBad.tracks.find((t) => t.id === "main").spanSeconds, null);
+});

@@ -187,3 +187,173 @@ export async function callBridge({ method, args = [], port = DEFAULT_PORT, proje
   });
   return { value, target: { url: target.url, title: target.title } };
 }
+
+/**
+ * Open (or find) an editor tab for a project.
+ *
+ * This is what makes render and export possible with no human at the keyboard:
+ * both need a live page (WebCodecs), but they should not need a person to have
+ * clicked the project open first. Reuses an existing tab when one matches —
+ * opening a second tab for the same project would make every later call
+ * ambiguous by our own rules above.
+ */
+
+/** One open per project at a time within this process; see openEditorTab. */
+const inflightOpens = new Map();
+
+/**
+ * True readiness: the bridge ENVELOPE said ok. callBridge resolves (does not
+ * throw) when the page evaluates but window.__opencutAgent is absent — so
+ * "the call returned" only proves the tab can run JS, which is true from
+ * navigation commit onward, long before the bundle loads and the bridge
+ * installs. Counting that as ready is how a tool reports "drivable" against a
+ * page that is still compiling — or against Chrome's own error page, which
+ * keeps the /editor/ URL and evaluates JS happily.
+ */
+async function probeBridgeReady({ port, projectId }) {
+  const target = await findEditorTarget({ port, projectId });
+  const response = await callBridge({ method: "getState", target, projectId });
+  if (response.value?.ok !== true) {
+    throw new CdpError(
+      response.value?.error?.message ?? "Bridge answered but not with an ok envelope.",
+      { code: response.value?.error?.code ?? "bridge_not_ready" },
+    );
+  }
+  return target;
+}
+
+async function waitUntilDrivable({ port, projectId, deadline }) {
+  // TWICE in a row, because during initial load React's strict-mode remount
+  // uninstalls and reinstalls the bridge — a single ok probe can land right
+  // before the gap and the caller's next call then flaps.
+  let lastError = null;
+  let consecutive = 0;
+  let target = null;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      target = await probeBridgeReady({ port, projectId });
+      consecutive += 1;
+      if (consecutive >= 2) return target;
+    } catch (error) {
+      consecutive = 0;
+      lastError = error;
+    }
+  }
+  throw new CdpError(
+    `The editor for ${projectId} never became drivable in time.`,
+    { code: "editor_not_ready", hint: String(lastError?.message ?? lastError ?? "") },
+  );
+}
+
+export async function openEditorTab({
+  port = DEFAULT_PORT,
+  projectId,
+  base = process.env.OPENCUT_BASE_URL ?? "http://localhost:3000",
+  // Below the MCP SDK's 60s default request timeout on purpose: a longer wait
+  // here would have the CLIENT abort the call while this poll runs on
+  // detached, doing things to tabs that no caller will ever hear about.
+  timeoutMs = 50_000,
+  // Called with the tab id the moment a tab is created — BEFORE the readiness
+  // wait, so the caller keeps ownership records even when this call later
+  // times out and a retry adopts the tab via the alreadyOpen path.
+  onTabCreated,
+} = {}) {
+  if (!projectId) throw new CdpError("openEditorTab requires a projectId.");
+  // Serialise concurrent opens for the same project in this process. Without
+  // this, two callers both see "no tab", both create one, and the resulting
+  // pair poisons every later findEditorTarget with ambiguous_editor_tab.
+  const pending = inflightOpens.get(projectId);
+  if (pending) return pending;
+  const work = doOpenEditorTab({ port, projectId, base, timeoutMs, onTabCreated });
+  inflightOpens.set(projectId, work);
+  try {
+    return await work;
+  } finally {
+    inflightOpens.delete(projectId);
+  }
+}
+
+async function doOpenEditorTab({ port, projectId, base, timeoutMs, onTabCreated }) {
+  const deadline = Date.now() + timeoutMs;
+  try {
+    await findEditorTarget({ port, projectId });
+    // A tab exists — but existing is not drivable (a session-restored tab on a
+    // cold dev server, a crashed renderer): hold "found" to the same standard
+    // as "created", or alreadyOpen:true becomes the untested path.
+    const target = await waitUntilDrivable({ port, projectId, deadline });
+    return { alreadyOpen: true, target, createdTabId: null };
+  } catch (error) {
+    if (error?.code !== "no_editor_tab") throw error;
+  }
+
+  const created = await (
+    await fetch(`http://127.0.0.1:${port}/json/new`, { method: "PUT" })
+  ).json();
+  if (!created?.id || !created?.webSocketDebuggerUrl) {
+    throw new CdpError("Chrome created no usable tab.", { code: "tab_create_failed" });
+  }
+  onTabCreated?.(created.id);
+  try {
+    // Chrome ≥117 ignores the url query on /json/new; navigate explicitly.
+    await evaluateInPage({
+      webSocketDebuggerUrl: created.webSocketDebuggerUrl,
+      expression: `location.href = ${JSON.stringify(`${base}/editor/${encodeURIComponent(projectId)}`)}`,
+    });
+  } catch (error) {
+    // A tab that never navigated is pure litter — close it before failing.
+    await fetch(`http://127.0.0.1:${port}/json/close/${created.id}`).catch(() => {});
+    throw error;
+  }
+
+  // Another process attached to the same Chrome may have raced us here. The
+  // in-process lock cannot see it, but both sides can apply the same rule —
+  // smallest tab id survives — so exactly one tab remains without coordination.
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
+  const rivals = targets.filter(
+    (t) => t.type === "page" && typeof t.url === "string" &&
+      t.url.includes(DEFAULT_URL_MATCH) && t.url.includes(projectId),
+  );
+  if (rivals.length > 1) {
+    const winner = [...rivals].sort((a, b) => (a.id < b.id ? -1 : 1))[0];
+    if (winner.id !== created.id) {
+      await fetch(`http://127.0.0.1:${port}/json/close/${created.id}`).catch(() => {});
+      const target = await waitUntilDrivable({ port, projectId, deadline });
+      return { alreadyOpen: true, target, createdTabId: null };
+    }
+    for (const rival of rivals) {
+      if (rival.id !== winner.id) {
+        await fetch(`http://127.0.0.1:${port}/json/close/${rival.id}`).catch(() => {});
+      }
+    }
+  }
+
+  try {
+    const target = await waitUntilDrivable({ port, projectId, deadline });
+    return { alreadyOpen: false, target, createdTabId: created.id };
+  } catch (error) {
+    // Deliberately LEAVE the tab open on a readiness timeout: navigation has
+    // committed, so a retrying caller adopts it via the alreadyOpen path and
+    // keeps waiting — closing it here would yank the tab out from under that
+    // retry (and under a slow dev compile that was about to finish).
+    throw new CdpError(
+      `Opened a tab for ${projectId} but the editor was not drivable within ${timeoutMs / 1000}s.`,
+      {
+        code: "editor_not_ready",
+        hint: `The tab is still open and loading — retry open_editor to keep waiting. Last error: ${String(error?.hint ?? error?.message ?? error)}`,
+      },
+    );
+  }
+}
+
+/** Close the project's editor tab. The caller decides whether that is polite. */
+export async function closeEditorTab({ port = DEFAULT_PORT, projectId } = {}) {
+  if (!projectId) throw new CdpError("closeEditorTab requires a projectId.");
+  const target = await findEditorTarget({ port, projectId });
+  const response = await fetch(`http://127.0.0.1:${port}/json/close/${target.id}`);
+  if (!response.ok) {
+    throw new CdpError(`Closing the tab failed: ${response.status}.`, { code: "close_failed" });
+  }
+  return { closed: true, url: target.url, tabId: target.id };
+}

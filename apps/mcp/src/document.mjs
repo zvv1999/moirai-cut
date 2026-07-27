@@ -1695,8 +1695,38 @@ function fingerprint(document) {
 }
 
 /** The readable state an agent composes operations against. */
-export function describeDocument({ document }) {
+export function describeDocument({ document, detail = "full" }) {
   const scene = activeScene(document);
+  // The heavy part of a full read is the elements array — every keyframe of
+  // every clip. A summary keeps the addressing surface (ids, names, counts,
+  // spans) and drops the per-element payload, so an agent can survey a large
+  // project cheaply and decide whether it needs the full document at all.
+  const summarizeTrack = (track) => {
+    const elements = track.elements ?? [];
+    let end = null;
+    // Null-prototype: a corrupt document with an element type named
+    // "__proto__" or "constructor" must miscount, not hit Object.prototype.
+    const elementTypes = Object.create(null);
+    let keyframeCount = 0;
+    let maskCount = 0;
+    let effectCount = 0;
+    for (const element of elements) {
+      // Per-field, exactly like the full path: `startTime + duration` would
+      // coerce a null field to 0 and report a confident span for an element
+      // whose timing the full read deliberately calls null.
+      const start = toSeconds(element.startTime);
+      const duration = toSeconds(element.duration);
+      const stop = start !== null && duration !== null ? start + duration : null;
+      if (stop !== null && (end === null || stop > end)) end = stop;
+      elementTypes[element.type] = (elementTypes[element.type] ?? 0) + 1;
+      for (const channel of Object.values(element.animations ?? {})) {
+        keyframeCount += Array.isArray(channel?.keys) ? channel.keys.length : 0;
+      }
+      maskCount += Array.isArray(element.masks) ? element.masks.length : 0;
+      effectCount += Array.isArray(element.effects) ? element.effects.length : 0;
+    }
+    return { spanSeconds: end, elementTypes: { ...elementTypes }, keyframeCount, maskCount, effectCount };
+  };
   const describeElement = (element) => {
     const start = toSeconds(element.startTime);
     const duration = toSeconds(element.duration);
@@ -1794,7 +1824,9 @@ export function describeDocument({ document }) {
       muted: track.muted,
       hidden: track.hidden,
       elementCount: (track.elements ?? []).length,
-      elements: (track.elements ?? []).map(describeElement),
+      ...(detail === "summary"
+        ? summarizeTrack(track)
+        : { elements: (track.elements ?? []).map(describeElement) }),
     })),
   };
 }
