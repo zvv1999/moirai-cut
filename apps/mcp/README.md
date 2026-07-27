@@ -95,6 +95,7 @@ undo history. These drive a live tab over CDP.
 | `apply_operation` | Apply one edit. Requires `baseRevision` and `projectId`. |
 | `render_frames` | Render frames as PNGs to check what an edit actually produced. |
 | `start_export` / `get_export` / `cancel_export` | Encode to a video file. Long-running, so start and poll. |
+| `start_transcribe` / `get_transcribe` | Transcribe the timeline's audio to caption chunks. |
 | `undo` / `redo` | Move through the editor's history — including the human's edits. |
 
 ## The edit vocabulary
@@ -108,6 +109,17 @@ Clip level: `element.insert`, `element.delete`, `element.move`, `element.split`,
 Effects on a clip: `element.addEffect`, `element.removeEffect`,
 `element.toggleEffect`, `element.setEffectParams`, `element.reorderEffect`.
 Read the clip's `effects[]` from `read_project` to get the ids they address.
+
+## Captions
+
+`start_transcribe` runs whisper in the browser over the timeline's own audio and
+returns `{text, startTime, duration}` chunks in seconds. It deliberately stops
+there rather than also putting them on the timeline: captions are ordinary text
+clips, so an agent inserts them with `element.insert` — which means it can fix
+the wording, merge or retime chunks, or drop the ones it does not want first.
+
+The model is downloaded on first use, so the first run is slow; `step` says
+whether it is fetching the model, decoding, or transcribing.
 
 ## What the file path cannot do
 

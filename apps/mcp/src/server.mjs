@@ -608,6 +608,37 @@ export function createOpenCutMcpServer() {
   );
 
   server.registerTool(
+    "start_transcribe",
+    {
+      description:
+        "Transcribe the timeline's audio to caption chunks. Long-running — it downloads a whisper model on first use and runs in a worker — so poll get_transcribe. Returns {text, startTime, duration} chunks in SECONDS; turn them into captions with ordinary element.insert text clips, which lets you edit the wording or retiming first. Runs in the browser, so an editor tab must be open.",
+      inputSchema: {
+        language: z
+          .string()
+          .min(2)
+          .optional()
+          .describe('BCP-47-ish code, or omit for auto-detect.'),
+        projectId,
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false },
+    },
+    ({ language, projectId: id }) =>
+      bridge({ method: "startTranscribe", args: [{ language }], projectId: id }),
+  );
+
+  server.registerTool(
+    "get_transcribe",
+    {
+      description:
+        "Check a transcription job. While running, `step` says whether it is downloading the model, decoding, or transcribing. On completion `chunks` holds the captions.",
+      inputSchema: { jobId: z.string().min(1), projectId },
+      annotations: readOnly,
+    },
+    ({ jobId, projectId: id }) =>
+      bridge({ method: "getTranscribe", args: [{ jobId }], projectId: id }),
+  );
+
+  server.registerTool(
     "undo",
     {
       description:

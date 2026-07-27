@@ -15,6 +15,11 @@ import {
   startExportJob,
   type ExportJobState,
 } from "./export-jobs";
+import {
+  getTranscribeJob,
+  startTranscribeJob,
+  type TranscribeJobState,
+} from "./transcribe-jobs";
 
 /**
  * The out-of-page entry point.
@@ -61,6 +66,8 @@ export interface AgentBridge {
   getExport(request: { jobId: string }): BridgeResult<ExportJobState | null>;
   listExports(): BridgeResult<ExportJobState[]>;
   cancelExport(request: { jobId: string }): BridgeResult<ExportJobState | null>;
+  startTranscribe(request: { language?: string }): BridgeResult<TranscribeJobState>;
+  getTranscribe(request: { jobId: string }): BridgeResult<TranscribeJobState | null>;
 }
 
 declare global {
@@ -140,6 +147,8 @@ export function installAgentBridge(): () => void {
     getExport: ({ jobId }) => guard(() => getExportJob({ jobId })),
     listExports: () => guard(() => listExportJobs()),
     cancelExport: ({ jobId }) => guard(() => cancelExportJob({ jobId })),
+    startTranscribe: ({ language }) => guard(() => startTranscribeJob({ language })),
+    getTranscribe: ({ jobId }) => guard(() => getTranscribeJob({ jobId })),
   };
 
   window.__opencutAgent = bridge;
