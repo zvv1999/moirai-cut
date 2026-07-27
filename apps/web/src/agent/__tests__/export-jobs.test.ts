@@ -139,17 +139,17 @@ describe("agent draft exports", () => {
           includeAudio: true,
         },
         name: "review.mp4",
-      },
-      {
-        editor,
-        randomUUID: () => "a1b2c3d4-rest",
-        save: async (url, init) => {
-          uploads.push({ url, init });
-          return {
-            ok: true,
-            statusText: "OK",
-            json: async () => ({ path: "/exports/review-draft.mp4", sizeBytes: 3 }),
-          };
+        dependencies: {
+          editor,
+          randomUUID: () => "a1b2c3d4-rest",
+          save: async ({ url, init }) => {
+            uploads.push({ url, init });
+            return {
+              ok: true,
+              statusText: "OK",
+              json: async () => ({ path: "/exports/review-draft.mp4", sizeBytes: 3 }),
+            };
+          },
         },
       },
     );

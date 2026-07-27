@@ -134,3 +134,30 @@ test("inspectMedia falls back to an unlabeled cell when drawtext is unavailable"
   assert.equal(result.labeled, false);
   assert.equal(result.cells[0].sourceSeconds, 1);
 });
+
+test("inspectMedia turns a double ffmpeg failure into a useful media error", async () => {
+  await assert.rejects(
+    () =>
+      inspectMedia(
+        {
+          projectId: "p1",
+          assetId: "m1",
+          atSeconds: [1],
+        },
+        {
+          loadMediaIndex: async () => ({
+            m1: { id: "m1", name: "Broken.mov", type: "video", duration: 2 },
+          }),
+          runCommand: async () => {
+            const error = new Error("decoder failed");
+            error.stderr = "invalid video stream";
+            throw error;
+          },
+        },
+      ),
+    (error) =>
+      error?.code === "media_import_failed" &&
+      /could not extract a frame at 1s from Broken\.mov/.test(error.message) &&
+      /invalid video stream/.test(error.message),
+  );
+});

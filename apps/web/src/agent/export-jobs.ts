@@ -1,5 +1,5 @@
 import { EditorCore } from "@/core";
-import type { ExportOptions } from "@/export";
+import type { ExportOptions, ExportResult } from "@/export";
 import { EXPORT_MIME_TYPES } from "@/export/mime-types";
 
 /**
@@ -78,18 +78,98 @@ export function safeExportName(raw: string): string {
   return [...safe].slice(0, 140).join("").replace(/[.-]+$/, "") || "export";
 }
 
+/** Resolve the agent-only review preset without mutating caller-owned options. */
+export function resolveAgentExportOptions(options: ExportOptions): ExportOptions {
+  return options.quality === "draft"
+    ? { ...options, fps: { numerator: 12, denominator: 1 } }
+    : options;
+}
+
+/**
+ * Produce the exact route-safe output name before encoding starts.
+ *
+ * A caller-chosen name remains predictable, while generated names retain the
+ * short job suffix that prevents concurrent exports from overwriting each
+ * other. Draft branding is idempotent so retrying a branded name does not
+ * produce "-draft-draft".
+ */
+export function buildAgentExportFileName({
+  requestedName,
+  projectName,
+  format,
+  draft,
+  jobId,
+}: {
+  requestedName?: string;
+  projectName: string;
+  format: ExportOptions["format"];
+  draft: boolean;
+  jobId: string;
+}): string {
+  const suffix = `.${format}`;
+  const stripSuffix = (value: string) =>
+    value.toLocaleLowerCase().endsWith(suffix)
+      ? value.slice(0, -suffix.length)
+      : value;
+  const base = safeExportName(stripSuffix(requestedName ?? projectName));
+  const branded = draft && !base.toLocaleLowerCase().endsWith("-draft")
+    ? `${base}-draft`
+    : base;
+  return requestedName
+    ? `${branded}${suffix}`
+    : `${branded}-${jobId.slice(0, 8)}${suffix}`;
+}
+
+interface ExportJobEditor {
+  project: {
+    getActiveOrNull(): { metadata: { id: string; name: string } } | null;
+    cancelExport(): void;
+  };
+  agent: { readonly revision: number };
+  renderer: {
+    exportProject(request: {
+      options: ExportOptions;
+      onProgress: ({ progress }: { progress: number }) => void;
+      onCancel: () => boolean;
+    }): Promise<ExportResult>;
+  };
+}
+
+interface ExportSaveResponse {
+  ok: boolean;
+  statusText: string;
+  json(): Promise<unknown>;
+}
+
+interface ExportJobDependencies {
+  editor?: ExportJobEditor;
+  randomUUID?: () => string;
+  save?: (request: { url: string; init: RequestInit }) => Promise<ExportSaveResponse>;
+}
+
 export function startExportJob({
   options,
   name,
+  dependencies = {},
 }: {
   options: ExportOptions;
   name?: string;
+  dependencies?: ExportJobDependencies;
 }): ExportJobState {
-  const editor = EditorCore.getInstance();
+  const editor = dependencies.editor ?? EditorCore.getInstance();
+  const save = dependencies.save ??
+    (({ url, init }: { url: string; init: RequestInit }) => fetch(url, init));
   const project = editor.project.getActiveOrNull();
   if (!project) throw new Error("No active project to export");
 
-  const jobId = crypto.randomUUID();
+  // Draft is a REVIEW preset: the dominant export cost is frames rendered ×
+  // per-frame render, so the honest speed lever is the frame rate — 30→12fps
+  // is ~2.5x — plus the low bitrate. Audio stays full-rate: pacing is mostly
+  // heard, and judging rhythm on broken audio would mislead the review.
+  const draft = options.quality === "draft";
+  const effectiveOptions = resolveAgentExportOptions(options);
+
+  const jobId = dependencies.randomUUID?.() ?? crypto.randomUUID();
   const job: ExportJobState = {
     jobId,
     status: "running",
@@ -106,7 +186,7 @@ export function startExportJob({
   void (async () => {
     try {
       const result = await editor.renderer.exportProject({
-        options,
+        options: effectiveOptions,
         onProgress: ({ progress }) => {
           const current = jobs.get(jobId);
           if (current) current.progress = progress;
@@ -134,13 +214,16 @@ export function startExportJob({
       // a job-id suffix so repeated exports of one project never collide.
       // Unicode letters stay; only path-hostile characters become dashes. The
       // ASCII-only version ground "reed 酒吧夜" into "reed-----".
-      const suffix = `.${options.format}`;
-      const fileName = name
-        ? safeExportName(name.endsWith(suffix) ? name.slice(0, -suffix.length) : name) + suffix
-        : `${safeExportName(project.metadata.name)}-${jobId.slice(0, 8)}${suffix}`;
-      const response = await fetch(
-        `/api/exports/${encodeURIComponent(project.metadata.id)}/${encodeURIComponent(fileName)}`,
-        {
+      const fileName = buildAgentExportFileName({
+        requestedName: name,
+        projectName: project.metadata.name,
+        format: options.format,
+        draft,
+        jobId,
+      });
+      const response = await save({
+        url: `/api/exports/${encodeURIComponent(project.metadata.id)}/${encodeURIComponent(fileName)}`,
+        init: {
           method: "PUT",
           headers: {
             "content-type":
@@ -149,7 +232,7 @@ export function startExportJob({
           },
           body: result.buffer,
         },
-      );
+      });
       if (!response.ok) {
         current.status = "failed";
         current.error = `Saving the export failed: ${response.statusText}`;

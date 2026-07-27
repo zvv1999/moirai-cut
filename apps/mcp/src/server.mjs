@@ -15,6 +15,8 @@ import {
 import { listProjects, readProject, writeProject } from "./project-file.mjs";
 import { importMedia, listMedia, mediaIndexOf } from "./media-import.mjs";
 import { analyzeAudio } from "./audio-analyze.mjs";
+import { inspectMedia } from "./video-inspect.mjs";
+import { lintDocument } from "./cut-lint.mjs";
 
 /**
  * MCP server for an OpenCut editor tab.
@@ -544,6 +546,90 @@ export function createOpenCutMcpServer() {
   );
 
   server.registerTool(
+    "inspect_media",
+    {
+      description:
+        "LOOK at a source asset: one contact-sheet JPEG sampling N moments, source timecode burned into each cell, plus a cell→seconds map. Sixteen moments for one image's cost — survey footage with this, then trim by the timecodes you saw. Needs no browser. Defaults to uniform sampling; pass atSeconds to inspect specific moments (a suspected cut point, a shot boundary from analyze_audio silences).",
+      inputSchema: {
+        projectId: z.string().min(1),
+        assetId: z.string().min(1).describe("From list_media."),
+        count: z
+          .number()
+          .int()
+          .min(1)
+          .max(25)
+          .optional()
+          .describe("Uniform sample count (default 16). Ignored when atSeconds is given."),
+        atSeconds: z
+          .array(z.number().finite().nonnegative())
+          .min(1)
+          .max(25)
+          .optional()
+          .describe("Exact SOURCE-media seconds to sample instead of uniform spacing."),
+        cellWidth: z
+          .number()
+          .int()
+          .min(160)
+          .max(640)
+          .optional()
+          .describe("Cell width in px (default 320). Use the default to find, then a second call with atSeconds + 640 to confirm fine detail."),
+      },
+      annotations: readOnly,
+    },
+    async ({ projectId: id, assetId, count, atSeconds, cellWidth }) => {
+      try {
+        const sheet = await inspectMedia({ projectId: id, assetId, count, atSeconds, cellWidth });
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                { asset: sheet.asset, grid: sheet.grid, labeled: sheet.labeled, cells: sheet.cells },
+                null,
+                2,
+              ),
+            },
+            { type: "image", data: sheet.jpegBase64, mimeType: "image/jpeg" },
+          ],
+        };
+      } catch (error) {
+        return asError({ code: error.code ?? "driver_error", message: error.message });
+      }
+    },
+  );
+
+  server.registerTool(
+    "lint_cut",
+    {
+      description:
+        "Mechanical check of the cut in milliseconds, no browser: main-track gaps, overlaps, sliver clips, trims past the source footage, missing media, dead spans with nothing anywhere, runtime vs the brief. Run this BEFORE rendering or exporting — every defect it catches is one that no longer costs a look. Advisory: findings never block anything, and a lint-clean cut can still be boring.",
+      inputSchema: {
+        projectId: z.string().min(1),
+        targetDurationSeconds: z
+          .number()
+          .positive()
+          .optional()
+          .describe("The brief's target runtime. Flags drift beyond 10%."),
+        minClipSeconds: z
+          .number()
+          .positive()
+          .optional()
+          .describe("Clips shorter than this are flagged as slivers. Default 0.5; lower it for deliberate machine-gun montage."),
+      },
+      annotations: readOnly,
+    },
+    async ({ projectId: id, targetDurationSeconds, minClipSeconds }) => {
+      try {
+        const document = await readProject({ projectId: id });
+        const mediaIndex = await mediaIndexOf({ projectId: id }).catch(() => ({}));
+        return asText(lintDocument({ document, mediaIndex, targetDurationSeconds, minClipSeconds }));
+      } catch (error) {
+        return asError({ code: error.code ?? "driver_error", message: error.message });
+      }
+    },
+  );
+
+  server.registerTool(
     "analyze_audio",
     {
       description:
@@ -808,16 +894,27 @@ export function createOpenCutMcpServer() {
         atSeconds: z
           .array(z.number().finite().nonnegative())
           .min(1)
-          .max(8)
-          .describe("Timeline positions in seconds. Clamped to the last frame; the result says where it actually rendered."),
+          .max(24)
+          .describe("Timeline positions in seconds. Clamped to the last frame; the result says where it actually rendered. Untiled calls cap at 8; tile:true takes up to 24."),
+        tile: z
+          .boolean()
+          .optional()
+          .describe("Return ONE labeled contact-sheet JPEG instead of full-res PNGs — up to 24 moments for one image's cost. Survey with this; re-render specific times untiled to inspect fine detail."),
+        maxDim: z
+          .number()
+          .int()
+          .min(160)
+          .max(640)
+          .optional()
+          .describe("Tile cell width in px (default 320). Only with tile:true."),
         projectId,
       },
       annotations: readOnly,
     },
-    async ({ atSeconds, projectId: id }) => {
+    async ({ atSeconds, tile, maxDim, projectId: id }) => {
       const response = await bridge({
         method: "renderFrames",
-        args: [{ atSeconds }],
+        args: [{ atSeconds, ...(tile ? { tile, maxDim } : {}) }],
         projectId: id,
       });
       if (response.isError) return response;
@@ -839,6 +936,7 @@ export function createOpenCutMcpServer() {
                       atSeconds: f.atSeconds,
                       renderedAtSeconds: f.renderedAtSeconds,
                       size: `${f.width}x${f.height}`,
+                      ...(f.tile ? { tile: f.tile } : {}),
                     },
               ),
             },
@@ -848,7 +946,9 @@ export function createOpenCutMcpServer() {
         },
       ];
       for (const frame of payload.frames) {
-        if (frame.pngBase64) {
+        if (frame.jpegBase64) {
+          content.push({ type: "image", data: frame.jpegBase64, mimeType: "image/jpeg" });
+        } else if (frame.pngBase64) {
           content.push({ type: "image", data: frame.pngBase64, mimeType: "image/png" });
         }
       }
@@ -863,7 +963,10 @@ export function createOpenCutMcpServer() {
         "Start encoding the project to a video file. Returns a jobId immediately — export takes minutes, so poll get_export rather than waiting. The finished file is written into the project's exports/ folder and the job reports its path. Runs in the browser (WebCodecs), so an editor tab must be open.",
       inputSchema: {
         format: z.enum(["mp4", "webm"]).default("mp4"),
-        quality: z.enum(["low", "medium", "high", "very_high"]).default("high"),
+        quality: z
+          .enum(["low", "medium", "high", "very_high", "draft"])
+          .default("high")
+          .describe("draft = review preset: 12fps + low bitrate, roughly 3x faster, '-draft' branded filename. Iterate on drafts; export a real quality once, at the end."),
         includeAudio: z.boolean().default(true),
         name: z
           .string()

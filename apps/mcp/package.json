@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node src/server.mjs",
     "probe": "node src/probe.mjs",
-    "test": "node --test \"src/__tests__/*.test.mjs\"",
+    "test": "node --test src/__tests__",
     "agent:up": "node src/agent-up.mjs"
   },
   "dependencies": {

@@ -367,7 +367,7 @@ describe("renderFrames contact sheets", () => {
     let renders = 0;
     // Runtime callers are JavaScript, so TypeScript's number annotation is not
     // validation. The guard must run before the expensive renderer.
-    (editor as unknown as { renderer: unknown }).renderer = {
+    editor.renderer = {
       renderFrame: async () => {
         renders += 1;
         return { success: false, error: "should not render" };
@@ -383,7 +383,7 @@ describe("renderFrames contact sheets", () => {
 
   test("keeps full frames capped at 8 and tiled frames capped at 24", async () => {
     const { editor } = makeEditorStub();
-    (editor as unknown as { renderer: unknown }).renderer = {
+    editor.renderer = {
       renderFrame: async () => ({ success: false, error: "not reached" }),
     };
     const agent = new AgentManager(editor);
@@ -397,5 +397,90 @@ describe("renderFrames contact sheets", () => {
         tile: true,
       }),
     ).rejects.toThrow("at most 24");
+  });
+
+  test("combines successful renders into one labeled JPEG and retains failures", async () => {
+    const { editor } = makeEditorStub();
+    let renderIndex = 0;
+    editor.renderer = {
+      renderFrame: async ({ time }: { time: number }) => {
+        renderIndex += 1;
+        if (renderIndex === 2) return { success: false, error: "frame failed" };
+        return {
+          success: true,
+          dataUrl: "data:image/png;base64,cG5n",
+          width: 1920,
+          height: 1080,
+          time,
+        };
+      },
+    };
+
+    const originalDocument = globalThis.document;
+    const originalFetch = globalThis.fetch;
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    const labels: string[] = [];
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: () => ({
+        fillStyle: "",
+        font: "",
+        fillRect: () => undefined,
+        drawImage: () => undefined,
+        fillText: (label: string) => labels.push(label),
+      }),
+      toDataURL: () => "data:image/jpeg;base64,c2hlZXQ=",
+    };
+
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: { createElement: () => canvas },
+    });
+    Object.defineProperty(globalThis, "fetch", {
+      configurable: true,
+      value: async () => ({ blob: async () => new Blob(["png"]) }),
+    });
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: async () => ({ close: () => undefined }),
+    });
+
+    try {
+      const result = await new AgentManager(editor).renderFrames({
+        atSeconds: [0, 1, 2],
+        tile: true,
+        maxDim: 200,
+      });
+      expect(result.frames).toHaveLength(2);
+      expect(result.frames[0]).toMatchObject({
+        width: 400,
+        height: 131,
+        jpegBase64: "c2hlZXQ=",
+        tile: {
+          columns: 2,
+          rows: 1,
+          cells: [
+            { cell: "r1c1", atSeconds: 0, renderedAtSeconds: 0 },
+            { cell: "r1c2", atSeconds: 2, renderedAtSeconds: 2 },
+          ],
+        },
+      });
+      expect(result.frames[1]).toEqual({ atSeconds: 1, error: "frame failed" });
+      expect(labels).toEqual(["0s", "2s"]);
+    } finally {
+      Object.defineProperty(globalThis, "document", {
+        configurable: true,
+        value: originalDocument,
+      });
+      Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: originalFetch,
+      });
+      Object.defineProperty(globalThis, "createImageBitmap", {
+        configurable: true,
+        value: originalCreateImageBitmap,
+      });
+    }
   });
 });

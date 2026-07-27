@@ -61,7 +61,11 @@ export interface AgentBridge {
   undo(): BridgeResult<{ revision: number }>;
   redo(): BridgeResult<{ revision: number }>;
   /** Async: rendering is asynchronous, so this alone returns a promise. */
-  renderFrames(request: { atSeconds: number[] }): Promise<BridgeResult<RenderFramesResult>>;
+  renderFrames(request: {
+    atSeconds: number[];
+    tile?: boolean;
+    maxDim?: number;
+  }): Promise<BridgeResult<RenderFramesResult>>;
   startExport(request: { options: ExportOptions; name?: string }): BridgeResult<ExportJobState>;
   getExport(request: { jobId: string }): BridgeResult<ExportJobState | null>;
   listExports(): BridgeResult<ExportJobState[]>;

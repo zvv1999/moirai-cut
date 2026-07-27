@@ -8,14 +8,21 @@ export const EXPORT_QUALITY_VALUES = [
 	"very_high",
 ] as const;
 
+/** Agent-only review preset; deliberately excluded from the human export UI. */
+export const AGENT_EXPORT_QUALITY_VALUES = [
+	...EXPORT_QUALITY_VALUES,
+	"draft",
+] as const;
+
 export const EXPORT_FORMAT_VALUES = ["mp4", "webm"] as const;
 
 export type ExportFormat = (typeof EXPORT_FORMAT_VALUES)[number];
 export type ExportQuality = (typeof EXPORT_QUALITY_VALUES)[number];
+export type AgentExportQuality = (typeof AGENT_EXPORT_QUALITY_VALUES)[number];
 
 export interface ExportOptions {
 	format: ExportFormat;
-	quality: ExportQuality;
+	quality: AgentExportQuality;
 	fps?: FrameRate;
 	includeAudio?: boolean;
 }

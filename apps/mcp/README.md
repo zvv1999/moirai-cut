@@ -79,6 +79,10 @@ need no browser at all. The open editor notices the file changed and follows it.
 | `edit_project` | Apply a batch of operations to the file, atomically. |
 | `list_media` | The project's media assets, with duration, dimensions and frame rate. |
 | `import_media` | Copy a file from disk into the project. Probed with ffprobe. |
+| `delete_media` | Remove a media asset and report any timeline elements removed with it. |
+| `inspect_media` | Sample source footage into one labeled JPEG contact sheet. |
+| `analyze_audio` | Find silence and loudness intervals without opening the editor. |
+| `lint_cut` | Check timeline gaps, overlaps, slivers, missing media and duration drift. |
 
 `edit_project` is **all-or-nothing**: the batch is applied to a working copy, and
 if any step fails nothing is written. Operations compose — later ones see the
@@ -93,8 +97,8 @@ undo history. These drive a live tab over CDP.
 | `get_state` | Revision, project id, frame rate, media library, and every track with its clips. |
 | `list_operations` | What this build can execute — read from the page's registry, not from this server. |
 | `apply_operation` | Apply one edit. Requires `baseRevision` and `projectId`. |
-| `render_frames` | Render frames as PNGs to check what an edit actually produced. |
-| `start_export` / `get_export` / `cancel_export` | Encode to a video file. Long-running, so start and poll. |
+| `render_frames` | Render full PNGs, or one labeled JPEG contact sheet, to check an edit. |
+| `start_export` / `get_export` / `cancel_export` | Encode to a video file, including fast agent-only draft reviews. Long-running, so start and poll. |
 | `start_transcribe` / `get_transcribe` | Transcribe the timeline's audio to caption chunks. |
 | `undo` / `redo` | Move through the editor's history — including the human's edits. |
 
@@ -223,6 +227,35 @@ state you know nothing about, not evidence.
 Times are clamped to the last frame, and `renderedAtSeconds` reports where the
 frame was actually taken — comparing pixels against the time you *asked* for
 would otherwise silently compare the wrong moment.
+
+## The review loop
+
+The cheapest useful review happens in four passes:
+
+1. **Survey the source.** Call `list_media`, then `inspect_media` with its default
+   16 midpoint samples. It returns one JPEG contact sheet plus a cell-to-source
+   time map. Use `atSeconds` for a second, focused look around likely cut points,
+   and increase `cellWidth` from 320 to 640 only when fine detail matters.
+2. **Remove mechanical defects.** Run `lint_cut` before spending browser time.
+   It reports main-track gaps, same-track overlaps, sub-threshold slivers,
+   missing assets, trims beyond source duration, completely dead spans, hidden
+   or muted tracks with content, and optional drift from `targetDurationSeconds`.
+   Findings are advisory: a clean result proves structural consistency, not
+   editorial quality.
+3. **Survey the result.** Call `render_frames` with `tile: true` for up to 24
+   timeline positions in one labeled JPEG. Full-resolution PNG mode remains
+   capped at eight frames for close inspection. In either mode, reject the
+   evidence if `stable` is false or `revision` is not the revision you edited.
+4. **Review motion and sound.** Start an export with `quality: "draft"`. Drafts
+   use 12 fps and the low bitrate while retaining full-rate audio, and their
+   filenames are branded `-draft`. Once the cut is approved, export `high` or
+   `very_high` exactly once for delivery.
+
+`inspect_media` samples **source-media seconds** and requires every explicit
+time to be before the source duration. `render_frames` samples **timeline
+seconds** and reports any end-of-timeline clamp through `renderedAtSeconds`.
+Keeping those two clocks distinct prevents a visually plausible but incorrect
+trim.
 
 ## Verifying end to end
 

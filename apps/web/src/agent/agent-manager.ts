@@ -19,6 +19,8 @@ const IDEMPOTENCY_HISTORY = 256;
 
 /** Frames are full-canvas PNGs; a large batch would blow the CDP response. */
 const MAX_FRAMES_PER_CALL = 8;
+/** Tiled cells are small, so more moments fit in one call and one image. */
+const MAX_TILED_FRAMES = 24;
 
 export type RenderedFrame =
   | {
@@ -27,7 +29,14 @@ export type RenderedFrame =
       renderedAtSeconds: number;
       width: number;
       height: number;
-      pngBase64: string;
+      pngBase64?: string;
+      /** Tiled contact sheet — JPEG, one image for the whole batch. */
+      jpegBase64?: string;
+      tile?: {
+        columns: number;
+        rows: number;
+        cells: Array<{ cell: string; atSeconds: number; renderedAtSeconds: number }>;
+      };
     }
   | { atSeconds: number; error: string };
 
@@ -394,14 +403,33 @@ export class AgentManager {
    * The pixels come from the same `buildScene` + `CanvasRenderer` path the
    * exporter uses, so this is what the export would produce, not an approximation.
    */
-  async renderFrames({ atSeconds }: { atSeconds: number[] }): Promise<RenderFramesResult> {
+  async renderFrames({
+    atSeconds,
+    tile,
+    maxDim,
+  }: {
+    atSeconds: number[];
+    tile?: boolean;
+    maxDim?: number;
+  }): Promise<RenderFramesResult> {
     if (!Array.isArray(atSeconds) || atSeconds.length === 0) {
       throw new InvalidOperationError("renderFrames needs at least one time in seconds");
     }
-    if (atSeconds.length > MAX_FRAMES_PER_CALL) {
+    const cap = tile ? MAX_TILED_FRAMES : MAX_FRAMES_PER_CALL;
+    if (atSeconds.length > cap) {
       throw new InvalidOperationError(
-        `renderFrames accepts at most ${MAX_FRAMES_PER_CALL} times per call; got ${atSeconds.length}`,
+        `renderFrames accepts at most ${cap} times per call${tile ? " tiled" : ""}; got ${atSeconds.length}`,
       );
+    }
+    if (maxDim !== undefined) {
+      if (!tile) {
+        throw new InvalidOperationError("renderFrames maxDim requires tile:true");
+      }
+      if (!Number.isInteger(maxDim) || maxDim < 160 || maxDim > 640) {
+        throw new InvalidOperationError(
+          `renderFrames maxDim must be an integer from 160 to 640; got ${JSON.stringify(maxDim)}`,
+        );
+      }
     }
 
     const revisionBefore = this.revisionValue;
@@ -425,10 +453,81 @@ export class AgentManager {
       });
     }
 
+    if (!tile) {
+      return {
+        revision: this.revisionValue,
+        stable: this.revisionValue === revisionBefore,
+        frames,
+      };
+    }
+
+    // Contact-sheet mode: one modest JPEG instead of N full-res PNGs. Each
+    // look costing 20x less is what lets an agent look at every iteration
+    // instead of rationing its eyes for the end.
+    const rendered = frames.filter(
+      (frame): frame is Extract<RenderedFrame, { pngBase64?: string }> =>
+        !("error" in frame) && typeof frame.pngBase64 === "string",
+    );
+    const failed = frames.filter((frame) => "error" in frame);
+    if (rendered.length === 0) {
+      return {
+        revision: this.revisionValue,
+        stable: this.revisionValue === revisionBefore,
+        frames,
+      };
+    }
+    const cellWidth = maxDim ?? 320;
+    const aspect = rendered[0].height / rendered[0].width;
+    const cellHeight = Math.round(cellWidth * aspect);
+    const LABEL = 18;
+    const columns = Math.ceil(Math.sqrt(rendered.length));
+    const rows = Math.ceil(rendered.length / columns);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = columns * cellWidth;
+    canvas.height = rows * (cellHeight + LABEL);
+    const context = canvas.getContext("2d");
+    if (!context) throw new InvalidOperationError("Could not create a canvas for the contact sheet");
+    context.fillStyle = "#000";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    const cells: Array<{ cell: string; atSeconds: number; renderedAtSeconds: number }> = [];
+    for (const [index, frame] of rendered.entries()) {
+      const bitmap = await createImageBitmap(
+        await (await fetch(`data:image/png;base64,${frame.pngBase64}`)).blob(),
+      );
+      const x = (index % columns) * cellWidth;
+      const y = Math.floor(index / columns) * (cellHeight + LABEL);
+      context.drawImage(bitmap, x, y, cellWidth, cellHeight);
+      bitmap.close();
+      context.fillStyle = "#000";
+      context.fillRect(x, y + cellHeight, cellWidth, LABEL);
+      context.fillStyle = "#fff";
+      context.font = "12px monospace";
+      context.fillText(`${frame.renderedAtSeconds}s`, x + 4, y + cellHeight + 13);
+      cells.push({
+        cell: `r${Math.floor(index / columns) + 1}c${(index % columns) + 1}`,
+        atSeconds: frame.atSeconds,
+        renderedAtSeconds: frame.renderedAtSeconds,
+      });
+    }
+
     return {
       revision: this.revisionValue,
       stable: this.revisionValue === revisionBefore,
-      frames,
+      frames: [
+        {
+          atSeconds: rendered[0].atSeconds,
+          renderedAtSeconds: rendered[0].renderedAtSeconds,
+          width: canvas.width,
+          height: canvas.height,
+          jpegBase64: canvas
+            .toDataURL("image/jpeg", 0.85)
+            .replace(/^data:image\/jpeg;base64,/, ""),
+          tile: { columns, rows, cells },
+        },
+        ...failed,
+      ],
     };
   }
 

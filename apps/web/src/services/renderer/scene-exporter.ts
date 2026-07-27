@@ -17,7 +17,7 @@ import { mediaTimeToSeconds } from "opencut-wasm";
 import { TICKS_PER_SECOND } from "@/wasm";
 import { frameRateToFloat } from "@/fps/utils";
 import type { RootNode } from "./nodes/root-node";
-import type { ExportFormat, ExportQuality } from "@/export";
+import type { AgentExportQuality, ExportFormat } from "@/export";
 import { CanvasRenderer } from "./canvas-renderer";
 
 type ExportParams = {
@@ -25,7 +25,7 @@ type ExportParams = {
 	height: number;
 	fps: FrameRate;
 	format: ExportFormat;
-	quality: ExportQuality;
+	quality: AgentExportQuality;
 	shouldIncludeAudio?: boolean;
 	audioBuffer?: AudioBuffer;
 };
@@ -35,7 +35,8 @@ const qualityMap = {
 	medium: QUALITY_MEDIUM,
 	high: QUALITY_HIGH,
 	very_high: QUALITY_VERY_HIGH,
-};
+	draft: QUALITY_LOW,
+} satisfies Record<AgentExportQuality, typeof QUALITY_LOW>;
 
 export type SceneExporterEvents = {
 	progress: [progress: number];
@@ -47,7 +48,7 @@ export type SceneExporterEvents = {
 export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 	private renderer: CanvasRenderer;
 	private format: ExportFormat;
-	private quality: ExportQuality;
+	private quality: AgentExportQuality;
 	private shouldIncludeAudio: boolean;
 	private audioBuffer?: AudioBuffer;
 
