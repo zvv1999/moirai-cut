@@ -231,6 +231,17 @@ async function makeStillProxy({ filePath, ext }) {
   }
 }
 
+/**
+ * Byte uploads are registered by the media route so they can be served back.
+ * A proxied still's archived original is intentionally not an editor asset,
+ * though, and must not survive in the public index as a metadata-less stub.
+ */
+export function omitArchivedOriginalStub({ index, assetId }) {
+  const cleaned = { ...index };
+  delete cleaned[`${assetId}-original`];
+  return cleaned;
+}
+
 export async function importMedia({ projectId, filePath, name, base = process.env.OPENCUT_BASE_URL ?? "http://localhost:3000" }) {
   const bytes = await readFile(filePath).catch((error) => {
     throw new MediaImportError(`Cannot read ${filePath}: ${error.message}`, "file_unreadable");
@@ -280,7 +291,10 @@ export async function importMedia({ projectId, filePath, name, base = process.en
   // what enumerates assets, so writing it last means an interrupted import
   // leaves an unreferenced file rather than an entry pointing at nothing.
   const indexResponse = await fetch(`${base}/api/media/${encodeURIComponent(projectId)}`);
-  const index = indexResponse.ok ? ((await indexResponse.json()).assets ?? {}) : {};
+  const fetchedIndex = indexResponse.ok ? ((await indexResponse.json()).assets ?? {}) : {};
+  const index = original
+    ? omitArchivedOriginalStub({ index: fetchedIndex, assetId })
+    : fetchedIndex;
   index[assetId] = {
     ...(index[assetId] ?? {}),
     id: assetId,
