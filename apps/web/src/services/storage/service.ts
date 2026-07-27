@@ -3,6 +3,8 @@ import { getProjectDurationFromScenes } from "@/timeline/scenes";
 import type { MediaAsset } from "@/media/types";
 import { IndexedDBAdapter } from "./indexeddb-adapter";
 import { OPFSAdapter } from "./opfs-adapter";
+import { FileAdapter } from "./file-adapter";
+import { DiskMediaFileAdapter, DiskMediaMetadataAdapter } from "./disk-media-adapter";
 import {
 	type StorageCapacityCheckResult,
 	StorageQuotaExceededError,
@@ -51,8 +53,27 @@ function normalizeBookmarks({ raw }: { raw: unknown }): Bookmark[] {
 		.filter((b): b is Bookmark => b !== null);
 }
 
+/**
+ * Where the project document lives.
+ *
+ * "file" puts it on disk through /api/projects, which is what lets a Node
+ * process — the MCP server, LocalCut's harness, git — read and write the same
+ * document the editor has open. "indexeddb" keeps the upstream behaviour.
+ *
+ * Both implement the same adapter interface, so nothing below this line knows
+ * which one it got.
+ */
+type ProjectStore = Pick<
+	IndexedDBAdapter<SerializedProject>,
+	"get" | "set" | "remove" | "list" | "clear" | "getAll"
+>;
+
+export function projectStoreMode(): "file" | "indexeddb" {
+	return process.env.NEXT_PUBLIC_OPENCUT_PROJECT_FILES === "1" ? "file" : "indexeddb";
+}
+
 class StorageService {
-	private projectsAdapter: IndexedDBAdapter<SerializedProject>;
+	private projectsAdapter: ProjectStore;
 	private savedSoundsAdapter: IndexedDBAdapter<SavedSoundsData>;
 	private config: StorageConfig;
 	private migrationsPromise: Promise<void> | null = null;
@@ -65,17 +86,30 @@ class StorageService {
 			version: 1,
 		};
 
-		this.projectsAdapter = new IndexedDBAdapter<SerializedProject>({
-			dbName: this.config.projectsDb,
-			storeName: "projects",
-			version: this.config.version,
-		});
+		this.projectsAdapter =
+			projectStoreMode() === "file"
+				? new FileAdapter<SerializedProject>()
+				: new IndexedDBAdapter<SerializedProject>({
+						dbName: this.config.projectsDb,
+						storeName: "projects",
+						version: this.config.version,
+					});
 
 		this.savedSoundsAdapter = new IndexedDBAdapter<SavedSoundsData>({
 			dbName: this.config.savedSoundsDb,
 			storeName: "saved-sounds",
 			version: this.config.version,
 		});
+	}
+
+	/**
+	 * What the file store believes is on disk for a project, or null when the
+	 * document is not file-backed. Used to tell this editor's own save echoing
+	 * back from a genuine external change.
+	 */
+	getKnownProjectRevision(id: string): number | null {
+		const adapter = this.projectsAdapter as Partial<FileAdapter<SerializedProject>>;
+		return adapter.knownRevision?.(id) ?? null;
 	}
 
 	private async ensureMigrations(): Promise<void> {
@@ -91,6 +125,15 @@ class StorageService {
 	}
 
 	private getProjectMediaAdapters({ projectId }: { projectId: string }) {
+		// Follows the same switch as the project document: with file storage on,
+		// media bytes live next to project.json so a Node process can reach them.
+		if (projectStoreMode() === "file") {
+			return {
+				mediaMetadataAdapter: new DiskMediaMetadataAdapter<MediaAssetData>(projectId),
+				mediaAssetsAdapter: new DiskMediaFileAdapter(projectId),
+			};
+		}
+
 		const mediaMetadataAdapter = new IndexedDBAdapter<MediaAssetData>({
 			dbName: `${this.config.mediaDb}-${projectId}`,
 			storeName: "media-metadata",

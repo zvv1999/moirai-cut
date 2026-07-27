@@ -1,0 +1,17 @@
+{
+  "name": "@opencut/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": { "opencut-mcp": "./src/server.mjs" },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "probe": "node src/probe.mjs",
+    "test": "node --test \"src/__tests__/*.test.mjs\""
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "ws": "^8.18.0",
+    "zod": "^3.25.76"
+  }
+}

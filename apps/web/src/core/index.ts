@@ -14,6 +14,8 @@ import { registerDefaultEffects } from "@/effects";
 import { registerDefaultMasks } from "@/masks";
 import { registerTranscriptionDiagnostics } from "@/transcription/diagnostics";
 
+import { AgentManager } from "@/agent/agent-manager";
+
 export class EditorCore {
 	private static instance: EditorCore | null = null;
 	public readonly timeline: TimelineManager;
@@ -28,6 +30,7 @@ export class EditorCore {
 	public readonly selection: SelectionManager;
 	public readonly clipboard: ClipboardManager;
 	public readonly diagnostics: DiagnosticsManager;
+	public readonly agent: AgentManager;
 
 	private constructor() {
 		registerDefaultEffects();
@@ -44,6 +47,7 @@ export class EditorCore {
 		this.selection = new SelectionManager(this);
 		this.clipboard = new ClipboardManager(this);
 		this.diagnostics = new DiagnosticsManager(this);
+		this.agent = new AgentManager(this);
 		registerTranscriptionDiagnostics({ diagnostics: this.diagnostics });
 		this.playback.bindTimelineScope();
 		this.command.registerReactor(() => {

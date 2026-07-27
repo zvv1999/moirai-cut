@@ -9,6 +9,8 @@ import { useKeybindingsListener } from "@/actions/use-keybindings";
 import { useKeybindingsStore } from "@/actions/keybindings-store";
 import { useTimelineStore } from "@/timeline/timeline-store";
 import { useEditorActions } from "@/actions/use-editor-actions";
+import { installAgentBridge } from "@/agent/bridge";
+import { watchProjectFile } from "@/services/storage/project-file-sync";
 import { loadFontAtlas } from "@/fonts/google-fonts";
 import {
 	initializeGpuRenderer,
@@ -147,6 +149,19 @@ function EditorRuntimeBindings() {
 		window.addEventListener("beforeunload", handleBeforeUnload);
 		return () => window.removeEventListener("beforeunload", handleBeforeUnload);
 	}, [editor]);
+
+	// Expose the out-of-page agent surface only once a project is live, so an
+	// external driver can never observe a half-loaded editor.
+	useEffect(() => installAgentBridge(), []);
+
+	// The editor is no longer the only writer of its own document: with the
+	// project on disk, an agent or another window can change it. Watch the file
+	// so an external edit is picked up instead of being silently overwritten.
+	const activeProjectId = editor.project.getActiveOrNull()?.metadata.id ?? null;
+	useEffect(() => {
+		if (!activeProjectId) return;
+		return watchProjectFile({ projectId: activeProjectId });
+	}, [activeProjectId]);
 
 	useEditorActions();
 	useKeybindingsListener();

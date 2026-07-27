@@ -8,6 +8,7 @@ import { createTimelineAudioBuffer } from "@/media/audio";
 import { formatTimecode } from "opencut-wasm";
 import { frameRateToFloat } from "@/fps/utils";
 import { downloadBlob } from "@/utils/browser";
+import type { MediaTime } from "@/wasm";
 
 type SnapshotResult =
 	| { success: true; blob: Blob; filename: string }
@@ -37,6 +38,74 @@ export class RendererManager {
 
 	getRenderTree(): RootNode | null {
 		return this.renderTree;
+	}
+
+	/**
+	 * Render one frame at an arbitrary time, as a PNG data URL.
+	 *
+	 * Deliberately builds the scene with `buildScene` from the document rather
+	 * than reusing `this.renderTree`: that tree is published by the preview React
+	 * component, so it only exists while the preview is mounted and reflects what
+	 * the preview last drew. Building from the document is what the export path
+	 * does too (`exportProject` below), so a frame captured here is the same
+	 * frame the export would produce — which is the whole point of using it as
+	 * evidence rather than as a thumbnail.
+	 *
+	 * Unlike `createSnapshot`, the time is a parameter and not the playhead: a
+	 * caller verifying an edit needs to look where the edit is.
+	 */
+	async renderFrame({
+		time,
+	}: {
+		time: MediaTime;
+	}): Promise<
+		| { success: true; dataUrl: string; width: number; height: number; time: MediaTime }
+		| { success: false; error: string }
+	> {
+		try {
+			const activeProject = this.editor.project.getActiveOrNull();
+			if (!activeProject) return { success: false, error: "No active project" };
+
+			const duration = this.editor.timeline.getTotalDuration();
+			if (duration === 0) return { success: false, error: "Project is empty" };
+
+			// Past the last frame there is nothing to draw, and an unclamped time
+			// silently yields a blank image that looks like a failed edit.
+			const lastFrame = this.editor.timeline.getLastFrameTime();
+			const renderTime = (time > lastFrame ? lastFrame : time) as MediaTime;
+
+			const { canvasSize, background, fps } = activeProject.settings;
+			const scene = buildScene({
+				tracks: this.editor.scenes.getActiveScene().tracks,
+				mediaAssets: this.editor.media.getAssets(),
+				duration,
+				canvasSize,
+				background,
+			});
+
+			const renderer = new CanvasRenderer({
+				width: canvasSize.width,
+				height: canvasSize.height,
+				fps,
+			});
+			const canvas = document.createElement("canvas");
+			canvas.width = canvasSize.width;
+			canvas.height = canvasSize.height;
+			await renderer.renderToCanvas({ node: scene, time: renderTime, targetCanvas: canvas });
+
+			return {
+				success: true,
+				dataUrl: canvas.toDataURL("image/png"),
+				width: canvasSize.width,
+				height: canvasSize.height,
+				time: renderTime,
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : "Unknown error",
+			};
+		}
 	}
 
 	async saveSnapshot(): Promise<{ success: boolean; error?: string }> {

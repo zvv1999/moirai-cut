@@ -9,6 +9,7 @@ import type {
 } from "@/project/types";
 import type { ExportOptions, ExportResult, ExportState } from "@/export";
 import { storageService } from "@/services/storage/service";
+import { ProjectConflictError } from "@/services/storage/file-adapter";
 import { toast } from "sonner";
 import { generateUUID } from "@/utils/id";
 import { UpdateProjectSettingsCommand } from "@/commands/project";
@@ -126,6 +127,8 @@ export class ProjectManager {
 	}
 
 	async loadProject({ id }: { id: string }): Promise<void> {
+		// A different document means any revision an agent is holding is meaningless.
+		this.editor.agent.onDocumentSwitched();
 		if (!this.isInitialized) {
 			this.isLoading = true;
 			this.notify();
@@ -186,6 +189,8 @@ export class ProjectManager {
 		}
 	}
 
+	private fileConflict: { revision: number } | null = null;
+
 	async saveCurrentProject(): Promise<void> {
 		if (!this.active) return;
 
@@ -205,8 +210,27 @@ export class ProjectManager {
 			this.active = updatedProject;
 			this.updateMetadata(updatedProject);
 		} catch (error) {
+			if (error instanceof ProjectConflictError) {
+				// Someone else wrote the file. Retrying would just overwrite them, so
+				// stop autosaving and surface it — the whole point of moving the
+				// document to disk is that a second writer is expected, not an error.
+				this.fileConflict = { revision: error.actualRevision };
+				this.editor.save.pause();
+				this.notify();
+				return;
+			}
 			console.error("Failed to save project:", error);
 		}
+	}
+
+	/** Non-null when disk moved ahead of this editor and autosave is held back. */
+	getFileConflict(): { revision: number } | null {
+		return this.fileConflict;
+	}
+
+	/** What the file store last saw on disk, or null when not file-backed. */
+	getKnownFileRevision(projectId: string): number | null {
+		return storageService.getKnownProjectRevision(projectId);
 	}
 
 	async export({ options }: { options: ExportOptions }): Promise<ExportResult> {
@@ -309,6 +333,7 @@ export class ProjectManager {
 
 	closeProject(): void {
 		this.active = null;
+		this.editor.agent.onDocumentSwitched();
 		this.notify();
 
 		this.editor.media.clearAllAssets();

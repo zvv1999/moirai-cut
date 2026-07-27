@@ -18,7 +18,26 @@ export class CommandManager {
 
 	constructor(private editor: EditorCore) {}
 
-	execute({ command }: { command: Command }): Command {
+	execute({
+		command,
+		verifyEffect,
+	}: {
+		command: Command;
+		/**
+		 * Optional post-execute check for callers that cannot tolerate a phantom
+		 * history entry. Return false when the document is unchanged.
+		 *
+		 * Reactors can fully neutralise a command the instant it lands — the prune
+		 * reactor removes element-less tracks, so an add-track can leave nothing
+		 * behind. Recording that as history would cost the user a Cmd-Z that does
+		 * nothing visible AND discard a redo they still wanted, since execute()
+		 * clears the redo stack. So when the check fails we keep neither.
+		 *
+		 * Omitted on the UI path: the check is O(document), and interactive edits
+		 * do not need it.
+		 */
+		verifyEffect?: () => boolean;
+	}): Command {
 		const beforeTracks = this.isRippleEnabled
 			? (this.editor.scenes.getActiveSceneOrNull()?.tracks ?? null)
 			: null;
@@ -27,6 +46,17 @@ export class CommandManager {
 		this.applyRippleIfEnabled({ beforeTracks });
 		const selectionOverride = this.applySelectionOverride(result);
 		this.runReactors();
+
+		if (verifyEffect && !this.changedAccordingTo(verifyEffect)) {
+			// Nothing changed. Leave history and redoStack exactly as they were, and
+			// undo the one side effect that did land: a selection pointing at
+			// something the reactors just removed.
+			if (selectionOverride !== undefined) {
+				this.editor.selection.restoreSnapshot({ snapshot: previousSelection });
+			}
+			return command;
+		}
+
 		this.history.push({
 			command,
 			previousSelection,
@@ -101,6 +131,21 @@ export class CommandManager {
 	clear(): void {
 		this.history = [];
 		this.redoStack = [];
+	}
+
+	/**
+	 * Runs a caller's effect check, treating a throw as "the document changed".
+	 *
+	 * The two outcomes are not equally safe: a spurious history entry costs one
+	 * extra Cmd-Z, whereas wrongly skipping one leaves an applied mutation with
+	 * no way back. So any uncertainty resolves toward keeping the entry.
+	 */
+	private changedAccordingTo(verifyEffect: () => boolean): boolean {
+		try {
+			return verifyEffect();
+		} catch {
+			return true;
+		}
 	}
 
 	private getSelectionSnapshot(): EditorSelectionSnapshot {

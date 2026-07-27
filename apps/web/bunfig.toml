@@ -1,0 +1,3 @@
+[test]
+# opencut-wasm cannot initialise under Bun's test host; see test-preload.ts.
+preload = ["./test-preload.ts"]
