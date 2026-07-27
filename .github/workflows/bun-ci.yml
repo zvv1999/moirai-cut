@@ -75,7 +75,20 @@ jobs:
         working-directory: apps/web
         run: bun run build
 
-      - name: Run tests
+      # The agent layer and the MCP server are gated strictly: they are the
+      # contract external callers depend on, and the drift guard is worthless
+      # if it never executes.
+      - name: Run agent tests
         working-directory: apps/web
-        run: echo "No tests implemented yet"
+        run: bun test src/agent src/core
+
+      - name: Run MCP server tests
+        working-directory: apps/mcp
+        run: bun install && bun run test
+
+      # The rest of the suite has pre-existing failures inherited from upstream,
+      # so it reports without gating until those are triaged.
+      - name: Run full suite (non-gating)
+        working-directory: apps/web
+        run: bun test
         continue-on-error: true
