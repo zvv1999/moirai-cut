@@ -250,6 +250,32 @@ export const OperationSchema = z
         "Split a video clip's own audio onto its own audio track, or re-attach it. Re-attaching only flips the flag — it does not delete an audio clip you may have edited.",
       ),
     z
+      .object({
+        type: z.literal("element.addMask"),
+        trackId,
+        elementId,
+        maskType: z.enum([
+          "rectangle", "ellipse", "heart", "diamond", "star",
+          "cinematic-bars", "split", "text", "freeform",
+        ]),
+        params: z
+          .record(z.any())
+          .optional()
+          .describe(
+            "Geometry is NORMALISED, not pixels: centerX/centerY are offsets from the element's centre and width/height are fractions of its size (0.6 = 60%). Defaults to a centred 60% box. A text mask requires params.content; a freeform mask requires params.path.",
+          ),
+      })
+      .describe("Add a mask to a visual clip."),
+    z
+      .object({
+        type: z.literal("element.setMaskParams"),
+        trackId,
+        elementId,
+        maskId: z.string().min(1),
+        params: z.record(z.any()),
+      })
+      .describe("Tune a mask. Merged over the current values; unknown keys are refused."),
+    z
       .object({ type: z.literal("element.removeMask"), trackId, elementId, maskId: z.string().min(1) })
       .describe("Remove a mask. Mask ids come from the clip's masks[] in get_state."),
     z.object({
@@ -353,6 +379,8 @@ export const SCHEMA_OPERATION_TYPES = [
   "element.upsertEffectKeyframe",
   "element.removeEffectKeyframe",
   "element.toggleSourceAudio",
+  "element.addMask",
+  "element.setMaskParams",
   "element.removeMask",
   "element.toggleMaskInverted",
   "element.deleteMaskPoints",

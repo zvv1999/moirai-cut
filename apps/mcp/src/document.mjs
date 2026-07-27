@@ -111,6 +111,50 @@ const KEYFRAMABLE_PARAMS = {
 /** Exported for the drift test that re-parses the editor's registry. */
 export const KEYFRAMABLE_PARAMS_FOR_TEST = KEYFRAMABLE_PARAMS;
 
+/**
+ * Mask geometry is NORMALISED — centerX/width are fractions of the element's
+ * bounds (`params.width * bounds.width` yields pixels), not pixel values. That
+ * is what makes a mask fully specifiable without a running editor: the layout
+ * only matters when the renderer turns these back into pixels.
+ *
+ * These defaults are what `buildDefaultMaskInstance` produces when it has no
+ * element size to work from — 0.6 is DEFAULT_SHAPE_MASK_SHORT_SIDE_RATIO.
+ */
+const BASE_MASK_PARAMS = {
+  feather: 0,
+  inverted: false,
+  strokeColor: "#ffffff",
+  strokeWidth: 0,
+  strokeAlign: "center",
+};
+
+const BOX_LIKE_DEFAULTS = { centerX: 0, centerY: 0, width: 0.6, height: 0.6, rotation: 0, scale: 1 };
+
+const MASK_SHAPES = {
+  rectangle: { defaults: BOX_LIKE_DEFAULTS },
+  ellipse: { defaults: BOX_LIKE_DEFAULTS },
+  heart: { defaults: BOX_LIKE_DEFAULTS },
+  diamond: { defaults: BOX_LIKE_DEFAULTS },
+  star: { defaults: BOX_LIKE_DEFAULTS },
+  "cinematic-bars": { defaults: BOX_LIKE_DEFAULTS },
+  split: { defaults: { centerX: 0, centerY: 0, rotation: 0 } },
+  text: {
+    defaults: {
+      centerX: 0, centerY: 0, rotation: 0, scale: 1,
+      fontSize: 15, fontFamily: "Arial", fontWeight: "normal",
+      fontStyle: "normal", textDecoration: "none", letterSpacing: 0, lineHeight: 1.2,
+    },
+    required: ["content"],
+  },
+  freeform: {
+    defaults: { centerX: 0, centerY: 0, rotation: 0, scale: 1, closed: true },
+    required: ["path"],
+  },
+};
+
+/** isMaskableElement — masks do not apply to audio or effect elements. */
+const MASKABLE_ELEMENT_TYPES = new Set(["video", "image", "text", "sticker", "graphic"]);
+
 /** Keyframable in the editor, but needing culori to decompose — refused here. */
 const COLOUR_PARAMS = new Set(["color", "background.color"]);
 
@@ -968,6 +1012,64 @@ const OPERATIONS = {
     element.isSourceAudioEnabled = false;
   },
 
+  "element.addMask": (scene, op) => {
+    const { element } = findElement(scene, op);
+    if (!MASKABLE_ELEMENT_TYPES.has(element.type)) {
+      throw new DocumentOperationError(
+        `${element.name} is ${element.type}; masks attach to ${[...MASKABLE_ELEMENT_TYPES].join(", ")}.`,
+      );
+    }
+    const shape = MASK_SHAPES[op.maskType];
+    if (!shape) {
+      throw new DocumentOperationError(
+        `Unknown mask type ${JSON.stringify(op.maskType)}. Known: ${Object.keys(MASK_SHAPES).join(", ")}`,
+      );
+    }
+    const params = { ...BASE_MASK_PARAMS, ...shape.defaults };
+    for (const key of shape.required ?? []) {
+      if (op.params?.[key] === undefined) {
+        throw new DocumentOperationError(`A ${op.maskType} mask requires params.${key}`);
+      }
+    }
+    for (const [key, value] of Object.entries(op.params ?? {})) {
+      if (!(key in params) && !(shape.required ?? []).includes(key)) {
+        throw new DocumentOperationError(
+          `A ${op.maskType} mask has no parameter ${JSON.stringify(key)}. Known: ${Object.keys(params).concat(shape.required ?? []).join(", ")}`,
+        );
+      }
+      params[key] = value;
+    }
+    element.masks = [...(element.masks ?? []), { id: randomUUID(), type: op.maskType, params }];
+  },
+
+  "element.setMaskParams": (scene, op) => {
+    const { element } = findElement(scene, op);
+    const mask = (element.masks ?? []).find((candidate) => candidate.id === op.maskId);
+    if (!mask) {
+      throw new DocumentOperationError(
+        `No mask ${op.maskId} on ${element.name}.`,
+        "unresolved_reference",
+      );
+    }
+    if (!op.params || Object.keys(op.params).length === 0) {
+      throw new DocumentOperationError("element.setMaskParams names no parameter to change");
+    }
+    const shape = MASK_SHAPES[mask.type] ?? { defaults: {} };
+    const known = new Set([
+      ...Object.keys(BASE_MASK_PARAMS),
+      ...Object.keys(shape.defaults),
+      ...(shape.required ?? []),
+    ]);
+    for (const key of Object.keys(op.params)) {
+      if (!known.has(key)) {
+        throw new DocumentOperationError(
+          `A ${mask.type} mask has no parameter ${JSON.stringify(key)}. Known: ${[...known].join(", ")}`,
+        );
+      }
+    }
+    mask.params = { ...mask.params, ...op.params };
+  },
+
   "element.removeMask": (scene, op) => {
     const { element } = findElement(scene, op);
     const before = (element.masks ?? []).length;
@@ -1449,6 +1551,8 @@ export function describeDocument({ document }) {
               id: mask.id,
               type: mask.type,
               inverted: Boolean(mask.params?.inverted),
+              // The geometry too, or setMaskParams is a shot in the dark.
+              params: mask.params ?? {},
               ...(Array.isArray(mask.params?.points)
                 ? { pointIds: mask.params.points.map((point) => point.id) }
                 : {}),

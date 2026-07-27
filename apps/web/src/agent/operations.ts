@@ -33,6 +33,8 @@ import { ToggleMaskInvertedCommand } from "@/commands/timeline/element/masks/tog
 import { DeleteFreeformPathMaskPointsCommand } from "@/commands/timeline/element/masks/delete-custom-mask-points";
 import type { TProjectSettings } from "@/project/types";
 import type { MediaTime } from "@/wasm";
+import { EditorCore } from "@/core";
+import { generateUUID } from "@/utils/id";
 import type { Command } from "@/commands";
 import type { CreateTimelineElement, TimelineElement, TrackType } from "@/timeline/types";
 import { toMediaTime } from "./time";
@@ -175,6 +177,16 @@ export type Operation =
       keyframeId: string;
     })
   | (ElementRefInput & { type: "element.toggleSourceAudio" })
+  | (ElementRefInput & {
+      type: "element.addMask";
+      maskType: string;
+      params?: Record<string, unknown>;
+    })
+  | (ElementRefInput & {
+      type: "element.setMaskParams";
+      maskId: string;
+      params: Record<string, unknown>;
+    })
   | (ElementRefInput & { type: "element.removeMask"; maskId: string })
   | (ElementRefInput & { type: "element.toggleMaskInverted"; maskId: string })
   | (ElementRefInput & {
@@ -685,6 +697,63 @@ const COMMAND_FACTORIES: { [K in OperationType]: CommandFactory } = {
     });
   },
 
+  "element.addMask": (operation) => {
+    const { trackId, elementId, maskType, params } = operation as Extract<
+      Operation,
+      { type: "element.addMask" }
+    >;
+    // There is no add-mask Command — the UI mutates the element directly, so an
+    // agent-added mask routed through UpdateElementsCommand is actually MORE
+    // undoable than one added by hand.
+    const existing = readMasks({ trackId, elementId });
+    return new UpdateElementsCommand({
+      updates: [
+        {
+          trackId: requireId("trackId", trackId),
+          elementId: requireId("elementId", elementId),
+          patch: {
+            masks: [...existing, buildMaskInstance({ maskType, params })],
+          } as Partial<TimelineElement>,
+        },
+      ],
+    });
+  },
+
+  "element.setMaskParams": (operation) => {
+    const { trackId, elementId, maskId, params } = operation as Extract<
+      Operation,
+      { type: "element.setMaskParams" }
+    >;
+    if (!params || Object.keys(params).length === 0) {
+      throw new InvalidOperationError("element.setMaskParams names no parameter to change");
+    }
+    const existing = readMasks({ trackId, elementId });
+    if (!existing.some((mask) => mask.id === maskId)) {
+      throw new UnresolvedReferenceError(`No mask ${maskId} on element ${elementId}.`);
+    }
+    return new UpdateElementsCommand({
+      updates: [
+        {
+          trackId: requireId("trackId", trackId),
+          elementId: requireId("elementId", elementId),
+          patch: {
+            masks: existing.map((mask) =>
+              mask.id === maskId
+                ? {
+                    ...mask,
+                    params: {
+                      ...((mask.params ?? {}) as Record<string, unknown>),
+                      ...params,
+                    },
+                  }
+                : mask,
+            ),
+          } as Partial<TimelineElement>,
+        },
+      ],
+    });
+  },
+
   "element.removeMask": (operation) => {
     const { trackId, elementId, maskId } = operation as Extract<
       Operation,
@@ -812,6 +881,86 @@ export function supportedOperationTypes(): OperationType[] {
   return Object.keys(COMMAND_FACTORIES) as OperationType[];
 }
 
+/**
+ * The masks currently on an element, read from the live document.
+ *
+ * A mask patch replaces the whole array, so appending or editing one requires
+ * knowing what is already there. Read at build time, which is the same tick the
+ * command executes in.
+ */
+function readMasks({ trackId, elementId }: ElementRefInput): Array<Record<string, unknown>> {
+  const scene = EditorCore.getInstance().scenes.getActiveSceneOrNull();
+  if (!scene) return [];
+  const tracks = scene.tracks;
+  for (const track of [tracks.main, ...tracks.overlay, ...tracks.audio]) {
+    if (!track || track.id !== trackId) continue;
+    const element = track.elements.find((candidate) => candidate.id === elementId);
+    const masks = (element as unknown as { masks?: Array<Record<string, unknown>> })?.masks;
+    return Array.isArray(masks) ? masks : [];
+  }
+  return [];
+}
+
+const BASE_MASK_PARAMS = {
+  feather: 0,
+  inverted: false,
+  strokeColor: "#ffffff",
+  strokeWidth: 0,
+  strokeAlign: "center",
+};
+const BOX_LIKE_DEFAULTS = { centerX: 0, centerY: 0, width: 0.6, height: 0.6, rotation: 0, scale: 1 };
+const MASK_SHAPES: Record<string, { defaults: Record<string, unknown>; required?: string[] }> = {
+  rectangle: { defaults: BOX_LIKE_DEFAULTS },
+  ellipse: { defaults: BOX_LIKE_DEFAULTS },
+  heart: { defaults: BOX_LIKE_DEFAULTS },
+  diamond: { defaults: BOX_LIKE_DEFAULTS },
+  star: { defaults: BOX_LIKE_DEFAULTS },
+  "cinematic-bars": { defaults: BOX_LIKE_DEFAULTS },
+  split: { defaults: { centerX: 0, centerY: 0, rotation: 0 } },
+  text: {
+    defaults: {
+      centerX: 0, centerY: 0, rotation: 0, scale: 1,
+      fontSize: 15, fontFamily: "Arial", fontWeight: "normal",
+      fontStyle: "normal", textDecoration: "none", letterSpacing: 0, lineHeight: 1.2,
+    },
+    required: ["content"],
+  },
+  freeform: {
+    defaults: { centerX: 0, centerY: 0, rotation: 0, scale: 1, closed: true },
+    required: ["path"],
+  },
+};
+
+function buildMaskInstance({
+  maskType,
+  params,
+}: {
+  maskType: string;
+  params?: Record<string, unknown>;
+}): Record<string, unknown> {
+  const shape = MASK_SHAPES[maskType];
+  if (!shape) {
+    throw new InvalidOperationError(
+      `Unknown mask type ${JSON.stringify(maskType)}. Known: ${Object.keys(MASK_SHAPES).join(", ")}`,
+    );
+  }
+  const merged: Record<string, unknown> = { ...BASE_MASK_PARAMS, ...shape.defaults };
+  for (const key of shape.required ?? []) {
+    if (params?.[key] === undefined) {
+      throw new InvalidOperationError(`A ${maskType} mask requires params.${key}`);
+    }
+  }
+  for (const [key, value] of Object.entries(params ?? {})) {
+    if (!(key in merged) && !(shape.required ?? []).includes(key)) {
+      throw new InvalidOperationError(
+        `A ${maskType} mask has no parameter ${JSON.stringify(key)}.`,
+      );
+    }
+    merged[key] = value;
+  }
+  return { id: generateUUID(), type: maskType, params: merged };
+}
+
 export class UnresolvedReferenceError extends Error {
   constructor(message: string) {
     super(message);
@@ -850,6 +999,8 @@ export function elementRefsOf(operation: Operation): ElementRefInput[] {
     case "element.upsertEffectKeyframe":
     case "element.removeEffectKeyframe":
     case "element.toggleSourceAudio":
+    case "element.addMask":
+    case "element.setMaskParams":
     case "element.removeMask":
     case "element.toggleMaskInverted":
     case "element.deleteMaskPoints":

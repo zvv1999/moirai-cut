@@ -65,6 +65,8 @@ export interface ElementSummary {
    * Keyframes per animated property, times in seconds from the CLIP's start.
    * Without these an agent can create a keyframe and never address it again.
    */
+  /** Masks on this clip. Geometry is normalised, not pixels. */
+  masks?: Array<{ id: string; type: string; params: Record<string, unknown> }>;
   animations?: Record<
     string,
     Array<{ id: string; timeSeconds: number | null; value: unknown; interpolation: string }>
@@ -560,6 +562,15 @@ export class AgentManager {
       ...(typeof element.effectType === "string" ? { effectType: element.effectType } : {}),
       ...(element.params && typeof element.params === "object"
         ? { params: element.params as Record<string, unknown> }
+        : {}),
+      ...(Array.isArray(element.masks) && element.masks.length > 0
+        ? {
+            masks: (element.masks as Array<Record<string, unknown>>).map((mask) => ({
+              id: String(mask.id ?? ""),
+              type: String(mask.type ?? ""),
+              params: (mask.params ?? {}) as Record<string, unknown>,
+            })),
+          }
         : {}),
       ...(element.animations && typeof element.animations === "object"
         ? {

@@ -539,3 +539,65 @@ test("masks are addressable and freeform-only where that matters", () => {
     DocumentOperationError,
   );
 });
+
+test("a mask can be created without any layout information", () => {
+  // Mask geometry is normalised — centerX/width are fractions of the element's
+  // bounds, not pixels — so a mask is fully specifiable from the file alone.
+  // An earlier version of this layer refused to create masks on the mistaken
+  // belief that it needed the element's rendered size.
+  const before = doc({ main: [element({ id: "A" })] });
+  const ref = { trackId: "main", elementId: "A" };
+
+  const added = apply(before, { type: "element.addMask", ...ref, maskType: "ellipse" });
+  const [mask] = added.scenes[0].tracks.main.elements[0].masks;
+  assert.equal(mask.type, "ellipse");
+  // 0.6 is DEFAULT_SHAPE_MASK_SHORT_SIDE_RATIO, the same value the editor falls
+  // back to when it has no element size either.
+  assert.equal(mask.params.width, 0.6);
+  assert.equal(mask.params.centerX, 0);
+  assert.equal(mask.params.inverted, false);
+
+  // Explicit geometry overrides the defaults.
+  const custom = apply(before, {
+    type: "element.addMask", ...ref, maskType: "rectangle",
+    params: { width: 0.25, height: 0.5, centerX: -0.2, feather: 8 },
+  });
+  assert.deepEqual(
+    { w: custom.scenes[0].tracks.main.elements[0].masks[0].params.width,
+      f: custom.scenes[0].tracks.main.elements[0].masks[0].params.feather },
+    { w: 0.25, f: 8 },
+  );
+
+  // Unknown parameters and unknown types are refused rather than written.
+  assert.throws(
+    () => apply(before, { type: "element.addMask", ...ref, maskType: "rectangle", params: { nope: 1 } }),
+    DocumentOperationError,
+  );
+  assert.throws(
+    () => apply(before, { type: "element.addMask", ...ref, maskType: "octagon" }),
+    DocumentOperationError,
+  );
+  // A text mask has no content to show without one.
+  assert.throws(
+    () => apply(before, { type: "element.addMask", ...ref, maskType: "text" }),
+    DocumentOperationError,
+  );
+
+  const tuned = apply(added, {
+    type: "element.setMaskParams", ...ref, maskId: mask.id, params: { feather: 12, inverted: true },
+  });
+  const after = tuned.scenes[0].tracks.main.elements[0].masks[0].params;
+  assert.equal(after.feather, 12);
+  assert.equal(after.inverted, true);
+  assert.equal(after.width, 0.6, "unnamed params are left alone");
+});
+
+test("masks do not attach to audio", () => {
+  const withAudio = doc({
+    audio: [{ id: "aud", type: "audio", name: "A", muted: false, elements: [element({ id: "z", type: "audio" })] }],
+  });
+  assert.throws(
+    () => apply(withAudio, { type: "element.addMask", trackId: "aud", elementId: "z", maskType: "rectangle" }),
+    DocumentOperationError,
+  );
+});

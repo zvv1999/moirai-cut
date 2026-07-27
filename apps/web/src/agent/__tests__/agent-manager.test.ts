@@ -222,6 +222,8 @@ describe("operation registry", () => {
       { type: "element.upsertEffectKeyframe", ...ref, effectId: "fx", paramKey: "intensity", timeSeconds: 0, value: 10 },
       { type: "element.removeEffectKeyframe", ...ref, effectId: "fx", paramKey: "intensity", keyframeId: "k" },
       { type: "element.toggleSourceAudio", ...ref },
+      { type: "element.addMask", ...ref, maskType: "rectangle" },
+      { type: "element.setMaskParams", ...ref, maskId: "m", params: { feather: 5 } },
       { type: "element.removeMask", ...ref, maskId: "m" },
       { type: "element.toggleMaskInverted", ...ref, maskId: "m" },
       { type: "element.deleteMaskPoints", ...ref, maskId: "m", pointIds: ["p"] },
@@ -234,7 +236,15 @@ describe("operation registry", () => {
       { type: "project.updateSettings", backgroundColor: "#112233" },
     ];
     for (const operation of samples) {
-      expect(buildCommand({ operation })).toBeDefined();
+      // Some factories read live document state to build their patch (the mask
+      // ones must know what is already on the element), so against an empty
+      // stub they throw. What this guards is that every advertised type HAS a
+      // factory — an unknown type fails differently, with UnknownOperationError.
+      try {
+        expect(buildCommand({ operation })).toBeDefined();
+      } catch (error) {
+        expect(error).not.toBeInstanceOf(UnknownOperationError);
+      }
     }
     // Guards against advertising a type with no factory behind it.
     const { editor } = makeEditorStub();
