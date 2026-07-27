@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
-import { readFile } from "node:fs/promises";
-import { basename, extname } from "node:path";
+import { readFile, unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, extname, join } from "node:path";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
 
@@ -147,6 +148,48 @@ export async function probeMedia({ filePath }) {
  *
  * Returns the asset id, which is what `element.insert` needs as `mediaId`.
  */
+/** Same fit algorithm as the editor's thumbnailSize: contain in 1280x720. */
+function thumbnailDimensions({ width, height }) {
+  const MAX_W = 1280, MAX_H = 720;
+  const aspect = width / height;
+  let w = width, h = height;
+  if (w > MAX_W) { w = MAX_W; h = Math.round(w / aspect); }
+  if (h > MAX_H) { h = MAX_H; w = Math.round(h * aspect); }
+  // ffmpeg requires even dimensions for yuvj-encoded jpegs on some builds.
+  return { width: Math.max(2, w - (w % 2)), height: Math.max(2, h - (h % 2)) };
+}
+
+/**
+ * A JPEG data URL for the asset, like the browser import path produces.
+ *
+ * Both the assets panel and the timeline read `thumbnailUrl` — the timeline
+ * shows video clips with NO strip at all without one (photos fall back to the
+ * raw url, video deliberately does not). Node imports skipped this, which is
+ * why file-imported videos showed as grey placeholders.
+ */
+export async function makeThumbnailDataUrl({ filePath, type, width, height, durationSeconds }) {
+  if (!width || !height || type === "audio") return undefined;
+  const target = thumbnailDimensions({ width, height });
+  const temp = join(tmpdir(), `oc-thumb-${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`);
+  const args = ["-y", "-v", "error"];
+  if (type === "video") {
+    // A hair in, not frame zero: phone clips often start on a black frame.
+    const seek = Math.min(0.5, (durationSeconds ?? 1) * 0.1);
+    args.push("-ss", String(seek));
+  }
+  args.push("-i", filePath, "-frames:v", "1", "-vf", `scale=${target.width}:${target.height}`, "-q:v", "5", temp);
+  try {
+    await run("ffmpeg", args);
+    const bytes = await readFile(temp);
+    return `data:image/jpeg;base64,${bytes.toString("base64")}`;
+  } catch {
+    // A missing thumbnail degrades to a placeholder; failing the import would not.
+    return undefined;
+  } finally {
+    await unlink(temp).catch(() => {});
+  }
+}
+
 export async function importMedia({ projectId, filePath, name, base = process.env.OPENCUT_BASE_URL ?? "http://localhost:3000" }) {
   const bytes = await readFile(filePath).catch((error) => {
     throw new MediaImportError(`Cannot read ${filePath}: ${error.message}`, "file_unreadable");
@@ -191,6 +234,14 @@ export async function importMedia({ projectId, filePath, name, base = process.en
     ...(probed.fps ? { fps: probed.fps.numerator / probed.fps.denominator } : {}),
     hasAudio: probed.hasAudio,
   };
+  const thumbnailUrl = await makeThumbnailDataUrl({
+    filePath,
+    type: probed.type,
+    width: probed.width,
+    height: probed.height,
+    durationSeconds: probed.durationSeconds,
+  });
+  if (thumbnailUrl) index[assetId].thumbnailUrl = thumbnailUrl;
   const writeResponse = await fetch(`${base}/api/media/${encodeURIComponent(projectId)}`, {
     method: "PUT",
     headers: { "content-type": "application/json" },

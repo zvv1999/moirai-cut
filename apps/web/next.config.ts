@@ -3,6 +3,10 @@ import { withBotId } from "botid/next/config";
 import { withContentCollections } from "@content-collections/next";
 
 const nextConfig: NextConfig = {
+	// The dev-tools launcher (the "N" button bottom-left) and its floating
+	// popovers sit on top of the editor and read as broken UI to anyone who is
+	// here to edit video rather than debug Next.
+	devIndicators: false,
 	compiler: {
 		removeConsole: process.env.NODE_ENV === "production",
 	},
