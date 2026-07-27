@@ -3,11 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "bin": { "opencut-mcp": "./src/server.mjs" },
+  "bin": {
+    "opencut-mcp": "./src/server.mjs"
+  },
   "scripts": {
     "start": "node src/server.mjs",
     "probe": "node src/probe.mjs",
-    "test": "node --test \"src/__tests__/*.test.mjs\""
+    "test": "node --test \"src/__tests__/*.test.mjs\"",
+    "agent:up": "node src/agent-up.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
