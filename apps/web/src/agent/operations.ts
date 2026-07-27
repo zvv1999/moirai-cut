@@ -16,6 +16,15 @@ import { UpdateClipEffectParamsCommand } from "@/commands/timeline/element/effec
 import { ReorderClipEffectsCommand } from "@/commands/timeline/element/effects/reorder-effect";
 import { UpsertKeyframeCommand } from "@/commands/timeline/element/keyframes/upsert-keyframe";
 import { RemoveKeyframeCommand } from "@/commands/timeline/element/keyframes/remove-keyframe";
+import { CreateSceneCommand } from "@/commands/scene/create-scene";
+import { DeleteSceneCommand } from "@/commands/scene/delete-scene";
+import { ToggleBookmarkCommand } from "@/commands/scene/toggle-bookmark";
+import { RemoveBookmarkCommand } from "@/commands/scene/remove-bookmark";
+import { MoveBookmarkCommand } from "@/commands/scene/move-bookmark";
+import { UpdateBookmarkCommand } from "@/commands/scene/update-bookmark";
+import { UpdateProjectSettingsCommand } from "@/commands/project/update-project-settings";
+import type { TProjectSettings } from "@/project/types";
+import type { MediaTime } from "@/wasm";
 import type { Command } from "@/commands";
 import type { CreateTimelineElement, TimelineElement, TrackType } from "@/timeline/types";
 import { toMediaTime } from "./time";
@@ -128,7 +137,25 @@ export type Operation =
       keyframeId: string;
       /** Written into params when the last keyframe goes, so the look is kept. */
       valueAtPlayhead?: number | null;
-    });
+    })
+  | { type: "scene.create"; name: string }
+  | { type: "scene.delete"; sceneId: string }
+  | { type: "bookmark.toggle"; timeSeconds: number }
+  | { type: "bookmark.remove"; timeSeconds: number }
+  | { type: "bookmark.move"; fromSeconds: number; toSeconds: number }
+  | {
+      type: "bookmark.update";
+      timeSeconds: number;
+      note?: string;
+      color?: string;
+      durationSeconds?: number;
+    }
+  | {
+      type: "project.updateSettings";
+      fps?: { numerator: number; denominator: number };
+      canvasSize?: { width: number; height: number };
+      backgroundColor?: string;
+    };
 
 export type OperationType = Operation["type"];
 
@@ -539,6 +566,77 @@ const COMMAND_FACTORIES: { [K in OperationType]: CommandFactory } = {
     });
   },
 
+  "scene.create": (operation) => {
+    const { name } = operation as Extract<Operation, { type: "scene.create" }>;
+    return new CreateSceneCommand({ name: requireId("name", name) });
+  },
+
+  "scene.delete": (operation) => {
+    const { sceneId } = operation as Extract<Operation, { type: "scene.delete" }>;
+    // Positional, unlike its siblings.
+    return new DeleteSceneCommand(requireId("sceneId", sceneId));
+  },
+
+  "bookmark.toggle": (operation) => {
+    const { timeSeconds } = operation as Extract<Operation, { type: "bookmark.toggle" }>;
+    return new ToggleBookmarkCommand(toMediaTime("timeSeconds", timeSeconds));
+  },
+
+  "bookmark.remove": (operation) => {
+    const { timeSeconds } = operation as Extract<Operation, { type: "bookmark.remove" }>;
+    return new RemoveBookmarkCommand(toMediaTime("timeSeconds", timeSeconds));
+  },
+
+  "bookmark.move": (operation) => {
+    const { fromSeconds, toSeconds } = operation as Extract<Operation, { type: "bookmark.move" }>;
+    return new MoveBookmarkCommand({
+      fromTime: toMediaTime("fromSeconds", fromSeconds),
+      toTime: toMediaTime("toSeconds", toSeconds),
+    });
+  },
+
+  "bookmark.update": (operation) => {
+    const { timeSeconds, note, color, durationSeconds } = operation as Extract<
+      Operation,
+      { type: "bookmark.update" }
+    >;
+    const updates: { note?: string; color?: string; duration?: MediaTime } = {};
+    if (note !== undefined) updates.note = note;
+    if (color !== undefined) updates.color = color;
+    if (durationSeconds !== undefined) {
+      updates.duration = toMediaTime("durationSeconds", durationSeconds);
+    }
+    if (Object.keys(updates).length === 0) {
+      throw new InvalidOperationError("bookmark.update names no field to change");
+    }
+    return new UpdateBookmarkCommand({
+      time: toMediaTime("timeSeconds", timeSeconds),
+      updates,
+    });
+  },
+
+  "project.updateSettings": (operation) => {
+    const { fps, canvasSize, backgroundColor } = operation as Extract<
+      Operation,
+      { type: "project.updateSettings" }
+    >;
+    // Positional, and a Partial — only the named settings change.
+    const updates: Record<string, unknown> = {};
+    if (fps !== undefined) updates.fps = fps;
+    if (canvasSize !== undefined) {
+      updates.canvasSize = canvasSize;
+      updates.canvasSizeMode = "custom";
+      updates.lastCustomCanvasSize = canvasSize;
+    }
+    if (backgroundColor !== undefined) {
+      updates.background = { type: "color", color: backgroundColor };
+    }
+    if (Object.keys(updates).length === 0) {
+      throw new InvalidOperationError("project.updateSettings names no setting to change");
+    }
+    return new UpdateProjectSettingsCommand(updates as Partial<TProjectSettings>);
+  },
+
   "element.duplicate": (operation) => {
     const { elements } = operation as Extract<Operation, { type: "element.duplicate" }>;
     return new DuplicateElementsCommand({ elements: requireRefs(elements) });
@@ -589,6 +687,13 @@ export function elementRefsOf(operation: Operation): ElementRefInput[] {
     case "element.upsertKeyframe":
     case "element.removeKeyframe":
       return [{ trackId: operation.trackId, elementId: operation.elementId }];
+    case "scene.create":
+    case "scene.delete":
+    case "bookmark.toggle":
+    case "bookmark.remove":
+    case "bookmark.move":
+    case "bookmark.update":
+    case "project.updateSettings":
     case "element.insert":
     case "track.add":
     case "track.remove":

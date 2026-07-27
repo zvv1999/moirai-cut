@@ -217,6 +217,13 @@ describe("operation registry", () => {
       { type: "element.reorderEffect", ...ref, fromIndex: 0, toIndex: 1 },
       { type: "element.upsertKeyframe", ...ref, propertyPath: "opacity", timeSeconds: 0, value: 1 },
       { type: "element.removeKeyframe", ...ref, propertyPath: "opacity", keyframeId: "k" },
+      { type: "scene.create", name: "Second" },
+      { type: "scene.delete", sceneId: "s2" },
+      { type: "bookmark.toggle", timeSeconds: 1 },
+      { type: "bookmark.remove", timeSeconds: 1 },
+      { type: "bookmark.move", fromSeconds: 1, toSeconds: 2 },
+      { type: "bookmark.update", timeSeconds: 1, note: "n" },
+      { type: "project.updateSettings", backgroundColor: "#112233" },
     ];
     for (const operation of samples) {
       expect(buildCommand({ operation })).toBeDefined();

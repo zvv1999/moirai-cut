@@ -204,6 +204,43 @@ export const OperationSchema = z
       .describe(
         "Add or move a keyframe. A SINGLE keyframe freezes the property for the whole clip — write both ends to get movement.",
       ),
+    z
+      .object({ type: z.literal("scene.create"), name: z.string().min(1) })
+      .describe("Add a scene. Never the main scene — a project has exactly one."),
+    z
+      .object({ type: z.literal("scene.delete"), sceneId: z.string().min(1) })
+      .describe("Delete a scene. The main scene cannot be deleted."),
+    z
+      .object({ type: z.literal("bookmark.toggle"), timeSeconds: seconds("Timeline position.") })
+      .describe("Add a bookmark at this time, or remove the one already there."),
+    z.object({ type: z.literal("bookmark.remove"), timeSeconds: seconds("Timeline position.") }),
+    z.object({
+      type: z.literal("bookmark.move"),
+      fromSeconds: seconds("Where the bookmark is now."),
+      toSeconds: seconds("Where it should go."),
+    }),
+    z
+      .object({
+        type: z.literal("bookmark.update"),
+        timeSeconds: seconds("Which bookmark, by its position."),
+        note: z.string().optional(),
+        color: z.string().optional(),
+        durationSeconds: seconds("Turns the marker into a range.").optional(),
+      })
+      .describe("Bookmarks are addressed by TIME, not by id. At least one field is required."),
+    z
+      .object({
+        type: z.literal("project.updateSettings"),
+        fps: z
+          .object({ numerator: z.number().int().positive(), denominator: z.number().int().positive() })
+          .optional()
+          .describe("Exact rational — 29.97 is 30000/1001."),
+        canvasSize: z
+          .object({ width: z.number().int().positive(), height: z.number().int().positive() })
+          .optional(),
+        backgroundColor: z.string().optional().describe('Hex, e.g. "#000000".'),
+      })
+      .describe("Change project-wide settings. Only the fields you name are touched."),
     z.object({
       type: z.literal("element.removeKeyframe"),
       trackId,
@@ -248,4 +285,11 @@ export const SCHEMA_OPERATION_TYPES = [
   "element.reorderEffect",
   "element.upsertKeyframe",
   "element.removeKeyframe",
+  "scene.create",
+  "scene.delete",
+  "bookmark.toggle",
+  "bookmark.remove",
+  "bookmark.move",
+  "bookmark.update",
+  "project.updateSettings",
 ];

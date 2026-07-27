@@ -93,6 +93,11 @@ export interface ProjectStateSummary {
    * for display; `numerator/denominator` is the truth.
    */
   fps: { numerator: number; denominator: number; decimal: number } | null;
+  /** Every scene, so scene.delete has something real to address. */
+  scenes: Array<{ id: string; name: string; isMain: boolean; isActive: boolean }>;
+  /** Bookmarks on the active scene. Addressed by TIME, not by id. */
+  bookmarks: Array<{ timeSeconds: number | null; note?: string; color?: string; durationSeconds?: number | null }>;
+  settings: { canvasSize: unknown; background: unknown };
   tracks: TrackSummary[];
   /**
    * The file revision this editor last read or wrote, when the document is
@@ -348,6 +353,24 @@ export class AgentManager {
       sceneId: scene?.id ?? null,
       sceneName: scene?.name ?? null,
       fps: describeFrameRate(project?.settings?.fps),
+      scenes: (project?.scenes ?? []).map((candidate) => ({
+        id: candidate.id,
+        name: candidate.name,
+        isMain: Boolean(candidate.isMain),
+        isActive: candidate.id === scene?.id,
+      })),
+      bookmarks: (scene?.bookmarks ?? []).map((bookmark) => ({
+        timeSeconds: toSeconds(bookmark.time),
+        ...(bookmark.note !== undefined ? { note: bookmark.note } : {}),
+        ...(bookmark.color !== undefined ? { color: bookmark.color } : {}),
+        ...(bookmark.duration !== undefined
+          ? { durationSeconds: toSeconds(bookmark.duration) }
+          : {}),
+      })),
+      settings: {
+        canvasSize: project?.settings?.canvasSize ?? null,
+        background: project?.settings?.background ?? null,
+      },
       loadedFileRevision: project?.metadata?.id
         ? this.editor.project.getKnownFileRevision(project.metadata.id)
         : null,

@@ -683,6 +683,124 @@ const OPERATIONS = {
     }
   },
 
+  "scene.create": (scene, op, document) => {
+    void scene;
+    if (typeof op.name !== "string" || !op.name) {
+      throw new DocumentOperationError("scene.create requires a non-empty name");
+    }
+    document.scenes = [
+      ...(document.scenes ?? []),
+      {
+        id: randomUUID(),
+        name: op.name,
+        // Never isMain: a second main scene would make getMainScene ambiguous,
+        // and the editor's own create defaults it false.
+        isMain: false,
+        tracks: {
+          overlay: [],
+          main: {
+            id: randomUUID(),
+            name: MAIN_TRACK_NAME,
+            type: "video",
+            elements: [],
+            muted: false,
+            hidden: false,
+          },
+          audio: [],
+        },
+        bookmarks: [],
+        createdAt: op.now ?? new Date(0).toISOString(),
+        updatedAt: op.now ?? new Date(0).toISOString(),
+      },
+    ];
+  },
+
+  "scene.delete": (scene, op, document) => {
+    void scene;
+    const scenes = document.scenes ?? [];
+    const target = scenes.find((candidate) => candidate.id === op.sceneId);
+    if (!target) {
+      throw new DocumentOperationError(`No scene ${op.sceneId}`, "unresolved_reference");
+    }
+    // canDeleteScene: the main scene is the project's spine and cannot go.
+    if (target.isMain) {
+      throw new DocumentOperationError("The main scene cannot be deleted");
+    }
+    document.scenes = scenes.filter((candidate) => candidate.id !== op.sceneId);
+    if (document.currentSceneId === op.sceneId) {
+      const fallback =
+        document.scenes.find((candidate) => candidate.isMain) ?? document.scenes[0] ?? null;
+      document.currentSceneId = fallback?.id ?? "";
+    }
+  },
+
+  "bookmark.toggle": (scene, op) => {
+    const time = toTicks("timeSeconds", op.timeSeconds);
+    const existing = (scene.bookmarks ?? []).find((bookmark) => bookmark.time === time);
+    scene.bookmarks = existing
+      ? scene.bookmarks.filter((bookmark) => bookmark.time !== time)
+      : [...(scene.bookmarks ?? []), { time }].sort((a, b) => a.time - b.time);
+  },
+
+  "bookmark.remove": (scene, op) => {
+    const time = toTicks("timeSeconds", op.timeSeconds);
+    const before = (scene.bookmarks ?? []).length;
+    scene.bookmarks = (scene.bookmarks ?? []).filter((bookmark) => bookmark.time !== time);
+    if (scene.bookmarks.length === before) {
+      throw new DocumentOperationError(
+        `No bookmark at ${op.timeSeconds}s.`,
+        "unresolved_reference",
+      );
+    }
+  },
+
+  "bookmark.move": (scene, op) => {
+    const from = toTicks("fromSeconds", op.fromSeconds);
+    const to = toTicks("toSeconds", op.toSeconds);
+    const bookmark = (scene.bookmarks ?? []).find((candidate) => candidate.time === from);
+    if (!bookmark) {
+      throw new DocumentOperationError(`No bookmark at ${op.fromSeconds}s.`, "unresolved_reference");
+    }
+    bookmark.time = to;
+    scene.bookmarks.sort((a, b) => a.time - b.time);
+  },
+
+  "bookmark.update": (scene, op) => {
+    const time = toTicks("timeSeconds", op.timeSeconds);
+    const bookmark = (scene.bookmarks ?? []).find((candidate) => candidate.time === time);
+    if (!bookmark) {
+      throw new DocumentOperationError(`No bookmark at ${op.timeSeconds}s.`, "unresolved_reference");
+    }
+    if (op.note !== undefined) bookmark.note = op.note;
+    if (op.color !== undefined) bookmark.color = op.color;
+    if (op.durationSeconds !== undefined) {
+      bookmark.duration = toTicks("durationSeconds", op.durationSeconds);
+    }
+    if (op.note === undefined && op.color === undefined && op.durationSeconds === undefined) {
+      throw new DocumentOperationError("bookmark.update names no field to change");
+    }
+  },
+
+  "project.updateSettings": (scene, op, document) => {
+    void scene;
+    const updates = {};
+    if (op.fps !== undefined) updates.fps = op.fps;
+    if (op.canvasSize !== undefined) {
+      updates.canvasSize = op.canvasSize;
+      // The editor treats an explicit size as custom; leaving the mode at
+      // "preset" would make the UI show a preset that no longer matches.
+      updates.canvasSizeMode = "custom";
+      updates.lastCustomCanvasSize = op.canvasSize;
+    }
+    if (op.backgroundColor !== undefined) {
+      updates.background = { type: "color", color: op.backgroundColor };
+    }
+    if (Object.keys(updates).length === 0) {
+      throw new DocumentOperationError("project.updateSettings names no setting to change");
+    }
+    document.settings = { ...document.settings, ...updates };
+  },
+
   "element.duplicate": (scene, op) => {
     for (const ref of requireRefs(op.elements)) {
       const { element } = findElement(scene, ref);
@@ -1139,6 +1257,25 @@ export function describeDocument({ document }) {
   };
   return {
     revision: typeof document.revision === "number" ? document.revision : 0,
+    // Scenes and bookmarks are addressed by id and by TIME respectively, so a
+    // caller cannot touch either without seeing them first.
+    scenes: (document.scenes ?? []).map((candidate) => ({
+      id: candidate.id,
+      name: candidate.name,
+      isMain: Boolean(candidate.isMain),
+      isActive: candidate.id === scene.id,
+    })),
+    bookmarks: (scene.bookmarks ?? []).map((bookmark) => ({
+      timeSeconds: toSeconds(bookmark.time),
+      ...(bookmark.note !== undefined ? { note: bookmark.note } : {}),
+      ...(bookmark.color !== undefined ? { color: bookmark.color } : {}),
+      ...(bookmark.duration !== undefined ? { durationSeconds: toSeconds(bookmark.duration) } : {}),
+    })),
+    settings: {
+      fps: document.settings?.fps ?? null,
+      canvasSize: document.settings?.canvasSize ?? null,
+      background: document.settings?.background ?? null,
+    },
     projectId: document.metadata?.id ?? null,
     projectName: document.metadata?.name ?? null,
     sceneId: scene.id,

@@ -428,3 +428,51 @@ test("the keyframable param table matches the editor's registry", async () => {
     assert.deepEqual(KEYFRAMABLE_PARAMS_FOR_TEST[key], expected, `${key} bounds drifted`);
   }
 });
+
+test("scenes and bookmarks are addressable and guarded", () => {
+  const before = doc();
+  // The main scene is the project's spine — canDeleteScene refuses it.
+  assert.throws(
+    () => apply(before, { type: "scene.delete", sceneId: "s1" }),
+    DocumentOperationError,
+  );
+
+  const withScene = apply(before, { type: "scene.create", name: "Second" });
+  assert.equal(withScene.scenes.length, 2);
+  assert.equal(withScene.scenes[1].isMain, false, "a second main scene would make getMainScene ambiguous");
+
+  // Deleting the ACTIVE scene must leave currentSceneId pointing somewhere real.
+  const active = { ...withScene, currentSceneId: withScene.scenes[1].id };
+  const deleted = apply(active, { type: "scene.delete", sceneId: withScene.scenes[1].id });
+  assert.equal(deleted.currentSceneId, "s1");
+
+  // Bookmarks are keyed by time, and toggle is add-or-remove.
+  const marked = apply(before, { type: "bookmark.toggle", timeSeconds: 1.5 });
+  assert.equal(marked.scenes[0].bookmarks.length, 1);
+  assert.equal(marked.scenes[0].bookmarks[0].time, 1.5 * S);
+  const unmarked = apply(marked, { type: "bookmark.toggle", timeSeconds: 1.5 });
+  assert.equal(unmarked.scenes[0].bookmarks.length, 0);
+
+  const moved = apply(marked, { type: "bookmark.move", fromSeconds: 1.5, toSeconds: 4 });
+  assert.equal(moved.scenes[0].bookmarks[0].time, 4 * S);
+  const noted = apply(marked, { type: "bookmark.update", timeSeconds: 1.5, note: "cut here" });
+  assert.equal(noted.scenes[0].bookmarks[0].note, "cut here");
+  assert.throws(
+    () => apply(marked, { type: "bookmark.update", timeSeconds: 99 }),
+    DocumentOperationError,
+  );
+});
+
+test("project settings change only what is named, and mark a custom canvas", () => {
+  const after = apply(doc(), {
+    type: "project.updateSettings",
+    canvasSize: { width: 1080, height: 1920 },
+  });
+  assert.deepEqual(after.settings.canvasSize, { width: 1080, height: 1920 });
+  // An explicit size is custom; leaving the mode at "preset" would make the UI
+  // show a preset that no longer matches the canvas.
+  assert.equal(after.settings.canvasSizeMode, "custom");
+  assert.deepEqual(after.settings.lastCustomCanvasSize, { width: 1080, height: 1920 });
+  assert.deepEqual(after.settings.fps, { numerator: 30, denominator: 1 }, "fps untouched");
+  assert.throws(() => apply(doc(), { type: "project.updateSettings" }), DocumentOperationError);
+});
