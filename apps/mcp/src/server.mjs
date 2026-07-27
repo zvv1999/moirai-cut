@@ -485,6 +485,80 @@ export function createOpenCutMcpServer() {
   );
 
   server.registerTool(
+    "delete_media",
+    {
+      description:
+        "Remove a media asset from a project. Reports which clips reference it FIRST — a clip whose media is gone does not error, it silently stops rendering — and refuses unless you say what should happen to them.",
+      inputSchema: {
+        projectId: z.string().min(1),
+        assetId: z.string().min(1).describe("From list_media."),
+        orphanedClips: z
+          .enum(["refuse", "delete", "keep"])
+          .default("refuse")
+          .describe(
+            "What to do with clips that use this asset. `refuse` (default) reports them and changes nothing; `delete` removes them too; `keep` leaves them referencing missing media, which makes them invisible.",
+          ),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true },
+    },
+    async ({ projectId: id, assetId, orphanedClips }) => {
+      try {
+        const document = await readProject({ projectId: id });
+        const state = describeDocument({ document });
+        const referencing = state.tracks.flatMap((track) =>
+          track.elements
+            .filter((element) => element.mediaId === assetId)
+            .map((element) => ({ trackId: track.id, elementId: element.id, name: element.name })),
+        );
+
+        if (referencing.length > 0 && orphanedClips === "refuse") {
+          return asError({
+            code: "media_in_use",
+            message: `${referencing.length} clip(s) still use this asset. Deleting it would make them stop rendering, silently. Pass orphanedClips: "delete" to remove them too, or "keep" to accept invisible clips.`,
+            clips: referencing,
+          });
+        }
+
+        if (referencing.length > 0 && orphanedClips === "delete") {
+          const { revision } = { revision: state.revision };
+          const result = applyOperationToDocument({
+            document,
+            operation: {
+              type: "element.delete",
+              elements: referencing.map(({ trackId, elementId }) => ({ trackId, elementId })),
+            },
+          });
+          await writeProject({
+            projectId: id,
+            document: refreshDerivedMetadata({
+              document: result.document,
+              now: new Date().toISOString(),
+            }),
+            baseRevision: revision,
+          });
+        }
+
+        const base = process.env.OPENCUT_BASE_URL ?? "http://localhost:3000";
+        const response = await fetch(
+          `${base}/api/media/${encodeURIComponent(id)}/${encodeURIComponent(assetId)}`,
+          { method: "DELETE" },
+        );
+        if (!response.ok) {
+          return asError({ code: "delete_failed", message: `${response.status} ${response.statusText}` });
+        }
+        return asText({
+          ok: true,
+          assetId,
+          removedClips: orphanedClips === "delete" ? referencing : [],
+          orphanedClips: orphanedClips === "keep" ? referencing : [],
+        });
+      } catch (error) {
+        return asError({ code: error.code ?? "driver_error", message: error.message });
+      }
+    },
+  );
+
+  server.registerTool(
     "render_frames",
     {
       description:
