@@ -3,7 +3,9 @@ import {
   buildAgentExportFileName,
   resolveAgentExportOptions,
   safeExportName,
+  startExportJob,
 } from "../export-jobs";
+import { EXPORT_QUALITY_VALUES } from "../../export";
 
 // The exports route's own rules, restated: names must satisfy this or the
 // upload 400s after minutes of encoding.
@@ -42,6 +44,10 @@ describe("safeExportName", () => {
 });
 
 describe("agent draft exports", () => {
+  test("draft is an agent preset, not a choice in the human export dialog", () => {
+    expect(EXPORT_QUALITY_VALUES).not.toContain("draft");
+  });
+
   test("draft quality resolves to a 12fps low-bitrate review preset", () => {
     const requested = {
       format: "mp4" as const,
@@ -97,5 +103,81 @@ describe("agent draft exports", () => {
         jobId: "a1b2c3d4-rest",
       }),
     ).toBe("Project-draft-a1b2c3d4.webm");
+  });
+
+  test("a draft job exports with the review preset and saves the branded file", async () => {
+    const exported: unknown[] = [];
+    const uploads: Array<{ url: string; init: RequestInit }> = [];
+    const editor = {
+      project: {
+        getActiveOrNull: () => ({ metadata: { id: "p one", name: "Project" } }),
+        cancelExport: () => undefined,
+      },
+      agent: { revision: 7 },
+      renderer: {
+        exportProject: async ({
+          options,
+          onProgress,
+        }: {
+          options: unknown;
+          onProgress: ({ progress }: { progress: number }) => void;
+          onCancel: () => boolean;
+        }) => {
+          exported.push(options);
+          onProgress({ progress: 0.5 });
+          return { success: true, buffer: new Uint8Array([1, 2, 3]).buffer };
+        },
+      },
+    };
+
+    const job = startExportJob(
+      {
+        options: {
+          format: "mp4",
+          quality: "draft",
+          fps: { numerator: 30, denominator: 1 },
+          includeAudio: true,
+        },
+        name: "review.mp4",
+      },
+      {
+        editor,
+        randomUUID: () => "a1b2c3d4-rest",
+        save: async (url, init) => {
+          uploads.push({ url, init });
+          return {
+            ok: true,
+            statusText: "OK",
+            json: async () => ({ path: "/exports/review-draft.mp4", sizeBytes: 3 }),
+          };
+        },
+      },
+    );
+
+    for (let turn = 0; turn < 4 && job.status === "running"; turn += 1) {
+      await Promise.resolve();
+    }
+
+    expect(exported).toEqual([{
+      format: "mp4",
+      quality: "draft",
+      fps: { numerator: 12, denominator: 1 },
+      includeAudio: true,
+    }]);
+    expect(uploads).toHaveLength(1);
+    expect(uploads[0].url).toBe("/api/exports/p%20one/review-draft.mp4");
+    expect(uploads[0].init).toMatchObject({
+      method: "PUT",
+      headers: { "content-type": "video/mp4" },
+    });
+    expect(job).toMatchObject({
+      jobId: "a1b2c3d4-rest",
+      status: "completed",
+      progress: 1,
+      startedAtRevision: 7,
+      path: "/exports/review-draft.mp4",
+      sizeBytes: 3,
+      error: null,
+    });
   });
 });
