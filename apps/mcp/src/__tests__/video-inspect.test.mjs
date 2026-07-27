@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
+import { writeFile } from "node:fs/promises";
 import test from "node:test";
-import { planInspectionTimes } from "../video-inspect.mjs";
+import { inspectMedia, planInspectionTimes } from "../video-inspect.mjs";
 
 test("uniform video samples use midpoints instead of risky endpoints", () => {
   assert.deepEqual(
@@ -59,4 +60,77 @@ test("the planner enforces finite positive sampling inputs", () => {
       }),
     (error) => error?.code === "invalid_inspection_request",
   );
+});
+
+test("inspectMedia builds a labeled sheet through injectable process dependencies", async () => {
+  const calls = [];
+  const result = await inspectMedia(
+    {
+      projectId: "project / one",
+      assetId: "asset / one",
+      count: 2,
+      cellWidth: 200,
+      base: "http://editor.test/",
+    },
+    {
+      loadMediaIndex: async () => ({
+        "asset / one": {
+          id: "asset / one",
+          name: "Source.mov",
+          type: "video",
+          duration: 8,
+          width: 1920,
+          height: 1080,
+        },
+      }),
+      runCommand: async (command, args) => {
+        calls.push({ command, args });
+        await writeFile(args.at(-1), args.includes("tile=2x1:padding=2") ? "sheet" : "cell");
+        return { stdout: "", stderr: "" };
+      },
+    },
+  );
+
+  assert.equal(result.jpegBase64, Buffer.from("sheet").toString("base64"));
+  assert.equal(result.labeled, true);
+  assert.deepEqual(result.grid, { columns: 2, rows: 1, cellWidth: 200 });
+  assert.deepEqual(result.cells, [
+    { cell: "r1c1", sourceSeconds: 2 },
+    { cell: "r1c2", sourceSeconds: 6 },
+  ]);
+  assert.equal(calls.length, 3, "two cells plus one tile command");
+  const inputIndex = calls[0].args.indexOf("-i");
+  assert.equal(
+    calls[0].args[inputIndex + 1],
+    "http://editor.test/api/media/project%20%2F%20one/asset%20%2F%20one",
+  );
+});
+
+test("inspectMedia falls back to an unlabeled cell when drawtext is unavailable", async () => {
+  let rejectedLabel = false;
+  const result = await inspectMedia(
+    {
+      projectId: "p1",
+      assetId: "m1",
+      atSeconds: [1],
+    },
+    {
+      loadMediaIndex: async () => ({
+        m1: { id: "m1", name: "Source.mov", type: "video", duration: 2 },
+      }),
+      runCommand: async (_command, args) => {
+        const filter = args[args.indexOf("-vf") + 1];
+        if (filter.includes("drawtext") && !rejectedLabel) {
+          rejectedLabel = true;
+          throw new Error("drawtext unavailable");
+        }
+        await writeFile(args.at(-1), filter.includes("tile=") ? "sheet" : "cell");
+        return { stdout: "", stderr: "" };
+      },
+    },
+  );
+
+  assert.equal(rejectedLabel, true);
+  assert.equal(result.labeled, false);
+  assert.equal(result.cells[0].sourceSeconds, 1);
 });
