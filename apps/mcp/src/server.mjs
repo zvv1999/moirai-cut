@@ -14,6 +14,7 @@ import {
 } from "./document.mjs";
 import { listProjects, readProject, writeProject } from "./project-file.mjs";
 import { importMedia, listMedia, mediaIndexOf } from "./media-import.mjs";
+import { analyzeAudio } from "./audio-analyze.mjs";
 
 /**
  * MCP server for an OpenCut editor tab.
@@ -458,6 +459,36 @@ export function createOpenCutMcpServer() {
           message: error.message,
           ...(error.detail ? { detail: error.detail } : {}),
         });
+      }
+    },
+  );
+
+  server.registerTool(
+    "analyze_audio",
+    {
+      description:
+        "Listen to an asset: overall loudness plus silence and sound intervals, in SOURCE-MEDIA seconds (feed them to trims/splits after adding the clip's own offset). This is how a cut lands on a pause instead of mid-word, and how dead air gets trimmed without guessing. Needs no browser.",
+      inputSchema: {
+        projectId: z.string().min(1),
+        assetId: z.string().min(1).describe("From list_media."),
+        noiseFloorDb: z
+          .number()
+          .max(0)
+          .optional()
+          .describe("Anything quieter counts as silence. Default -35 dB; use -45 for quiet rooms, -25 for noisy footage."),
+        minSilenceSeconds: z
+          .number()
+          .positive()
+          .optional()
+          .describe("Gaps shorter than this are not reported. Default 0.35s — below a natural speech pause."),
+      },
+      annotations: readOnly,
+    },
+    async ({ projectId: id, assetId, noiseFloorDb, minSilenceSeconds }) => {
+      try {
+        return asText(await analyzeAudio({ projectId: id, assetId, noiseFloorDb, minSilenceSeconds }));
+      } catch (error) {
+        return asError({ code: error.code ?? "driver_error", message: error.message });
       }
     },
   );
