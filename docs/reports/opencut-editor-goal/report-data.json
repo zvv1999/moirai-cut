@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 45,
-		"automatedTestsPassing": 480,
-		"archivedScreenshots": 49
+		"greenCapabilities": 49,
+		"automatedTestsPassing": 489,
+		"archivedScreenshots": 53
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -51,12 +51,34 @@
 		"V02",
 		"V03",
 		"V04",
+		"V05",
+		"V06",
+		"V07",
+		"V08",
 		"G01",
 		"G04",
 		"G06",
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["V05", "V06", "V07", "V08"],
+			"redCommits": ["ffae1bb"],
+			"greenCommit": "f98f392",
+			"result": "Motion tracking now offers fast, balanced, and precise analysis with progress, cancellation, editable regions, confidence and failure ranges, plus transform, mask, and stabilization binding. Retime combines constant speed, editable curves, reverse, freeze, and source-boundary feedback around a stable source-duration model. Stabilization, chroma key, and background removal share preview and export treatment. Project effect presets support folders, update, duplicate, append or replace, delete, and validated import and export.",
+			"tests": {
+				"targeted": "22/22 focused Web tests across tracking, retime resolution, retime splitting, and timeline update paths",
+				"fullSuite": "Web 406/406 with 1081 expectations, MCP 58/58, and ESLint custom rules 25/25 for 489 repository-relevant tests",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation for all 18 static pages at f98f392 in a clean worktree"
+			},
+			"browserVerification": "Tracked IMG_2133.MOV into 11 samples, bound transform and stabilization, edited a three-point 0.6x/2.2x/0.8x curve with reverse and freeze while retaining a 2.40-second timeline span, inspected live chroma-key and background-removal parameters, then saved, duplicated, appended, and replaced the Portrait / Keying / Reed cinematic key preset. A browser-discovered repeated-retime duration amplification defect was repaired and regression-tested. Compare-and-swap cleanup restored the exact revision-377 payload except timestamps and revision at revision 394.",
+			"screenshots": [
+				"assets/screenshots/V05-motion-tracking.png",
+				"assets/screenshots/V06-retime-curve-freeze.png",
+				"assets/screenshots/V07-stabilization-keying.png",
+				"assets/screenshots/V08-effect-presets.png"
+			]
+		},
 		{
 			"featureIds": ["V01", "V02", "V03", "V04"],
 			"redCommits": ["675d089"],
@@ -76,23 +98,10 @@
 			]
 		},
 		{
-			"featureIds": [
-				"C01",
-				"C02",
-				"C03",
-				"C04",
-				"C05",
-				"C06",
-				"C07"
-			],
-			"redCommits": [
-				"7935b41",
-				"b3fe623"
-			],
+			"featureIds": ["C01", "C02", "C03", "C04", "C05", "C06", "C07"],
+			"redCommits": ["7935b41", "b3fe623"],
 			"greenCommit": "b9fa6ba",
-			"supportingCommits": [
-				"827d8b6"
-			],
+			"supportingCommits": ["827d8b6"],
 			"result": "The Captions workbench now provides scoped transcription with progress, cancel, and retry; speaker and editable word timing; explicit cue saves and bulk correction; reusable project-level styles; linked bilingual text with independently rendered secondary colour and size; structural quality checks; and SRT, VTT, and ASS import/export with explicit loss warnings.",
 			"tests": {
 				"targeted": "10/10 focused caption-model, style-library, quality, VTT, SRT, and ASS tests with 33 expectations",
@@ -111,16 +120,8 @@
 			]
 		},
 		{
-			"featureIds": [
-				"A03",
-				"A04",
-				"A05",
-				"A06",
-				"A07"
-			],
-			"redCommits": [
-				"1dc3446"
-			],
+			"featureIds": ["A03", "A04", "A05", "A06", "A07"],
+			"redCommits": ["1dc3446"],
 			"greenCommit": "e71c53c",
 			"result": "The Audio workbench now combines local loudness and peak analysis, peak-safe non-destructive normalization, reversible denoise/voice/balance/gain processing, lossless source-audio separation recovery, waveform cache diagnostics, and a complete voice-over capture surface. Preview and export share the same processing and dynamic-gain model. Generated source companions carry a stable origin address; recovery copies audio edits back, removes only that companion, and blocks drifted clips rather than losing work.",
 			"tests": {
@@ -139,13 +140,8 @@
 			]
 		},
 		{
-			"featureIds": [
-				"A01",
-				"A02"
-			],
-			"redCommits": [
-				"3773a24"
-			],
+			"featureIds": ["A01", "A02"],
+			"redCommits": ["3773a24"],
 			"greenCommit": "386bab2",
 			"result": "Audio clips now expose editable volume envelopes directly on the timeline and selected clips gain clamped fade-in/out handles with shaded previews. Envelope drags seek the playhead and keep the numeric inspector exact; inspector edits read and write the same preview-aware element used by the handles. Window-level pointer lifecycles survive React rerenders, and moving the envelope layer outside the clip selection button removed both nested-button hydration issues.",
 			"tests": {
@@ -161,12 +157,8 @@
 			"knownRisks": "Dependency audit reports 45 pre-existing high or critical advisories; remediation is tracked under later reliability work rather than this audio interaction batch."
 		},
 		{
-			"featureIds": [
-				"T07"
-			],
-			"redCommits": [
-				"4afa396"
-			],
+			"featureIds": ["T07"],
+			"redCommits": ["4afa396"],
 			"greenCommit": "6d96912",
 			"result": "The shortcut workbench now exposes all 30 bindable commands, including unassigned actions, with search across descriptions, categories, action IDs, and current keys. Users can record replacements, receive conflict validation, import strictly validated JSON, export the active map, reset defaults, and see default versus custom state. Context menus, toolbar controls, and persistent timeline modes render the current map rather than stale defaults.",
 			"tests": {
@@ -175,17 +167,11 @@
 				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
 			},
 			"browserVerification": "Searched Ripple, assigned the previously unbound command to R, and observed Ripple editing: Off (R) immediately in the persistent mode row. Reassigning to occupied S was rejected without leaving recording active. Export completed, reset returned the workbench to Default, and the final user environment retained no verification customization.",
-			"screenshots": [
-				"assets/screenshots/T07-shortcut-workbench.png"
-			]
+			"screenshots": ["assets/screenshots/T07-shortcut-workbench.png"]
 		},
 		{
-			"featureIds": [
-				"T08"
-			],
-			"redCommits": [
-				"d99a90f"
-			],
+			"featureIds": ["T08"],
+			"redCommits": ["d99a90f"],
 			"greenCommit": "a4b7e9c",
 			"result": "Moves and edge trims now expose a shared pre-commit feedback model through a colour-coded live HUD. It reports exact timing, destination, snap source, automatic compatible-track creation for overlap avoidance, invalid cancellation, trim constraints, and ripple consequences. Ripple preview uses the same adjustment algorithm as final command execution, so downstream clips visibly shift before mouseup.",
 			"tests": {
@@ -200,12 +186,8 @@
 			]
 		},
 		{
-			"featureIds": [
-				"T06"
-			],
-			"redCommits": [
-				"754cecc"
-			],
+			"featureIds": ["T06"],
+			"redCommits": ["754cecc"],
 			"greenCommit": "d1967c5",
 			"result": "A persistent History surface saves named timeline snapshots, lists the newest 50 revisions from lightweight metadata, compares a selected snapshot as structured add, remove, move, rename, and content changes, and restores only after a second confirmation plus compare-and-swap revision check. Restores move forward and preserve the replaced state. MCP agents can request the same diff and stale agent restores are rejected.",
 			"tests": {
@@ -214,9 +196,7 @@
 				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
 			},
 			"browserVerification": "Saved Approved opening baseline at revision 255, created one temporary compound from two source clips, compared revision 257 to 255 as Add 2 and Remove 1, reviewed the clip-level changes, confirmed the restore warning, and restored as revision 258. The original clips returned with zero compounds; final API checks retained exactly 50 revisions, returned zero diff to the baseline, and returned 404 for a missing snapshot.",
-			"screenshots": [
-				"assets/screenshots/T06-timeline-snapshots.png"
-			]
+			"screenshots": ["assets/screenshots/T06-timeline-snapshots.png"]
 		},
 		{
 			"featureIds": ["T05"],
@@ -360,9 +340,7 @@
 				"lineCoverage": "88.67% for the media-organization core",
 				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
 			},
-			"screenshots": [
-				"assets/screenshots/M01-nested-media-bins.png"
-			]
+			"screenshots": ["assets/screenshots/M01-nested-media-bins.png"]
 		},
 		{
 			"featureIds": ["W08"],
@@ -376,9 +354,7 @@
 				"lineCoverage": "83.54% for the precision-trim core",
 				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
 			},
-			"screenshots": [
-				"assets/screenshots/W08-precision-trim-modes.png"
-			]
+			"screenshots": ["assets/screenshots/W08-precision-trim-modes.png"]
 		},
 		{
 			"featureIds": ["W07"],
@@ -392,9 +368,7 @@
 				"lineCoverage": "100% for the track-control core",
 				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
 			},
-			"screenshots": [
-				"assets/screenshots/W07-professional-track-controls.png"
-			]
+			"screenshots": ["assets/screenshots/W07-professional-track-controls.png"]
 		},
 		{
 			"featureIds": ["W06"],
@@ -407,9 +381,7 @@
 				"fullSuite": "386/386",
 				"productionBuild": "Passed compilation, TypeScript, page data, and 18 static pages"
 			},
-			"screenshots": [
-				"assets/screenshots/W06-persistent-edit-mode-status.png"
-			]
+			"screenshots": ["assets/screenshots/W06-persistent-edit-mode-status.png"]
 		},
 		{
 			"featureIds": ["W05"],
@@ -422,9 +394,7 @@
 				"functionCoverage": "100% for the timeline navigation core",
 				"lineCoverage": "96% for the timeline navigation core"
 			},
-			"screenshots": [
-				"assets/screenshots/W05-timeline-navigation-overview.png"
-			]
+			"screenshots": ["assets/screenshots/W05-timeline-navigation-overview.png"]
 		},
 		{
 			"featureIds": ["W04"],
@@ -437,9 +407,7 @@
 				"functionCoverage": "100% for the transport timing core",
 				"lineCoverage": "98.75% for the transport timing core"
 			},
-			"screenshots": [
-				"assets/screenshots/W04-playback-transport-controls.png"
-			]
+			"screenshots": ["assets/screenshots/W04-playback-transport-controls.png"]
 		},
 		{
 			"featureIds": ["W03"],

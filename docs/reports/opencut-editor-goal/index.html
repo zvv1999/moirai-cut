@@ -38,7 +38,7 @@
 						再用共享原子命令、计划预览和可审查变更形成 Agent 原生优势。
 					</p>
 					<div class="hero__meta">
-						<span class="status status--building">ACTIVE · M4</span>
+						<span class="status status--building">ACTIVE · M5</span>
 						<span class="pill">分支 feat/agent-drivable</span>
 						<span class="pill">目标 019fa427…914f</span>
 						<span class="pill">证据随每批实现持续更新</span>
@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">45</strong>
+							<strong class="metric__value">49</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">480</strong>
+							<strong class="metric__value">489</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">49</strong>
+							<strong class="metric__value">53</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -132,7 +132,7 @@
 								<h3>画面工具与效果</h3>
 								<p>调色、蒙版、跟踪、变速、稳定、抠像与效果预设。</p>
 							</div>
-							<span class="status status--todo">TODO</span>
+							<span class="status status--green">DONE</span>
 						</article>
 						<article class="milestone">
 							<span class="milestone__id">M5</span>
@@ -142,7 +142,7 @@
 									自动保存、恢复、版本、健康检查、性能、后台任务与完整导出流。
 								</p>
 							</div>
-							<span class="status status--todo">TODO</span>
+							<span class="status status--building">ACTIVE</span>
 						</article>
 						<article class="milestone">
 							<span class="milestone__id">M6</span>
@@ -195,7 +195,9 @@
 									<span class="status status--green">DONE</span>
 								</div>
 								<h3>基础画面整形进入统一检查器</h3>
-								<p>视频、图片和图形共享裁剪、水平/垂直镜像、圆角、阴影和描边模型；数值型几何参数可继续使用现有关键帧工作流。</p>
+								<p>
+									视频、图片和图形共享裁剪、水平/垂直镜像、圆角、阴影和描边模型；数值型几何参数可继续使用现有关键帧工作流。
+								</p>
 							</div>
 						</article>
 
@@ -217,7 +219,10 @@
 									<span class="status status--green">DONE</span>
 								</div>
 								<h3>调色参数保持非破坏且可复现</h3>
-								<p>曝光、对比度、色温、饱和度、高光、阴影和曲线形成统一处理链；严格解析 .cube 文件并以可调强度三线性采样，预览与导出共用实现。</p>
+								<p>
+									曝光、对比度、色温、饱和度、高光、阴影和曲线形成统一处理链；严格解析
+									.cube 文件并以可调强度三线性采样，预览与导出共用实现。
+								</p>
 							</div>
 						</article>
 
@@ -239,7 +244,9 @@
 									<span class="status status--green">DONE</span>
 								</div>
 								<h3>一条调节层可统一覆盖下方画面</h3>
-								<p>效果轨上的调节层只处理时间覆盖内、位于其下方的兼容视觉层；上方内容和非视觉背景不被误处理，参数仍可随时回改。</p>
+								<p>
+									效果轨上的调节层只处理时间覆盖内、位于其下方的兼容视觉层；上方内容和非视觉背景不被误处理，参数仍可随时回改。
+								</p>
 							</div>
 						</article>
 
@@ -261,7 +268,107 @@
 									<span class="status status--green">DONE</span>
 								</div>
 								<h3>蒙版从单个限制升级为可组合栈</h3>
-								<p>内置和自由蒙版可按顺序 Add、Intersect、Subtract 或 Exclude；每个蒙版保留反转、羽化、描边、关键帧与画布手柄。</p>
+								<p>
+									内置和自由蒙版可按顺序 Add、Intersect、Subtract 或
+									Exclude；每个蒙版保留反转、羽化、描边、关键帧与画布手柄。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/V05-motion-tracking.png"
+								data-lightbox-label="V05 运动跟踪、置信度与绑定"
+							>
+								<img
+									src="assets/screenshots/V05-motion-tracking.png"
+									alt="OpenCut 运动跟踪面板显示 11 个样本、质量模式、置信度与变换绑定"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">V05 · MOTION TRACKING</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>跟踪结果可检查、可修正、可复用</h3>
+								<p>
+									点位或区域跟踪支持三档质量、进度与取消；结果保留逐样本置信度和分段失败区间，并可绑定变换、蒙版或稳定器。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/V06-retime-curve-freeze.png"
+								data-lightbox-label="V06 速度曲线、倒放与定格"
+							>
+								<img
+									src="assets/screenshots/V06-retime-curve-freeze.png"
+									alt="OpenCut 变速面板显示三点速度曲线、倒放和定格区间"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">V06 · ADVANCED RETIME</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>复杂变速仍保持稳定的素材边界</h3>
+								<p>
+									恒定速度和可编辑曲线可叠加倒放、定格与边界反馈；稳定
+									sourceDuration 模型避免重复编辑把片段时长不断放大。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/V07-stabilization-keying.png"
+								data-lightbox-label="V07 稳定、绿幕与背景移除"
+							>
+								<img
+									src="assets/screenshots/V07-stabilization-keying.png"
+									alt="OpenCut 效果检查器显示稳定器、Chroma Key 与 Background Removal 参数"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">V07 · STABILIZE & KEY</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>分析型效果有进度也有质量反馈</h3>
+								<p>
+									稳定器复用跟踪结果并开放强度、自动裁切和质量状态；色度键与背景移除提供实时参数，预览和导出使用同一处理路径。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/V08-effect-presets.png"
+								data-lightbox-label="V08 分文件夹效果预设"
+							>
+								<img
+									src="assets/screenshots/V08-effect-presets.png"
+									alt="OpenCut 效果预设面板显示命名、文件夹、复制、追加和替换操作"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">V08 · EFFECT PRESETS</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>效果链成为可组织的工程资产</h3>
+								<p>
+									预设可命名、分文件夹、更新、复制、追加或替换应用，并以严格校验格式导入导出；本次真实验证覆盖完整保存与复用链路。
+								</p>
 							</div>
 						</article>
 
@@ -283,7 +390,10 @@
 									<span class="status status--green">DONE</span>
 								</div>
 								<h3>转写成为可恢复的编辑任务</h3>
-								<p>可选择全时间线或当前选区，过程显示进度并允许取消；失败保留明确原因和 Retry。无选区验证会在下载模型或处理音频前安全停止。</p>
+								<p>
+									可选择全时间线或当前选区，过程显示进度并允许取消；失败保留明确原因和
+									Retry。无选区验证会在下载模型或处理音频前安全停止。
+								</p>
 							</div>
 						</article>
 
@@ -305,7 +415,10 @@
 									<span class="status status--green">DONE</span>
 								</div>
 								<h3>说话人与逐词时间不会在导入后丢失</h3>
-								<p>转写请求真实 word timestamps，并保留说话人元数据；只有 cue 级时间的外部字幕也能一键生成可编辑逐词时间，本次验收生成并编辑了六个词。</p>
+								<p>
+									转写请求真实 word timestamps，并保留说话人元数据；只有 cue
+									级时间的外部字幕也能一键生成可编辑逐词时间，本次验收生成并编辑了六个词。
+								</p>
 							</div>
 						</article>
 
@@ -327,7 +440,10 @@
 									<span class="status status--green">DONE</span>
 								</div>
 								<h3>字幕校对从逐条返工变成批量流程</h3>
-								<p>搜索替换、多选、重复词与双空格清理、整体移时共用一个可撤销模型。验收将 Listen 批量改为 Stay，并把三条 cue 安全后移 0.2 秒。</p>
+								<p>
+									搜索替换、多选、重复词与双空格清理、整体移时共用一个可撤销模型。验收将
+									Listen 批量改为 Stay，并把三条 cue 安全后移 0.2 秒。
+								</p>
 							</div>
 						</article>
 
@@ -349,7 +465,10 @@
 									<span class="status status--green">DONE</span>
 								</div>
 								<h3>字幕样式成为工程资产</h3>
-								<p>样式随项目保存，可创建、更新、复制、批量应用或分离；样式和时间线写入都经过撤销历史。浏览器验证完成 Reed Bilingual 的应用、分离和撤销。</p>
+								<p>
+									样式随项目保存，可创建、更新、复制、批量应用或分离；样式和时间线写入都经过撤销历史。浏览器验证完成
+									Reed Bilingual 的应用、分离和撤销。
+								</p>
 							</div>
 						</article>
 
@@ -371,7 +490,10 @@
 									<span class="status status--green">DONE</span>
 								</div>
 								<h3>双语不是简单拼成一段文字</h3>
-								<p>主副文本共享 cue 时间，但使用独立布局、字号和颜色；渲染器按组合边界计算背景和换行。验收画面中副字幕以青色和更小字号单独呈现。</p>
+								<p>
+									主副文本共享 cue
+									时间，但使用独立布局、字号和颜色；渲染器按组合边界计算背景和换行。验收画面中副字幕以青色和更小字号单独呈现。
+								</p>
 							</div>
 						</article>
 
@@ -393,7 +515,10 @@
 									<span class="status status--green">DONE</span>
 								</div>
 								<h3>字幕问题在导出前可见</h3>
-								<p>检查器覆盖过长行、危险位置、重叠、异常间隙、过短时长、CPS 阅读速度和工程边界，并直接关联到 cue，避免把结构问题留到成片。</p>
+								<p>
+									检查器覆盖过长行、危险位置、重叠、异常间隙、过短时长、CPS
+									阅读速度和工程边界，并直接关联到 cue，避免把结构问题留到成片。
+								</p>
 							</div>
 						</article>
 
@@ -415,7 +540,11 @@
 									<span class="status status--green">DONE</span>
 								</div>
 								<h3>字幕可进可出，并说明格式损失</h3>
-								<p>文件选择和粘贴源都支持 SRT、VTT、ASS；导出保留各格式能表达的信息，并明确提示 SRT 无法保存说话人与可复用样式等限制。</p>
+								<p>
+									文件选择和粘贴源都支持
+									SRT、VTT、ASS；导出保留各格式能表达的信息，并明确提示 SRT
+									无法保存说话人与可复用样式等限制。
+								</p>
 							</div>
 						</article>
 
@@ -438,7 +567,10 @@
 								</div>
 								<h3>音量曲线现在可以直接在片段上编辑</h3>
 								<p>
-									包络线和关键帧覆盖在真实波形上，可直接增加节点并同时拖动时间与 dB。验收把 1.20s / −2.0dB 拖到 2.77s / −11.1dB，播放头跟随节点，检查器同步显示 −11.1；最终工程已恢复原关键帧。
+									包络线和关键帧覆盖在真实波形上，可直接增加节点并同时拖动时间与
+									dB。验收把 1.20s / −2.0dB 拖到 2.77s /
+									−11.1dB，播放头跟随节点，检查器同步显示
+									−11.1；最终工程已恢复原关键帧。
 								</p>
 							</div>
 						</article>
@@ -462,7 +594,8 @@
 								</div>
 								<h3>淡入淡出拥有同一套实时状态</h3>
 								<p>
-									时间线手柄、遮罩斜线和数值字段共享预览感知元素；输入数值会移动手柄，反向拖动也会更新检查器。窗口级指针生命周期避免重渲染中断拖拽，嵌套按钮导致的两条水合 Issues 已归零，验收后 Fade In 已持久化恢复为 0。
+									时间线手柄、遮罩斜线和数值字段共享预览感知元素；输入数值会移动手柄，反向拖动也会更新检查器。窗口级指针生命周期避免重渲染中断拖拽，嵌套按钮导致的两条水合
+									Issues 已归零，验收后 Fade In 已持久化恢复为 0。
 								</p>
 							</div>
 						</article>
@@ -486,7 +619,9 @@
 								</div>
 								<h3>标准化先看峰值余量，再决定增益</h3>
 								<p>
-									46.3 秒真实 WAV 在浏览器本地测得 −23.6 LUFS 与 −1.5 dBFS。目标差距虽有 9.6 dB，工作台仍按峰值上限建议 +0.5 dB，并把削波警告和“源文件不被改写”写在操作旁；写入后可由同一命令历史完整撤销。
+									46.3 秒真实 WAV 在浏览器本地测得 −23.6 LUFS 与 −1.5
+									dBFS。目标差距虽有 9.6 dB，工作台仍按峰值上限建议 +0.5
+									dB，并把削波警告和“源文件不被改写”写在操作旁；写入后可由同一命令历史完整撤销。
 								</p>
 							</div>
 						</article>
@@ -510,7 +645,9 @@
 								</div>
 								<h3>恢复不再留下第二份声音</h3>
 								<p>
-									分离时写入稳定来源地址；恢复会把音量、动画与处理参数带回视频，并只删除对应生成伴音。真实工程验证时间线音频片段从 1→2→1，残留伴音为 0；若伴音已经发生时间漂移，界面会阻止恢复而不是静默丢编辑。
+									分离时写入稳定来源地址；恢复会把音量、动画与处理参数带回视频，并只删除对应生成伴音。真实工程验证时间线音频片段从
+									1→2→1，残留伴音为
+									0；若伴音已经发生时间漂移，界面会阻止恢复而不是静默丢编辑。
 								</p>
 							</div>
 						</article>
@@ -534,7 +671,9 @@
 								</div>
 								<h3>预览与导出共用一条非破坏处理链</h3>
 								<p>
-									降噪、人声增强、声道平衡和独立处理增益都保存在片段参数中；实时播放通过 Web Audio 节点，最终混音走相同设置。真实工程连续启用两项处理后分别撤销，持久化参数精确回到基线。
+									降噪、人声增强、声道平衡和独立处理增益都保存在片段参数中；实时播放通过
+									Web Audio
+									节点，最终混音走相同设置。真实工程连续启用两项处理后分别撤销，持久化参数精确回到基线。
 								</p>
 							</div>
 						</article>
@@ -558,7 +697,8 @@
 								</div>
 								<h3>长音频只分析一次，只绘制眼前范围</h3>
 								<p>
-									同一源的并发分析被合并成一个 Promise，后续片段直接复用摘要；滚动、缩放和修剪只重新采样当前可视区。诊断区公开缓存数、命中、构建和错误，并允许仅重建当前波形。
+									同一源的并发分析被合并成一个
+									Promise，后续片段直接复用摘要；滚动、缩放和修剪只重新采样当前可视区。诊断区公开缓存数、命中、构建和错误，并允许仅重建当前波形。
 								</p>
 							</div>
 						</article>
@@ -582,7 +722,9 @@
 								</div>
 								<h3>设备和准备节奏在录音前就能确认</h3>
 								<p>
-									工作台实时枚举输入设备，真实浏览器识别到 Microphone 1；0、3、5 秒倒计时始终可见，默认 3 秒状态明确高亮。设备变化会自动刷新，录音进行中则锁定配置避免中途切源。
+									工作台实时枚举输入设备，真实浏览器识别到 Microphone 1；0、3、5
+									秒倒计时始终可见，默认 3
+									秒状态明确高亮。设备变化会自动刷新，录音进行中则锁定配置避免中途切源。
 								</p>
 							</div>
 						</article>
@@ -606,7 +748,11 @@
 								</div>
 								<h3>录音从设备选择一直走到可撤销落位</h3>
 								<p>
-									可选择输入设备和 0/3/5 秒倒计时，电平表只监看输入以避免回授；停止后生成顺序命名的 take，并把媒体导入与时间线落位合成一个原子命令。验收识别到 Microphone 1；为避免后台意外收录环境声，没有在自动测试中启动真实采集。
+									可选择输入设备和 0/3/5
+									秒倒计时，电平表只监看输入以避免回授；停止后生成顺序命名的
+									take，并把媒体导入与时间线落位合成一个原子命令。验收识别到
+									Microphone
+									1；为避免后台意外收录环境声，没有在自动测试中启动真实采集。
 								</p>
 							</div>
 						</article>
@@ -630,7 +776,9 @@
 								</div>
 								<h3>快捷键终于是可管理的系统，不是静态说明</h3>
 								<p>
-									30 个可绑定命令包含未分配项，可按描述、分类、Action ID 或当前按键搜索。自定义绑定会同步到菜单、工具提示和常驻模式条；冲突被拒绝，JSON 可导入导出，并可一键恢复默认。
+									30 个可绑定命令包含未分配项，可按描述、分类、Action ID
+									或当前按键搜索。自定义绑定会同步到菜单、工具提示和常驻模式条；冲突被拒绝，JSON
+									可导入导出，并可一键恢复默认。
 								</p>
 							</div>
 						</article>
@@ -654,7 +802,9 @@
 								</div>
 								<h3>Ripple 的连锁结果在松手前就发生</h3>
 								<p>
-									首镜头右边缘缩短 1.00s 时，HUD 同时显示播放头吸附与“后续 22 个镜头”影响范围，时间线用最终命令相同的算法预移动所有受影响片段。Escape 丢弃预览后，工程边界和轨道数完全不变。
+									首镜头右边缘缩短 1.00s 时，HUD 同时显示播放头吸附与“后续 22
+									个镜头”影响范围，时间线用最终命令相同的算法预移动所有受影响片段。Escape
+									丢弃预览后，工程边界和轨道数完全不变。
 								</p>
 							</div>
 						</article>
@@ -678,7 +828,8 @@
 								</div>
 								<h3>落点、吸附和冲突不再靠猜</h3>
 								<p>
-									移动 HUD 持续显示目标时间与目的轨道；进入冲突区时明确说明会新建兼容轨道，非法落点说明松手将取消。拖动中的片段以抬升阴影和半透明状态与原时间线区分。
+									移动 HUD
+									持续显示目标时间与目的轨道；进入冲突区时明确说明会新建兼容轨道，非法落点说明松手将取消。拖动中的片段以抬升阴影和半透明状态与原时间线区分。
 								</p>
 							</div>
 						</article>
@@ -702,7 +853,10 @@
 								</div>
 								<h3>恢复前先看清楚会改变什么</h3>
 								<p>
-									真实工程保存了命名基线，把两个片段临时合成为复合片段，再得到 Add 2 / Remove 1 的结构化差异和逐项说明。恢复需要二次确认并校验当前 revision；完成后以新版本向前推进，原始两个片段返回，临时复合片段消失。
+									真实工程保存了命名基线，把两个片段临时合成为复合片段，再得到
+									Add 2 / Remove 1
+									的结构化差异和逐项说明。恢复需要二次确认并校验当前
+									revision；完成后以新版本向前推进，原始两个片段返回，临时复合片段消失。
 								</p>
 							</div>
 						</article>
@@ -726,7 +880,8 @@
 								</div>
 								<h3>嵌套保留真实素材与相对节奏</h3>
 								<p>
-									两段真实素材被装入 3.80s 容器，内部仍可逐项改名和以 0.1s 调整相对位置；刷新后结构保留，渲染器在预览与导出时递归展开子片段。拆解与全局撤销/重做共用命令历史，最终工程已恢复原始剪切点。
+									两段真实素材被装入 3.80s 容器，内部仍可逐项改名和以 0.1s
+									调整相对位置；刷新后结构保留，渲染器在预览与导出时递归展开子片段。拆解与全局撤销/重做共用命令历史，最终工程已恢复原始剪切点。
 								</p>
 							</div>
 						</article>
@@ -750,7 +905,8 @@
 								</div>
 								<h3>转场现在是可管理对象，而不是一次性关键帧配方</h3>
 								<p>
-									真实工程把 0.50s 交叉淡化替换为 0.55s 淡黑转场，刷新后类型、时长和稳定地址仍保留。持续时间滑杆、细调、替换、移除与全局撤销/重做共用命令历史；非相邻素材会在变更前给出明确原因。
+									真实工程把 0.50s 交叉淡化替换为 0.55s
+									淡黑转场，刷新后类型、时长和稳定地址仍保留。持续时间滑杆、细调、替换、移除与全局撤销/重做共用命令历史；非相邻素材会在变更前给出明确原因。
 								</p>
 							</div>
 						</article>
@@ -774,7 +930,8 @@
 								</div>
 								<h3>标记既是人的注释，也是 Agent 的稳定地址</h3>
 								<p>
-									管理器同时展示片段范围与时间线标记的名称、颜色、时间、作用域和 ID
+									管理器同时展示片段范围与时间线标记的名称、颜色、时间、作用域和
+									ID
 									前缀。真实工程验证了备注、前后导航、刷新持久化，以及删除后的全局撤销/重做；MCP
 									与页面操作均支持按稳定 ID 更新。
 								</p>
@@ -800,8 +957,9 @@
 								</div>
 								<h3>关系可见、可持久化，也可随时拆开</h3>
 								<p>
-									普通编组与音视频链接使用独立关系，G/L 徽标直接出现在片段上。真实工程的首段视频与配乐链接后刷新仍保留，点击任一成员会选中两者；取消、撤销、重做验证为 0→2→0
-									个徽标并恢复干净工程。
+									普通编组与音视频链接使用独立关系，G/L
+									徽标直接出现在片段上。真实工程的首段视频与配乐链接后刷新仍保留，点击任一成员会选中两者；取消、撤销、重做验证为
+									0→2→0 个徽标并恢复干净工程。
 								</p>
 							</div>
 						</article>
@@ -825,7 +983,8 @@
 								</div>
 								<h3>点击、范围、切换和框选遵循同一套选择语义</h3>
 								<p>
-									真实工程中 Shift 按时间顺序跨文本、主视频和音频轨选出六个片段；Command
+									真实工程中 Shift
+									按时间顺序跨文本、主视频和音频轨选出六个片段；Command
 									只切换目标片段；拖框再次跨三类轨道得到六项。状态条持续显示选择数量和操作提示，每个片段同时暴露可访问的选中状态。
 								</p>
 							</div>
@@ -850,7 +1009,9 @@
 								</div>
 								<h3>先解释证据，再让用户决定是否清理</h3>
 								<p>
-									真实 44 项素材扫描无误报；加入字节完全一致的测试副本后，系统才给出 SHA-256
+									真实 44
+									项素材扫描无误报；加入字节完全一致的测试副本后，系统才给出
+									SHA-256
 									精确重复组。候选默认均保留，选择副本并二次确认后只删除副本，撤销/重做分别恢复
 									45/44 项，原图和代理始终保留。
 								</p>
@@ -900,7 +1061,9 @@
 								</div>
 								<h3>轻量预览与原画导出被明确隔离</h3>
 								<p>
-									真实图片生成 640×960、33 KB 代理并刷新持久化，素材库仍保持 44 项且卡片显示 P 徽标。预览构建只在代理启用且完整时切换源；最终导出继续读取原文件。开关、刷新、移除与撤销均已操作验证。
+									真实图片生成 640×960、33 KB 代理并刷新持久化，素材库仍保持 44
+									项且卡片显示 P
+									徽标。预览构建只在代理启用且完整时切换源；最终导出继续读取原文件。开关、刷新、移除与撤销均已操作验证。
 								</p>
 							</div>
 						</article>
@@ -924,7 +1087,9 @@
 								</div>
 								<h3>先看源素材，再决定放哪一段</h3>
 								<p>
-									视频卡支持悬停擦洗，双击或快捷菜单进入源监视器；播放、定位、I/O 快捷键、数值 In/Out 与范围时长保持同步。图中真实素材选中 0.40–1.80 秒，共 1.40 秒。
+									视频卡支持悬停擦洗，双击或快捷菜单进入源监视器；播放、定位、I/O
+									快捷键、数值 In/Out 与范围时长保持同步。图中真实素材选中
+									0.40–1.80 秒，共 1.40 秒。
 								</p>
 							</div>
 						</article>
@@ -948,7 +1113,8 @@
 								</div>
 								<h3>源范围可插入，也可帧边界覆盖</h3>
 								<p>
-									插入把选区放到播放头并自动选择可用轨道；覆盖会在目标轨两端切分、只替换交叠区间，并以一个命令撤销。真实工程两条路径均从 31→32 个片段，单次撤销恢复 31 个及原始名称序列。
+									插入把选区放到播放头并自动选择可用轨道；覆盖会在目标轨两端切分、只替换交叠区间，并以一个命令撤销。真实工程两条路径均从
+									31→32 个片段，单次撤销恢复 31 个及原始名称序列。
 								</p>
 							</div>
 						</article>
@@ -972,7 +1138,8 @@
 								</div>
 								<h3>复杂素材库可按真实剪辑条件逐层收窄</h3>
 								<p>
-									文件名、类型、时长、分辨率、时间线使用状态、可用性、标签与收藏可组合使用；结果数、活动条件数、清空入口与空结果提示始终同步。真实工程中“收藏 + select 标签”将 44 项准确收窄为 1 项。
+									文件名、类型、时长、分辨率、时间线使用状态、可用性、标签与收藏可组合使用；结果数、活动条件数、清空入口与空结果提示始终同步。真实工程中“收藏
+									+ select 标签”将 44 项准确收窄为 1 项。
 								</p>
 							</div>
 						</article>
@@ -1020,7 +1187,9 @@
 								</div>
 								<h3>大素材库开始具备可维护的层级</h3>
 								<p>
-									素材箱可创建、命名、嵌套、排序和跨层移动；已有多选语义延伸到“Move to bin”。删除操作明确保留源素材，并把子树中的全部素材安全回迁；命令撤销和刷新持久化均已在真实工程验证。
+									素材箱可创建、命名、嵌套、排序和跨层移动；已有多选语义延伸到“Move
+									to
+									bin”。删除操作明确保留源素材，并把子树中的全部素材安全回迁；命令撤销和刷新持久化均已在真实工程验证。
 								</p>
 							</div>
 						</article>
@@ -1044,7 +1213,10 @@
 								</div>
 								<h3>五类修剪语义可见、可用、可撤销</h3>
 								<p>
-									Standard、Ripple、Roll、Slip 与 Slide 常驻时间线上方，并根据真实片段与相邻关系解释可用性；Roll 保持相邻片段总时长，Slide 同步滚动两侧剪切点，所有位移按项目帧率对齐并进入统一撤销历史。
+									Standard、Ripple、Roll、Slip 与 Slide
+									常驻时间线上方，并根据真实片段与相邻关系解释可用性；Roll
+									保持相邻片段总时长，Slide
+									同步滚动两侧剪切点，所有位移按项目帧率对齐并进入统一撤销历史。
 								</p>
 							</div>
 						</article>
@@ -1092,7 +1264,8 @@
 								</div>
 								<h3>编辑模式不再依赖猜图标和悬停</h3>
 								<p>
-									磁吸、波纹和源音频关联状态以文字常驻显示；选中真实视频后可直接分离并恢复源音频，快捷键与 Shift 临时绕过提示也始终可见。
+									磁吸、波纹和源音频关联状态以文字常驻显示；选中真实视频后可直接分离并恢复源音频，快捷键与
+									Shift 临时绕过提示也始终可见。
 								</p>
 							</div>
 						</article>
@@ -1140,7 +1313,8 @@
 								</div>
 								<h3>逐帧、变速、循环和预览性能可直接控制</h3>
 								<p>
-									所有播放动作都保持可见并有明确名称；逐帧移动对齐项目帧率，变速同步音频调度，循环可在尾点携带余量回绕，Performance 模式则在播放时降低预览渲染频率。
+									所有播放动作都保持可见并有明确名称；逐帧移动对齐项目帧率，变速同步音频调度，循环可在尾点携带余量回绕，Performance
+									模式则在播放时降低预览渲染频率。
 								</p>
 							</div>
 						</article>
@@ -1343,119 +1517,204 @@
 							</thead>
 							<tbody>
 								<tr>
+									<td><strong>V05–V08</strong></td>
+									<td><code>ffae1bb</code> RED + <code>f98f392</code> GREEN</td>
+									<td>
+										目标 22/22；Web 406/406、1081 断言；MCP 58/58；规则
+										25/25；TypeScript / ESLint / 干净生产构建通过
+									</td>
+									<td>
+										真实首段视频生成 11
+										个跟踪样本并绑定变换/稳定；0.6x/2.2x/0.8x
+										曲线叠加倒放与定格后仍为
+										2.40s；检查抠像与背景移除；预设完成保存、复制、追加和替换；最终
+										revision 394 精确恢复原工程内容
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
+								<tr>
 									<td><strong>V01–V04</strong></td>
 									<td><code>675d089</code> RED + <code>19edeca</code> GREEN</td>
-									<td>目标 25/25、55 断言；MCP 40/40；全量 480/480、1056 断言；TypeScript / ESLint / 干净生产构建通过</td>
 									<td>
-										真实首段视频完成镜像、12%/8% 裁剪、18% 圆角和 6px 描边；五秒调节层完成曝光/对比度/色温/饱和度修改；Rectangle + Ellipse 以 Subtract 组合；最终 revision 366 精确恢复原工程内容
+										目标 25/25、55 断言；MCP 40/40；全量 480/480、1056
+										断言；TypeScript / ESLint / 干净生产构建通过
+									</td>
+									<td>
+										真实首段视频完成镜像、12%/8% 裁剪、18% 圆角和 6px
+										描边；五秒调节层完成曝光/对比度/色温/饱和度修改；Rectangle +
+										Ellipse 以 Subtract 组合；最终 revision 366
+										精确恢复原工程内容
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
 								<tr>
 									<td><strong>C01–C07</strong></td>
-									<td><code>7935b41</code> RED + <code>827d8b6</code> GREEN + <code>b3fe623</code> 样式 RED + <code>b9fa6ba</code> 样式 GREEN</td>
-									<td>目标 10/10、33 断言；全量 475/475、1047 断言；TypeScript / ESLint / 干净生产构建通过</td>
 									<td>
-										粘贴导入 3 条说话人 VTT；生成 6 个逐词时间；拼写 1→0；批量替换和 +0.2s 移时；样式创建/应用/分离/撤销；青色独立副字幕；质量检查、转写重试和 SRT 损失提示；最终字幕与样式均清零
+										<code>7935b41</code> RED + <code>827d8b6</code> GREEN +
+										<code>b3fe623</code> 样式 RED + <code>b9fa6ba</code> 样式
+										GREEN
+									</td>
+									<td>
+										目标 10/10、33 断言；全量 475/475、1047 断言；TypeScript /
+										ESLint / 干净生产构建通过
+									</td>
+									<td>
+										粘贴导入 3 条说话人 VTT；生成 6 个逐词时间；拼写
+										1→0；批量替换和 +0.2s
+										移时；样式创建/应用/分离/撤销；青色独立副字幕；质量检查、转写重试和
+										SRT 损失提示；最终字幕与样式均清零
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
 								<tr>
 									<td><strong>A03–A07</strong></td>
-									<td><code>1dc3446</code> RED + <code>e71c53c</code> GREEN + <code>0e226a7</code> 窄栏修复</td>
-									<td>目标 9/9；全量 464/464、1013 断言；TypeScript / ESLint / 干净生产构建通过</td>
 									<td>
-										真实 WAV −23.6 LUFS / −1.5 dBFS / +0.5 dB 建议；标准化和两项处理均撤销；源音频 1→2→1 且伴音归零；识别 Microphone 1、倒计时和电平入口；验收改动已恢复
+										<code>1dc3446</code> RED + <code>e71c53c</code> GREEN +
+										<code>0e226a7</code> 窄栏修复
+									</td>
+									<td>
+										目标 9/9；全量 464/464、1013 断言；TypeScript / ESLint /
+										干净生产构建通过
+									</td>
+									<td>
+										真实 WAV −23.6 LUFS / −1.5 dBFS / +0.5 dB
+										建议；标准化和两项处理均撤销；源音频 1→2→1 且伴音归零；识别
+										Microphone 1、倒计时和电平入口；验收改动已恢复
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
 								<tr>
 									<td><strong>A01 / A02</strong></td>
 									<td><code>3773a24</code> RED + <code>386bab2</code> GREEN</td>
-									<td>目标 3/3 + 属性字段回归；全量 458/458；TypeScript / ESLint / 干净生产构建通过</td>
 									<td>
-										包络 1.20s / −2.0dB → 2.77s / −11.1dB，检查器同步 −11.1；数值与淡入手柄双向同步；2 Issues 归零；最终关键帧和 Fade In 0 已恢复并持久化
+										目标 3/3 + 属性字段回归；全量 458/458；TypeScript / ESLint /
+										干净生产构建通过
+									</td>
+									<td>
+										包络 1.20s / −2.0dB → 2.77s / −11.1dB，检查器同步
+										−11.1；数值与淡入手柄双向同步；2 Issues 归零；最终关键帧和
+										Fade In 0 已恢复并持久化
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
 								<tr>
 									<td><strong>T07</strong></td>
 									<td><code>4afa396</code> RED + <code>6d96912</code> GREEN</td>
-									<td>目标 4/4；全量 455/455；TypeScript / ESLint / 生产构建通过</td>
 									<td>
-										搜索 Ripple；未分配 → R；模式条实时显示 Ripple editing: Off (R)；占用的 S 被拒绝；导出后恢复默认且无验收配置残留
+										目标 4/4；全量 455/455；TypeScript / ESLint / 生产构建通过
+									</td>
+									<td>
+										搜索 Ripple；未分配 → R；模式条实时显示 Ripple editing: Off
+										(R)；占用的 S 被拒绝；导出后恢复默认且无验收配置残留
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
 								<tr>
 									<td><strong>T08</strong></td>
 									<td><code>d99a90f</code> RED + <code>a4b7e9c</code> GREEN</td>
-									<td>目标 4/4 + 精修/交互回归；全量 453/453；TypeScript / ESLint / 生产构建通过</td>
 									<td>
-										重叠移动提前说明新建 1 轨；Ripple −1.00s 吸附播放头并预移动后续 22 段；两次均取消且 4 轨、原剪切点不变
+										目标 4/4 + 精修/交互回归；全量 453/453；TypeScript / ESLint
+										/ 生产构建通过
+									</td>
+									<td>
+										重叠移动提前说明新建 1 轨；Ripple −1.00s
+										吸附播放头并预移动后续 22 段；两次均取消且 4
+										轨、原剪切点不变
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
 								<tr>
 									<td><strong>T06</strong></td>
 									<td><code>754cecc</code> RED + <code>d1967c5</code> GREEN</td>
-									<td>目标 4/4 + MCP 工具面回归；全量 449/449；TypeScript / 新模块 ESLint / 生产构建通过</td>
 									<td>
-										命名 rev 255；临时复合后 257→255 显示 Add 2 / Remove 1；二次确认恢复为 rev 258；原始片段返回、复合为 0；历史固定 50 条
+										目标 4/4 + MCP 工具面回归；全量 449/449；TypeScript / 新模块
+										ESLint / 生产构建通过
+									</td>
+									<td>
+										命名 rev 255；临时复合后 257→255 显示 Add 2 / Remove
+										1；二次确认恢复为 rev 258；原始片段返回、复合为 0；历史固定
+										50 条
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
 								<tr>
 									<td><strong>T05</strong></td>
 									<td><code>212125e</code> RED + <code>06cc72b</code> GREEN</td>
-									<td>目标 4/4 + MCP/Agent/渲染器回归；全量 445/445；TypeScript / 新模块 ESLint / 生产构建通过</td>
 									<td>
-										两片段合成 3.80s；打开、容器/子项重命名、内部 +0.1s、刷新持久化；拆解/撤销/重做 0→1→0；原始边界已恢复
+										目标 4/4 + MCP/Agent/渲染器回归；全量 445/445；TypeScript /
+										新模块 ESLint / 生产构建通过
+									</td>
+									<td>
+										两片段合成 3.80s；打开、容器/子项重命名、内部
+										+0.1s、刷新持久化；拆解/撤销/重做 0→1→0；原始边界已恢复
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
 								<tr>
 									<td><strong>T04</strong></td>
 									<td><code>e370c11</code> RED + <code>bd1d192</code> GREEN</td>
-									<td>目标 4/4 + MCP/Agent/工具栏回归；全量 441/441；TypeScript / 新模块 ESLint / 生产构建通过</td>
 									<td>
-										0.50s Cross dissolve → 0.55s Fade through black；刷新持久化；移除/撤销/重做为 0→1→0；非相邻剪切点明确阻止；工程已清理
+										目标 4/4 + MCP/Agent/工具栏回归；全量 441/441；TypeScript /
+										新模块 ESLint / 生产构建通过
+									</td>
+									<td>
+										0.50s Cross dissolve → 0.55s Fade through
+										black；刷新持久化；移除/撤销/重做为
+										0→1→0；非相邻剪切点明确阻止；工程已清理
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
 								<tr>
 									<td><strong>T03</strong></td>
 									<td><code>8f40359</code> RED + <code>ff88630</code> GREEN</td>
-									<td>目标 4/4 + MCP/Agent 回归；全量 437/437；TypeScript / 新模块 ESLint / 生产构建通过</td>
 									<td>
-										时间线与片段范围各 1 个；命名、备注、颜色、ID、0.00/1.40s 导航、刷新持久化；删除后撤销 2、重做 0，工程已清理
+										目标 4/4 + MCP/Agent 回归；全量 437/437；TypeScript / 新模块
+										ESLint / 生产构建通过
+									</td>
+									<td>
+										时间线与片段范围各 1 个；命名、备注、颜色、ID、0.00/1.40s
+										导航、刷新持久化；删除后撤销 2、重做 0，工程已清理
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
 								<tr>
 									<td><strong>T02</strong></td>
 									<td><code>873eba8</code> RED + <code>f72d2f0</code> GREEN</td>
-									<td>目标 4/4 + 选择回归；全量 433/433；TypeScript / ESLint / 生产构建通过</td>
 									<td>
-										两主轨片段编组联选；视频 + 配乐链接刷新持久化；单击选中整组；取消/撤销/重做为 0→2→0，工程已清理
+										目标 4/4 + 选择回归；全量 433/433；TypeScript / ESLint /
+										生产构建通过
+									</td>
+									<td>
+										两主轨片段编组联选；视频 +
+										配乐链接刷新持久化；单击选中整组；取消/撤销/重做为
+										0→2→0，工程已清理
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
 								<tr>
 									<td><strong>T01</strong></td>
 									<td><code>af30d41</code> RED + <code>cf4b5de</code> GREEN</td>
-									<td>目标 4/4 + 既有交互回归；全量 429/429；TypeScript / ESLint / 生产构建通过</td>
 									<td>
-										Shift 跨文本、视频、音频选 6 项；Command 单项切换后 5 项；拖框跨轨再选 6 项；计数与 aria-pressed 全程一致
+										目标 4/4 + 既有交互回归；全量 429/429；TypeScript / ESLint /
+										生产构建通过
+									</td>
+									<td>
+										Shift 跨文本、视频、音频选 6 项；Command 单项切换后 5
+										项；拖框跨轨再选 6 项；计数与 aria-pressed 全程一致
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
 								<tr>
 									<td><strong>M07</strong></td>
 									<td><code>ffbf427</code> RED + <code>08a5743</code> GREEN</td>
-									<td>目标 4/4；全量 425/425；TypeScript / 新模块 ESLint / 生产构建通过</td>
 									<td>
-										真实 44 项无误报；精确副本按 SHA-256 识别且默认不选；只删除副本；撤销 45、重做 44；持久化索引保留原图和代理
+										目标 4/4；全量 425/425；TypeScript / 新模块 ESLint /
+										生产构建通过
+									</td>
+									<td>
+										真实 44 项无误报；精确副本按 SHA-256
+										识别且默认不选；只删除副本；撤销 45、重做
+										44；持久化索引保留原图和代理
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
@@ -1465,9 +1724,14 @@
 										<code>1b4539d</code> RED + <code>1489f19</code> GREEN +
 										<code>b322615</code> 持久化修复
 									</td>
-									<td>目标 6/6；全量 421/421；TypeScript / 新模块 ESLint / 生产构建通过</td>
 									<td>
-										真实图片代理 640×960 / 33 KB；刷新后 44/44 且 P 徽标保留；开关、移除、重命名及其撤销通过；初次不安全存储 ID 已由浏览器验收发现并修复
+										目标 6/6；全量 421/421；TypeScript / 新模块 ESLint /
+										生产构建通过
+									</td>
+									<td>
+										真实图片代理 640×960 / 33 KB；刷新后 44/44 且 P
+										徽标保留；开关、移除、重命名及其撤销通过；初次不安全存储 ID
+										已由浏览器验收发现并修复
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
@@ -1475,10 +1739,12 @@
 									<td><strong>M04</strong></td>
 									<td><code>d081554</code> RED + <code>d8a0af7</code> GREEN</td>
 									<td>
-										目标 4/4；全量 415/415；源范围核心 83.33% / 98.58%；生产构建通过
+										目标 4/4；全量 415/415；源范围核心 83.33% /
+										98.58%；生产构建通过
 									</td>
 									<td>
-										0.40–1.80s 播放与选区；插入 31→32→撤销 31；主轨覆盖边界切分 31→32→撤销 31，名称序列一致
+										0.40–1.80s 播放与选区；插入 31→32→撤销 31；主轨覆盖边界切分
+										31→32→撤销 31，名称序列一致
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
@@ -1489,17 +1755,22 @@
 										<code>96d54a3</code> 构建修复
 									</td>
 									<td>
-										目标 14/14；全量 411/411；筛选核心 100% / 91.36%；组织与元数据核心 93.88% / 91.15%；生产构建通过
+										目标 14/14；全量 411/411；筛选核心 100% /
+										91.36%；组织与元数据核心 93.88% / 91.15%；生产构建通过
 									</td>
 									<td>
-										标签/收藏/蓝色色标；收藏 + 标签组合筛选 1/44；刷新持久化；验收元数据已清理；0 应用警告/错误
+										标签/收藏/蓝色色标；收藏 + 标签组合筛选
+										1/44；刷新持久化；验收元数据已清理；0 应用警告/错误
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
 								<tr>
 									<td><strong>M01</strong></td>
 									<td><code>53b94a4</code> RED + <code>c71775f</code> GREEN</td>
-									<td>目标 5/5；全量 405/405；素材组织核心 92.5% / 88.67%；生产构建通过</td>
+									<td>
+										目标 5/5；全量 405/405；素材组织核心 92.5% /
+										88.67%；生产构建通过
+									</td>
 									<td>
 										根级/嵌套创建；重命名；真实素材归档；安全删除/撤销；刷新持久化；44
 										项素材已恢复为未归档
@@ -1509,19 +1780,27 @@
 								<tr>
 									<td><strong>W08</strong></td>
 									<td><code>9384172</code> RED + <code>d1bad1e</code> GREEN</td>
-									<td>目标 7/7；全量 400/400；精修核心 86.67% / 83.54%；生产构建通过</td>
+									<td>
+										目标 7/7；全量 400/400；精修核心 86.67% /
+										83.54%；生产构建通过
+									</td>
 									<td>
 										Roll 共享剪切点/撤销；Slide
-										移动中间片段与两侧边界/撤销；可用性原因；Standard 与 Ripple Off 已恢复
+										移动中间片段与两侧边界/撤销；可用性原因；Standard 与 Ripple
+										Off 已恢复
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
 								<tr>
 									<td><strong>W07</strong></td>
 									<td><code>57e699f</code> RED + <code>0e02216</code> GREEN</td>
-									<td>目标 7/7；全量 393/393；轨道控制核心 100% / 100%；生产构建通过</td>
 									<td>
-										五类新增菜单；重命名/撤销；锁定；独奏；65→101px 轨高/撤销；状态已恢复
+										目标 7/7；全量 393/393；轨道控制核心 100% /
+										100%；生产构建通过
+									</td>
+									<td>
+										五类新增菜单；重命名/撤销；锁定；独奏；65→101px
+										轨高/撤销；状态已恢复
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
@@ -1533,7 +1812,8 @@
 									</td>
 									<td>目标 4/4；全量 386/386；生产构建通过</td>
 									<td>
-										Snap / Ripple 状态切换；Audio Linked→Separated→Linked；默认值已恢复
+										Snap / Ripple 状态切换；Audio
+										Linked→Separated→Linked；默认值已恢复
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
@@ -1543,7 +1823,9 @@
 										<code>51b006c</code> / <code>0ce61e5</code> RED +
 										<code>fbf857a</code> GREEN
 									</td>
-									<td>目标 6/6；全量 384/384；导航核心 100% / 96%；生产构建通过</td>
+									<td>
+										目标 6/6；全量 384/384；导航核心 100% / 96%；生产构建通过
+									</td>
 									<td>
 										真实适配 552/552；定位播放头；总览点击/拖拽；横向滚轮 40px
 									</td>
@@ -1554,7 +1836,8 @@
 									<td><code>64897bf</code> RED + <code>6487908</code> GREEN</td>
 									<td>目标 7/7；全量 378/378；时间推进核心 100% / 98.75%</td>
 									<td>
-										起点/终点；前后逐帧；播放暂停；2×；循环回绕；Performance 预览
+										起点/终点；前后逐帧；播放暂停；2×；循环回绕；Performance
+										预览
 									</td>
 									<td><span class="status status--green">DONE</span></td>
 								</tr>
@@ -1564,7 +1847,9 @@
 										<code>c9f6ac8</code> / <code>d50740a</code> RED +
 										<code>07bef55</code> GREEN
 									</td>
-									<td>目标 11/11；全量 371/371；新导航、动作计划与检查器控件 100%</td>
+									<td>
+										目标 11/11；全量 371/371；新导航、动作计划与检查器控件 100%
+									</td>
 									<td>
 										前后/当前导航；轨道展开；多选；复制粘贴；按帧移动；插值与曲线
 									</td>
