@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 53,
-		"automatedTestsPassing": 498,
-		"archivedScreenshots": 57
+		"greenCapabilities": 57,
+		"automatedTestsPassing": 506,
+		"archivedScreenshots": 61
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -59,12 +59,34 @@
 		"R02",
 		"R03",
 		"R04",
+		"R05",
+		"R06",
+		"R07",
+		"R08",
 		"G01",
 		"G04",
 		"G06",
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["R05", "R06", "R07", "R08"],
+			"redCommits": ["0221846"],
+			"greenCommit": "7585b64",
+			"result": "Project health now reports addressable structural, media, audio, caption, and export hazards. Timeline clips render only inside a viewport with overscan and interaction pinning, media preview decoding is viewport-gated, and repeatable DOM, cache, and latency budgets are visible. Export, proxy, transcription, and analysis share a persistent module-level job registry with progress, cancellation, retry, and bounded history. The package API atomically builds and validates a portable .opencut folder containing project data, selected originals and/or proxies, captions, font references, and an exact-byte manifest.",
+			"tests": {
+				"targeted": "8/8 focused tests with 20 expectations",
+				"fullSuite": "Web 423/423 with 1124 expectations, MCP 58/58, and ESLint custom rules 25/25 for 506 repository-relevant tests",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation for all 18 static pages at 7585b64 in a clean worktree using Node 24"
+			},
+			"browserVerification": "The real project returned zero health findings and export-ready state. Its performance report measured 44 mounted media cards, 31 timeline clips, 50% waveform reuse, 98% thumbnail reuse, and 1.2 ms interaction latency. Completed analysis and export jobs remained visible after tab navigation. A proxies-only portable package validated with 4 files and 4.0 MB, including project, proxy, captions, and font manifest; all three temporary verification packages were then deleted. The live project remained equal to the revision-400 baseline except revision and updatedAt.",
+			"screenshots": [
+				"assets/screenshots/R05-project-health.png",
+				"assets/screenshots/R06-performance-budgets.png",
+				"assets/screenshots/R07-background-jobs.png",
+				"assets/screenshots/R08-portable-package.png"
+			]
+		},
 		{
 			"featureIds": ["R01", "R02", "R03", "R04"],
 			"redCommits": ["cfc79df"],

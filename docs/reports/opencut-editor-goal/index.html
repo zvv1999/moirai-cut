@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">53</strong>
+							<strong class="metric__value">57</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">498</strong>
+							<strong class="metric__value">506</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">57</strong>
+							<strong class="metric__value">61</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,106 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/R05-project-health.png"
+								data-lightbox-label="R05 工程健康检查"
+							>
+								<img
+									src="assets/screenshots/R05-project-health.png"
+									alt="OpenCut 工程健康检查显示零错误、零警告、零备注并可安全导出"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">R05 · PROJECT HEALTH</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>把结构与导出风险集中成可定位检查</h3>
+								<p>
+									统一扫描丢失素材、空隙、碎片、越界、静默区间、隐藏或静音内容、音频余量、字幕排版与导出阻断；每项结果都可直接跳转到时间点。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/R06-performance-budgets.png"
+								data-lightbox-label="R06 大工程性能预算"
+							>
+								<img
+									src="assets/screenshots/R06-performance-budgets.png"
+									alt="OpenCut 性能面板显示素材卡、时间线片段、缓存与交互延迟预算"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id"
+										>R06 · LARGE PROJECT PERFORMANCE</span
+									>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>长时间线与大素材库按视口支付渲染成本</h3>
+								<p>
+									时间线使用视口加预取窗口并固定正在交互的片段，素材预览延迟到邻近视口再解码；DOM、波形、缩略图和输入延迟都有可重复测量的预算。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/R07-background-jobs.png"
+								data-lightbox-label="R07 后台任务中心"
+							>
+								<img
+									src="assets/screenshots/R07-background-jobs.png"
+									alt="OpenCut 后台任务中心保留已完成的健康分析和便携工程导出"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">R07 · BACKGROUND JOBS</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>长任务不再被面板切换或弹层关闭打断</h3>
+								<p>
+									视频导出、代理、转写和分析共享工程级任务注册表，持续发布阶段与进度，并提供取消、失败重试和有界历史；用户可以继续剪辑再回来查看。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/R08-portable-package.png"
+								data-lightbox-label="R08 便携工程包"
+							>
+								<img
+									src="assets/screenshots/R08-portable-package.png"
+									alt="OpenCut 便携工程包显示代理模式、4 个文件、4.0 MB 和导入校验通过"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">R08 · PORTABLE PACKAGE</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>工程、媒体与伴随数据可以一起带走</h3>
+								<p>
+									可选择原片、代理或两者，原子生成
+									<code>.opencut</code>
+									目录包；工程、字幕、字体引用和精确字节清单在发布前完成安全路径与可导入性校验。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -1616,6 +1716,22 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>R05–R08</strong></td>
+									<td><code>0221846</code> RED + <code>7585b64</code> GREEN</td>
+									<td>
+										目标 8/8、20 断言；Web 423/423、1124 断言；MCP 58/58；规则
+										25/25；共 506 项；TypeScript / ESLint / Node 24
+										干净生产构建与 18 个静态页面通过
+									</td>
+									<td>
+										真实工程健康检查为 0/0/0 且可导出；性能预算测得 44
+										张素材卡、31 个时间线片段、98% 缩略图复用与 1.2ms
+										交互；分析和导出任务跨标签保留；代理便携包 4 文件、4.0
+										MB、导入校验通过，临时包已清理
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>R01–R04</strong></td>
 									<td><code>cfc79df</code> RED + <code>b0cbfb7</code> GREEN</td>
