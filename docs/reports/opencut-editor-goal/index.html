@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">24</strong>
+							<strong class="metric__value">25</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">441</strong>
+							<strong class="metric__value">445</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">25</strong>
+							<strong class="metric__value">26</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,30 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/T05-compound-clips.png"
+								data-lightbox-label="T05 可编辑复合片段"
+							>
+								<img
+									src="assets/screenshots/T05-compound-clips.png"
+									alt="OpenCut 复合片段管理器打开 Opening ritual V2，列出两个子片段及 0.00 秒和 2.50 秒相对时间，并提供逐项时序调整和拆解"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">T05 · COMPOUND CLIPS</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>嵌套保留真实素材与相对节奏</h3>
+								<p>
+									两段真实素材被装入 3.80s 容器，内部仍可逐项改名和以 0.1s 调整相对位置；刷新后结构保留，渲染器在预览与导出时递归展开子片段。拆解与全局撤销/重做共用命令历史，最终工程已恢复原始剪切点。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -788,6 +812,15 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>T05</strong></td>
+									<td><code>212125e</code> RED + <code>06cc72b</code> GREEN</td>
+									<td>目标 4/4 + MCP/Agent/渲染器回归；全量 445/445；TypeScript / 新模块 ESLint / 生产构建通过</td>
+									<td>
+										两片段合成 3.80s；打开、容器/子项重命名、内部 +0.1s、刷新持久化；拆解/撤销/重做 0→1→0；原始边界已恢复
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>T04</strong></td>
 									<td><code>e370c11</code> RED + <code>bd1d192</code> GREEN</td>

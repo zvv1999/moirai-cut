@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 24,
-		"automatedTestsPassing": 441,
-		"archivedScreenshots": 25
+		"greenCapabilities": 25,
+		"automatedTestsPassing": 445,
+		"archivedScreenshots": 26
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -29,6 +29,7 @@
 		"T02",
 		"T03",
 		"T04",
+		"T05",
 		"T07",
 		"G01",
 		"G04",
@@ -36,6 +37,19 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["T05"],
+			"redCommits": ["212125e"],
+			"greenCommit": "06cc72b",
+			"result": "Visual clips on one track can become one addressable nested sequence whose children retain complete media identity, original addressing, and relative timing. The manager creates, opens, renames, edits nested names and timing, and breaks apart through command history. Preview and export recursively expand nested children, while Agent and MCP inspection expose compact child metadata.",
+			"tests": {
+				"targeted": "4/4 new compound tests plus MCP document, schema-drift, agent-manager, renderer, and toolbar regressions",
+				"fullSuite": "445/445 from the repository root with the required WASM test preload",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
+			},
+			"browserVerification": "Two real clips became a 3.80s compound, the container and second child were renamed, the child moved 0.1s inside the nested sequence, and refresh retained the structure. Break apart, undo, and redo produced 0, 1, and 0 compound badges. Cleanup restored the original names and exact 0, 288000, and 456000 tick boundaries.",
+			"screenshots": ["assets/screenshots/T05-compound-clips.png"]
+		},
 		{
 			"featureIds": ["T04"],
 			"redCommits": ["e370c11"],
