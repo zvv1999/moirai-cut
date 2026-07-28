@@ -92,6 +92,7 @@ import {
 	type TimelineOverviewItem,
 } from "./timeline-navigation";
 import { getRevealPlayheadScrollLeft } from "@/timeline/navigation";
+import { TimelineModeStatus } from "./timeline-mode-status";
 
 const TRACKS_CONTAINER_MAX_HEIGHT = 800;
 const FALLBACK_CONTAINER_WIDTH = 1000;
@@ -540,6 +541,7 @@ export function Timeline() {
 				minZoom={minZoomLevel}
 				setZoomLevel={({ zoom }) => setZoomLevel(zoom)}
 			/>
+			<TimelineModeStatus />
 
 			<div className="relative flex flex-1 overflow-hidden" ref={timelineRef}>
 				<TrackLabelsPanel

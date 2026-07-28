@@ -19,6 +19,8 @@ test("timeline edit modes expose persistent state, labels, and shortcuts", () =>
 		/>,
 	);
 
+	expect(markup).toContain('role="group"');
+	expect(markup).toContain('aria-label="Timeline edit modes"');
 	expect(markup).toContain('aria-label="Auto snapping: On (N)"');
 	expect(markup).toContain('aria-pressed="true"');
 	expect(markup).toContain("Snap");

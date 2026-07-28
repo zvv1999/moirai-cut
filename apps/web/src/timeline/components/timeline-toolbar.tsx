@@ -14,12 +14,6 @@ import { TIMELINE_ZOOM_MAX } from "@/timeline/scale";
 import { sliderToZoom, zoomToSlider } from "@/timeline/zoom-utils";
 import { ScenesView } from "@/components/editor/scenes-view";
 import { type TActionWithOptionalArgs, invokeAction } from "@/actions";
-import {
-	canToggleSourceAudio,
-	getSourceAudioActionLabel,
-	isSourceAudioSeparated,
-} from "@/timeline/audio-separation";
-import { hasMediaId } from "@/timeline";
 import { useTimelineStore } from "@/timeline/timeline-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -27,20 +21,16 @@ import {
 	Delete02Icon,
 	SnowIcon,
 	ScissorIcon,
-	MagnetIcon,
 	SearchAddIcon,
 	SearchMinusIcon,
 	Copy01Icon,
 	AlignLeftIcon,
 	AlignRightIcon,
-	Link02Icon,
 	Layers01Icon,
 	Chart03Icon,
 	KeyframeIcon,
-	Unlink02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { OcRippleIcon } from "@/components/icons";
 import { GraphEditorPopover } from "./graph-editor/popover";
 import { PopoverTrigger } from "@/components/ui/popover";
 import { useGraphEditorController } from "./graph-editor/use-controller";
@@ -90,9 +80,6 @@ export function TimelineToolbar({
 function ToolbarLeftSection() {
 	const editor = useEditor();
 	const shortcutByAction = useTimelineToolbarShortcuts();
-	const mediaAssets = useEditor((currentEditor) =>
-		currentEditor.media.getAssets(),
-	);
 	const { selectedElements } = useElementSelection();
 	const graphEditor = useGraphEditorController();
 	const isCurrentlyBookmarked = useEditor((e) =>
@@ -104,32 +91,6 @@ function ToolbarLeftSection() {
 					elements: selectedElements,
 				})[0] ?? null)
 			: null;
-	const selectedMediaAsset = (() => {
-		if (!selectedElement) {
-			return null;
-		}
-
-		const { element } = selectedElement;
-		if (!hasMediaId(element)) {
-			return null;
-		}
-
-		return mediaAssets.find((asset) => asset.id === element.mediaId) ?? null;
-	})();
-	const canToggleSelectedSourceAudio =
-		!!selectedElement &&
-		canToggleSourceAudio(selectedElement.element, selectedMediaAsset);
-	const sourceAudioLabel =
-		selectedElement?.element.type === "video"
-			? getSourceAudioActionLabel({
-					element: selectedElement.element,
-				})
-			: "Extract audio";
-	const isSelectedSourceAudioSeparated =
-		selectedElement?.element.type === "video" &&
-		isSourceAudioSeparated({
-			element: selectedElement.element,
-		});
 	const hasSelectedElementKeyframes =
 		!!selectedElement &&
 		getElementKeyframes({
@@ -178,19 +139,6 @@ function ToolbarLeftSection() {
 					shortcut={shortcutByAction.get("split-right")}
 					onClick={({ event }) =>
 						handleAction({ action: "split-right", event })
-					}
-				/>
-
-				<TimelineToolbarButton
-					icon={
-						<HugeiconsIcon
-							icon={isSelectedSourceAudioSeparated ? Unlink02Icon : Link02Icon}
-						/>
-					}
-					tooltip={sourceAudioLabel}
-					disabled={!canToggleSelectedSourceAudio}
-					onClick={({ event }) =>
-						handleAction({ action: "toggle-source-audio", event })
 					}
 				/>
 
@@ -315,33 +263,8 @@ function ToolbarRightSection({
 	onZoomChange: (zoom: number) => void;
 	onZoom: (options: { direction: "in" | "out" }) => void;
 }) {
-	const snappingEnabled = useTimelineStore((s) => s.snappingEnabled);
-	const rippleEditingEnabled = useTimelineStore((s) => s.rippleEditingEnabled);
-	const toggleSnapping = useTimelineStore((s) => s.toggleSnapping);
-	const toggleRippleEditing = useTimelineStore((s) => s.toggleRippleEditing);
-	const shortcutByAction = useTimelineToolbarShortcuts();
-
 	return (
 		<div className="flex items-center gap-1">
-			<TooltipProvider delayDuration={500}>
-				<TimelineToolbarButton
-					icon={<HugeiconsIcon icon={MagnetIcon} />}
-					isActive={snappingEnabled}
-					tooltip="Auto snapping"
-					shortcut={shortcutByAction.get("toggle-snapping")}
-					onClick={() => toggleSnapping()}
-				/>
-
-				<TimelineToolbarButton
-					icon={<OcRippleIcon size={24} className="scale-110" />}
-					isActive={rippleEditingEnabled}
-					tooltip="Ripple editing"
-					onClick={() => toggleRippleEditing()}
-				/>
-			</TooltipProvider>
-
-			<div className="bg-border mx-1 h-6 w-px" />
-
 			<div className="flex items-center gap-1">
 				<Button
 					aria-label="Zoom out timeline"
