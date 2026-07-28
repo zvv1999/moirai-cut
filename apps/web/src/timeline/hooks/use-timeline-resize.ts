@@ -12,6 +12,7 @@ import {
 import type { ResizeSide } from "@/timeline/group-resize";
 import type { SnapPoint } from "@/timeline/snapping";
 import type { TimelineElement } from "@/timeline";
+import { resolveActiveTrimMode } from "@/timeline/precision-trim";
 
 export type { ResizeSide };
 
@@ -27,6 +28,12 @@ export function useTimelineResize({
 	const editor = useEditor();
 	const isShiftHeldRef = useShiftKey();
 	const snappingEnabled = useTimelineStore((state) => state.snappingEnabled);
+	const rippleEditingEnabled = useTimelineStore(
+		(state) => state.rippleEditingEnabled,
+	);
+	const precisionTrimMode = useTimelineStore(
+		(state) => state.precisionTrimMode,
+	);
 	const { selectedElements } = useElementSelection();
 
 	const config: ResizeConfig = {
@@ -36,6 +43,11 @@ export function useTimelineResize({
 		getSceneTracks: () => editor.scenes.getActiveScene().tracks,
 		getCurrentPlayheadTime: () => editor.playback.getCurrentTime(),
 		getActiveProjectFps: () => editor.project.getActive()?.settings.fps ?? null,
+		getTrimMode: () =>
+			resolveActiveTrimMode({
+				precisionMode: precisionTrimMode,
+				rippleEditingEnabled,
+			}),
 		selectedElements,
 		discardPreview: () => editor.timeline.discardPreview(),
 		previewElements: (updates) =>

@@ -5,6 +5,7 @@ export * from "./types";
 export * from "./drag";
 export * from "./track-capabilities";
 export * from "./track-controls";
+export * from "./precision-trim";
 export * from "./track-element-update";
 export * from "./element-utils";
 export * from "./audio-separation";

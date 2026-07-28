@@ -33,6 +33,10 @@ import {
 } from "@/timeline";
 import type { ElementRef } from "@/timeline/types";
 import type { FrameRate } from "opencut-wasm";
+import {
+	buildPrecisionTrimPlan,
+	type PrecisionTrimMode,
+} from "@/timeline/precision-trim";
 
 // --- Session ---
 
@@ -41,6 +45,9 @@ interface ResizeSession {
 	side: ResizeSide;
 	startX: number;
 	fps: FrameRate;
+	mode: PrecisionTrimMode;
+	trackId: string;
+	elementId: string;
 	members: GroupResizeMember[];
 	result: GroupResizeResult | null;
 }
@@ -56,6 +63,7 @@ export interface ResizeConfig {
 	getSceneTracks: () => SceneTracks;
 	getCurrentPlayheadTime: () => MediaTime;
 	getActiveProjectFps: () => FrameRate | null;
+	getTrimMode: () => PrecisionTrimMode;
 	selectedElements: ElementRef[];
 	discardPreview: () => void;
 	previewElements: (updates: GroupResizeUpdate[]) => void;
@@ -222,9 +230,13 @@ export class ResizeController {
 			? this.config.selectedElements
 			: [ref];
 
+		const mode = this.config.getTrimMode();
 		const members = buildResizeMembers({
 			tracks: this.config.getSceneTracks(),
-			selectedElements: activeSelection,
+			selectedElements:
+				mode === "standard" || mode === "ripple"
+					? activeSelection
+					: [ref],
 		});
 		if (members.length === 0) return;
 
@@ -235,6 +247,9 @@ export class ResizeController {
 			side,
 			startX: event.clientX,
 			fps,
+			mode,
+			trackId: track.id,
+			elementId: element.id,
 			members,
 			result: null,
 		};
@@ -333,16 +348,59 @@ export class ResizeController {
 					TICKS_PER_SECOND,
 			),
 		});
-		const deltaTime = this.snappedDelta({ session, rawDeltaTime });
-		const result = computeGroupResize({
-			members: session.members,
-			side: session.side,
-			deltaTime,
-			fps: session.fps,
-		});
+		const deltaTime =
+			session.mode === "slip"
+				? rawDeltaTime
+				: this.snappedDelta({ session, rawDeltaTime });
+		if (session.mode === "slip") {
+			this.config.onSnapPointChange?.(null);
+		}
+		const result =
+			session.mode === "standard" || session.mode === "ripple"
+				? computeGroupResize({
+						members: session.members,
+						side: session.side,
+						deltaTime,
+						fps: session.fps,
+					})
+				: this.buildPrecisionResult({ session, deltaTime });
 
 		session.result = result;
 		this.config.previewElements(result.updates);
+	}
+
+	private buildPrecisionResult({
+		session,
+		deltaTime,
+	}: {
+		session: ResizeSession;
+		deltaTime: MediaTime;
+	}): GroupResizeResult {
+		const tracks = this.config.getSceneTracks();
+		const track = [
+			...tracks.overlay,
+			tracks.main,
+			...tracks.audio,
+		].find((candidate) => candidate.id === session.trackId);
+		if (!track) {
+			return { deltaTime: mediaTime({ ticks: 0 }), updates: [] };
+		}
+		const plan = buildPrecisionTrimPlan({
+			mode: session.mode,
+			side: session.side,
+			trackId: session.trackId,
+			elementId: session.elementId,
+			elements: track.elements.map((element) => ({
+				...element,
+				retime: isRetimableElement(element) ? element.retime : undefined,
+			})),
+			deltaTime,
+			fps: session.fps,
+		});
+		return {
+			deltaTime: plan.appliedDelta,
+			updates: plan.updates,
+		};
 	}
 
 	private handleMouseUp(): void {

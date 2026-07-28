@@ -94,6 +94,7 @@ import {
 import { getRevealPlayheadScrollLeft } from "@/timeline/navigation";
 import { TimelineModeStatus } from "./timeline-mode-status";
 import { TrackControlRowView } from "./track-control-row";
+import { PrecisionTrimModeSelector } from "./precision-trim-mode-selector";
 
 const TRACKS_CONTAINER_MAX_HEIGHT = 800;
 const FALLBACK_CONTAINER_WIDTH = 1000;
@@ -520,6 +521,7 @@ export function Timeline() {
 				setZoomLevel={({ zoom }) => setZoomLevel(zoom)}
 			/>
 			<TimelineModeStatus />
+			<PrecisionTrimModeSelector />
 
 			<div className="relative flex flex-1 overflow-hidden" ref={timelineRef}>
 				<TrackLabelsPanel

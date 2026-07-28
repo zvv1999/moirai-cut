@@ -5,12 +5,15 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { PrecisionTrimMode } from "@/timeline/precision-trim";
 
 interface TimelineStore {
 	snappingEnabled: boolean;
 	toggleSnapping: () => void;
 	rippleEditingEnabled: boolean;
 	toggleRippleEditing: () => void;
+	precisionTrimMode: Exclude<PrecisionTrimMode, "ripple">;
+	setPrecisionTrimMode: (mode: PrecisionTrimMode) => void;
 	expandedElementIds: Set<string>;
 	toggleElementExpanded: (elementId: string) => void;
 }
@@ -32,6 +35,15 @@ export const useTimelineStore = create<TimelineStore>()(
 				}));
 			},
 
+			precisionTrimMode: "standard",
+
+			setPrecisionTrimMode: (mode) => {
+				set({
+					rippleEditingEnabled: mode === "ripple",
+					precisionTrimMode: mode === "ripple" ? "standard" : mode,
+				});
+			},
+
 			expandedElementIds: new Set<string>(),
 
 			toggleElementExpanded: (elementId) => {
@@ -51,6 +63,7 @@ export const useTimelineStore = create<TimelineStore>()(
 			partialize: (state) => ({
 				snappingEnabled: state.snappingEnabled,
 				rippleEditingEnabled: state.rippleEditingEnabled,
+				precisionTrimMode: state.precisionTrimMode,
 			}),
 		},
 	),

@@ -35,6 +35,21 @@ const notStubbed =
 const stub = (...names: string[]) =>
   Object.fromEntries(names.map((name) => [name, notStubbed(name)]));
 
+const ticksPerFrame = ({
+  numerator,
+  denominator,
+}: {
+  numerator: number;
+  denominator: number;
+}): number | undefined => {
+  if (numerator <= 0 || denominator <= 0) return undefined;
+  const tickNumerator = TICKS * denominator;
+  if (!Number.isSafeInteger(tickNumerator) || tickNumerator % numerator !== 0) {
+    return undefined;
+  }
+  return tickNumerator / numerator;
+};
+
 mock.module("opencut-wasm", () => ({
   // ── verifiable integer-tick arithmetic (media_time.rs) ──────────────────
   TICKS_PER_SECOND: () => TICKS,
@@ -50,11 +65,25 @@ mock.module("opencut-wasm", () => ({
   mediaTimeMax: ({ lhs, rhs }: { lhs: number; rhs: number }) => Math.max(lhs, rhs),
   mediaTimeClamp: ({ time, min, max }: { time: number; min: number; max: number }) =>
     Math.min(Math.max(time, min), max),
+  // frame_rate.rs:82 + media_time.rs:48-65 — exact Euclidean frame rounding.
+  roundToFrame: ({
+    time,
+    rate,
+  }: {
+    time: number;
+    rate: { numerator: number; denominator: number };
+  }) => {
+    const frameTicks = ticksPerFrame(rate);
+    if (frameTicks === undefined) return undefined;
+    const floor = Math.floor(time / frameTicks);
+    const remainder = time - floor * frameTicks;
+    const frame = remainder * 2 >= frameTicks ? floor + 1 : floor;
+    return frame * frameTicks;
+  },
 
   // ── refuse rather than approximate ──────────────────────────────────────
   ...stub(
-    // frame-rate dependent: needs FrameRate::ticks_per_frame + NTSC handling
-    "roundToFrame",
+    // frame-rate dependent operations not yet transcribed
     "floorToFrame",
     "isFrameAligned",
     "mediaTimeFromFrame",
