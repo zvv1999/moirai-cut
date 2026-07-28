@@ -57,6 +57,63 @@ describe("CommandManager.execute without verifyEffect (the interactive path)", (
 		expect(manager.canRedo()).toBe(false);
 		expect(first.undone).toBe(1);
 	});
+
+	test("publishes explainable undo and redo entries", () => {
+		const { manager } = makeManager();
+		const states: Array<{ undoLabel: string | null; redoLabel: string | null }> = [];
+		manager.subscribe(() => {
+			const { undoLabel, redoLabel } = manager.getHistoryState();
+			states.push({ undoLabel, redoLabel });
+		});
+
+		manager.execute({ command: new SpyCommand() });
+		expect(manager.getHistoryState()).toMatchObject({
+			undoDepth: 1,
+			redoDepth: 0,
+			undoLabel: "Spy",
+			redoLabel: null,
+		});
+
+		manager.undo();
+		expect(manager.getHistoryState()).toMatchObject({
+			undoDepth: 0,
+			redoDepth: 1,
+			undoLabel: null,
+			redoLabel: "Spy",
+		});
+		expect(states).toHaveLength(2);
+	});
+
+	test("restores relevant selection deterministically across undo and redo", () => {
+		const { manager, selection } = makeManager();
+		const original = [{ trackId: "t1", elementId: "before" }];
+		const created = [{ trackId: "t1", elementId: "after" }];
+		selection.restoreSnapshot({
+			snapshot: {
+				selectedElements: original,
+				selectedKeyframes: [],
+				keyframeSelectionAnchor: null,
+				selectedMaskPoints: null,
+			},
+		});
+
+		manager.execute({
+			command: new SpyCommand({
+				selection: {
+					selectedElements: created,
+					selectedKeyframes: [],
+					keyframeSelectionAnchor: null,
+					selectedMaskPoints: null,
+				},
+			}),
+		});
+		expect(selection.getSnapshot().selectedElements).toEqual(created);
+
+		manager.undo();
+		expect(selection.getSnapshot().selectedElements).toEqual(original);
+		manager.redo();
+		expect(selection.getSnapshot().selectedElements).toEqual(created);
+	});
 });
 
 describe("CommandManager.execute with verifyEffect", () => {
