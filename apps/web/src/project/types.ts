@@ -2,6 +2,7 @@ import type { FrameRate } from "opencut-wasm";
 import type { TScene } from "@/timeline/types";
 import type { MediaTime } from "@/wasm";
 import type { MediaOrganization } from "@/media/organization";
+import type { CaptionStyle } from "@/subtitles/styles";
 
 export type TBackground =
 	| {
@@ -34,6 +35,7 @@ export interface TProjectSettings {
 	lastCustomCanvasSize?: TCanvasSize | null;
 	originalCanvasSize?: TCanvasSize | null;
 	background: TBackground;
+	captionStyles?: CaptionStyle[];
 }
 
 export interface TTimelineViewState {

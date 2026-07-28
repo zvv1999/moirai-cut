@@ -2,10 +2,19 @@ import type { LanguageCode } from "./languages";
 
 export type TranscriptionLanguage = LanguageCode | "auto";
 
+export interface TranscriptionWord {
+	word: string;
+	start: number;
+	end: number;
+	confidence?: number;
+}
+
 export interface TranscriptionSegment {
 	text: string;
 	start: number;
 	end: number;
+	speaker?: string;
+	words?: TranscriptionWord[];
 }
 
 export interface TranscriptionResult {
@@ -44,4 +53,9 @@ export interface CaptionChunk {
 	text: string;
 	startTime: number;
 	duration: number;
+	secondaryText?: string;
+	speaker?: string;
+	wordTimings?: TranscriptionWord[];
+	styleId?: string;
+	styleDetached?: boolean;
 }

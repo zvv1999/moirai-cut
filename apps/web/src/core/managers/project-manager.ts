@@ -106,6 +106,7 @@ export class ProjectManager {
 					type: "color",
 					color: DEFAULT_BACKGROUND_COLOR,
 				},
+				captionStyles: [],
 			},
 			version: CURRENT_PROJECT_VERSION,
 			mediaOrganization: { bins: [], assetBinIds: {} },

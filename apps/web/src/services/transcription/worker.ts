@@ -57,6 +57,9 @@ async function handleInit({ modelId }: { modelId: string }) {
 	fileBytes.clear();
 
 	try {
+		// The library's generic overload returns a broader pipeline union even
+		// though this task name fixes the runtime result to ASR.
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 		transcriber = (await pipeline("automatic-speech-recognition", modelId, {
 			dtype: "q4",
 			device: "auto",
@@ -138,7 +141,7 @@ async function handleTranscribe({
 			chunk_length_s: DEFAULT_CHUNK_LENGTH_SECONDS,
 			stride_length_s: DEFAULT_STRIDE_SECONDS,
 			language: language === "auto" ? undefined : language,
-			return_timestamps: true,
+			return_timestamps: "word",
 		});
 
 		if (cancelled) return;
@@ -150,14 +153,40 @@ async function handleTranscribe({
 		const segments: TranscriptionSegment[] = [];
 
 		if (result.chunks) {
-			for (const chunk of result.chunks) {
-				if (chunk.timestamp && chunk.timestamp.length >= 2) {
-					segments.push({
-						text: chunk.text,
-						start: chunk.timestamp[0] ?? 0,
-						end: chunk.timestamp[1] ?? chunk.timestamp[0] ?? 0,
-					});
-				}
+			const words = result.chunks.flatMap((chunk) => {
+				if (!chunk.timestamp || chunk.timestamp.length < 2) return [];
+				const start = chunk.timestamp[0] ?? 0;
+				const end = chunk.timestamp[1] ?? start;
+				const text = chunk.text.trim();
+				if (!text || end <= start) return [];
+				const possibleSpeaker = (chunk as typeof chunk & { speaker?: unknown })
+					.speaker;
+				return [
+					{
+						word: text,
+						start,
+						end,
+						...(typeof possibleSpeaker === "string"
+							? { speaker: possibleSpeaker }
+							: {}),
+					},
+				];
+			});
+			for (let index = 0; index < words.length; index += 8) {
+				const group = words.slice(index, index + 8);
+				if (group.length === 0) continue;
+				const speaker = group.find((word) => word.speaker)?.speaker;
+				segments.push({
+					text: group.map((word) => word.word).join(" "),
+					start: group[0].start,
+					end: group.at(-1)?.end ?? group[0].end,
+					...(speaker ? { speaker } : {}),
+					words: group.map(({ word, start, end }) => ({
+						word,
+						start,
+						end,
+					})),
+				});
 			}
 		}
 

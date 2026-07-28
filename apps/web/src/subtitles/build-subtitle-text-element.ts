@@ -278,7 +278,9 @@ export function buildSubtitleTextElement({
 		placement: style.placement,
 	});
 
-	let content = caption.text;
+	let content = caption.secondaryText
+		? `${caption.text}\n${caption.secondaryText}`
+		: caption.text;
 	let positionX = 0;
 	let positionY = 0;
 
@@ -343,6 +345,14 @@ export function buildSubtitleTextElement({
 				style.background.offsetY ?? DEFAULTS.text.background.offsetY,
 			"transform.positionX": positionX,
 			"transform.positionY": positionY,
+			"caption.enabled": true,
+			"caption.primaryText": caption.text,
+			"caption.secondaryText": caption.secondaryText ?? "",
+			"caption.speaker": caption.speaker ?? "",
+			"caption.wordTimings": JSON.stringify(caption.wordTimings ?? []),
+			"caption.styleId": caption.styleId ?? "",
+			"caption.styleDetached": caption.styleDetached ?? false,
+			"caption.inlineStyle": caption.style ? JSON.stringify(caption.style) : "",
 		},
 	};
 }

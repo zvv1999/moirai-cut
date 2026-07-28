@@ -1,5 +1,6 @@
 import { parseAss } from "./ass";
 import { parseSrt } from "./srt";
+import { parseVtt } from "./vtt";
 import type { ParseSubtitleResult } from "./types";
 export type { ParseSubtitleResult, SubtitleCue } from "./types";
 
@@ -17,6 +18,8 @@ export function parseSubtitleFile({
 			return parseSrt({ input });
 		case "ass":
 			return parseAss({ input });
+		case "vtt":
+			return parseVtt({ input });
 		default:
 			throw new Error("Unsupported subtitle format");
 	}

@@ -3,6 +3,7 @@ import {
 	applyCaptionBulkEdit,
 	buildCaptionElementPatch,
 	collectCaptionCues,
+	createCaptionWordTimings,
 } from "@/subtitles/caption-model";
 import { auditCaptionCues } from "@/subtitles/caption-quality";
 import {
@@ -176,6 +177,20 @@ describe("caption data model", () => {
 		expect(patch.params?.["caption.secondaryText"]).toBe("循光而行");
 		expect(patch.duration).toBe(mediaTimeFromSeconds({ seconds: 1.2 }));
 	});
+
+	test("creates editable word timing when an imported cue has cue-level timing only", () => {
+		expect(
+			createCaptionWordTimings({
+				text: "Follow the light",
+				startTime: 2,
+				duration: 1.5,
+			}),
+		).toEqual([
+			{ word: "Follow", start: 2, end: 2.5 },
+			{ word: "the", start: 2.5, end: 3 },
+			{ word: "light", start: 3, end: 3.5 },
+		]);
+	});
 });
 
 describe("caption style library", () => {
@@ -187,7 +202,7 @@ describe("caption style library", () => {
 		});
 		const updated = updateCaptionStyle({
 			style: original,
-			updates: { name: "Documentary Bold", style: { fontWeight: 700 } },
+			updates: { name: "Documentary Bold", style: { fontWeight: "bold" } },
 		});
 		const duplicate = duplicateCaptionStyle({
 			style: updated,
@@ -201,7 +216,7 @@ describe("caption style library", () => {
 		expect(updated).toMatchObject({
 			id: "style-a",
 			name: "Documentary Bold",
-			style: { color: "#ffffff", fontSize: 44, fontWeight: 700 },
+			style: { color: "#ffffff", fontSize: 44, fontWeight: "bold" },
 		});
 		expect(duplicate).toMatchObject({
 			id: "style-b",
@@ -213,7 +228,7 @@ describe("caption style library", () => {
 			style: {
 				color: "#ffffff",
 				fontSize: 44,
-				fontWeight: 700,
+				fontWeight: "bold",
 				textAlign: "left",
 			},
 		});
@@ -227,7 +242,7 @@ describe("caption quality checks", () => {
 				captionElement({
 					id: "long",
 					text: "This caption line is deliberately much too long for a safe subtitle",
-					start: -0.2,
+					start: 0,
 					duration: 0.25,
 					positionY: 500,
 				}),
