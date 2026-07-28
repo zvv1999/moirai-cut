@@ -126,9 +126,7 @@ describe("buildKeyframeAwareTransformUpdates", () => {
 		});
 		const xKeyframes = getElementKeyframes({
 			animations: updates.animations,
-		}).filter(
-			(keyframe) => keyframe.propertyPath === "transform.positionX",
-		);
+		}).filter((keyframe) => keyframe.propertyPath === "transform.positionX");
 
 		expect(xKeyframes).toHaveLength(2);
 		expect(xKeyframes.find((keyframe) => keyframe.time === 50)?.value).toBe(25);
