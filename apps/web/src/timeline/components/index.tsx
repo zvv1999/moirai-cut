@@ -87,6 +87,11 @@ import { DragLine } from "./drag-line";
 import { invokeAction } from "@/actions";
 import { resolveTimelineElementIntersections } from "./selection-hit-testing";
 import { cn } from "@/utils/ui";
+import {
+	TimelineOverview,
+	type TimelineOverviewItem,
+} from "./timeline-navigation";
+import { getRevealPlayheadScrollLeft } from "@/timeline/navigation";
 
 const TRACKS_CONTAINER_MAX_HEIGHT = 800;
 const FALLBACK_CONTAINER_WIDTH = 1000;
@@ -146,9 +151,13 @@ export function Timeline() {
 	const trackLabelsRef = useRef<HTMLDivElement>(null);
 	const playheadRef = useRef<HTMLDivElement>(null);
 	const trackLabelsScrollRef = useRef<HTMLDivElement>(null);
+	const overviewScrollRafRef = useRef<number | null>(null);
 
 	const [currentSnapPoint, setCurrentSnapPoint] = useState<SnapPoint | null>(
 		null,
+	);
+	const [overviewScrollLeft, setOverviewScrollLeft] = useState(
+		() => editor.project.getTimelineViewState()?.scrollLeft ?? 0,
 	);
 	const { width: tracksContainerWidth } = useContainerSize({
 		containerRef: tracksContainerRef,
@@ -173,8 +182,12 @@ export function Timeline() {
 
 	const savedViewState = editor.project.getTimelineViewState();
 
-	const { zoomLevel, setZoomLevel, handleWheel, saveScrollPosition } =
-		useTimelineZoom({
+	const {
+		zoomLevel,
+		setZoomLevel,
+		setZoomLevelAtViewportOffset,
+		saveScrollPosition,
+	} = useTimelineZoom({
 			containerRef: timelineRef,
 			minZoom: minZoomLevel,
 			initialZoom: savedViewState?.zoomLevel,
@@ -205,6 +218,13 @@ export function Timeline() {
 		setZoomLevelRef.current = setZoomLevel;
 	}, [setZoomLevel]);
 
+	const setZoomLevelAtViewportOffsetRef = useRef(
+		setZoomLevelAtViewportOffset,
+	);
+	useEffect(() => {
+		setZoomLevelAtViewportOffsetRef.current = setZoomLevelAtViewportOffset;
+	}, [setZoomLevelAtViewportOffset]);
+
 	const saveScrollPositionRef = useRef(saveScrollPosition);
 	useEffect(() => {
 		saveScrollPositionRef.current = saveScrollPosition;
@@ -214,6 +234,25 @@ export function Timeline() {
 	useEffect(() => {
 		minZoomLevelRef.current = minZoomLevel;
 	}, [minZoomLevel]);
+
+	const scheduleOverviewScrollUpdate = useCallback((scrollLeft: number) => {
+		if (overviewScrollRafRef.current !== null) {
+			cancelAnimationFrame(overviewScrollRafRef.current);
+		}
+		overviewScrollRafRef.current = requestAnimationFrame(() => {
+			setOverviewScrollLeft(scrollLeft);
+			overviewScrollRafRef.current = null;
+		});
+	}, []);
+
+	useEffect(
+		() => () => {
+			if (overviewScrollRafRef.current !== null) {
+				cancelAnimationFrame(overviewScrollRafRef.current);
+			}
+		},
+		[],
+	);
 
 	// Pushes tracks scroll position to the two overflow:hidden followers
 	// (ruler and track labels). Called from the wheel handler (before paint,
@@ -227,7 +266,8 @@ export function Timeline() {
 		if (trackLabelsScrollRef.current) {
 			trackLabelsScrollRef.current.scrollTop = tracks.scrollTop;
 		}
-	}, []);
+		scheduleOverviewScrollUpdate(tracks.scrollLeft);
+	}, [scheduleOverviewScrollUpdate]);
 
 	// Single non-passive capture listener owns all wheel input. Prevents any
 	// native scroll or browser zoom from firing inside the timeline.
@@ -236,6 +276,7 @@ export function Timeline() {
 		if (!container) return;
 
 		let pendingZoomDelta = 0;
+		let pendingZoomPointerOffset = 0;
 		let zoomRafId: ReturnType<typeof requestAnimationFrame> | null = null;
 
 		const onWheel = (e: WheelEvent) => {
@@ -243,8 +284,15 @@ export function Timeline() {
 
 			if (isZoom) {
 				e.preventDefault();
+				const tracks = tracksScrollRef.current;
+				if (!tracks) return;
 				const normalizedDelta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
 				pendingZoomDelta += normalizedDelta;
+				const tracksRect = tracks.getBoundingClientRect();
+				pendingZoomPointerOffset = Math.max(
+					0,
+					Math.min(tracks.clientWidth, e.clientX - tracksRect.left),
+				);
 
 				if (zoomRafId === null) {
 					zoomRafId = requestAnimationFrame(() => {
@@ -252,7 +300,10 @@ export function Timeline() {
 						const cappedDelta =
 							Math.sign(frameRawDelta) * Math.min(Math.abs(frameRawDelta), 30);
 						const zoomFactor = Math.exp(-cappedDelta / 300);
-						setZoomLevelRef.current((prev) => prev * zoomFactor);
+						setZoomLevelAtViewportOffsetRef.current({
+							zoomLevel: (prev) => prev * zoomFactor,
+							pointerOffset: pendingZoomPointerOffset,
+						});
 						pendingZoomDelta = 0;
 						zoomRafId = null;
 					});
@@ -385,6 +436,54 @@ export function Timeline() {
 	);
 	const hasHorizontalScrollbar =
 		dynamicTimelineWidth > (tracksViewportWidth || containerWidth);
+	const timelineOverviewItems = useMemo<TimelineOverviewItem[]>(() => {
+		if (timelineDuration <= 0) {
+			return [];
+		}
+
+		return tracks.flatMap((track, lane) =>
+			track.elements.map((element) => ({
+				id: element.id,
+				startRatio: element.startTime / timelineDuration,
+				durationRatio: element.duration / timelineDuration,
+				lane,
+			})),
+		);
+	}, [timelineDuration, tracks]);
+
+	const navigateTimeline = useCallback(
+		(nextScrollLeft: number) => {
+			const tracksElement = tracksScrollRef.current;
+			if (!tracksElement) return;
+
+			tracksElement.scrollLeft = nextScrollLeft;
+			syncFollowers();
+			saveScrollPositionRef.current();
+		},
+		[syncFollowers],
+	);
+
+	const fitEntireTimeline = useCallback(() => {
+		setZoomLevelRef.current(minZoomLevel);
+		requestAnimationFrame(() => navigateTimeline(0));
+	}, [minZoomLevel, navigateTimeline]);
+
+	const revealPlayhead = useCallback(() => {
+		const tracksElement = tracksScrollRef.current;
+		if (!tracksElement) return;
+
+		const playheadPixels = timelineTimeToPixels({
+			time: editor.playback.getCurrentTime(),
+			zoomLevel,
+		});
+		navigateTimeline(
+			getRevealPlayheadScrollLeft({
+				playheadPixels,
+				scrollWidth: dynamicTimelineWidth,
+				viewportWidth: tracksElement.clientWidth,
+			}),
+		);
+	}, [dynamicTimelineWidth, editor.playback, navigateTimeline, zoomLevel]);
 
 	useEdgeAutoScroll({
 		isActive: bookmarkDragState.isDragging,
@@ -482,7 +581,6 @@ export function Timeline() {
 								dynamicTimelineWidth={dynamicTimelineWidth}
 								rulerRef={rulerRef}
 								tracksScrollRef={rulerScrollRef}
-								handleWheel={handleWheel}
 								handleTimelineContentClick={handleRulerClick}
 								handleRulerTrackingMouseDown={handleRulerMouseDown}
 								handleRulerMouseDown={handlePlayheadRulerMouseDown}
@@ -492,7 +590,6 @@ export function Timeline() {
 								dynamicTimelineWidth={dynamicTimelineWidth}
 								dragState={bookmarkDragState}
 								onBookmarkMouseDown={handleBookmarkMouseDown}
-								handleWheel={handleWheel}
 								handleTimelineContentClick={handleRulerClick}
 								handleRulerTrackingMouseDown={handleRulerMouseDown}
 								handleRulerMouseDown={handlePlayheadRulerMouseDown}
@@ -593,6 +690,16 @@ export function Timeline() {
 					isVisible={showSnapIndicator}
 				/>
 			</div>
+			<TimelineOverview
+				items={timelineOverviewItems}
+				laneCount={tracks.length}
+				scrollLeft={overviewScrollLeft}
+				scrollWidth={dynamicTimelineWidth}
+				viewportWidth={tracksViewportWidth || containerWidth}
+				onNavigate={navigateTimeline}
+				onFitTimeline={fitEntireTimeline}
+				onRevealPlayhead={revealPlayhead}
+			/>
 		</section>
 	);
 }

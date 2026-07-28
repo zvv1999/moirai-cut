@@ -1,6 +1,7 @@
 import type { WheelEvent as ReactWheelEvent } from "react";
 import { TIMELINE_ZOOM_ANCHOR_PLAYHEAD_THRESHOLD } from "@/timeline/components/interaction";
 import { timelineTimeToPixels } from "@/timeline/pixel-utils";
+import { getMouseAnchoredScrollLeft } from "@/timeline/navigation";
 import { TIMELINE_ZOOM_MAX } from "@/timeline/scale";
 import { zoomToSlider } from "@/timeline/zoom-utils";
 import type { MediaTime } from "@/wasm";
@@ -45,6 +46,7 @@ export class ZoomController {
 	private hasRestoredScroll = false;
 	private previousZoom: number;
 	private preZoomScrollLeft = 0;
+	private pointerZoomAnchorOffset: number | null = null;
 	private prePlayheadAnchorScrollLeft = 0;
 	private isInPlayheadAnchorMode = false;
 	private scrollSaveTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -61,6 +63,8 @@ export class ZoomController {
 		this.hasInitialized = deps.initialZoom !== undefined;
 
 		this.setZoomLevel = this.setZoomLevel.bind(this);
+		this.setZoomLevelAtViewportOffset =
+			this.setZoomLevelAtViewportOffset.bind(this);
 		this.handleWheel = this.handleWheel.bind(this);
 		this.saveScrollPosition = this.saveScrollPosition.bind(this);
 	}
@@ -86,10 +90,31 @@ export class ZoomController {
 	}
 
 	setZoomLevel(zoomLevelOrUpdater: ZoomUpdater): void {
+		this.updateZoomLevel({ zoomLevelOrUpdater, pointerOffset: null });
+	}
+
+	setZoomLevelAtViewportOffset({
+		zoomLevelOrUpdater,
+		pointerOffset,
+	}: {
+		zoomLevelOrUpdater: ZoomUpdater;
+		pointerOffset: number;
+	}): void {
+		this.updateZoomLevel({ zoomLevelOrUpdater, pointerOffset });
+	}
+
+	private updateZoomLevel({
+		zoomLevelOrUpdater,
+		pointerOffset,
+	}: {
+		zoomLevelOrUpdater: ZoomUpdater;
+		pointerOffset: number | null;
+	}): void {
 		const scrollElement = this.config.getTracksScrollEl();
 		if (scrollElement) {
 			this.preZoomScrollLeft = scrollElement.scrollLeft;
 		}
+		this.pointerZoomAnchorOffset = pointerOffset;
 
 		const nextZoomRaw =
 			typeof zoomLevelOrUpdater === "function"
@@ -99,7 +124,10 @@ export class ZoomController {
 			zoomLevel: nextZoomRaw,
 			minZoom: this.config.minZoom,
 		});
-		if (nextZoom === this.zoomLevelValue) return;
+		if (nextZoom === this.zoomLevelValue) {
+			this.pointerZoomAnchorOffset = null;
+			return;
+		}
 
 		this.zoomLevelValue = nextZoom;
 		this.notify();
@@ -183,26 +211,41 @@ export class ZoomController {
 			return Math.max(0, Math.min(maxScrollLeft, scrollLeft));
 		};
 
-		if (isCrossingThresholdUp) {
-			this.prePlayheadAnchorScrollLeft = currentScrollLeft;
-			this.isInPlayheadAnchorMode = true;
-		}
-
-		if (sliderPercent >= TIMELINE_ZOOM_ANCHOR_PLAYHEAD_THRESHOLD) {
-			const playheadPixelsBefore = timelineTimeToPixels({
-				time: playheadTime,
-				zoomLevel: previousZoom,
-			});
-			const playheadPixelsAfter = timelineTimeToPixels({
-				time: playheadTime,
-				zoomLevel,
-			});
-			const viewportOffset = playheadPixelsBefore - currentScrollLeft;
-			const nextScrollLeft = playheadPixelsAfter - viewportOffset;
-			syncScroll(clampScrollLeft(nextScrollLeft));
-		} else if (isCrossingThresholdDown && this.isInPlayheadAnchorMode) {
-			syncScroll(clampScrollLeft(this.prePlayheadAnchorScrollLeft));
+		if (this.pointerZoomAnchorOffset !== null) {
+			syncScroll(
+				getMouseAnchoredScrollLeft({
+					scrollLeft: currentScrollLeft,
+					pointerOffset: this.pointerZoomAnchorOffset,
+					previousZoom,
+					nextZoom: zoomLevel,
+					scrollWidth: scrollElement.scrollWidth,
+					viewportWidth: scrollElement.clientWidth,
+				}),
+			);
+			this.pointerZoomAnchorOffset = null;
 			this.isInPlayheadAnchorMode = false;
+		} else {
+			if (isCrossingThresholdUp) {
+				this.prePlayheadAnchorScrollLeft = currentScrollLeft;
+				this.isInPlayheadAnchorMode = true;
+			}
+
+			if (sliderPercent >= TIMELINE_ZOOM_ANCHOR_PLAYHEAD_THRESHOLD) {
+				const playheadPixelsBefore = timelineTimeToPixels({
+					time: playheadTime,
+					zoomLevel: previousZoom,
+				});
+				const playheadPixelsAfter = timelineTimeToPixels({
+					time: playheadTime,
+					zoomLevel,
+				});
+				const viewportOffset = playheadPixelsBefore - currentScrollLeft;
+				const nextScrollLeft = playheadPixelsAfter - viewportOffset;
+				syncScroll(clampScrollLeft(nextScrollLeft));
+			} else if (isCrossingThresholdDown && this.isInPlayheadAnchorMode) {
+				syncScroll(clampScrollLeft(this.prePlayheadAnchorScrollLeft));
+				this.isInPlayheadAnchorMode = false;
+			}
 		}
 
 		this.previousZoom = zoomLevel;
@@ -277,7 +320,8 @@ export class ZoomController {
 		const preventZoom = (event: WheelEvent) => {
 			const isZoomKeyPressed = event.ctrlKey || event.metaKey;
 			const container = this.config.getContainerEl();
-			const isInContainer = container?.contains(event.target as Node) ?? false;
+			const isInContainer =
+				event.target instanceof Node && (container?.contains(event.target) ?? false);
 			if (isZoomKeyPressed && isInContainer) {
 				event.preventDefault();
 			}

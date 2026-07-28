@@ -22,6 +22,8 @@ test("timeline navigation stays visible and named", () => {
 				scrollWidth={1_000}
 				viewportWidth={500}
 				onNavigate={() => {}}
+				onFitTimeline={() => {}}
+				onRevealPlayhead={() => {}}
 			/>
 		</>,
 	);

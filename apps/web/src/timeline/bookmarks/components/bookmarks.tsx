@@ -63,7 +63,6 @@ interface TimelineBookmarksRowProps {
 		event: React.MouseEvent;
 		bookmark: Bookmark;
 	}) => void;
-	handleWheel: (event: React.WheelEvent) => void;
 	handleTimelineContentClick: (event: React.MouseEvent) => void;
 	handleRulerTrackingMouseDown: (event: React.MouseEvent) => void;
 	handleRulerMouseDown: (event: React.MouseEvent) => void;
@@ -74,7 +73,6 @@ export function TimelineBookmarksRow({
 	dynamicTimelineWidth,
 	dragState,
 	onBookmarkMouseDown,
-	handleWheel,
 	handleTimelineContentClick,
 	handleRulerTrackingMouseDown,
 	handleRulerMouseDown,
@@ -98,7 +96,6 @@ export function TimelineBookmarksRow({
 					width: `${dynamicTimelineWidth}px`,
 				}}
 				aria-label="Timeline ruler"
-				onWheel={handleWheel}
 				onClick={(event) => {
 					if (!event.currentTarget.contains(event.target as Node)) return;
 					handleTimelineContentClick(event);
