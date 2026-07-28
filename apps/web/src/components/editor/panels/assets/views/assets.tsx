@@ -99,6 +99,7 @@ import { MediaBinBrowserView } from "./media-bin-browser";
 import { MediaMetadataEditorDialog } from "./media-metadata-editor";
 import { SourceMonitorDialog } from "./source-monitor";
 import { MediaBatchOperationsDialog } from "./media-batch-operations-dialog";
+import { MediaDuplicateReviewDialog } from "./media-duplicate-review-dialog";
 import {
 	buildElementFromSourceRange,
 	resolveSourceOverwriteTarget,
@@ -145,6 +146,7 @@ export function MediaView() {
 	);
 	const [batchStatus, setBatchStatus] = useState<string | null>(null);
 	const [batchProgress, setBatchProgress] = useState(0);
+	const [duplicateReviewOpen, setDuplicateReviewOpen] = useState(false);
 	const relinkInputRef = useRef<HTMLInputElement>(null);
 	const relinkTargetIdsRef = useRef<string[]>([]);
 	const { selectedElements: selectedTimelineElements } = useElementSelection();
@@ -1040,6 +1042,24 @@ export function MediaView() {
 				onRemoveProxies={handleRemoveProxies}
 				onRemoveAssets={removeBatchAssets}
 			/>
+			<MediaDuplicateReviewDialog
+				open={duplicateReviewOpen}
+				assets={mediaFiles}
+				usageCounts={mediaUsageCounts}
+				onOpenChange={setDuplicateReviewOpen}
+				onRemove={(assetIds) => {
+					invokeAction("remove-media-assets", {
+						projectId: activeProject.metadata.id,
+						assetIds,
+					});
+					toast.success(
+						`Removed ${assetIds.length} reviewed ${
+							assetIds.length === 1 ? "duplicate" : "duplicates"
+						}`,
+						{ description: "Undo restores the assets and timeline uses." },
+					);
+				}}
+			/>
 			<input {...fileInputProps} />
 			<input
 				ref={relinkInputRef}
@@ -1064,6 +1084,7 @@ export function MediaView() {
 						sortBy={mediaSortBy}
 						sortOrder={mediaSortOrder}
 						onSort={handleSort}
+						onReviewDuplicates={() => setDuplicateReviewOpen(true)}
 						onImport={openFilePicker}
 					/>
 				}
@@ -1798,6 +1819,7 @@ function MediaActions({
 	sortBy,
 	sortOrder,
 	onSort,
+	onReviewDuplicates,
 	onImport,
 }: {
 	mediaViewMode: MediaViewMode;
@@ -1806,6 +1828,7 @@ function MediaActions({
 	sortBy: MediaSortKey;
 	sortOrder: MediaSortOrder;
 	onSort: ({ key }: { key: MediaSortKey }) => void;
+	onReviewDuplicates: () => void;
 	onImport: () => void;
 }) {
 	return (
@@ -1912,6 +1935,15 @@ function MediaActions({
 					</TooltipContent>
 				</Tooltip>
 			</TooltipProvider>
+			<Button
+				variant="ghost"
+				onClick={onReviewDuplicates}
+				disabled={isProcessing}
+				size="sm"
+				className="items-center justify-center px-2 text-xs"
+			>
+				Duplicates
+			</Button>
 			<Button
 				variant="outline"
 				onClick={onImport}
