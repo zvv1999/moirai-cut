@@ -326,8 +326,9 @@ export function AudioWorkbenchTab({
 						{analysisError ? (
 							<div className="text-destructive text-xs">{analysisError}</div>
 						) : null}
-						<div className="grid grid-cols-2 gap-2">
+						<div className="flex flex-col gap-2">
 							<Button
+								className="w-full"
 								variant="outline"
 								size="sm"
 								onClick={() => void runAnalysis()}
@@ -336,6 +337,7 @@ export function AudioWorkbenchTab({
 								{analysisStatus === "loading" ? "Analysing…" : "Analyse clip"}
 							</Button>
 							<Button
+								className="w-full"
 								size="sm"
 								onClick={normalize}
 								disabled={!analysis || analysisStatus === "loading"}
