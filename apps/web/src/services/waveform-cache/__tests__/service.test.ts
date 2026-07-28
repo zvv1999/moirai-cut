@@ -8,7 +8,7 @@ function fakeAudioBuffer(): AudioBuffer {
 		numberOfChannels: 1,
 		sampleRate: 48_000,
 		getChannelData: () => data,
-	} as AudioBuffer;
+	} as unknown as AudioBuffer;
 }
 
 describe("waveform cache diagnostics", () => {

@@ -15,6 +15,9 @@ interface GetSourceWaveformSummaryArgs {
 
 export class WaveformCache {
 	private summaries = new Map<string, Promise<SourceWaveformSummary>>();
+	private hits = 0;
+	private misses = 0;
+	private errors = 0;
 
 	getSourceSummary({
 		sourceKey,
@@ -24,8 +27,10 @@ export class WaveformCache {
 	}: GetSourceWaveformSummaryArgs): Promise<SourceWaveformSummary> {
 		const existing = this.summaries.get(sourceKey);
 		if (existing) {
+			this.hits += 1;
 			return existing;
 		}
+		this.misses += 1;
 
 		const promise = this.buildSummary({
 			sourceKey,
@@ -33,6 +38,7 @@ export class WaveformCache {
 			sourceFile,
 			audioUrl,
 		}).catch((error) => {
+			this.errors += 1;
 			this.summaries.delete(sourceKey);
 			throw error;
 		});
@@ -47,6 +53,20 @@ export class WaveformCache {
 
 	clearAll(): void {
 		this.summaries.clear();
+	}
+
+	getStats(): {
+		entries: number;
+		hits: number;
+		misses: number;
+		errors: number;
+	} {
+		return {
+			entries: this.summaries.size,
+			hits: this.hits,
+			misses: this.misses,
+			errors: this.errors,
+		};
 	}
 
 	private async buildSummary({

@@ -10,7 +10,6 @@ import type { MediaAsset } from "@/media/types";
 import { applyAudioMasteringToBuffer } from "@/media/audio-mastering";
 import type { AudioCapableElement } from "@/timeline/audio-state";
 import {
-	hasAnimatedVolume,
 	isElementMuted,
 	resolveEffectiveAudioGain,
 } from "@/timeline/audio-state";
@@ -25,6 +24,10 @@ import {
 	computeRmsBuckets,
 	type SampleBucket,
 } from "@/media/waveform-summary";
+import {
+	applyAudioProcessingFrame,
+	getAudioProcessingSettings,
+} from "@/audio/processing";
 
 const MAX_AUDIO_CHANNELS = 2;
 const EXPORT_SAMPLE_RATE = 44100;
@@ -336,6 +339,19 @@ async function resolveAudioBufferForAsset({
 		return null;
 	} finally {
 		input.dispose();
+	}
+}
+
+export async function decodeMediaAssetAudio({
+	asset,
+}: {
+	asset: MediaAsset;
+}): Promise<AudioBuffer | null> {
+	const audioContext = createAudioContext();
+	try {
+		return await resolveAudioBufferForAsset({ asset, audioContext });
+	} finally {
+		void audioContext.close();
 	}
 }
 
@@ -839,36 +855,41 @@ function mixAudioChannels({
 
 	const outputStartSample = Math.floor(startTime * sampleRate);
 	const renderedLength = Math.ceil(elementDuration * sampleRate);
-
+	const processing = getAudioProcessingSettings({
+		element: element.timelineElement,
+	});
 	const outputChannels = 2;
-	for (let channel = 0; channel < outputChannels; channel++) {
-		const outputData = outputBuffer.getChannelData(channel);
-		const sourceChannel = Math.min(channel, buffer.numberOfChannels - 1);
-		const sourceData = buffer.getChannelData(sourceChannel);
+	const outputLeft = outputBuffer.getChannelData(0);
+	const outputRight = outputBuffer.getChannelData(1);
+	const sourceLeft = buffer.getChannelData(0);
+	const sourceRight = buffer.getChannelData(
+		Math.min(1, buffer.numberOfChannels - 1),
+	);
 
-		for (let i = 0; i < renderedLength; i++) {
-			const outputIndex = outputStartSample + i;
-			if (outputIndex >= outputLength) break;
+	for (let i = 0; i < renderedLength; i++) {
+		const outputIndex = outputStartSample + i;
+		if (outputIndex >= outputLength) break;
 
-			const clipTime = i / sampleRate;
-			const sourceTime =
-				trimStart + getSourceTimeAtClipTime({ clipTime, retime });
-			const sourceIndex = sourceTime * buffer.sampleRate;
-			if (sourceIndex >= sourceData.length) break;
+		const clipTime = i / sampleRate;
+		const sourceTime =
+			trimStart + getSourceTimeAtClipTime({ clipTime, retime });
+		const sourceIndex = sourceTime * buffer.sampleRate;
+		if (sourceIndex >= sourceLeft.length) break;
 
-			const lowerIndex = Math.floor(sourceIndex);
-			const upperIndex = Math.min(sourceData.length - 1, lowerIndex + 1);
-			const fraction = sourceIndex - lowerIndex;
-			const gain = hasAnimatedVolume({ element: element.timelineElement })
-				? resolveEffectiveAudioGain({
-						element: element.timelineElement,
-						localTime: clipTime,
-					})
-				: element.volume;
-			outputData[outputIndex] +=
-				(sourceData[lowerIndex] * (1 - fraction) +
-					sourceData[upperIndex] * fraction) *
-				gain;
-		}
+		const lowerIndex = Math.floor(sourceIndex);
+		const upperIndex = Math.min(sourceLeft.length - 1, lowerIndex + 1);
+		const fraction = sourceIndex - lowerIndex;
+		const interpolate = (data: Float32Array) =>
+			data[lowerIndex] * (1 - fraction) + data[upperIndex] * fraction;
+		const processed = applyAudioProcessingFrame({
+			frame: [interpolate(sourceLeft), interpolate(sourceRight)],
+			settings: processing,
+		});
+		const gain = resolveEffectiveAudioGain({
+			element: element.timelineElement,
+			localTime: clipTime,
+		});
+		outputLeft[outputIndex] += processed[0] * gain;
+		if (outputChannels > 1) outputRight[outputIndex] += processed[1] * gain;
 	}
 }

@@ -485,7 +485,7 @@ test("project settings change only what is named, and mark a custom canvas", () 
   assert.throws(() => apply(doc(), { type: "project.updateSettings" }), DocumentOperationError);
 });
 
-test("source audio separation builds a matching audio clip, and re-attaching only flips the flag", () => {
+test("source audio separation recovers edits and removes its companion without duplication", () => {
   const withVideo = doc({
     main: [element({ id: "V", startTime: S, duration: 3 * S, trimStart: S, params: { volume: -6 } })],
   });
@@ -503,11 +503,18 @@ test("source audio separation builds a matching audio clip, and re-attaching onl
   assert.equal(audio.params.volume, -6, "volume carries over in dB");
   assert.equal(separated.scenes[0].tracks.main.elements[0].isSourceAudioEnabled, false);
 
-  // Re-attaching flips the flag and deliberately leaves the audio clip alone —
-  // the human may have edited it by then.
+  audio.params.volume = -9;
+  audio.params.audioVoiceEnhance = true;
   const reattached = apply(separated, { type: "element.toggleSourceAudio", ...ref });
-  assert.equal(reattached.scenes[0].tracks.main.elements[0].isSourceAudioEnabled, true);
-  assert.equal(reattached.scenes[0].tracks.audio.length, 1, "the extracted clip is kept");
+  const recoveredVideo = reattached.scenes[0].tracks.main.elements[0];
+  assert.equal(recoveredVideo.isSourceAudioEnabled, true);
+  assert.equal(recoveredVideo.params.volume, -9, "audio edits return to the source clip");
+  assert.equal(recoveredVideo.params.audioVoiceEnhance, true);
+  assert.equal(
+    (reattached.scenes[0].tracks.audio ?? []).flatMap((track) => track.elements ?? []).length,
+    0,
+    "the generated companion is removed so audio cannot double",
+  );
 });
 
 test("masks are addressable and freeform-only where that matters", () => {

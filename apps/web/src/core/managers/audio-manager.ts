@@ -21,6 +21,8 @@ import {
 	type WrappedAudioBuffer,
 } from "mediabunny";
 import type { PlaybackRate } from "@/playback/transport";
+import { createAudioProcessingChain } from "@/audio/processing";
+import { getAudioFadeDurations } from "@/timeline/audio-envelope";
 
 export class AudioManager {
 	private audioContext: AudioContext | null = null;
@@ -308,7 +310,12 @@ export class AudioManager {
 			node.playbackRate.value = clipPlaybackRate * this.lastPlaybackRate;
 			const clipGain = audioContext.createGain();
 			clipGain.gain.value = clip.volume;
-			node.connect(clipGain);
+			const processingChain = createAudioProcessingChain({
+				audioContext,
+				destination: clipGain,
+				element: clip.timelineElement,
+			});
+			node.connect(processingChain.input);
 			clipGain.connect(this.masterGain ?? audioContext.destination);
 
 			const startTimestamp =
@@ -352,8 +359,23 @@ export class AudioManager {
 			}
 
 			this.queuedSources.add(node);
+			const localStartTime = Math.max(0, timelineTime - clip.startTime);
+			this.scheduleClipGainAutomation({
+				audioContext,
+				clip,
+				clipGain,
+				startTimestamp: Math.max(startTimestamp, audioContext.currentTime),
+				startLocalTime: localStartTime,
+				toLocalTime: Math.min(
+					clip.duration,
+					localStartTime +
+						buffer.duration /
+							Math.max(0.01, node.playbackRate.value),
+				),
+			});
 			node.addEventListener("ended", () => {
 				node.disconnect();
+				processingChain.disconnect();
 				clipGain.disconnect();
 				this.queuedSources.delete(node);
 			});
@@ -403,7 +425,12 @@ export class AudioManager {
 		node.buffer = buffer;
 		node.playbackRate.value = this.lastPlaybackRate;
 		const clipGain = audioContext.createGain();
-		node.connect(clipGain);
+		const processingChain = createAudioProcessingChain({
+			audioContext,
+			destination: clipGain,
+			element: clip.timelineElement,
+		});
+		node.connect(processingChain.input);
 		clipGain.connect(this.masterGain ?? audioContext.destination);
 
 		const startTimestamp =
@@ -430,11 +457,13 @@ export class AudioManager {
 			clipGain,
 			startTimestamp: actualStartTimestamp,
 			startLocalTime: actualClipOffset,
+			toLocalTime: clip.duration,
 		});
 
 		this.queuedSources.add(node);
 		node.addEventListener("ended", () => {
 			node.disconnect();
+			processingChain.disconnect();
 			clipGain.disconnect();
 			this.queuedSources.delete(node);
 		});
@@ -508,24 +537,31 @@ export class AudioManager {
 		clipGain,
 		startTimestamp,
 		startLocalTime,
+		toLocalTime,
 	}: {
 		audioContext: AudioContext;
 		clip: AudioClipSource;
 		clipGain: GainNode;
 		startTimestamp: number;
 		startLocalTime: number;
+		toLocalTime: number;
 	}): void {
 		clipGain.gain.cancelScheduledValues(startTimestamp);
 		clipGain.gain.setValueAtTime(clip.volume, startTimestamp);
 
-		if (!hasAnimatedVolume({ element: clip.timelineElement })) {
+		const fades = getAudioFadeDurations({ element: clip.timelineElement });
+		if (
+			!hasAnimatedVolume({ element: clip.timelineElement }) &&
+			fades.fadeInSeconds === 0 &&
+			fades.fadeOutSeconds === 0
+		) {
 			return;
 		}
 
 		const points = buildAudioGainAutomation({
 			element: clip.timelineElement,
 			fromLocalTime: startLocalTime,
-			toLocalTime: clip.duration,
+			toLocalTime,
 		});
 
 		if (points.length === 0) {

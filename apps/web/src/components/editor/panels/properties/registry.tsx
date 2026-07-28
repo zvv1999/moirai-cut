@@ -28,6 +28,7 @@ import { MasksTab } from "@/masks/components/masks-tab";
 import { SpeedTab } from "@/speed/components/speed-tab";
 import { GraphicTab } from "@/graphics/components/graphic-tab";
 import { OcShapesIcon } from "@/components/icons";
+import { AudioWorkbenchTab } from "./components/audio-workbench-tab";
 
 const TRANSFORM_PARAM_KEYS = [
 	"transform.positionX",
@@ -38,12 +39,6 @@ const TRANSFORM_PARAM_KEYS = [
 ] as const;
 
 const BLENDING_PARAM_KEYS = ["opacity", "blendMode"] as const;
-const AUDIO_PARAM_KEYS = [
-	"volume",
-	"audioFadeIn",
-	"audioFadeOut",
-	"muted",
-] as const;
 const TEXT_PARAM_KEYS = [
 	"content",
 	"fontFamily",
@@ -130,12 +125,7 @@ function buildAudioTab({
 		label: "Audio",
 		icon: <HugeiconsIcon icon={MusicNote03Icon} size={16} />,
 		content: ({ trackId }) => (
-			<ElementParamsTab
-				element={element}
-				trackId={trackId}
-				paramKeys={AUDIO_PARAM_KEYS}
-				sectionKey="audio"
-			/>
+			<AudioWorkbenchTab element={element} trackId={trackId} />
 		),
 	};
 }

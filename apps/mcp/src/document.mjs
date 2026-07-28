@@ -1049,8 +1049,49 @@ const OPERATIONS = {
     // explicit false — not merely a missing field.
     const enabled = element.isSourceAudioEnabled !== false;
     if (!enabled) {
-      // Re-attaching only flips the flag back. The editor deliberately does NOT
-      // delete the audio element it produced — the human may have edited it.
+      const candidates = (scene.tracks.audio ?? []).flatMap((audioTrack) =>
+        (audioTrack.elements ?? [])
+          .filter((candidate) =>
+            candidate.type === "audio" &&
+            candidate.sourceType === "upload" &&
+            candidate.mediaId === element.mediaId,
+          )
+          .map((candidate) => ({ audioTrack, candidate })),
+      );
+      const isAligned = (candidate) =>
+        candidate.startTime === element.startTime &&
+        candidate.duration === element.duration &&
+        candidate.trimStart === element.trimStart &&
+        candidate.trimEnd === element.trimEnd &&
+        candidate.sourceDuration === element.sourceDuration &&
+        JSON.stringify(candidate.retime ?? null) === JSON.stringify(element.retime ?? null);
+      const marked = candidates.find(
+        ({ candidate }) => candidate.params?.sourceAudioOriginElementId === element.id,
+      );
+      const aligned = candidates.filter(({ candidate }) => isAligned(candidate));
+      const companion = marked ?? (aligned.length === 1 ? aligned[0] : null);
+      if (companion && !isAligned(companion.candidate)) {
+        throw new DocumentOperationError(
+          "Separated audio must be aligned before recovery",
+        );
+      }
+      if (companion) {
+        const audioParams = Object.fromEntries(
+          Object.entries(companion.candidate.params ?? {}).filter(
+            ([key]) => key === "volume" || key === "muted" || key.startsWith("audio"),
+          ),
+        );
+        element.params = { ...(element.params ?? {}), ...audioParams };
+        if (companion.candidate.animations?.volume) {
+          element.animations = {
+            ...(element.animations ?? {}),
+            volume: structuredClone(companion.candidate.animations.volume),
+          };
+        }
+        companion.audioTrack.elements = companion.audioTrack.elements.filter(
+          (candidate) => candidate.id !== companion.candidate.id,
+        );
+      }
       element.isSourceAudioEnabled = true;
       return;
     }
@@ -1080,6 +1121,7 @@ const OPERATIONS = {
       params: {
         volume: typeof element.params?.volume === "number" ? element.params.volume : 0,
         muted: element.params?.muted === true,
+        sourceAudioOriginElementId: element.id,
       },
       ...(element.retime
         ? { retime: { rate: element.retime.rate, maintainPitch: element.retime.maintainPitch } }

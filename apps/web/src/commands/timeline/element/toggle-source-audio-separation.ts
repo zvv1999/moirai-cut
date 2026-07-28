@@ -3,7 +3,9 @@ import { Command, type CommandResult } from "@/commands/base-command";
 import {
 	buildSeparatedAudioElement,
 	canExtractSourceAudio,
+	findSeparatedAudioCompanion,
 	isSourceAudioSeparated,
+	planSourceAudioRecovery,
 } from "@/timeline/audio-separation";
 import {
 	applyPlacement,
@@ -16,6 +18,7 @@ import type {
 	VideoElement,
 } from "@/timeline/types";
 import { generateUUID } from "@/utils/id";
+import { toast } from "sonner";
 
 export class ToggleSourceAudioSeparationCommand extends Command {
 	private savedState: SceneTracks | null = null;
@@ -50,6 +53,30 @@ export class ToggleSourceAudioSeparationCommand extends Command {
 		const videoElement: VideoElement = sourceElement;
 
 		if (isSourceAudioSeparated({ element: videoElement })) {
+			const companion = findSeparatedAudioCompanion({
+				tracks: this.savedState,
+				sourceElement: videoElement,
+			});
+			if (companion) {
+				const recovery = planSourceAudioRecovery({
+					sourceElement: videoElement,
+					companion: companion.element,
+				});
+				if (!recovery.ok) {
+					toast.error(recovery.reason);
+					return;
+				}
+				editor.timeline.updateTracks(
+					recoverSourceAudio({
+						tracks: this.savedState,
+						trackId: this.params.trackId,
+						elementId: this.params.elementId,
+						companion,
+						recoveredElement: recovery.recoveredElement,
+					}),
+				);
+				return;
+			}
 			editor.timeline.updateTracks(
 				updateSourceAudioEnabled({
 					tracks: this.savedState,
@@ -118,6 +145,43 @@ export class ToggleSourceAudioSeparationCommand extends Command {
 		const editor = EditorCore.getInstance();
 		editor.timeline.updateTracks(this.savedState);
 	}
+}
+
+function recoverSourceAudio({
+	tracks,
+	trackId,
+	elementId,
+	companion,
+	recoveredElement,
+}: {
+	tracks: SceneTracks;
+	trackId: string;
+	elementId: string;
+	companion: {
+		trackId: string;
+		element: Extract<TimelineElement, { type: "audio" }>;
+	};
+	recoveredElement: VideoElement;
+}): SceneTracks {
+	const withRecoveredVideo = updateElementInSceneTracks({
+		tracks,
+		trackId,
+		elementId,
+		update: () => recoveredElement,
+	});
+	return {
+		...withRecoveredVideo,
+		audio: withRecoveredVideo.audio.map((track) =>
+			track.id === companion.trackId
+				? {
+						...track,
+						elements: track.elements.filter(
+							(element) => element.id !== companion.element.id,
+						),
+					}
+				: track,
+		),
+	};
 }
 
 function updateSourceAudioEnabled({
