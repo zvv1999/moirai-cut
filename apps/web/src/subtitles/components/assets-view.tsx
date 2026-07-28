@@ -229,6 +229,8 @@ function CaptionCueCard({
 	const speakerRef = useRef<HTMLInputElement>(null);
 	const startRef = useRef<HTMLInputElement>(null);
 	const durationRef = useRef<HTMLInputElement>(null);
+	const secondaryColorRef = useRef<HTMLInputElement>(null);
+	const secondaryFontSizeRef = useRef<HTMLInputElement>(null);
 
 	const handleSave = () => {
 		const startTime = Number(startRef.current?.value ?? cue.startTime);
@@ -243,6 +245,19 @@ function CaptionCueCard({
 			duration: Number.isFinite(duration)
 				? Math.max(0.05, duration)
 				: cue.duration,
+			secondaryStyle: {
+				...(cue.secondaryStyle ?? {}),
+				color:
+					secondaryColorRef.current?.value ||
+					cue.secondaryStyle?.color ||
+					"#ffd27d",
+				fontSize: Math.max(
+					1,
+					Number(secondaryFontSizeRef.current?.value) ||
+						cue.secondaryStyle?.fontSize ||
+						3.5,
+				),
+			},
 		});
 	};
 
@@ -307,6 +322,24 @@ function CaptionCueCard({
 						min={0.05}
 						step={0.01}
 						defaultValue={cue.duration.toFixed(2)}
+						size="xs"
+					/>
+				</div>
+				<div className="grid grid-cols-2 gap-1.5">
+					<Input
+						ref={secondaryColorRef}
+						aria-label={`${cue.name} secondary text color`}
+						defaultValue={cue.secondaryStyle?.color ?? "#ffd27d"}
+						placeholder="#ffd27d"
+						size="xs"
+					/>
+					<Input
+						ref={secondaryFontSizeRef}
+						aria-label={`${cue.name} secondary text font size`}
+						type="number"
+						min={1}
+						step={0.1}
+						defaultValue={cue.secondaryStyle?.fontSize ?? 3.5}
 						size="xs"
 					/>
 				</div>
@@ -409,7 +442,7 @@ export function Captions() {
 	const [selectedStyleId, setSelectedStyleId] = useState("");
 	const [styleName, setStyleName] = useState("Documentary");
 	const [styleColor, setStyleColor] = useState("#ffffff");
-	const [styleFontSize, setStyleFontSize] = useState("48");
+	const [styleFontSize, setStyleFontSize] = useState("5");
 	const [pasteFormat, setPasteFormat] = useState<"srt" | "vtt" | "ass">("vtt");
 	const [pastedSubtitles, setPastedSubtitles] = useState("");
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -708,7 +741,7 @@ export function Captions() {
 
 	const styleDraft = (): SubtitleStyleOverrides => ({
 		color: styleColor,
-		fontSize: Math.max(8, Number(styleFontSize) || 48),
+		fontSize: Math.max(1, Number(styleFontSize) || 5),
 		fontWeight: "bold",
 		textAlign: "center",
 		background: { enabled: true, color: "#00000099" },
@@ -1094,9 +1127,17 @@ export function Captions() {
 					<SectionContent className="space-y-2">
 						<Select
 							value={selectedStyleId || "none"}
-							onValueChange={(value) =>
-								setSelectedStyleId(value === "none" ? "" : value)
-							}
+							onValueChange={(value) => {
+								const nextId = value === "none" ? "" : value;
+								setSelectedStyleId(nextId);
+								const style = captionStyles.find(
+									(candidate) => candidate.id === nextId,
+								);
+								if (!style) return;
+								setStyleName(style.name);
+								setStyleColor(style.style.color ?? "#ffffff");
+								setStyleFontSize(String(style.style.fontSize ?? 5));
+							}}
 						>
 							<SelectTrigger aria-label="Caption style" className="h-8">
 								<SelectValue placeholder="Choose style" />
@@ -1130,7 +1171,8 @@ export function Captions() {
 								value={styleFontSize}
 								onChange={(event) => setStyleFontSize(event.target.value)}
 								type="number"
-								min={8}
+								min={1}
+								step={0.1}
 								aria-label="Caption style font size"
 								size="xs"
 							/>

@@ -159,11 +159,45 @@ export function drawMeasuredTextLayout({
 	ctx.fillStyle = textColor;
 	setCanvasLetterSpacing({ ctx, letterSpacingPx: layout.letterSpacing });
 
+	drawMeasuredTextBackground({
+		ctx,
+		layout,
+		background,
+		backgroundColor,
+	});
+	ctx.fillStyle = textColor;
+
+	for (let index = 0; index < layout.lines.length; index++) {
+		const lineY = index * layout.lineHeightPx - layout.block.visualCenterOffset;
+		ctx.fillText(layout.lines[index], 0, lineY);
+		drawTextDecoration({
+			ctx,
+			textDecoration: layout.textDecoration,
+			lineWidth: layout.lineMetrics[index].width,
+			lineY,
+			metrics: layout.lineMetrics[index],
+			scaledFontSize: layout.scaledFontSize,
+			textAlign: layout.textAlign,
+		});
+	}
+}
+
+export function drawMeasuredTextBackground({
+	ctx,
+	layout,
+	background,
+	backgroundColor,
+}: {
+	ctx: TextCanvasContext;
+	layout: MeasuredTextLayout;
+	background?: ResolvedTextBackgroundLike | null;
+	backgroundColor?: string;
+}): void {
 	if (
 		background?.enabled &&
 		backgroundColor &&
 		backgroundColor !== "transparent" &&
-		layout.lines.length > 0
+		layout.block.height > 0
 	) {
 		const backgroundRect = getTextBackgroundRect({
 			textAlign: layout.textAlign,
@@ -183,6 +217,7 @@ export function drawMeasuredTextLayout({
 				}) / 100;
 			const radius =
 				(Math.min(backgroundRect.width, backgroundRect.height) / 2) * p;
+			ctx.save();
 			ctx.fillStyle = backgroundColor;
 			ctx.beginPath();
 			ctx.roundRect(
@@ -193,22 +228,8 @@ export function drawMeasuredTextLayout({
 				radius,
 			);
 			ctx.fill();
-			ctx.fillStyle = textColor;
+			ctx.restore();
 		}
-	}
-
-	for (let index = 0; index < layout.lines.length; index++) {
-		const lineY = index * layout.lineHeightPx - layout.block.visualCenterOffset;
-		ctx.fillText(layout.lines[index], 0, lineY);
-		drawTextDecoration({
-			ctx,
-			textDecoration: layout.textDecoration,
-			lineWidth: layout.lineMetrics[index].width,
-			lineY,
-			metrics: layout.lineMetrics[index],
-			scaledFontSize: layout.scaledFontSize,
-			textAlign: layout.textAlign,
-		});
 	}
 }
 

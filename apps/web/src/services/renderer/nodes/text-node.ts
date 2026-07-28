@@ -2,7 +2,10 @@ import { BaseNode } from "./base-node";
 import type { TextElement } from "@/timeline";
 import type { EffectPass } from "@/effects/types";
 import type { BlendMode, Transform } from "@/rendering";
-import { drawMeasuredTextLayout } from "@/text/primitives";
+import {
+	drawMeasuredTextBackground,
+	drawMeasuredTextLayout,
+} from "@/text/primitives";
 import type { MeasuredTextElement } from "@/text/measure-element";
 
 export type TextNodeParams = TextElement & {
@@ -48,14 +51,42 @@ export function renderTextToContext({
 		ctx.rotate((resolved.transform.rotate * Math.PI) / 180);
 	}
 
-	drawMeasuredTextLayout({
-		ctx,
-		layout: resolved.measuredText,
-		textColor: resolved.textColor,
-		background: resolved.measuredText.resolvedBackground,
-		backgroundColor: resolved.backgroundColor,
-		textBaseline: baseline,
-	});
+	if (resolved.measuredText.bilingual) {
+		const bilingual = resolved.measuredText.bilingual;
+		drawMeasuredTextBackground({
+			ctx,
+			layout: resolved.measuredText,
+			background: resolved.measuredText.resolvedBackground,
+			backgroundColor: resolved.backgroundColor,
+		});
+		ctx.save();
+		ctx.translate(0, bilingual.primaryOffsetY);
+		drawMeasuredTextLayout({
+			ctx,
+			layout: bilingual.primary,
+			textColor: resolved.textColor,
+			textBaseline: baseline,
+		});
+		ctx.restore();
+		ctx.save();
+		ctx.translate(0, bilingual.secondaryOffsetY);
+		drawMeasuredTextLayout({
+			ctx,
+			layout: bilingual.secondary,
+			textColor: bilingual.secondaryColor,
+			textBaseline: baseline,
+		});
+		ctx.restore();
+	} else {
+		drawMeasuredTextLayout({
+			ctx,
+			layout: resolved.measuredText,
+			textColor: resolved.textColor,
+			background: resolved.measuredText.resolvedBackground,
+			backgroundColor: resolved.backgroundColor,
+			textBaseline: baseline,
+		});
+	}
 
 	ctx.restore();
 }

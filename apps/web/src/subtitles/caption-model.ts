@@ -22,6 +22,7 @@ export interface EditableCaptionCue {
 	styleId: string | null;
 	styleDetached: boolean;
 	style?: SubtitleStyleOverrides;
+	secondaryStyle?: SubtitleStyleOverrides;
 	startTime: number;
 	duration: number;
 	positionY: number;
@@ -62,8 +63,14 @@ function readWordTimings({ element }: { element: TextElement }): TranscriptionWo
 	}
 }
 
-function readStyle({ element }: { element: TextElement }): SubtitleStyleOverrides | undefined {
-	const serialized = readString({ element, key: "caption.inlineStyle" });
+function readSerializedStyle({
+	element,
+	key,
+}: {
+	element: TextElement;
+	key: string;
+}): SubtitleStyleOverrides | undefined {
+	const serialized = readString({ element, key });
 	if (!serialized) return undefined;
 	try {
 		const parsed: unknown = JSON.parse(serialized);
@@ -140,7 +147,14 @@ export function collectCaptionCues({
 				wordTimings: readWordTimings({ element }),
 				styleId: rawStyleId || null,
 				styleDetached: element.params["caption.styleDetached"] === true,
-				style: readStyle({ element }),
+				style: readSerializedStyle({
+					element,
+					key: "caption.inlineStyle",
+				}),
+				secondaryStyle: readSerializedStyle({
+					element,
+					key: "caption.secondaryStyle",
+				}),
 				startTime: mediaTimeToSeconds({ time: element.startTime }),
 				duration: mediaTimeToSeconds({ time: element.duration }),
 				positionY: typeof positionY === "number" ? positionY : 0,
@@ -354,6 +368,9 @@ export function buildCaptionElementPatch({
 			"caption.styleId": cue.styleId ?? "",
 			"caption.styleDetached": cue.styleDetached,
 			"caption.inlineStyle": cue.style ? JSON.stringify(cue.style) : "",
+			"caption.secondaryStyle": cue.secondaryStyle
+				? JSON.stringify(cue.secondaryStyle)
+				: "",
 		},
 	};
 }

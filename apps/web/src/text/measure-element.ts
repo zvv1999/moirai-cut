@@ -8,6 +8,7 @@ import {
 } from "./layout";
 import {
 	measureTextLayout,
+	resolveTextLayout,
 	type MeasuredTextLayout,
 	type TextAlign,
 	type TextDecoration,
@@ -27,6 +28,13 @@ export interface ResolvedTextBackground extends TextBackground {
 export interface MeasuredTextElement extends MeasuredTextLayout {
 	resolvedBackground: ResolvedTextBackground;
 	visualRect: { left: number; top: number; width: number; height: number };
+	bilingual?: {
+		primary: MeasuredTextLayout;
+		secondary: MeasuredTextLayout;
+		primaryOffsetY: number;
+		secondaryOffsetY: number;
+		secondaryColor: string;
+	};
 }
 
 let textMeasurementContext:
@@ -73,12 +81,97 @@ export function measureTextElement({
 	localTime: number;
 	ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 }): MeasuredTextElement {
-	const text = buildTextLayoutParamsFromElement({ element });
-	const measuredLayout = measureTextLayout({
+	let text = buildTextLayoutParamsFromElement({ element });
+	let measuredLayout = measureTextLayout({
 		text,
 		canvasHeight,
 		ctx,
 	});
+	let bilingual: MeasuredTextElement["bilingual"];
+	const primaryText = readStringParam({
+		params: element.params,
+		key: "caption.primaryText",
+		fallback: "",
+	});
+	const secondaryText = readStringParam({
+		params: element.params,
+		key: "caption.secondaryText",
+		fallback: "",
+	});
+	if (
+		element.params["caption.enabled"] === true &&
+		primaryText &&
+		secondaryText
+	) {
+		const maxWidth = readNumberParam({
+			params: element.params,
+			key: "caption.maxWidth",
+			fallback: canvasHeight * 1.42,
+		});
+		text = {
+			...text,
+			content: wrapCaptionText({
+				text: primaryText,
+				layout: text,
+				canvasHeight,
+				maxWidth,
+				ctx,
+			}),
+		};
+		const primary = measureTextLayout({ text, canvasHeight, ctx });
+		const secondaryStyle = readSubtitleStyleParam({
+			element,
+			key: "caption.secondaryStyle",
+		});
+		const secondaryParams: TextLayoutParams = {
+			...text,
+			content: secondaryText,
+			fontSize:
+				secondaryStyle?.fontSize ?? Math.max(1, text.fontSize * 0.72),
+			fontFamily: secondaryStyle?.fontFamily ?? text.fontFamily,
+			fontWeight: secondaryStyle?.fontWeight ?? "normal",
+			fontStyle: secondaryStyle?.fontStyle ?? text.fontStyle,
+			textAlign: secondaryStyle?.textAlign ?? text.textAlign,
+			textDecoration:
+				secondaryStyle?.textDecoration ?? text.textDecoration,
+			letterSpacing:
+				secondaryStyle?.letterSpacing ?? text.letterSpacing,
+			lineHeight: secondaryStyle?.lineHeight ?? text.lineHeight,
+		};
+		secondaryParams.content = wrapCaptionText({
+			text: secondaryText,
+			layout: secondaryParams,
+			canvasHeight,
+			maxWidth,
+			ctx,
+		});
+		const secondary = measureTextLayout({
+			text: secondaryParams,
+			canvasHeight,
+			ctx,
+		});
+		const gap = Math.max(2, primary.scaledFontSize * 0.16);
+		const combinedHeight =
+			primary.block.height + gap + secondary.block.height;
+		const combinedBlock = {
+			height: combinedHeight,
+			maxWidth: Math.max(primary.block.maxWidth, secondary.block.maxWidth),
+			visualCenterOffset: (combinedHeight - primary.lineHeightPx) / 2,
+		};
+		measuredLayout = {
+			...primary,
+			block: combinedBlock,
+		};
+		bilingual = {
+			primary,
+			secondary,
+			primaryOffsetY:
+				-combinedHeight / 2 + primary.block.height / 2,
+			secondaryOffsetY:
+				combinedHeight / 2 - secondary.block.height / 2,
+			secondaryColor: secondaryStyle?.color ?? "#ffd27d",
+		};
+	}
 
 	const bg = buildTextBackgroundFromElement({ element });
 	const resolvedBackground: ResolvedTextBackground = {
@@ -126,7 +219,111 @@ export function measureTextElement({
 		...measuredLayout,
 		resolvedBackground,
 		visualRect,
+		...(bilingual ? { bilingual } : {}),
 	};
+}
+
+function wrapCaptionText({
+	text,
+	layout,
+	canvasHeight,
+	maxWidth,
+	ctx,
+}: {
+	text: string;
+	layout: TextLayoutParams;
+	canvasHeight: number;
+	maxWidth: number;
+	ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+}): string {
+	const resolved = resolveTextLayout({ text: layout, canvasHeight });
+	ctx.save();
+	ctx.font = resolved.fontString;
+	const paragraphs = text.trim().replace(/\r\n?/g, "\n").split("\n");
+	const wrapped = paragraphs.map((paragraph) => {
+		const words = paragraph.trim().split(/\s+/).filter(Boolean);
+		if (words.length === 0) return "";
+		const lines: string[] = [];
+		let line = words[0];
+		for (const word of words.slice(1)) {
+			const candidate = `${line} ${word}`;
+			if (ctx.measureText(candidate).width <= maxWidth) {
+				line = candidate;
+			} else {
+				lines.push(line);
+				line = word;
+			}
+		}
+		lines.push(line);
+		return lines.join("\n");
+	});
+	ctx.restore();
+	return wrapped.join("\n");
+}
+
+function readSubtitleStyleParam({
+	element,
+	key,
+}: {
+	element: TextElement;
+	key: string;
+}): {
+	fontSize?: number;
+	fontFamily?: string;
+	fontWeight?: TextFontWeight;
+	fontStyle?: TextFontStyle;
+	textAlign?: TextAlign;
+	textDecoration?: TextDecoration;
+	letterSpacing?: number;
+	lineHeight?: number;
+	color?: string;
+} | null {
+	const value = element.params[key];
+	if (typeof value !== "string" || !value) return null;
+	try {
+		const parsed: unknown = JSON.parse(value);
+		if (!isUnknownRecord(parsed)) return null;
+		const record = parsed;
+		return {
+			...(typeof record.fontSize === "number"
+				? { fontSize: record.fontSize }
+				: {}),
+			...(typeof record.fontFamily === "string"
+				? { fontFamily: record.fontFamily }
+				: {}),
+			...(record.fontWeight === "normal" || record.fontWeight === "bold"
+				? { fontWeight: record.fontWeight }
+				: {}),
+			...(record.fontStyle === "normal" || record.fontStyle === "italic"
+				? { fontStyle: record.fontStyle }
+				: {}),
+			...(record.textAlign === "left" ||
+			record.textAlign === "center" ||
+			record.textAlign === "right"
+				? { textAlign: record.textAlign }
+				: {}),
+			...(record.textDecoration === "none" ||
+			record.textDecoration === "underline" ||
+			record.textDecoration === "line-through"
+				? { textDecoration: record.textDecoration }
+				: {}),
+			...(typeof record.letterSpacing === "number"
+				? { letterSpacing: record.letterSpacing }
+				: {}),
+			...(typeof record.lineHeight === "number"
+				? { lineHeight: record.lineHeight }
+				: {}),
+			...(typeof record.color === "string"
+				? { color: record.color }
+				: {}),
+		};
+	} catch {
+		return null;
+	}
+}
+
+function isUnknownRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export function buildTextLayoutParamsFromElement({

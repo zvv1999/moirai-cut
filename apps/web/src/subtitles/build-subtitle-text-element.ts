@@ -353,6 +353,10 @@ export function buildSubtitleTextElement({
 			"caption.styleId": caption.styleId ?? "",
 			"caption.styleDetached": caption.styleDetached ?? false,
 			"caption.inlineStyle": caption.style ? JSON.stringify(caption.style) : "",
+			"caption.secondaryStyle": caption.secondaryStyle
+				? JSON.stringify(caption.secondaryStyle)
+				: "",
+			"caption.maxWidth": maxWidth,
 		},
 	};
 }

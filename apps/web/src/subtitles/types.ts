@@ -43,6 +43,7 @@ export interface SubtitleStyleOverrides {
 
 export interface SubtitleCue extends CaptionChunk {
 	style?: SubtitleStyleOverrides;
+	secondaryStyle?: SubtitleStyleOverrides;
 }
 
 export interface ParseSubtitleResult {
