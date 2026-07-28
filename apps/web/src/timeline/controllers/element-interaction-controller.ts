@@ -425,7 +425,7 @@ export class ElementInteractionController {
 			!this.deps.selection.isSelected(ref) ||
 			this.deps.selection.getSelected().length > 1
 		) {
-			this.deps.selection.select(ref);
+			this.deps.selection.handleClick({ ...ref, intent: "replace" });
 			return;
 		}
 
@@ -608,7 +608,7 @@ export class ElementInteractionController {
 			elementId: mousedown.elementId,
 		};
 		if (!this.deps.selection.isSelected(anchorRef)) {
-			this.deps.selection.select(anchorRef);
+			this.deps.selection.handleClick({ ...anchorRef, intent: "replace" });
 		}
 
 		const drag: DragProgress = {

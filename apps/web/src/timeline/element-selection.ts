@@ -1,4 +1,5 @@
 import type { ElementRef } from "@/timeline/types";
+import { expandElementSelectionRelations } from "@/timeline/element-groups";
 
 export type TimelineSelectionIntent = "replace" | "toggle" | "range";
 
@@ -6,6 +7,9 @@ interface SelectionElement {
 	id: string;
 	startTime: number;
 	duration: number;
+	type?: string;
+	groupId?: string;
+	linkGroupId?: string;
 }
 
 interface SelectionTrack {
@@ -87,7 +91,19 @@ export function applyTimelineElementClickSelection({
 	intent: TimelineSelectionIntent;
 }): { elements: ElementRef[]; anchor: ElementRef | null } {
 	if (intent === "replace") {
-		return { elements: [target], anchor: target };
+		return {
+			elements: expandElementSelectionRelations({
+				tracks: tracks.map((track) => ({
+					...track,
+					elements: track.elements.map((element) => ({
+						...element,
+						type: element.type ?? "unknown",
+					})),
+				})),
+				elements: [target],
+			}),
+			anchor: target,
+		};
 	}
 
 	if (intent === "range") {
@@ -99,20 +115,54 @@ export function applyTimelineElementClickSelection({
 			range.some((ref) => isSameElementRef({ left: ref, right: anchor }))
 				? anchor
 				: target;
-		return { elements: range, anchor: nextAnchor };
+		return {
+			elements: expandElementSelectionRelations({
+				tracks: tracks.map((track) => ({
+					...track,
+					elements: track.elements.map((element) => ({
+						...element,
+						type: element.type ?? "unknown",
+					})),
+				})),
+				elements: range,
+			}),
+			anchor: nextAnchor,
+		};
 	}
 
-	const targetIndex = selected.findIndex((ref) =>
+	const relationTracks = tracks.map((track) => ({
+		...track,
+		elements: track.elements.map((element) => ({
+			...element,
+			type: element.type ?? "unknown",
+		})),
+	}));
+	const targetRelations = expandElementSelectionRelations({
+		tracks: relationTracks,
+		elements: [target],
+	});
+	const targetIsSelected = selected.some((ref) =>
 		isSameElementRef({ left: ref, right: target }),
 	);
 	const elements =
-		targetIndex >= 0
-			? selected.filter((_, index) => index !== targetIndex)
-			: [...selected, target];
+		targetIsSelected
+			? selected.filter(
+					(selectedRef) =>
+						!targetRelations.some((relationRef) =>
+							isSameElementRef({
+								left: selectedRef,
+								right: relationRef,
+							}),
+						),
+				)
+			: expandElementSelectionRelations({
+					tracks: relationTracks,
+					elements: [...selected, target],
+				});
 	const nextAnchor =
 		elements.length === 0
 			? null
-			: targetIndex >= 0
+			: targetIsSelected
 				? anchor && !isSameElementRef({ left: anchor, right: target })
 					? anchor
 					: (elements.at(-1) ?? null)

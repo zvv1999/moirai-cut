@@ -111,6 +111,10 @@ export type AudioElement = UploadAudioElement | LibraryAudioElement;
 interface BaseTimelineElement {
 	id: string;
 	name: string;
+	/** General edit group. Selecting one member selects the connected group. */
+	groupId?: string;
+	/** Linked source relationship, primarily for paired visual and audio clips. */
+	linkGroupId?: string;
 	duration: MediaTime;
 	startTime: MediaTime;
 	trimStart: MediaTime;

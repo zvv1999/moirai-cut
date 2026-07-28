@@ -29,6 +29,8 @@ import {
 	Layers01Icon,
 	Chart03Icon,
 	KeyframeIcon,
+	Link02Icon,
+	Unlink02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { GraphEditorPopover } from "./graph-editor/popover";
@@ -39,6 +41,8 @@ import { useKeyboardShortcutsHelp } from "@/actions/use-keyboard-shortcuts-help"
 import { TimelineToolbarButton } from "./timeline-toolbar-button";
 import { KeyframeSelectionToolbar } from "./keyframe-selection-toolbar";
 import { getElementKeyframes } from "@/animation";
+import { planElementRelationUpdate } from "@/timeline/element-groups";
+import { generateUUID } from "@/utils/id";
 
 export { TimelineToolbarButton } from "./timeline-toolbar-button";
 
@@ -91,6 +95,22 @@ function ToolbarLeftSection() {
 					elements: selectedElements,
 				})[0] ?? null)
 			: null;
+	const relationTracks = (() => {
+		const tracks = editor.scenes.getActiveScene().tracks;
+		return [...tracks.overlay, tracks.main, ...tracks.audio];
+	})();
+	const groupPlan = planElementRelationUpdate({
+		tracks: relationTracks,
+		selection: selectedElements,
+		kind: "group",
+		relationId: "preview-group",
+	});
+	const linkPlan = planElementRelationUpdate({
+		tracks: relationTracks,
+		selection: selectedElements,
+		kind: "link",
+		relationId: "preview-link",
+	});
 	const hasSelectedElementKeyframes =
 		!!selectedElement &&
 		getElementKeyframes({
@@ -115,6 +135,16 @@ function ToolbarLeftSection() {
 		event.stopPropagation();
 		invokeAction(action);
 	};
+	const applyRelation = ({ kind }: { kind: "group" | "link" }) => {
+		const plan = planElementRelationUpdate({
+			tracks: relationTracks,
+			selection: selectedElements,
+			kind,
+			relationId: generateUUID(),
+		});
+		if (!plan.available) return;
+		editor.timeline.updateElements({ updates: plan.updates });
+	};
 
 	return (
 		<div className="flex items-center gap-1">
@@ -124,6 +154,44 @@ function ToolbarLeftSection() {
 					tooltip="Split element"
 					shortcut={shortcutByAction.get("split")}
 					onClick={({ event }) => handleAction({ action: "split", event })}
+				/>
+
+				<TimelineToolbarButton
+					icon={<HugeiconsIcon icon={Layers01Icon} />}
+					isActive={groupPlan.action === "ungroup"}
+					tooltip={
+						groupPlan.available
+							? groupPlan.action === "ungroup"
+								? "Ungroup selected clips"
+								: "Group selected clips"
+							: (groupPlan.reason ?? "Group selected clips")
+					}
+					disabled={!groupPlan.available}
+					onClick={({ event }) => {
+						event.stopPropagation();
+						applyRelation({ kind: "group" });
+					}}
+				/>
+
+				<TimelineToolbarButton
+					icon={
+						<HugeiconsIcon
+							icon={linkPlan.action === "unlink" ? Unlink02Icon : Link02Icon}
+						/>
+					}
+					isActive={linkPlan.action === "unlink"}
+					tooltip={
+						linkPlan.available
+							? linkPlan.action === "unlink"
+								? "Unlink selected audio and video"
+								: "Link selected audio and video"
+							: (linkPlan.reason ?? "Link selected audio and video")
+					}
+					disabled={!linkPlan.available}
+					onClick={({ event }) => {
+						event.stopPropagation();
+						applyRelation({ kind: "link" });
+					}}
 				/>
 
 				<TimelineToolbarButton

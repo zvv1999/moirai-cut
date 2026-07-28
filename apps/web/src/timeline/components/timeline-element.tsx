@@ -606,6 +606,20 @@ function ElementInner({
 						}
 						expandedContent={expandedContent}
 					/>
+					{(element.groupId || element.linkGroupId) && (
+						<span
+							className="bg-background/85 text-foreground pointer-events-none absolute top-1 right-1 rounded px-1 text-[9px] font-semibold shadow-sm"
+							aria-label={[
+								element.groupId ? "Grouped" : null,
+								element.linkGroupId ? "Linked" : null,
+							]
+								.filter(Boolean)
+								.join(" and ")}
+						>
+							{element.groupId ? "G" : ""}
+							{element.linkGroupId ? "L" : ""}
+						</span>
+					)}
 				</div>
 			</div>
 
