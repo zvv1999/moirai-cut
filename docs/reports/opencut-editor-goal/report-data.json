@@ -1,51 +1,74 @@
 {
-  "goalId": "019fa427-c03a-7dd2-850c-0e25523c914f",
-  "updatedAt": "2026-07-28",
-  "branch": "feat/agent-drivable",
-  "status": "ACTIVE",
-  "summary": {
-    "cataloguedCapabilities": 74,
-    "greenCapabilities": 8,
-    "automatedTestsPassing": 357,
-    "archivedScreenshots": 5
-  },
-  "greenFeatureIds": ["W01", "W06", "M02", "T07", "G01", "G04", "G06", "G07"],
-  "evidence": [
-    {
-      "featureIds": ["W01"],
-      "redCommits": ["c0f0a73", "157a7a5", "33e3206", "393bacc"],
-      "greenCommit": "29834f5",
-      "result": "A real timeline image was moved offline, detected in the library, timeline, and canvas, then relinked through the browser with the same media id. The restored bytes matched the original SHA-256 and the clip retained transforms and four keyframes.",
-      "tests": {
-        "targeted": "12/12",
-        "fullSuite": "357/357",
-        "functionCoverage": "82.35-100%",
-        "lineCoverage": "89.86-100%"
-      },
-      "screenshots": [
-        "assets/screenshots/W01-missing-media-library-timeline-canvas.png",
-        "assets/screenshots/W01-missing-media-relinked.png"
-      ]
-    },
-    {
-      "featureIds": ["M0"],
-      "result": "Versioned goal plan and portable HTML report rendered in the in-app browser, screenshot lightbox worked, and no browser console warning or error was recorded.",
-      "screenshots": [
-        "assets/screenshots/M0-html-report-baseline.png"
-      ]
-    },
-    {
-      "featureIds": ["M02", "W06", "T07"],
-      "commit": "8086fad",
-      "result": "Filename search returned 1 of 44 assets, type filtering returned 6 of 44 assets, and edit modes displayed current shortcut labels.",
-      "screenshots": [
-        "assets/screenshots/M02-W06-editor-workbench-baseline.png",
-        "assets/screenshots/M02-media-search-filtered.png"
-      ]
-    },
-    {
-      "featureIds": ["G01", "G04", "G06", "G07"],
-      "result": "Existing atomic operation registry, project inspection, revision and idempotency checks, and guardrail schema tests accepted as the agent foundation."
-    }
-  ]
+	"goalId": "019fa427-c03a-7dd2-850c-0e25523c914f",
+	"updatedAt": "2026-07-28",
+	"branch": "feat/agent-drivable",
+	"status": "ACTIVE",
+	"summary": {
+		"cataloguedCapabilities": 74,
+		"greenCapabilities": 9,
+		"automatedTestsPassing": 362,
+		"archivedScreenshots": 6
+	},
+	"greenFeatureIds": [
+		"W01",
+		"W02",
+		"W06",
+		"M02",
+		"T07",
+		"G01",
+		"G04",
+		"G06",
+		"G07"
+	],
+	"evidence": [
+		{
+			"featureIds": ["W02"],
+			"redCommits": ["78e250c"],
+			"greenCommit": "4408d7b",
+			"result": "The inspector now keeps the selected clip name, type, duration, and track visible above six named property tabs. Every editable property exposes a consistent reset action while retaining its keyframe control.",
+			"tests": {
+				"targeted": "5/5",
+				"fullSuite": "362/362",
+				"functionCoverage": "83.33%",
+				"lineCoverage": "100%"
+			},
+			"screenshots": [
+				"assets/screenshots/W02-inspector-information-architecture.png"
+			]
+		},
+		{
+			"featureIds": ["W01"],
+			"redCommits": ["c0f0a73", "157a7a5", "33e3206", "393bacc"],
+			"greenCommit": "29834f5",
+			"result": "A real timeline image was moved offline, detected in the library, timeline, and canvas, then relinked through the browser with the same media id. The restored bytes matched the original SHA-256 and the clip retained transforms and four keyframes.",
+			"tests": {
+				"targeted": "12/12",
+				"fullSuite": "357/357",
+				"functionCoverage": "82.35-100%",
+				"lineCoverage": "89.86-100%"
+			},
+			"screenshots": [
+				"assets/screenshots/W01-missing-media-library-timeline-canvas.png",
+				"assets/screenshots/W01-missing-media-relinked.png"
+			]
+		},
+		{
+			"featureIds": ["M0"],
+			"result": "Versioned goal plan and portable HTML report rendered in the in-app browser, screenshot lightbox worked, and no browser console warning or error was recorded.",
+			"screenshots": ["assets/screenshots/M0-html-report-baseline.png"]
+		},
+		{
+			"featureIds": ["M02", "W06", "T07"],
+			"commit": "8086fad",
+			"result": "Filename search returned 1 of 44 assets, type filtering returned 6 of 44 assets, and edit modes displayed current shortcut labels.",
+			"screenshots": [
+				"assets/screenshots/M02-W06-editor-workbench-baseline.png",
+				"assets/screenshots/M02-media-search-filtered.png"
+			]
+		},
+		{
+			"featureIds": ["G01", "G04", "G06", "G07"],
+			"result": "Existing atomic operation registry, project inspection, revision and idempotency checks, and guardrail schema tests accepted as the agent foundation."
+		}
+	]
 }
