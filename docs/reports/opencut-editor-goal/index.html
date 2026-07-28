@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">15</strong>
+							<strong class="metric__value">16</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">405</strong>
+							<strong class="metric__value">411</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">14</strong>
+							<strong class="metric__value">16</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,54 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/M02-advanced-media-filters.png"
+								data-lightbox-label="M02 高级素材组合筛选"
+							>
+								<img
+									src="assets/screenshots/M02-advanced-media-filters.png"
+									alt="素材面板显示收藏和 select 标签两个活动筛选，只保留带收藏星标与蓝色色标的 DSC_5396.JPG，结果为 1 of 44 assets"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">M02 · ADVANCED FILTERS</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>复杂素材库可按真实剪辑条件逐层收窄</h3>
+								<p>
+									文件名、类型、时长、分辨率、时间线使用状态、可用性、标签与收藏可组合使用；结果数、活动条件数、清空入口与空结果提示始终同步。真实工程中“收藏 + select 标签”将 44 项准确收窄为 1 项。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/M03-batch-metadata-editor.png"
+								data-lightbox-label="M03 批量素材元数据编辑"
+							>
+								<img
+									src="assets/screenshots/M03-batch-metadata-editor.png"
+									alt="元数据编辑对话框为一个素材添加 select 标签、收藏状态与蓝色色标，并说明不会修改源文件或时间线剪辑"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">M03 · ASSET METADATA</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>标签、收藏与色标进入统一可撤销组织流</h3>
+								<p>
+									单选或多选素材均可批量新增/移除标签、设置收藏与六种色标；结果直接驱动徽标、筛选和排序，并随工程刷新持久化。整个流程只改组织元数据，不触碰源文件和既有时间线剪辑。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -518,6 +566,20 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>M02 / M03</strong></td>
+									<td>
+										<code>3a22d5c</code> RED + <code>36f76e3</code> GREEN +
+										<code>96d54a3</code> 构建修复
+									</td>
+									<td>
+										目标 14/14；全量 411/411；筛选核心 100% / 91.36%；组织与元数据核心 93.88% / 91.15%；生产构建通过
+									</td>
+									<td>
+										标签/收藏/蓝色色标；收藏 + 标签组合筛选 1/44；刷新持久化；验收元数据已清理；0 应用警告/错误
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>M01</strong></td>
 									<td><code>53b94a4</code> RED + <code>c71775f</code> GREEN</td>

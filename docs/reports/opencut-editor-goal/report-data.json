@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 15,
-		"automatedTestsPassing": 405,
-		"archivedScreenshots": 14
+		"greenCapabilities": 16,
+		"automatedTestsPassing": 411,
+		"archivedScreenshots": 16
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -20,6 +20,7 @@
 		"W08",
 		"M01",
 		"M02",
+		"M03",
 		"T07",
 		"G01",
 		"G04",
@@ -27,6 +28,24 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["M02", "M03"],
+			"redCommits": ["3a22d5c"],
+			"greenCommit": "36f76e3",
+			"followupCommit": "96d54a3",
+			"result": "The media library now combines filename and media-type search with duration, resolution, timeline-usage, availability, tag, and favourite filters, with live result counts, active-filter counts, clear-all, and truthful empty states. Selection-aware metadata editing batch-adds or removes tags, favourite state, and colour labels; badges, filters, and sorting consume the persisted project metadata without mutating source files or timeline edits.",
+			"tests": {
+				"targeted": "14/14 including 6 new capability tests and retained organization regressions",
+				"fullSuite": "411/411 from the repository root with the required WASM test preload",
+				"functionCoverage": "100% media-filter core; 93.88% media-organization and metadata core",
+				"lineCoverage": "91.36% media-filter core; 91.15% media-organization and metadata core",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
+			},
+			"screenshots": [
+				"assets/screenshots/M02-advanced-media-filters.png",
+				"assets/screenshots/M03-batch-metadata-editor.png"
+			]
+		},
 		{
 			"featureIds": ["M01"],
 			"redCommits": ["53b94a4"],
