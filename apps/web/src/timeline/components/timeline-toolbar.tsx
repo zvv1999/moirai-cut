@@ -17,6 +17,9 @@ import { type TActionWithOptionalArgs, invokeAction } from "@/actions";
 import { useTimelineStore } from "@/timeline/timeline-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+	MarkerManagerPopover,
+} from "@/timeline/bookmarks";
+import {
 	Bookmark02Icon,
 	Delete02Icon,
 	SnowIcon,
@@ -247,6 +250,8 @@ function ToolbarLeftSection() {
 						}
 					/>
 				</Tooltip>
+
+				<MarkerManagerPopover />
 
 				<GraphEditorPopover
 					open={graphEditor.open}

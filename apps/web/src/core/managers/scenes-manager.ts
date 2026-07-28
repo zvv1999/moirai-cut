@@ -14,6 +14,7 @@ import {
 } from "@/timeline/bookmarks/index";
 import {
 	CreateSceneCommand,
+	AddBookmarkCommand,
 	DeleteSceneCommand,
 	MoveBookmarkCommand,
 	RemoveBookmarkCommand,
@@ -113,6 +114,10 @@ export class ScenesManager {
 	async toggleBookmark({ time }: { time: MediaTime }): Promise<void> {
 		const command = new ToggleBookmarkCommand(time);
 		this.editor.command.execute({ command });
+	}
+
+	async addBookmark({ bookmark }: { bookmark: Bookmark }): Promise<void> {
+		this.editor.command.execute({ command: new AddBookmarkCommand(bookmark) });
 	}
 
 	isBookmarked({ time }: { time: MediaTime }): boolean {

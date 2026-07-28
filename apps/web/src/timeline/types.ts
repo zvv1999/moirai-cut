@@ -10,10 +10,15 @@ export type ElementRef = {
 };
 
 export interface Bookmark {
+	id: string;
 	time: MediaTime;
+	name?: string;
 	note?: string;
 	color?: string;
 	duration?: MediaTime;
+	scope?: "timeline" | "clip";
+	trackId?: string;
+	elementId?: string;
 }
 
 export interface TScene {

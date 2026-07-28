@@ -5,19 +5,25 @@ import {
 	getAdjacentMarker,
 	resolveMarkerAddress,
 } from "@/timeline/bookmarks/marker-model";
+import { mediaTime } from "@/wasm";
 
 const markers = [
-	{ id: "intro", name: "Intro", time: 10, scope: "timeline" as const },
+	{ id: "intro", name: "Intro", time: mediaTime({ ticks: 10 }), scope: "timeline" as const },
 	{
 		id: "shot",
 		name: "Shot note",
-		time: 30,
-		duration: 20,
+		time: mediaTime({ ticks: 30 }),
+		duration: mediaTime({ ticks: 20 }),
 		scope: "clip" as const,
 		trackId: "main",
 		elementId: "clip-a",
 	},
-	{ id: "outro", name: "Outro", time: 80, scope: "timeline" as const },
+	{
+		id: "outro",
+		name: "Outro",
+		time: mediaTime({ ticks: 80 }),
+		scope: "timeline" as const,
+	},
 ];
 
 describe("marker model", () => {
@@ -25,12 +31,12 @@ describe("marker model", () => {
 		expect(
 			createTimelineMarker({
 				id: "marker-1",
-				time: 42,
+				time: mediaTime({ ticks: 42 }),
 				name: "Beat change",
 			}),
 		).toEqual({
 			id: "marker-1",
-			time: 42,
+			time: mediaTime({ ticks: 42 }),
 			name: "Beat change",
 			scope: "timeline",
 		});
@@ -44,14 +50,14 @@ describe("marker model", () => {
 				element: {
 					id: "clip-a",
 					name: "Opening shot",
-					startTime: 30,
-					duration: 20,
+					startTime: mediaTime({ ticks: 30 }),
+					duration: mediaTime({ ticks: 20 }),
 				},
 			}),
 		).toEqual({
 			id: "marker-2",
-			time: 30,
-			duration: 20,
+			time: mediaTime({ ticks: 30 }),
+			duration: mediaTime({ ticks: 20 }),
 			name: "Opening shot",
 			scope: "clip",
 			trackId: "main",
@@ -60,13 +66,19 @@ describe("marker model", () => {
 	});
 
 	test("navigates to strict previous and next markers", () => {
-		expect(getAdjacentMarker({ markers, time: 35, direction: "previous" })?.id).toBe(
+		expect(getAdjacentMarker({ markers, time: mediaTime({ ticks: 35 }), direction: "previous" })?.id).toBe(
 			"shot",
 		);
-		expect(getAdjacentMarker({ markers, time: 35, direction: "next" })?.id).toBe(
+		expect(getAdjacentMarker({ markers, time: mediaTime({ ticks: 35 }), direction: "next" })?.id).toBe(
 			"outro",
 		);
-		expect(getAdjacentMarker({ markers, time: 80, direction: "next" })).toBeNull();
+		expect(
+			getAdjacentMarker({
+				markers,
+				time: mediaTime({ ticks: 80 }),
+				direction: "next",
+			}),
+		).toBeNull();
 	});
 
 	test("resolves an agent address by stable id before legacy time", () => {
@@ -74,14 +86,14 @@ describe("marker model", () => {
 			resolveMarkerAddress({
 				markers,
 				markerId: "shot",
-				time: 10,
+				time: mediaTime({ ticks: 10 }),
 			})?.id,
 		).toBe("shot");
 		expect(
 			resolveMarkerAddress({
 				markers,
 				markerId: null,
-				time: 80,
+				time: mediaTime({ ticks: 80 }),
 			})?.id,
 		).toBe("outro");
 	});

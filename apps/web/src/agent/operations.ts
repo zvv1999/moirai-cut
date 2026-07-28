@@ -228,11 +228,18 @@ export type Operation =
   | { type: "scene.create"; name: string }
   | { type: "scene.delete"; sceneId: string }
   | { type: "bookmark.toggle"; timeSeconds: number }
-  | { type: "bookmark.remove"; timeSeconds: number }
-  | { type: "bookmark.move"; fromSeconds: number; toSeconds: number }
+  | { type: "bookmark.remove"; timeSeconds?: number; bookmarkId?: string }
+  | {
+      type: "bookmark.move";
+      fromSeconds?: number;
+      bookmarkId?: string;
+      toSeconds: number;
+    }
   | {
       type: "bookmark.update";
-      timeSeconds: number;
+      timeSeconds?: number;
+      bookmarkId?: string;
+      name?: string;
       note?: string;
       color?: string;
       durationSeconds?: number;
@@ -437,6 +444,30 @@ function requirePositive(seconds: number): number {
 }
 
 type CommandFactory = (operation: Operation) => Command;
+
+function resolveBookmarkTime({
+  bookmarkId,
+  seconds,
+  secondsField,
+}: {
+  bookmarkId?: string;
+  seconds?: number;
+  secondsField: string;
+}): MediaTime {
+  if (bookmarkId) {
+    const marker = EditorCore.getInstance()
+      .scenes.getActiveScene()
+      .bookmarks.find((bookmark) => bookmark.id === bookmarkId);
+    if (!marker) {
+      throw new UnresolvedReferenceError(`No marker with id ${bookmarkId}`);
+    }
+    return marker.time;
+  }
+  if (seconds === undefined) {
+    throw new InvalidOperationError(`Provide bookmarkId or ${secondsField}`);
+  }
+  return toMediaTime(secondsField, seconds);
+}
 
 /**
  * operation type -> the SAME command class the UI uses. Adding an entry here is
@@ -1014,24 +1045,42 @@ const COMMAND_FACTORIES: { [K in OperationType]: CommandFactory } = {
   },
 
   "bookmark.remove": (operation) => {
-    const { timeSeconds } = operation as Extract<Operation, { type: "bookmark.remove" }>;
-    return new RemoveBookmarkCommand(toMediaTime("timeSeconds", timeSeconds));
+    const { timeSeconds, bookmarkId } = operation as Extract<
+      Operation,
+      { type: "bookmark.remove" }
+    >;
+    return new RemoveBookmarkCommand(
+      resolveBookmarkTime({ bookmarkId, seconds: timeSeconds, secondsField: "timeSeconds" }),
+    );
   },
 
   "bookmark.move": (operation) => {
-    const { fromSeconds, toSeconds } = operation as Extract<Operation, { type: "bookmark.move" }>;
+    const { fromSeconds, bookmarkId, toSeconds } = operation as Extract<
+      Operation,
+      { type: "bookmark.move" }
+    >;
     return new MoveBookmarkCommand({
-      fromTime: toMediaTime("fromSeconds", fromSeconds),
+      fromTime: resolveBookmarkTime({
+        bookmarkId,
+        seconds: fromSeconds,
+        secondsField: "fromSeconds",
+      }),
       toTime: toMediaTime("toSeconds", toSeconds),
     });
   },
 
   "bookmark.update": (operation) => {
-    const { timeSeconds, note, color, durationSeconds } = operation as Extract<
+    const { timeSeconds, bookmarkId, name, note, color, durationSeconds } = operation as Extract<
       Operation,
       { type: "bookmark.update" }
     >;
-    const updates: { note?: string; color?: string; duration?: MediaTime } = {};
+    const updates: {
+      name?: string;
+      note?: string;
+      color?: string;
+      duration?: MediaTime;
+    } = {};
+    if (name !== undefined) updates.name = name;
     if (note !== undefined) updates.note = note;
     if (color !== undefined) updates.color = color;
     if (durationSeconds !== undefined) {
@@ -1041,7 +1090,11 @@ const COMMAND_FACTORIES: { [K in OperationType]: CommandFactory } = {
       throw new InvalidOperationError("bookmark.update names no field to change");
     }
     return new UpdateBookmarkCommand({
-      time: toMediaTime("timeSeconds", timeSeconds),
+      time: resolveBookmarkTime({
+        bookmarkId,
+        seconds: timeSeconds,
+        secondsField: "timeSeconds",
+      }),
       updates,
     });
   },

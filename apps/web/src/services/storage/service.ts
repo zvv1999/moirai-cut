@@ -32,7 +32,8 @@ function normalizeBookmarks({ raw }: { raw: unknown }): Bookmark[] {
 	return raw
 		.map((item): Bookmark | null => {
 			if (typeof item === "number") {
-				return { time: roundMediaTime({ time: item }) };
+				const time = roundMediaTime({ time: item });
+				return { id: `legacy-marker-${time}`, time, scope: "timeline" };
 			}
 			const obj = item as Record<string, unknown>;
 			if (
@@ -43,11 +44,23 @@ function normalizeBookmarks({ raw }: { raw: unknown }): Bookmark[] {
 				return null;
 			}
 			return {
+				id:
+					typeof obj.id === "string"
+						? obj.id
+						: `legacy-marker-${roundMediaTime({ time: obj.time })}`,
 				time: roundMediaTime({ time: obj.time }),
+				...(typeof obj.name === "string" && { name: obj.name }),
 				...(typeof obj.note === "string" && { note: obj.note }),
 				...(typeof obj.color === "string" && { color: obj.color }),
 				...(typeof obj.duration === "number" && {
 					duration: roundMediaTime({ time: obj.duration }),
+				}),
+				...(obj.scope === "timeline" || obj.scope === "clip"
+					? { scope: obj.scope }
+					: { scope: "timeline" as const }),
+				...(typeof obj.trackId === "string" && { trackId: obj.trackId }),
+				...(typeof obj.elementId === "string" && {
+					elementId: obj.elementId,
 				}),
 			};
 		})

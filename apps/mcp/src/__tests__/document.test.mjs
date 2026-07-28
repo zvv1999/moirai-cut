@@ -450,6 +450,8 @@ test("scenes and bookmarks are addressable and guarded", () => {
   const marked = apply(before, { type: "bookmark.toggle", timeSeconds: 1.5 });
   assert.equal(marked.scenes[0].bookmarks.length, 1);
   assert.equal(marked.scenes[0].bookmarks[0].time, 1.5 * S);
+  assert.equal(typeof marked.scenes[0].bookmarks[0].id, "string");
+  const markerId = marked.scenes[0].bookmarks[0].id;
   const unmarked = apply(marked, { type: "bookmark.toggle", timeSeconds: 1.5 });
   assert.equal(unmarked.scenes[0].bookmarks.length, 0);
 
@@ -457,6 +459,12 @@ test("scenes and bookmarks are addressable and guarded", () => {
   assert.equal(moved.scenes[0].bookmarks[0].time, 4 * S);
   const noted = apply(marked, { type: "bookmark.update", timeSeconds: 1.5, note: "cut here" });
   assert.equal(noted.scenes[0].bookmarks[0].note, "cut here");
+  const named = apply(marked, {
+    type: "bookmark.update",
+    bookmarkId: markerId,
+    name: "Agent-addressed marker",
+  });
+  assert.equal(named.scenes[0].bookmarks[0].name, "Agent-addressed marker");
   assert.throws(
     () => apply(marked, { type: "bookmark.update", timeSeconds: 99 }),
     DocumentOperationError,

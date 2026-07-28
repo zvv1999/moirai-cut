@@ -358,21 +358,32 @@ export const OperationSchema = z
     z
       .object({ type: z.literal("bookmark.toggle"), timeSeconds: seconds("Timeline position.") })
       .describe("Add a bookmark at this time, or remove the one already there."),
-    z.object({ type: z.literal("bookmark.remove"), timeSeconds: seconds("Timeline position.") }),
-    z.object({
-      type: z.literal("bookmark.move"),
-      fromSeconds: seconds("Where the bookmark is now."),
-      toSeconds: seconds("Where it should go."),
-    }),
+    z
+      .object({
+        type: z.literal("bookmark.remove"),
+        bookmarkId: z.string().min(1).optional(),
+        timeSeconds: seconds("Legacy timeline-position address.").optional(),
+      })
+      .describe("Provide bookmarkId or the legacy timeSeconds address."),
+    z
+      .object({
+        type: z.literal("bookmark.move"),
+        bookmarkId: z.string().min(1).optional(),
+        fromSeconds: seconds("Legacy current-position address.").optional(),
+        toSeconds: seconds("Where it should go."),
+      })
+      .describe("Provide bookmarkId or the legacy fromSeconds address."),
     z
       .object({
         type: z.literal("bookmark.update"),
-        timeSeconds: seconds("Which bookmark, by its position."),
+        bookmarkId: z.string().min(1).optional(),
+        timeSeconds: seconds("Legacy timeline-position address.").optional(),
+        name: z.string().optional(),
         note: z.string().optional(),
         color: z.string().optional(),
         durationSeconds: seconds("Turns the marker into a range.").optional(),
       })
-      .describe("Bookmarks are addressed by TIME, not by id. At least one field is required."),
+      .describe("Markers are addressed by stable id, with time retained for legacy callers."),
     z
       .object({
         type: z.literal("project.updateSettings"),

@@ -108,7 +108,7 @@ export function TimelineBookmarksRow({
 			>
 				{bookmarks.map((bookmark) => (
 					<TimelineBookmark
-						key={`bookmark-${bookmark.time}`}
+						key={bookmark.id}
 						bookmark={bookmark}
 						zoomLevel={zoomLevel}
 						dragState={dragState}
@@ -190,7 +190,7 @@ function TimelineBookmark({
 						left: `${bookmarkLeft}px`,
 						width: `${bookmarkWidth}px`,
 					}}
-					aria-label={`Bookmark at ${formatNumberForDisplay({ value: mediaTimeToSeconds({ time }), fractionDigits: 1 })}s`}
+					aria-label={`${bookmark.name ?? "Marker"} at ${formatNumberForDisplay({ value: mediaTimeToSeconds({ time }), fractionDigits: 1 })}s`}
 					type="button"
 					onMouseDown={handleMouseDown}
 					onClick={handleClick}
@@ -319,11 +319,13 @@ function BookmarkPopoverContent({
 	};
 
 	const handleUpdate = ({
+		name,
 		note,
 		color,
 		duration,
 	}: Partial<Omit<Bookmark, "time">>) => {
 		const updates: Partial<Omit<Bookmark, "time">> = {};
+		if (name !== undefined && name !== bookmark.name) updates.name = name;
 		if (note !== undefined && note !== bookmark.note) updates.note = note;
 		if (
 			color !== undefined &&
@@ -349,6 +351,21 @@ function BookmarkPopoverContent({
 
 	return (
 		<>
+			<div className="flex flex-col gap-2">
+				<Label className="text-xs">Name</Label>
+				<Input
+					placeholder="Marker name"
+					value={bookmark.name ?? ""}
+					onChange={(event) => handleUpdate({ name: event.target.value })}
+					className="h-8 text-sm"
+				/>
+			</div>
+			<div className="text-muted-foreground flex items-center justify-between text-[11px]">
+				<span>Scope</span>
+				<span className="text-foreground font-medium">
+					{bookmark.scope === "clip" ? "Clip range" : "Timeline"}
+				</span>
+			</div>
 			<div className="flex flex-col gap-2">
 				<Label className="text-xs">Note</Label>
 				<Input

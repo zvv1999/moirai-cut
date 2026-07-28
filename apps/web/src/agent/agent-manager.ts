@@ -106,8 +106,18 @@ export interface ProjectStateSummary {
   fps: { numerator: number; denominator: number; decimal: number } | null;
   /** Every scene, so scene.delete has something real to address. */
   scenes: Array<{ id: string; name: string; isMain: boolean; isActive: boolean }>;
-  /** Bookmarks on the active scene. Addressed by TIME, not by id. */
-  bookmarks: Array<{ timeSeconds: number | null; note?: string; color?: string; durationSeconds?: number | null }>;
+  /** Addressable timeline, clip, and ranged markers on the active scene. */
+  bookmarks: Array<{
+    id: string;
+    timeSeconds: number | null;
+    name?: string;
+    note?: string;
+    color?: string;
+    durationSeconds?: number | null;
+    scope?: "timeline" | "clip";
+    trackId?: string;
+    elementId?: string;
+  }>;
   settings: { canvasSize: unknown; background: unknown };
   tracks: TrackSummary[];
   /**
@@ -371,11 +381,18 @@ export class AgentManager {
         isActive: candidate.id === scene?.id,
       })),
       bookmarks: (scene?.bookmarks ?? []).map((bookmark) => ({
+        id: bookmark.id,
         timeSeconds: toSeconds(bookmark.time),
+        ...(bookmark.name !== undefined ? { name: bookmark.name } : {}),
         ...(bookmark.note !== undefined ? { note: bookmark.note } : {}),
         ...(bookmark.color !== undefined ? { color: bookmark.color } : {}),
         ...(bookmark.duration !== undefined
           ? { durationSeconds: toSeconds(bookmark.duration) }
+          : {}),
+        ...(bookmark.scope !== undefined ? { scope: bookmark.scope } : {}),
+        ...(bookmark.trackId !== undefined ? { trackId: bookmark.trackId } : {}),
+        ...(bookmark.elementId !== undefined
+          ? { elementId: bookmark.elementId }
           : {}),
       })),
       settings: {

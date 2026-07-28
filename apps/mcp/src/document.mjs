@@ -944,44 +944,74 @@ const OPERATIONS = {
     const existing = (scene.bookmarks ?? []).find((bookmark) => bookmark.time === time);
     scene.bookmarks = existing
       ? scene.bookmarks.filter((bookmark) => bookmark.time !== time)
-      : [...(scene.bookmarks ?? []), { time }].sort((a, b) => a.time - b.time);
+      : [
+          ...(scene.bookmarks ?? []),
+          { id: randomUUID(), time, scope: "timeline" },
+        ].sort((a, b) => a.time - b.time);
   },
 
   "bookmark.remove": (scene, op) => {
-    const time = toTicks("timeSeconds", op.timeSeconds);
+    const time =
+      op.timeSeconds === undefined ? null : toTicks("timeSeconds", op.timeSeconds);
     const before = (scene.bookmarks ?? []).length;
-    scene.bookmarks = (scene.bookmarks ?? []).filter((bookmark) => bookmark.time !== time);
+    scene.bookmarks = (scene.bookmarks ?? []).filter((bookmark) =>
+      op.bookmarkId ? bookmark.id !== op.bookmarkId : bookmark.time !== time,
+    );
     if (scene.bookmarks.length === before) {
       throw new DocumentOperationError(
-        `No bookmark at ${op.timeSeconds}s.`,
+        op.bookmarkId
+          ? `No marker with id ${op.bookmarkId}.`
+          : `No bookmark at ${op.timeSeconds}s.`,
         "unresolved_reference",
       );
     }
   },
 
   "bookmark.move": (scene, op) => {
-    const from = toTicks("fromSeconds", op.fromSeconds);
+    const from =
+      op.fromSeconds === undefined ? null : toTicks("fromSeconds", op.fromSeconds);
     const to = toTicks("toSeconds", op.toSeconds);
-    const bookmark = (scene.bookmarks ?? []).find((candidate) => candidate.time === from);
+    const bookmark = (scene.bookmarks ?? []).find((candidate) =>
+      op.bookmarkId ? candidate.id === op.bookmarkId : candidate.time === from,
+    );
     if (!bookmark) {
-      throw new DocumentOperationError(`No bookmark at ${op.fromSeconds}s.`, "unresolved_reference");
+      throw new DocumentOperationError(
+        op.bookmarkId
+          ? `No marker with id ${op.bookmarkId}.`
+          : `No bookmark at ${op.fromSeconds}s.`,
+        "unresolved_reference",
+      );
     }
     bookmark.time = to;
     scene.bookmarks.sort((a, b) => a.time - b.time);
   },
 
   "bookmark.update": (scene, op) => {
-    const time = toTicks("timeSeconds", op.timeSeconds);
-    const bookmark = (scene.bookmarks ?? []).find((candidate) => candidate.time === time);
+    const time =
+      op.timeSeconds === undefined ? null : toTicks("timeSeconds", op.timeSeconds);
+    const bookmark = (scene.bookmarks ?? []).find((candidate) =>
+      op.bookmarkId ? candidate.id === op.bookmarkId : candidate.time === time,
+    );
     if (!bookmark) {
-      throw new DocumentOperationError(`No bookmark at ${op.timeSeconds}s.`, "unresolved_reference");
+      throw new DocumentOperationError(
+        op.bookmarkId
+          ? `No marker with id ${op.bookmarkId}.`
+          : `No bookmark at ${op.timeSeconds}s.`,
+        "unresolved_reference",
+      );
     }
+    if (op.name !== undefined) bookmark.name = op.name;
     if (op.note !== undefined) bookmark.note = op.note;
     if (op.color !== undefined) bookmark.color = op.color;
     if (op.durationSeconds !== undefined) {
       bookmark.duration = toTicks("durationSeconds", op.durationSeconds);
     }
-    if (op.note === undefined && op.color === undefined && op.durationSeconds === undefined) {
+    if (
+      op.name === undefined &&
+      op.note === undefined &&
+      op.color === undefined &&
+      op.durationSeconds === undefined
+    ) {
       throw new DocumentOperationError("bookmark.update names no field to change");
     }
   },
@@ -1802,10 +1832,15 @@ export function describeDocument({ document, detail = "full" }) {
       isActive: candidate.id === scene.id,
     })),
     bookmarks: (scene.bookmarks ?? []).map((bookmark) => ({
+      id: bookmark.id ?? `legacy-marker-${bookmark.time}`,
       timeSeconds: toSeconds(bookmark.time),
+      ...(bookmark.name !== undefined ? { name: bookmark.name } : {}),
       ...(bookmark.note !== undefined ? { note: bookmark.note } : {}),
       ...(bookmark.color !== undefined ? { color: bookmark.color } : {}),
       ...(bookmark.duration !== undefined ? { durationSeconds: toSeconds(bookmark.duration) } : {}),
+      ...(bookmark.scope !== undefined ? { scope: bookmark.scope } : {}),
+      ...(bookmark.trackId !== undefined ? { trackId: bookmark.trackId } : {}),
+      ...(bookmark.elementId !== undefined ? { elementId: bookmark.elementId } : {}),
     })),
     settings: {
       fps: document.settings?.fps ?? null,

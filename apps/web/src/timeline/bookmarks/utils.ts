@@ -1,6 +1,7 @@
 import type { Bookmark } from "@/timeline";
 import type { FrameRate } from "opencut-wasm";
 import { addMediaTime, roundFrameTime, type MediaTime } from "@/wasm";
+import { generateUUID } from "@/utils/id";
 
 function bookmarkTimeEqual({
 	bookmarkTime,
@@ -49,7 +50,10 @@ export function toggleBookmarkInArray({
 		return bookmarks.filter((_, index) => index !== bookmarkIndex);
 	}
 
-	const newBookmarks = [...bookmarks, { time: frameTime }];
+	const newBookmarks = [
+		...bookmarks,
+		{ id: generateUUID(), time: frameTime, scope: "timeline" as const },
+	];
 	return newBookmarks.slice().sort((a, b) => a.time - b.time);
 }
 
