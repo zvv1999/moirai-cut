@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">19</strong>
+							<strong class="metric__value">20</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">421</strong>
+							<strong class="metric__value">425</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">20</strong>
+							<strong class="metric__value">21</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,32 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/M07-duplicate-review.png"
+								data-lightbox-label="M07 重复素材人工复核"
+							>
+								<img
+									src="assets/screenshots/M07-duplicate-review.png"
+									alt="重复素材复核弹窗列出原图与字节完全相同的副本，展示 SHA-256、字节数、时间线引用和未默认选择的保留状态"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">M07 · DUPLICATE REVIEW</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>先解释证据，再让用户决定是否清理</h3>
+								<p>
+									真实 44 项素材扫描无误报；加入字节完全一致的测试副本后，系统才给出 SHA-256
+									精确重复组。候选默认均保留，选择副本并二次确认后只删除副本，撤销/重做分别恢复
+									45/44 项，原图和代理始终保留。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -662,6 +688,15 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>M07</strong></td>
+									<td><code>ffbf427</code> RED + <code>08a5743</code> GREEN</td>
+									<td>目标 4/4；全量 425/425；TypeScript / 新模块 ESLint / 生产构建通过</td>
+									<td>
+										真实 44 项无误报；精确副本按 SHA-256 识别且默认不选；只删除副本；撤销 45、重做 44；持久化索引保留原图和代理
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>M05 / M06</strong></td>
 									<td>

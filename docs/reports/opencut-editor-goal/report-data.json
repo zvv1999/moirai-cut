@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 19,
-		"automatedTestsPassing": 421,
-		"archivedScreenshots": 20
+		"greenCapabilities": 20,
+		"automatedTestsPassing": 425,
+		"archivedScreenshots": 21
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -24,6 +24,7 @@
 		"M04",
 		"M05",
 		"M06",
+		"M07",
 		"T07",
 		"G01",
 		"G04",
@@ -31,6 +32,19 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["M07"],
+			"redCommits": ["ffbf427"],
+			"greenCommit": "08a5743",
+			"result": "Duplicate review now classifies exact matches with same-type, same-size SHA-256 verification and probable matches only through conservative filename and media-property agreement. The review keeps every asset visible and unselected until the user explicitly chooses candidates, explains each match, reports timeline use, and routes confirmed removal through command undo.",
+			"tests": {
+				"targeted": "4/4",
+				"fullSuite": "425/425 from the repository root with the required WASM test preload",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
+			},
+			"browserVerification": "The real 44-asset project first produced no false duplicate. A byte-identical DSC_5396 copy.JPG then formed one exact group beside its source, with neither candidate preselected. Removing only the copy returned the library to 44, undo restored 45, redo restored 44, and the persisted index retained the original and its proxy while omitting the test duplicate.",
+			"screenshots": ["assets/screenshots/M07-duplicate-review.png"]
+		},
 		{
 			"featureIds": ["M05", "M06"],
 			"redCommits": ["1b4539d"],
