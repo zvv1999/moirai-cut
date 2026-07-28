@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">26</strong>
+							<strong class="metric__value">27</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">449</strong>
+							<strong class="metric__value">453</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">27</strong>
+							<strong class="metric__value">29</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,54 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/T08-ripple-preview-feedback.png"
+								data-lightbox-label="T08 Ripple 后续镜头预移动"
+							>
+								<img
+									src="assets/screenshots/T08-ripple-preview-feedback.png"
+									alt="OpenCut Ripple 修剪首镜头右边缘时显示负 1 秒、吸附到播放头并预移动后续 22 个镜头的实时反馈"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">T08 · RIPPLE PREVIEW</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>Ripple 的连锁结果在松手前就发生</h3>
+								<p>
+									首镜头右边缘缩短 1.00s 时，HUD 同时显示播放头吸附与“后续 22 个镜头”影响范围，时间线用最终命令相同的算法预移动所有受影响片段。Escape 丢弃预览后，工程边界和轨道数完全不变。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/T08-move-overlap-feedback.png"
+								data-lightbox-label="T08 移动碰撞与落点反馈"
+							>
+								<img
+									src="assets/screenshots/T08-move-overlap-feedback.png"
+									alt="OpenCut 拖动首镜头进入已占用区时显示目标时间，并说明会创建一个兼容轨道来避免重叠"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">T08 · MOVE & DROP FEEDBACK</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>落点、吸附和冲突不再靠猜</h3>
+								<p>
+									移动 HUD 持续显示目标时间与目的轨道；进入冲突区时明确说明会新建兼容轨道，非法落点说明松手将取消。拖动中的片段以抬升阴影和半透明状态与原时间线区分。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -836,6 +884,15 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>T08</strong></td>
+									<td><code>d99a90f</code> RED + <code>a4b7e9c</code> GREEN</td>
+									<td>目标 4/4 + 精修/交互回归；全量 453/453；TypeScript / ESLint / 生产构建通过</td>
+									<td>
+										重叠移动提前说明新建 1 轨；Ripple −1.00s 吸附播放头并预移动后续 22 段；两次均取消且 4 轨、原剪切点不变
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>T06</strong></td>
 									<td><code>754cecc</code> RED + <code>d1967c5</code> GREEN</td>

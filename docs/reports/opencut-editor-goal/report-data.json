@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 26,
-		"automatedTestsPassing": 449,
-		"archivedScreenshots": 27
+		"greenCapabilities": 27,
+		"automatedTestsPassing": 453,
+		"archivedScreenshots": 29
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -32,12 +32,33 @@
 		"T05",
 		"T06",
 		"T07",
+		"T08",
 		"G01",
 		"G04",
 		"G06",
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": [
+				"T08"
+			],
+			"redCommits": [
+				"d99a90f"
+			],
+			"greenCommit": "a4b7e9c",
+			"result": "Moves and edge trims now expose a shared pre-commit feedback model through a colour-coded live HUD. It reports exact timing, destination, snap source, automatic compatible-track creation for overlap avoidance, invalid cancellation, trim constraints, and ripple consequences. Ripple preview uses the same adjustment algorithm as final command execution, so downstream clips visibly shift before mouseup.",
+			"tests": {
+				"targeted": "4/4 new direct-manipulation tests plus precision-trim and interaction-shell regressions",
+				"fullSuite": "453/453 from the repository root with the required WASM test preload",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
+			},
+			"browserVerification": "Dragging the first real clip into occupied time warned that one compatible track would be created; returning to the origin cancelled with four lanes unchanged. Ripple-shortening its right edge by 1.00 seconds snapped to the playhead and pre-shifted 22 following clips. Escape discarded the preview, Standard mode was restored, and persisted clip boundaries remained unchanged.",
+			"screenshots": [
+				"assets/screenshots/T08-move-overlap-feedback.png",
+				"assets/screenshots/T08-ripple-preview-feedback.png"
+			]
+		},
 		{
 			"featureIds": [
 				"T06"
