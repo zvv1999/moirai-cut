@@ -38,7 +38,7 @@
 						再用共享原子命令、计划预览和可审查变更形成 Agent 原生优势。
 					</p>
 					<div class="hero__meta">
-						<span class="status status--building">ACTIVE · M2</span>
+						<span class="status status--building">ACTIVE · M3</span>
 						<span class="pill">分支 feat/agent-drivable</span>
 						<span class="pill">目标 019fa427…914f</span>
 						<span class="pill">证据随每批实现持续更新</span>
@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">27</strong>
+							<strong class="metric__value">29</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">455</strong>
+							<strong class="metric__value">458</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">30</strong>
+							<strong class="metric__value">32</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -124,7 +124,7 @@
 								<h3>音频、字幕与文本</h3>
 								<p>包络、响度、录音、转写、样式、双语和字幕质检。</p>
 							</div>
-							<span class="status status--todo">TODO</span>
+							<span class="status status--building">BUILDING</span>
 						</article>
 						<article class="milestone">
 							<span class="milestone__id">M4</span>
@@ -177,6 +177,54 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/A01-volume-envelope.png"
+								data-lightbox-label="A01 时间线音量包络与数值检查器同步"
+							>
+								<img
+									src="assets/screenshots/A01-volume-envelope.png"
+									alt="OpenCut 真实配乐片段显示可拖动音量包络，选中关键帧为负 11.1 分贝，检查器同步显示相同数值"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">A01 · VOLUME ENVELOPE</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>音量曲线现在可以直接在片段上编辑</h3>
+								<p>
+									包络线和关键帧覆盖在真实波形上，可直接增加节点并同时拖动时间与 dB。验收把 1.20s / −2.0dB 拖到 2.77s / −11.1dB，播放头跟随节点，检查器同步显示 −11.1；最终工程已恢复原关键帧。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/A02-fade-handles.png"
+								data-lightbox-label="A02 淡入手柄与检查器双向同步"
+							>
+								<img
+									src="assets/screenshots/A02-fade-handles.png"
+									alt="OpenCut 音频片段显示淡入斜线、可拖动手柄和 4.45 秒数值检查器，界面 Issues 已清零"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">A02 · AUDIO FADES</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>淡入淡出拥有同一套实时状态</h3>
+								<p>
+									时间线手柄、遮罩斜线和数值字段共享预览感知元素；输入数值会移动手柄，反向拖动也会更新检查器。窗口级指针生命周期避免重渲染中断拖拽，嵌套按钮导致的两条水合 Issues 已归零，验收后 Fade In 已持久化恢复为 0。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -908,6 +956,15 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>A01 / A02</strong></td>
+									<td><code>3773a24</code> RED + <code>386bab2</code> GREEN</td>
+									<td>目标 3/3 + 属性字段回归；全量 458/458；TypeScript / ESLint / 干净生产构建通过</td>
+									<td>
+										包络 1.20s / −2.0dB → 2.77s / −11.1dB，检查器同步 −11.1；数值与淡入手柄双向同步；2 Issues 归零；最终关键帧和 Fade In 0 已恢复并持久化
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>T07</strong></td>
 									<td><code>4afa396</code> RED + <code>6d96912</code> GREEN</td>

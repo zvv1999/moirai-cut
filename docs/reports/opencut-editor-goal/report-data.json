@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 27,
-		"automatedTestsPassing": 455,
-		"archivedScreenshots": 30
+		"greenCapabilities": 29,
+		"automatedTestsPassing": 458,
+		"archivedScreenshots": 32
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -33,12 +33,36 @@
 		"T06",
 		"T07",
 		"T08",
+		"A01",
+		"A02",
 		"G01",
 		"G04",
 		"G06",
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": [
+				"A01",
+				"A02"
+			],
+			"redCommits": [
+				"3773a24"
+			],
+			"greenCommit": "386bab2",
+			"result": "Audio clips now expose editable volume envelopes directly on the timeline and selected clips gain clamped fade-in/out handles with shaded previews. Envelope drags seek the playhead and keep the numeric inspector exact; inspector edits read and write the same preview-aware element used by the handles. Window-level pointer lifecycles survive React rerenders, and moving the envelope layer outside the clip selection button removed both nested-button hydration issues.",
+			"tests": {
+				"targeted": "3/3 focused audio-envelope and fade-model tests plus property-field regressions",
+				"fullSuite": "458/458 from the repository root with the required WASM test preload",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation with BUILD_ID oGnY9pDK-QARZaJCeuoVz"
+			},
+			"browserVerification": "Dragged a real score keyframe from 1.20 seconds / -2.0 dB to 2.77 seconds / -11.1 dB and the inspector showed -11.1. Inspector-to-handle and handle-to-inspector fade updates stayed synchronized. The Issues badge disappeared after moving interactive envelope controls outside the clip button. Verification changes were restored and the persisted project ended at the original keyframe plus Fade In 0.",
+			"screenshots": [
+				"assets/screenshots/A01-volume-envelope.png",
+				"assets/screenshots/A02-fade-handles.png"
+			],
+			"knownRisks": "Dependency audit reports 45 pre-existing high or critical advisories; remediation is tracked under later reliability work rather than this audio interaction batch."
+		},
 		{
 			"featureIds": [
 				"T07"
