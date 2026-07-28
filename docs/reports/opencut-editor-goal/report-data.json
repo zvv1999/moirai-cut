@@ -5,15 +5,16 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 11,
-		"automatedTestsPassing": 378,
-		"archivedScreenshots": 9
+		"greenCapabilities": 12,
+		"automatedTestsPassing": 384,
+		"archivedScreenshots": 10
 	},
 	"greenFeatureIds": [
 		"W01",
 		"W02",
 		"W03",
 		"W04",
+		"W05",
 		"W06",
 		"M02",
 		"T07",
@@ -23,6 +24,21 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["W05"],
+			"redCommits": ["51b006c", "0ce61e5"],
+			"greenCommit": "fbf857a",
+			"result": "The timeline now fits real content across most of the viewport, preserves the time below the pointer during zoom, reveals the playhead on demand, supports explicit horizontal navigation, and keeps a clickable and draggable long-project overview visible even in the narrow editor workspace.",
+			"tests": {
+				"targeted": "6/6",
+				"fullSuite": "384/384",
+				"functionCoverage": "100% for the timeline navigation core",
+				"lineCoverage": "96% for the timeline navigation core"
+			},
+			"screenshots": [
+				"assets/screenshots/W05-timeline-navigation-overview.png"
+			]
+		},
 		{
 			"featureIds": ["W04"],
 			"redCommits": ["64897bf"],

@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">11</strong>
+							<strong class="metric__value">12</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">378</strong>
+							<strong class="metric__value">384</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">9</strong>
+							<strong class="metric__value">10</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,30 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/W05-timeline-navigation-overview.png"
+								data-lightbox-label="W05 时间线导航与长工程总览"
+							>
+								<img
+									src="assets/screenshots/W05-timeline-navigation-overview.png"
+									alt="时间线放大显示三秒局部，播放头居中，底部总览条显示完整项目和当前可见视窗"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">W05 · NAVIGATION</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>局部精修与全局位置同时可见</h3>
+								<p>
+									鼠标锚点缩放不会丢失关注位置；常驻总览条可点击或拖拽跳转，适配与定位播放头入口在窄屏下仍可见，横向滚轮也能稳定浏览长工程。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -398,6 +422,18 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>W05</strong></td>
+									<td>
+										<code>51b006c</code> / <code>0ce61e5</code> RED +
+										<code>fbf857a</code> GREEN
+									</td>
+									<td>目标 6/6；全量 384/384；导航核心 100% / 96%；生产构建通过</td>
+									<td>
+										真实适配 552/552；定位播放头；总览点击/拖拽；横向滚轮 40px
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>W04</strong></td>
 									<td><code>64897bf</code> RED + <code>6487908</code> GREEN</td>
