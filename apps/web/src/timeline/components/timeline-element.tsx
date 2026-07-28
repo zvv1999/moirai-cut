@@ -89,6 +89,7 @@ import {
 	getExpansionHeight,
 	type ExpandedRow,
 } from "./expanded-layout";
+import { TimelineElementInteractionShell } from "./timeline-element-interaction-shell";
 
 const KEYFRAME_INDICATOR_MIN_WIDTH_PX = 40;
 const ELEMENT_RING_WIDTH_PX = 1.5;
@@ -574,31 +575,29 @@ function ElementInner({
 						isExpanded && "bg-background",
 					)}
 				>
-					<button
-						type="button"
-						tabIndex={-1}
-						className="absolute inset-0 size-full flex flex-col"
+					<TimelineElementInteractionShell
+						baseTrackHeight={baseTrackHeight}
 						onClick={(event) => onElementClick({ event, element })}
 						onMouseDown={(event) => onElementMouseDown({ event, element })}
-					>
-						<div
-							className={cn(
-								"flex shrink-0 items-center overflow-hidden",
-								getTimelineElementClassName({
-									type: getTrackTypeForElementType({
-										elementType: element.type,
+						clipContent={
+							<div
+								className={cn(
+									"flex size-full shrink-0 items-center overflow-hidden",
+									getTimelineElementClassName({
+										type: getTrackTypeForElementType({
+											elementType: element.type,
+										}),
 									}),
-								}),
-								isReducedOpacity && "opacity-50",
-							)}
-							style={{ height: `${baseTrackHeight}px` }}
-						>
-							<div className="flex flex-1 min-h-0 h-full items-center overflow-hidden">
-								<ElementContent element={visibleElement} track={track} />
+									isReducedOpacity && "opacity-50",
+								)}
+							>
+								<div className="flex flex-1 min-h-0 h-full items-center overflow-hidden">
+									<ElementContent element={visibleElement} track={track} />
+								</div>
 							</div>
-						</div>
-						{expandedContent}
-					</button>
+						}
+						expandedContent={expandedContent}
+					/>
 				</div>
 			</div>
 
