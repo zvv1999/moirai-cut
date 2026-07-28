@@ -10,6 +10,11 @@ export {
 	SetTimelineTransitionCommand,
 	RemoveTimelineTransitionCommand,
 } from "./transitions";
+export {
+	CreateCompoundClipCommand,
+	BreakApartCompoundClipCommand,
+	UpdateCompoundChildCommand,
+} from "./compound-clips";
 
 export * from "./keyframes";
 export * from "./effects";

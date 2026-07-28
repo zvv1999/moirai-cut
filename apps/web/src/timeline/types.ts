@@ -110,6 +110,17 @@ export interface TimelineTransition {
 	createdOverlayTrack?: boolean;
 }
 
+export interface CompoundClipChild {
+	originalTrackId: string;
+	relativeStartTime: MediaTime;
+	element: TimelineElement;
+}
+
+export interface CompoundClip {
+	id: string;
+	children: CompoundClipChild[];
+}
+
 interface BaseAudioElement extends BaseTimelineElement {
 	type: "audio";
 	buffer?: AudioBuffer;
@@ -137,6 +148,8 @@ interface BaseTimelineElement {
 	linkGroupId?: string;
 	/** Addressable transition entering this clip from the preceding edit point. */
 	transitionIn?: TimelineTransition;
+	/** Nested sequence represented by this visual container. */
+	compound?: CompoundClip;
 	duration: MediaTime;
 	startTime: MediaTime;
 	trimStart: MediaTime;

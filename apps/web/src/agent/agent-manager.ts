@@ -68,6 +68,16 @@ export interface ElementSummary {
     originalTrackId: string;
     originalStartTimeSeconds: number | null;
   };
+  compound?: {
+    id: string;
+    children: Array<{
+      id: string;
+      type: string;
+      name: string;
+      relativeStartTimeSeconds: number | null;
+      durationSeconds: number | null;
+    }>;
+  };
   /** Only for effect elements. */
   effectType?: string;
   /** Built-in element params, e.g. text content. */
@@ -700,6 +710,32 @@ export class AgentManager {
                 originalStartTimeSeconds: toSeconds(
                   transition.originalStartTime as number | undefined,
                 ),
+              };
+            })(),
+          }
+        : {}),
+      ...(element.compound && typeof element.compound === "object"
+        ? {
+            compound: (() => {
+              const compound = element.compound as Record<string, unknown>;
+              return {
+                id: String(compound.id ?? ""),
+                children: Array.isArray(compound.children)
+                  ? (compound.children as Array<Record<string, unknown>>).map((child) => {
+                      const nested = (child.element ?? {}) as Record<string, unknown>;
+                      return {
+                        id: String(nested.id ?? ""),
+                        type: String(nested.type ?? ""),
+                        name: String(nested.name ?? ""),
+                        relativeStartTimeSeconds: toSeconds(
+                          child.relativeStartTime as number | undefined,
+                        ),
+                        durationSeconds: toSeconds(
+                          nested.duration as number | undefined,
+                        ),
+                      };
+                    })
+                  : [],
               };
             })(),
           }

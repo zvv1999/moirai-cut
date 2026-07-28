@@ -1813,6 +1813,20 @@ export function describeDocument({ document, detail = "full" }) {
             },
           }
         : {}),
+      ...(element.compound
+        ? {
+            compound: {
+              id: element.compound.id,
+              children: (element.compound.children ?? []).map((child) => ({
+                id: child.element?.id,
+                type: child.element?.type,
+                name: child.element?.name,
+                relativeStartTimeSeconds: toSeconds(child.relativeStartTime),
+                durationSeconds: toSeconds(child.element?.duration),
+              })),
+            },
+          }
+        : {}),
       ...(element.effectType ? { effectType: element.effectType } : {}),
       // maskId is how every mask operation addresses its target.
       ...(Array.isArray(element.masks) && element.masks.length > 0

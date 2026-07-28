@@ -635,6 +635,15 @@ function ElementInner({
 							s
 						</span>
 					) : null}
+					{element.compound ? (
+						<span
+							className="bg-background/90 text-foreground pointer-events-none absolute right-1 bottom-1 rounded px-1.5 py-0.5 text-[9px] font-semibold shadow-sm"
+							data-compound-id={element.compound.id}
+							aria-label={`Compound clip with ${element.compound.children.length} nested clips`}
+						>
+							▣ {element.compound.children.length}
+						</span>
+					) : null}
 				</div>
 			</div>
 

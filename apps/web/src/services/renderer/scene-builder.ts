@@ -18,11 +18,12 @@ import {
 	readOpacityFromParams,
 } from "@/rendering";
 import { getMediaAssetPlaybackSource } from "@/media/proxy";
+import { expandCompoundElements } from "@/timeline/compound-clips";
 
 const PREVIEW_MAX_IMAGE_SIZE = 2048;
 
 function getVisibleSortedElements({ track }: { track: TimelineTrack }) {
-	return track.elements
+	return expandCompoundElements({ elements: track.elements })
 		.filter((element) => !("hidden" in element && element.hidden))
 		.slice()
 		.sort((a, b) => {
