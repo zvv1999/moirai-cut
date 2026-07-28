@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">17</strong>
+							<strong class="metric__value">19</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">415</strong>
+							<strong class="metric__value">421</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">18</strong>
+							<strong class="metric__value">20</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,54 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/M05-batch-media-operations.png"
+								data-lightbox-label="M05 批量素材操作工作台"
+							>
+								<img
+									src="assets/screenshots/M05-batch-media-operations.png"
+									alt="OpenCut 批量素材操作弹窗展示顺序重命名、按顺序替换、按文件名重连、导出原文件、代理生成和安全删除入口"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">M05 · BATCH MEDIA</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>多选素材从散落菜单进入一站式工作台</h3>
+								<p>
+									顺序重命名保留扩展名与时间线身份；按顺序替换和按文件名重连复用已有媒体处理链；原文件导出不会误用代理；删除前有二次确认。安全操作进入同一命令栈，关闭弹窗后可用编辑器撤销。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/M06-proxy-workflow-ready.png"
+								data-lightbox-label="M06 代理工作流已就绪"
+							>
+								<img
+									src="assets/screenshots/M06-proxy-workflow-ready.png"
+									alt="代理工作流显示 DSC_5396.JPG 已生成 640×960、33 KB 代理，状态为 Proxy on，并可刷新、关闭或移除"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">M06 · PROXY WORKFLOW</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>轻量预览与原画导出被明确隔离</h3>
+								<p>
+									真实图片生成 640×960、33 KB 代理并刷新持久化，素材库仍保持 44 项且卡片显示 P 徽标。预览构建只在代理启用且完整时切换源；最终导出继续读取原文件。开关、刷新、移除与撤销均已操作验证。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -614,6 +662,18 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>M05 / M06</strong></td>
+									<td>
+										<code>1b4539d</code> RED + <code>1489f19</code> GREEN +
+										<code>b322615</code> 持久化修复
+									</td>
+									<td>目标 6/6；全量 421/421；TypeScript / 新模块 ESLint / 生产构建通过</td>
+									<td>
+										真实图片代理 640×960 / 33 KB；刷新后 44/44 且 P 徽标保留；开关、移除、重命名及其撤销通过；初次不安全存储 ID 已由浏览器验收发现并修复
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>M04</strong></td>
 									<td><code>d081554</code> RED + <code>d8a0af7</code> GREEN</td>

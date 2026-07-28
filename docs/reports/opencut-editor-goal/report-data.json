@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 17,
-		"automatedTestsPassing": 415,
-		"archivedScreenshots": 18
+		"greenCapabilities": 19,
+		"automatedTestsPassing": 421,
+		"archivedScreenshots": 20
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -22,6 +22,8 @@
 		"M02",
 		"M03",
 		"M04",
+		"M05",
+		"M06",
 		"T07",
 		"G01",
 		"G04",
@@ -29,6 +31,23 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["M05", "M06"],
+			"redCommits": ["1b4539d"],
+			"greenCommit": "1489f19",
+			"followupCommit": "b322615",
+			"result": "The selection-aware media workbench now batches sequential rename, ordered replacement, filename relink, guarded removal, original download, and proxy generation with progress. Proxies persist beside the original, can be generated, refreshed, toggled, removed, and restored through command undo. Preview scene construction selects the enabled proxy while export construction always selects the original source.",
+			"tests": {
+				"targeted": "6/6",
+				"fullSuite": "421/421 from the repository root with the required WASM test preload",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
+			},
+			"browserVerification": "A real DSC_5396.JPG proxy generated at 640×960 / 33 KB, survived refresh with the media library still exactly 44 assets, displayed a persistent P badge, toggled off/on, removed/restored, and batch-renamed/restored through command undo. Initial browser verification exposed an unsafe synthetic storage id; b322615 repaired the disk contract and internal-record filtering.",
+			"screenshots": [
+				"assets/screenshots/M05-batch-media-operations.png",
+				"assets/screenshots/M06-proxy-workflow-ready.png"
+			]
+		},
 		{
 			"featureIds": ["M04"],
 			"redCommits": ["d081554"],
