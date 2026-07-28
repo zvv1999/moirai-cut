@@ -55,7 +55,7 @@ const elementDraft = z
       .describe("Required for graphic: rectangle | ellipse | polygon | star."),
     hidden: z.boolean().optional().describe("Visual elements only; ignored for audio."),
     effectType: z
-      .enum(["blur", "color-grade"])
+      .enum(["blur", "color-grade", "chroma-key", "background-removal"])
       .optional()
       .describe("Required for an effect element (an adjustment layer on an effect track)."),
     sourceDurationSeconds: z
@@ -183,7 +183,9 @@ export const OperationSchema = z
         type: z.literal("element.addEffect"),
         trackId,
         elementId,
-        effectType: z.enum(["blur", "color-grade"]).describe("Effect id from the registry."),
+        effectType: z
+          .enum(["blur", "color-grade", "chroma-key", "background-removal"])
+          .describe("Effect id from the registry."),
       })
       .describe("Attach an effect to a visual clip. Read it back from get_state to get its id."),
     z.object({
@@ -207,7 +209,7 @@ export const OperationSchema = z
         params: z
           .record(z.union([z.number(), z.string(), z.boolean()]))
           .describe(
-            "Merged over current values. blur takes intensity; color-grade takes exposure, contrast, temperature, saturation, highlights, shadows, curve, lutStrength, and lutSource.",
+            "Merged over current values. Supported registries include blur, color-grade, chroma-key, and background-removal.",
           ),
       })
       .describe("Tune an effect's parameters."),

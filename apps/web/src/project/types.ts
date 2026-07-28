@@ -3,6 +3,7 @@ import type { TScene } from "@/timeline/types";
 import type { MediaTime } from "@/wasm";
 import type { MediaOrganization } from "@/media/organization";
 import type { CaptionStyle } from "@/subtitles/styles";
+import type { EffectPreset } from "@/effects/presets";
 
 export type TBackground =
 	| {
@@ -36,6 +37,7 @@ export interface TProjectSettings {
 	originalCanvasSize?: TCanvasSize | null;
 	background: TBackground;
 	captionStyles?: CaptionStyle[];
+	effectPresets?: EffectPreset[];
 }
 
 export interface TTimelineViewState {

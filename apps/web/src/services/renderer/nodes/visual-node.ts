@@ -8,12 +8,14 @@ import type { Mask } from "@/masks/types";
 import type { BlendMode, Transform } from "@/rendering";
 import type { RetimeConfig, VisualElement } from "@/timeline";
 import type { VisualAppearance } from "@/visual/appearance";
+import type { MotionTrackingData } from "@/motion-tracking";
 
 export interface VisualNodeParams {
 	duration: number;
 	timeOffset: number;
 	trimStart: number;
 	trimEnd: number;
+	sourceDuration?: number;
 	retime?: RetimeConfig;
 	transform: Transform;
 	animations?: VisualElement["animations"];
@@ -22,6 +24,12 @@ export interface VisualNodeParams {
 	effects?: Effect[];
 	masks?: Mask[];
 	appearance: VisualAppearance;
+	motionTracking?: MotionTrackingData;
+	stabilization?: {
+		enabled: boolean;
+		strength: number;
+		autoCrop: boolean;
+	};
 }
 
 export interface ResolvedVisualNodeState {

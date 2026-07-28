@@ -9,6 +9,7 @@ import {
 	buildSpeedCurveRetime,
 	getRetimeBoundaryStatus,
 	getSourceTimeAtClipTime,
+	getTimelineDurationForSourceSpan,
 } from "@/retime";
 import {
 	applyBackgroundRemoval,
@@ -22,6 +23,7 @@ import {
 	exportEffectPresets,
 	importEffectPresets,
 } from "@/effects/presets";
+import { roundMediaTime } from "@/wasm";
 
 function trackingFrame({
 	time,
@@ -82,6 +84,22 @@ describe("motion tracking", () => {
 			}),
 		).toEqual({ x: 0.1, y: 0.05, confidence: 0.9 });
 	});
+
+	test("keeps separated low-confidence samples as separate failure ranges", () => {
+		expect(
+			buildTrackingFailureRanges({
+				samples: [
+					{ time: 1, x: 0, y: 0, confidence: 0.2 },
+					{ time: 2, x: 0, y: 0, confidence: 0.9 },
+					{ time: 3, x: 0, y: 0, confidence: 0.3 },
+				],
+				confidenceThreshold: 0.5,
+			}),
+		).toEqual([
+			{ start: 1, end: 1, minimumConfidence: 0.2 },
+			{ start: 3, end: 3, minimumConfidence: 0.3 },
+		]);
+	});
 });
 
 describe("advanced retime", () => {
@@ -92,7 +110,15 @@ describe("advanced retime", () => {
 				{ time: 120_000, rate: 2 },
 			],
 		});
-		expect(getSourceTimeAtClipTime({ clipTime: 120_000, retime })).toBe(180_000);
+		expect(getSourceTimeAtClipTime({ clipTime: 120_000, retime })).toBe(
+			180_000,
+		);
+		expect(
+			getTimelineDurationForSourceSpan({
+				sourceSpan: 180_000,
+				retime,
+			}),
+		).toBeCloseTo(120_000, 4);
 		expect(
 			getRetimeBoundaryStatus({
 				duration: 240_000,
@@ -119,7 +145,10 @@ describe("advanced retime", () => {
 			getSourceTimeAtClipTime({
 				clipTime: 300_000,
 				sourceSpan: 480_000,
-				retime: { rate: 1, freezeFrameAt: 150_000 },
+				retime: {
+					rate: 1,
+					freezeFrameAt: roundMediaTime({ time: 150_000 }),
+				},
 			}),
 		).toBe(150_000);
 	});
@@ -139,9 +168,7 @@ describe("stabilization and keying", () => {
 
 	test("keys a selected color and removes a corner-sampled background", () => {
 		const chroma = applyChromaKey({
-			pixels: new Uint8ClampedArray([
-				0, 255, 0, 255, 255, 0, 0, 255,
-			]),
+			pixels: new Uint8ClampedArray([0, 255, 0, 255, 255, 0, 0, 255]),
 			keyColor: "#00ff00",
 			similarity: 0.2,
 			softness: 0.1,
@@ -151,8 +178,7 @@ describe("stabilization and keying", () => {
 
 		const removed = applyBackgroundRemoval({
 			pixels: new Uint8ClampedArray([
-				20, 40, 220, 255, 20, 40, 220, 255,
-				20, 40, 220, 255, 230, 30, 20, 255,
+				20, 40, 220, 255, 20, 40, 220, 255, 20, 40, 220, 255, 230, 30, 20, 255,
 			]),
 			width: 2,
 			height: 2,

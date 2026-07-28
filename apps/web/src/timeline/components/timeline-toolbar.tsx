@@ -16,9 +16,7 @@ import { ScenesView } from "@/components/editor/scenes-view";
 import { type TActionWithOptionalArgs, invokeAction } from "@/actions";
 import { useTimelineStore } from "@/timeline/timeline-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-	MarkerManagerPopover,
-} from "@/timeline/bookmarks";
+import { MarkerManagerPopover } from "@/timeline/bookmarks";
 import {
 	Bookmark02Icon,
 	Delete02Icon,
@@ -48,6 +46,8 @@ import { CompoundClipPopover } from "./compound-clip-popover";
 import { getElementKeyframes } from "@/animation";
 import { planElementRelationUpdate } from "@/timeline/element-groups";
 import { generateUUID } from "@/utils/id";
+import { getSourceTimeAtClipTime } from "@/retime";
+import { roundMediaTime } from "@/wasm";
 
 export { TimelineToolbarButton } from "./timeline-toolbar-button";
 
@@ -129,6 +129,47 @@ function ToolbarLeftSection() {
 	const toggleElementExpanded = useTimelineStore(
 		(state) => state.toggleElementExpanded,
 	);
+	const canFreeze =
+		selectedElement?.element.type === "video" &&
+		editor.playback.getCurrentTime() >= selectedElement.element.startTime &&
+		editor.playback.getCurrentTime() <=
+			selectedElement.element.startTime + selectedElement.element.duration;
+	const isFrozen =
+		selectedElement?.element.type === "video" &&
+		selectedElement.element.retime?.freezeFrameAt !== undefined;
+	const toggleFreezeFrame = () => {
+		if (!selectedElement || selectedElement.element.type !== "video") return;
+		const element = selectedElement.element;
+		const next = { ...(element.retime ?? { rate: 1 }) };
+		if (next.freezeFrameAt !== undefined) {
+			delete next.freezeFrameAt;
+		} else {
+			const sourceSpan = Math.max(
+				0,
+				(element.sourceDuration ?? element.duration) -
+					element.trimStart -
+					element.trimEnd,
+			);
+			next.freezeFrameAt = roundMediaTime({
+				time: getSourceTimeAtClipTime({
+					clipTime: Math.max(
+						0,
+						Math.min(
+							element.duration,
+							editor.playback.getCurrentTime() - element.startTime,
+						),
+					),
+					retime: next,
+					sourceSpan,
+				}),
+			});
+		}
+		editor.timeline.updateElementRetime({
+			trackId: selectedElement.track.id,
+			elementId: element.id,
+			retime: next,
+		});
+	};
 
 	const handleAction = ({
 		action,
@@ -226,9 +267,15 @@ function ToolbarLeftSection() {
 
 				<TimelineToolbarButton
 					icon={<HugeiconsIcon icon={SnowIcon} />}
-					tooltip="Freeze frame (coming soon)"
-					disabled={true}
-					onClick={({ event: _event }) => {}}
+					isActive={isFrozen}
+					tooltip={
+						isFrozen ? "Remove freeze frame" : "Freeze frame at playhead"
+					}
+					disabled={!canFreeze && !isFrozen}
+					onClick={({ event }) => {
+						event.stopPropagation();
+						toggleFreezeFrame();
+					}}
 				/>
 
 				<TimelineToolbarButton

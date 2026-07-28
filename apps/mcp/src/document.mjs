@@ -82,6 +82,17 @@ const EFFECT_DEFINITIONS = {
     lutStrength: 100,
     lutSource: "",
   },
+  "chroma-key": {
+    keyColor: "#00ff00",
+    similarity: 20,
+    softness: 10,
+    spill: 50,
+  },
+  "background-removal": {
+    quality: "balanced",
+    threshold: 25,
+    softness: 5,
+  },
 };
 
 /** Effects attach to visual elements only — VISUAL_ELEMENT_TYPES. */

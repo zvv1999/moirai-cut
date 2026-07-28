@@ -23,12 +23,16 @@ import {
 	DashboardSpeed02Icon,
 } from "@hugeicons/core-free-icons";
 import { ElementParamsTab } from "./components/element-params-tab";
-import { ClipEffectsTab, StandaloneEffectTab } from "@/effects/components/effects-tab";
+import {
+	ClipEffectsTab,
+	StandaloneEffectTab,
+} from "@/effects/components/effects-tab";
 import { MasksTab } from "@/masks/components/masks-tab";
 import { SpeedTab } from "@/speed/components/speed-tab";
 import { GraphicTab } from "@/graphics/components/graphic-tab";
 import { OcShapesIcon } from "@/components/icons";
 import { AudioWorkbenchTab } from "./components/audio-workbench-tab";
+import { MotionTrackingTab } from "@/motion-tracking/components/motion-tracking-tab";
 
 const TRANSFORM_PARAM_KEYS = [
 	"transform.positionX",
@@ -157,6 +161,21 @@ function buildSpeedTab({
 	};
 }
 
+function buildMotionTab({
+	element,
+}: {
+	element: VideoElement;
+}): PropertiesTabDef {
+	return {
+		id: "motion",
+		label: "Motion",
+		icon: <HugeiconsIcon icon={MagicWand05Icon} size={16} />,
+		content: ({ trackId }) => (
+			<MotionTrackingTab element={element} trackId={trackId} />
+		),
+	};
+}
+
 function buildMasksTab({
 	element,
 }: {
@@ -210,7 +229,9 @@ function buildGraphicTab({
 		id: "graphic",
 		label: "Graphic",
 		icon: <OcShapesIcon size={16} />,
-		content: ({ trackId }) => <GraphicTab element={element} trackId={trackId} />,
+		content: ({ trackId }) => (
+			<GraphicTab element={element} trackId={trackId} />
+		),
 	};
 }
 
@@ -258,6 +279,7 @@ function getVideoConfig({
 			buildTransformTab({ element }),
 			...(showAudioTab ? [buildAudioTab({ element })] : []),
 			buildSpeedTab({ element }),
+			buildMotionTab({ element }),
 			buildBlendingTab({ element }),
 			buildMasksTab({ element }),
 			buildClipEffectsTab({ element }),

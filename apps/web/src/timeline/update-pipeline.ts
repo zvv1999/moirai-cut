@@ -62,11 +62,17 @@ const deriveRules: ElementUpdateRule[] = [
 				0,
 				sourceDuration - element.trimStart - element.trimEnd,
 			);
+			const preservesTimelineDuration =
+				nextRetime?.curve !== undefined ||
+				nextRetime?.reverse === true ||
+				nextRetime?.freezeFrameAt !== undefined;
 			const nextDuration = roundMediaTime({
-				time: getTimelineDurationForSourceSpan({
-					sourceSpan: visibleSourceSpan,
-					retime: nextRetime,
-				}),
+				time: preservesTimelineDuration
+					? originalElement.duration
+					: getTimelineDurationForSourceSpan({
+							sourceSpan: visibleSourceSpan,
+							retime: nextRetime,
+						}),
 			});
 
 			return {
@@ -74,8 +80,9 @@ const deriveRules: ElementUpdateRule[] = [
 					...element,
 					retime: nextRetime,
 					duration: nextDuration,
+					sourceDuration: roundMediaTime({ time: sourceDuration }),
 				},
-				changedFields: ["retime", "duration"],
+				changedFields: ["retime", "duration", "sourceDuration"],
 			};
 		},
 	},
@@ -149,9 +156,7 @@ export function applyElementUpdate({
 			...(patch.params ?? {}),
 		},
 	} as TimelineElement;
-	const changedFields = new Set(
-		Object.keys(patch) as ElementUpdateField[],
-	);
+	const changedFields = new Set(Object.keys(patch) as ElementUpdateField[]);
 
 	for (const rule of deriveRules) {
 		if (!shouldApplyRule({ rule, changedFields })) {

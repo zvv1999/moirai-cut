@@ -82,6 +82,7 @@ function buildTrackNodes({
 							timeOffset: element.startTime,
 							trimStart: element.trimStart,
 							trimEnd: element.trimEnd,
+							sourceDuration: element.sourceDuration,
 							retime: element.retime,
 							transform: buildTransformFromParams({ params: element.params }),
 							animations: element.animations,
@@ -90,6 +91,8 @@ function buildTrackNodes({
 							effects: element.effects ?? [],
 							masks: element.masks ?? [],
 							appearance: normalizeVisualAppearance(element.params),
+							motionTracking: element.motionTracking,
+							stabilization: element.stabilization,
 						}),
 					);
 				}

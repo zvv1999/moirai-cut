@@ -19,6 +19,17 @@ export interface CanvasEffectTreatment {
 	filter: string;
 	lutSource?: string;
 	lutStrength?: number;
+	chromaKey?: {
+		keyColor: string;
+		similarity: number;
+		softness: number;
+		spill: number;
+	};
+	backgroundRemoval?: {
+		threshold: number;
+		softness: number;
+		quality: "fast" | "balanced" | "precise";
+	};
 }
 
 export interface EffectPassTemplate {
@@ -37,6 +48,9 @@ export interface EffectRendererConfig {
 	 * GPU shader. They use the same authored params for preview and export.
 	 */
 	canvasFilter?: (effectParams: ParamValues) => string;
+	canvasTreatment?: (
+		effectParams: ParamValues,
+	) => Partial<CanvasEffectTreatment>;
 	buildPasses?: (params: {
 		effectParams: ParamValues;
 		width: number;

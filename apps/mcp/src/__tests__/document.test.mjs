@@ -395,6 +395,32 @@ test("effects attach only to visual elements, and their params are validated", (
     lutStrength: 100,
     lutSource: "",
   });
+
+  const keyed = apply(withClip, {
+    type: "element.addEffect",
+    ...ref,
+    effectType: "chroma-key",
+  });
+  assert.deepEqual(keyed.scenes[0].tracks.main.elements[0].effects[0].params, {
+    keyColor: "#00ff00",
+    similarity: 20,
+    softness: 10,
+    spill: 50,
+  });
+
+  const removedBackground = apply(withClip, {
+    type: "element.addEffect",
+    ...ref,
+    effectType: "background-removal",
+  });
+  assert.deepEqual(
+    removedBackground.scenes[0].tracks.main.elements[0].effects[0].params,
+    {
+      quality: "balanced",
+      threshold: 25,
+      softness: 5,
+    },
+  );
 });
 
 test("effects cannot be attached to audio", () => {

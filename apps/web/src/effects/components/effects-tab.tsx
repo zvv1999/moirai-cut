@@ -28,6 +28,15 @@ import { Separator } from "@/components/ui/separator";
 import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
 import { parseCubeLut } from "@/visual/appearance";
 import { toast } from "sonner";
+import {
+	applyEffectPreset,
+	createEffectPreset,
+	duplicateEffectPreset,
+	exportEffectPresets,
+	importEffectPresets,
+	type EffectPreset,
+} from "@/effects/presets";
+import { generateUUID } from "@/utils/id";
 
 export function StandaloneEffectTab({
 	element,
@@ -147,6 +156,11 @@ export function ClipEffectsTab({
 			<div className="border-b px-3.5 h-11 shrink-0 flex items-center">
 				<SectionTitle>Effects</SectionTitle>
 			</div>
+			<EffectPresetLibrary
+				effects={effects}
+				trackId={trackId}
+				elementId={element.id}
+			/>
 			{effects.length === 0 ? (
 				<EmptyView />
 			) : (
@@ -202,6 +216,263 @@ export function ClipEffectsTab({
 				</ul>
 			)}
 		</div>
+	);
+}
+
+function EffectPresetLibrary({
+	effects,
+	trackId,
+	elementId,
+}: {
+	effects: Effect[];
+	trackId: string;
+	elementId: string;
+}) {
+	const editor = useEditor();
+	const presets = useEditor(
+		(e) => e.project.getActive().settings.effectPresets ?? [],
+	);
+	const importRef = useRef<HTMLInputElement>(null);
+	const [selectedId, setSelectedId] = useState(presets[0]?.id ?? "");
+	const selected = presets.find((preset) => preset.id === selectedId) ?? null;
+	const [name, setName] = useState(selected?.name ?? "My effect chain");
+	const [folder, setFolder] = useState(selected?.folder ?? "Custom");
+
+	const savePresets = ({ next }: { next: EffectPreset[] }) => {
+		void editor.project.updateSettings({ settings: { effectPresets: next } });
+	};
+	const selectPreset = ({ preset }: { preset: EffectPreset }) => {
+		setSelectedId(preset.id);
+		setName(preset.name);
+		setFolder(preset.folder);
+	};
+	const createFromChain = () => {
+		if (effects.length === 0) {
+			toast.error("Add at least one effect before saving a preset");
+			return;
+		}
+		const preset = createEffectPreset({
+			id: generateUUID(),
+			name,
+			folder,
+			effects: effects.map(({ type, enabled, params }) => ({
+				type,
+				enabled,
+				params,
+			})),
+		});
+		savePresets({ next: [...presets, preset] });
+		selectPreset({ preset });
+		toast.success(`Saved preset “${preset.name}”`);
+	};
+	const updateSelected = () => {
+		if (!selected) {
+			toast.error("Choose a preset first");
+			return;
+		}
+		const updated = createEffectPreset({
+			id: selected.id,
+			name,
+			folder,
+			effects:
+				effects.length > 0
+					? effects.map(({ type, enabled, params }) => ({
+							type,
+							enabled,
+							params,
+						}))
+					: selected.effects,
+		});
+		savePresets({
+			next: presets.map((preset) =>
+				preset.id === selected.id ? updated : preset,
+			),
+		});
+		selectPreset({ preset: updated });
+		toast.success(`Updated preset “${updated.name}”`);
+	};
+	const applySelected = ({ mode }: { mode: "append" | "replace" }) => {
+		if (!selected) {
+			toast.error("Choose a preset first");
+			return;
+		}
+		editor.timeline.updateElements({
+			updates: [
+				{
+					trackId,
+					elementId,
+					patch: {
+						effects: applyEffectPreset({
+							existing: effects,
+							preset: selected,
+							mode,
+							idFactory: generateUUID,
+						}),
+					},
+				},
+			],
+		});
+		toast.success(
+			`${mode === "replace" ? "Replaced with" : "Applied"} “${selected.name}”`,
+		);
+	};
+	const duplicateSelected = () => {
+		if (!selected) return;
+		const duplicate = duplicateEffectPreset({
+			preset: selected,
+			id: generateUUID(),
+		});
+		savePresets({ next: [...presets, duplicate] });
+		selectPreset({ preset: duplicate });
+	};
+	const exportAll = () => {
+		if (presets.length === 0) {
+			toast.error("There are no effect presets to export");
+			return;
+		}
+		const blob = new Blob([exportEffectPresets({ presets })], {
+			type: "application/json",
+		});
+		const url = URL.createObjectURL(blob);
+		const anchor = document.createElement("a");
+		anchor.href = url;
+		anchor.download = "opencut-effect-presets.json";
+		anchor.click();
+		URL.revokeObjectURL(url);
+	};
+	const importFile = async (file: File) => {
+		try {
+			const imported = importEffectPresets({ source: await file.text() });
+			for (const preset of imported) {
+				for (const effect of preset.effects) {
+					if (!effectsRegistry.has(effect.type)) {
+						throw new Error(`Unknown effect in preset: ${effect.type}`);
+					}
+				}
+			}
+			const merged = new Map(presets.map((preset) => [preset.id, preset]));
+			for (const preset of imported) merged.set(preset.id, preset);
+			savePresets({ next: [...merged.values()] });
+			if (imported[0]) selectPreset({ preset: imported[0] });
+			toast.success(`Imported ${imported.length} effect presets`);
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Could not import presets",
+			);
+		}
+	};
+
+	return (
+		<Section sectionKey="effect-presets">
+			<SectionHeader>
+				<SectionTitle>Effect presets</SectionTitle>
+			</SectionHeader>
+			<SectionContent>
+				<SectionFields>
+					<input
+						ref={importRef}
+						type="file"
+						accept="application/json,.json"
+						className="hidden"
+						aria-label="Import effect presets"
+						onChange={(event) => {
+							const file = event.target.files?.[0];
+							if (file) void importFile(file);
+							event.currentTarget.value = "";
+						}}
+					/>
+					<label className="flex flex-col gap-1 text-xs">
+						<span className="text-muted-foreground">Preset</span>
+						<select
+							className="h-8 rounded-md border bg-background px-2 text-xs"
+							aria-label="Effect preset"
+							value={selectedId}
+							onChange={(event) => {
+								const preset = presets.find(
+									(candidate) => candidate.id === event.target.value,
+								);
+								if (preset) selectPreset({ preset });
+							}}
+						>
+							<option value="">Choose preset</option>
+							{presets.map((preset) => (
+								<option key={preset.id} value={preset.id}>
+									{preset.folder} / {preset.name}
+								</option>
+							))}
+						</select>
+					</label>
+					<input
+						className="h-8 rounded-md border bg-background px-2 text-xs"
+						aria-label="Effect preset name"
+						value={name}
+						onChange={(event) => setName(event.target.value)}
+						placeholder="Preset name"
+					/>
+					<input
+						className="h-8 rounded-md border bg-background px-2 text-xs"
+						aria-label="Effect preset folder"
+						value={folder}
+						onChange={(event) => setFolder(event.target.value)}
+						placeholder="Folder"
+					/>
+					<div className="grid grid-cols-2 gap-1.5">
+						<Button size="sm" onClick={createFromChain}>
+							Save chain
+						</Button>
+						<Button size="sm" variant="outline" onClick={updateSelected}>
+							Update
+						</Button>
+						<Button
+							size="sm"
+							variant="outline"
+							onClick={() => applySelected({ mode: "append" })}
+						>
+							Apply
+						</Button>
+						<Button
+							size="sm"
+							variant="outline"
+							onClick={() => applySelected({ mode: "replace" })}
+						>
+							Replace
+						</Button>
+						<Button
+							size="sm"
+							variant="ghost"
+							disabled={!selected}
+							onClick={duplicateSelected}
+						>
+							Duplicate
+						</Button>
+						<Button
+							size="sm"
+							variant="ghost"
+							disabled={!selected}
+							onClick={() => {
+								if (!selected) return;
+								savePresets({
+									next: presets.filter((preset) => preset.id !== selected.id),
+								});
+								setSelectedId("");
+							}}
+						>
+							Delete
+						</Button>
+						<Button size="sm" variant="ghost" onClick={exportAll}>
+							Export
+						</Button>
+						<Button
+							size="sm"
+							variant="ghost"
+							onClick={() => importRef.current?.click()}
+						>
+							Import
+						</Button>
+					</div>
+				</SectionFields>
+			</SectionContent>
+		</Section>
 	);
 }
 
@@ -268,7 +539,9 @@ function EffectSection({
 			onCommit();
 			toast.success(`Imported LUT: ${lut.title}`);
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Could not import LUT");
+			toast.error(
+				error instanceof Error ? error.message : "Could not import LUT",
+			);
 		}
 	};
 
@@ -314,6 +587,26 @@ function EffectSection({
 				className={cn("p-0", onToggle && !effect.enabled && "opacity-50")}
 			>
 				<SectionFields>
+					{definition.type === "background-removal" ? (
+						<div className="border-b px-4 pb-3 text-xs">
+							<div className="font-medium text-emerald-600">
+								Live processing ready
+							</div>
+							<div className="text-muted-foreground">
+								Corner-sampled subject extraction · preview/export matched
+							</div>
+						</div>
+					) : null}
+					{definition.type === "chroma-key" ? (
+						<div className="border-b px-4 pb-3 text-xs">
+							<div className="font-medium text-emerald-600">
+								Live color key ready
+							</div>
+							<div className="text-muted-foreground">
+								Soft alpha edge and spill suppression enabled
+							</div>
+						</div>
+					) : null}
 					{definition.type === "color-grade" ? (
 						<div className="flex flex-col gap-2 border-b px-4 pb-3">
 							<input

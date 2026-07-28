@@ -3,6 +3,7 @@ import type { Effect } from "@/effects/types";
 import type { Mask } from "@/masks/types";
 import type { ParamValues } from "@/params";
 import type { MediaTime } from "@/wasm";
+import type { MotionTrackingData } from "@/motion-tracking";
 
 export type ElementRef = {
 	trackId: string;
@@ -93,11 +94,14 @@ export interface SceneTracks {
 export interface RetimeConfig {
 	rate: number;
 	maintainPitch?: boolean;
+	curve?: {
+		points: Array<{ time: MediaTime; rate: number }>;
+	};
+	reverse?: boolean;
+	freezeFrameAt?: MediaTime;
 }
 
-export type TimelineTransitionType =
-	| "cross-dissolve"
-	| "fade-through-black";
+export type TimelineTransitionType = "cross-dissolve" | "fade-through-black";
 
 export interface TimelineTransition {
 	id: string;
@@ -167,6 +171,12 @@ export interface VideoElement extends BaseTimelineElement {
 	retime?: RetimeConfig;
 	effects?: Effect[];
 	masks?: Mask[];
+	motionTracking?: MotionTrackingData;
+	stabilization?: {
+		enabled: boolean;
+		strength: number;
+		autoCrop: boolean;
+	};
 }
 
 export interface ImageElement extends BaseTimelineElement {

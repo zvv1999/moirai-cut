@@ -55,17 +55,16 @@ import type {
 	ResolvedVisualSourceNodeState,
 	VisualNodeParams,
 } from "./nodes/visual-node";
+import { resolveTrackingOffset } from "@/motion-tracking";
+import { resolveStabilizedPosition } from "@/visual/keying";
+import type { Transform } from "@/rendering";
 
 type ResolveContext = {
 	renderer: CanvasRenderer;
 	time: number;
 };
 
-function toAnimatableParamValues({
-	params,
-}: {
-	params: object;
-}): ParamValues {
+function toAnimatableParamValues({ params }: { params: object }): ParamValues {
 	const values: ParamValues = {};
 	for (const [key, value] of Object.entries(params)) {
 		if (
@@ -142,6 +141,154 @@ function resolveMaskAtTime({
 				params: { ...mask.params, ...resolvedParams },
 			};
 	}
+}
+
+function applyTrackingOffsetToMask({
+	mask,
+	maskId,
+	offset,
+}: {
+	mask: Mask;
+	maskId: string;
+	offset: { x: number; y: number };
+}): Mask {
+	if (mask.id !== maskId) return mask;
+	switch (mask.type) {
+		case "split":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+		case "cinematic-bars":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+		case "rectangle":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+		case "ellipse":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+		case "heart":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+		case "diamond":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+		case "star":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+		case "text":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+		case "freeform":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+	}
+}
+
+function applyMotionToTransform({
+	transform,
+	params,
+	localTime,
+	canvasSize,
+}: {
+	transform: Transform;
+	params: VisualNodeParams;
+	localTime: number;
+	canvasSize: { width: number; height: number };
+}): {
+	transform: Transform;
+	offset: { x: number; y: number; confidence: number } | null;
+} {
+	const tracking = params.motionTracking;
+	if (!tracking) return { transform, offset: null };
+	const offset = resolveTrackingOffset({
+		samples: tracking.samples,
+		time: localTime,
+		confidenceThreshold: tracking.confidenceThreshold,
+	});
+	if (!offset) return { transform, offset: null };
+	let position = transform.position;
+	if (tracking.binding.type === "transform") {
+		position = {
+			x: position.x + offset.x * canvasSize.width,
+			y: position.y + offset.y * canvasSize.height,
+		};
+	}
+	if (params.stabilization?.enabled) {
+		position = resolveStabilizedPosition({
+			position,
+			offset,
+			canvasSize,
+			strength: params.stabilization.strength,
+		});
+	}
+	const cropScale =
+		params.stabilization?.enabled && params.stabilization.autoCrop
+			? 1 +
+				(Math.min(100, Math.max(0, params.stabilization.strength)) / 100) * 0.08
+			: 1;
+	return {
+		transform: {
+			...transform,
+			position,
+			scaleX: transform.scaleX * cropScale,
+			scaleY: transform.scaleY * cropScale,
+		},
+		offset,
+	};
 }
 
 export async function resolveRenderTree({
@@ -270,11 +417,21 @@ function resolveVisualState({
 		elementStartTime: params.timeOffset,
 		elementDuration: params.duration,
 	});
-	const transform = resolveTransformAtTime({
+	const authoredTransform = resolveTransformAtTime({
 		baseTransform: params.transform,
 		animations: params.animations,
 		localTime,
 	});
+	const motion = applyMotionToTransform({
+		transform: authoredTransform,
+		params,
+		localTime,
+		canvasSize: {
+			width: context.renderer.width,
+			height: context.renderer.height,
+		},
+	});
+	const transform = motion.transform;
 	const opacity = resolveOpacityAtTime({
 		baseOpacity: params.opacity,
 		animations: params.animations,
@@ -291,6 +448,25 @@ function resolveVisualState({
 		Math.abs(sourceHeight * containScale * transform.scaleY),
 	);
 
+	let resolvedMasks = (params.masks ?? []).map((mask) =>
+		resolveMaskAtTime({
+			mask,
+			animations: params.animations,
+			localTime,
+		}),
+	);
+	const maskBinding = params.motionTracking?.binding;
+	const trackingOffset = motion.offset;
+	if (trackingOffset && maskBinding?.type === "mask") {
+		resolvedMasks = resolvedMasks.map((mask) =>
+			applyTrackingOffsetToMask({
+				mask,
+				maskId: maskBinding.maskId,
+				offset: trackingOffset,
+			}),
+		);
+	}
+
 	return {
 		localTime,
 		transform,
@@ -300,13 +476,7 @@ function resolveVisualState({
 		// them: a freeform mask carries a `path` array that is not a ParamValue
 		// and must survive untouched. Only the scalar keys a mask definition
 		// declares can be keyframed, so the overlay never widens the shape.
-		masks: (params.masks ?? []).map((mask) =>
-			resolveMaskAtTime({
-				mask,
-				animations: params.animations,
-				localTime,
-			}),
-		),
+		masks: resolvedMasks,
 		effectPasses: resolveEffectPassGroups({
 			effects: params.effects,
 			animations: params.animations,
@@ -336,14 +506,31 @@ async function resolveVideoNode({
 
 	const sourceTimeTicks =
 		node.params.trimStart +
-		getSourceTimeAtClipTime({
-			clipTime,
-			retime: node.params.retime,
-		});
+		Math.min(
+			Math.max(
+				0,
+				(node.params.sourceDuration ?? node.params.duration) -
+					node.params.trimStart -
+					node.params.trimEnd -
+					1,
+			),
+			getSourceTimeAtClipTime({
+				clipTime,
+				retime: node.params.retime,
+				sourceSpan: Math.max(
+					0,
+					(node.params.sourceDuration ?? node.params.duration) -
+						node.params.trimStart -
+						node.params.trimEnd,
+				),
+			}),
+		);
 	const frame = await videoCache.getFrameAt({
 		mediaId: node.params.mediaId,
 		file: node.params.file,
-		time: mediaTimeToSeconds({ time: roundMediaTime({ time: sourceTimeTicks }) }),
+		time: mediaTimeToSeconds({
+			time: roundMediaTime({ time: sourceTimeTicks }),
+		}),
 	});
 	if (!frame) {
 		return null;
@@ -569,7 +756,9 @@ async function resolveBackdropSource({
 		const frame = await videoCache.getFrameAt({
 			mediaId: node.params.mediaId,
 			file: node.params.file,
-			time: mediaTimeToSeconds({ time: roundMediaTime({ time: sourceTimeTicks }) }),
+			time: mediaTimeToSeconds({
+				time: roundMediaTime({ time: sourceTimeTicks }),
+			}),
 		});
 		if (!frame) {
 			return null;

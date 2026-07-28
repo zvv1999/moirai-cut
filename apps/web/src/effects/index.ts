@@ -40,15 +40,19 @@ export function resolveCanvasEffectTreatment({
 	definition: EffectDefinition;
 	effectParams: ParamValues;
 }): CanvasEffectTreatment | null {
-	if (!definition.renderer.canvasFilter) return null;
+	if (
+		!definition.renderer.canvasFilter &&
+		!definition.renderer.canvasTreatment
+	) {
+		return null;
+	}
 	const lutSource = effectParams.lutSource;
 	const lutStrength = effectParams.lutStrength;
 	return {
 		type: definition.type,
-		filter: definition.renderer.canvasFilter(effectParams),
-		...(typeof lutSource === "string" && lutSource.trim()
-			? { lutSource }
-			: {}),
+		filter: definition.renderer.canvasFilter?.(effectParams) ?? "none",
+		...(definition.renderer.canvasTreatment?.(effectParams) ?? {}),
+		...(typeof lutSource === "string" && lutSource.trim() ? { lutSource } : {}),
 		...(typeof lutStrength === "number" && Number.isFinite(lutStrength)
 			? { lutStrength }
 			: {}),

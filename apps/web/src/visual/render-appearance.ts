@@ -1,4 +1,5 @@
 import type { CanvasEffectTreatment } from "@/effects/types";
+import { applyBackgroundRemoval, applyChromaKey } from "@/visual/keying";
 import {
 	parseCubeLut,
 	sampleCubeLut,
@@ -42,10 +43,7 @@ function applyLut({
 		return [
 			{
 				lut,
-				strength: Math.min(
-					1,
-					Math.max(0, (effect.lutStrength ?? 100) / 100),
-				),
+				strength: Math.min(1, Math.max(0, (effect.lutStrength ?? 100) / 100)),
 			},
 		];
 	});
@@ -73,6 +71,52 @@ function applyLut({
 		}
 	}
 	ctx.putImageData(pixels, 0, 0);
+}
+
+function applyKeying({
+	ctx,
+	width,
+	height,
+	effects,
+}: {
+	ctx: TextCanvasContext;
+	width: number;
+	height: number;
+	effects: CanvasEffectTreatment[];
+}): void {
+	if (
+		width <= 0 ||
+		height <= 0 ||
+		!effects.some((effect) => effect.chromaKey || effect.backgroundRemoval)
+	) {
+		return;
+	}
+	const imageData = ctx.getImageData(0, 0, width, height);
+	let pixels: Uint8ClampedArray<ArrayBufferLike> = new Uint8ClampedArray(
+		imageData.data,
+	);
+	for (const effect of effects) {
+		if (effect.backgroundRemoval) {
+			pixels = applyBackgroundRemoval({
+				pixels,
+				width,
+				height,
+				threshold: effect.backgroundRemoval.threshold,
+				softness: effect.backgroundRemoval.softness,
+			});
+		}
+		if (effect.chromaKey) {
+			pixels = applyChromaKey({
+				pixels,
+				keyColor: effect.chromaKey.keyColor,
+				similarity: effect.chromaKey.similarity,
+				softness: effect.chromaKey.softness,
+				spill: effect.chromaKey.spill,
+			});
+		}
+	}
+	imageData.data.set(pixels);
+	ctx.putImageData(imageData, 0, 0);
 }
 
 export function hasVisualDecoration({
@@ -142,8 +186,7 @@ export function drawStyledVisualSource({
 }): void {
 	const rect = buildCropRect({ appearance, width, height });
 	const radius =
-		(Math.min(rect.width, rect.height) / 2) *
-		(appearance.cornerRadius / 50);
+		(Math.min(rect.width, rect.height) / 2) * (appearance.cornerRadius / 50);
 
 	ctx.save();
 	if (appearance.shadow.enabled) {
@@ -165,6 +208,7 @@ export function drawStyledVisualSource({
 	ctx.restore();
 
 	applyLut({ ctx, width, height, effects: canvasEffects });
+	applyKeying({ ctx, width, height, effects: canvasEffects });
 
 	if (appearance.stroke.width > 0) {
 		ctx.save();
@@ -194,4 +238,5 @@ export function drawCanvasEffectSource({
 	ctx.drawImage(source, 0, 0, width, height);
 	ctx.restore();
 	applyLut({ ctx, width, height, effects: canvasEffects });
+	applyKeying({ ctx, width, height, effects: canvasEffects });
 }

@@ -18,7 +18,10 @@ import { UpdateProjectSettingsCommand } from "@/commands/project";
 import { DEFAULT_BACKGROUND_COLOR } from "@/background/color";
 import { DEFAULT_CANVAS_SIZE } from "@/canvas/sizes";
 import { DEFAULT_FPS } from "@/fps/defaults";
-import { buildDefaultScene, getProjectDurationFromScenes } from "@/timeline/scenes";
+import {
+	buildDefaultScene,
+	getProjectDurationFromScenes,
+} from "@/timeline/scenes";
 import { buildScene } from "@/services/renderer/scene-builder";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
 import {
@@ -107,6 +110,7 @@ export class ProjectManager {
 					color: DEFAULT_BACKGROUND_COLOR,
 				},
 				captionStyles: [],
+				effectPresets: [],
 			},
 			version: CURRENT_PROJECT_VERSION,
 			mediaOrganization: { bins: [], assetBinIds: {} },
@@ -283,12 +287,18 @@ export class ProjectManager {
 			// Selection survives only where the elements still do.
 			const liveIds = new Set(
 				loaded.project.scenes
-					.flatMap((scene) => [scene.tracks.main, ...scene.tracks.overlay, ...scene.tracks.audio])
+					.flatMap((scene) => [
+						scene.tracks.main,
+						...scene.tracks.overlay,
+						...scene.tracks.audio,
+					])
 					.flatMap((track) => track.elements.map((element) => element.id)),
 			);
 			this.editor.selection.restoreSnapshot({
 				snapshot: {
-					selectedElements: selection.selectedElements.filter((ref) => liveIds.has(ref.elementId)),
+					selectedElements: selection.selectedElements.filter((ref) =>
+						liveIds.has(ref.elementId),
+					),
 					selectedKeyframes: [],
 					keyframeSelectionAnchor: null,
 					selectedMaskPoints: null,
@@ -369,14 +379,17 @@ export class ProjectManager {
 					method: "PUT",
 					headers: {
 						"content-type":
-							EXPORT_MIME_TYPES[options.format as keyof typeof EXPORT_MIME_TYPES] ??
-							"application/octet-stream",
+							EXPORT_MIME_TYPES[
+								options.format as keyof typeof EXPORT_MIME_TYPES
+							] ?? "application/octet-stream",
 					},
 					body: buffer,
 				},
 			);
 			if (!response.ok) {
-				console.warn(`Mirroring the export to disk failed: ${response.statusText}`);
+				console.warn(
+					`Mirroring the export to disk failed: ${response.statusText}`,
+				);
 			}
 		} catch (error) {
 			console.warn("Mirroring the export to disk failed:", error);
