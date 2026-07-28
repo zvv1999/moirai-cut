@@ -90,6 +90,15 @@ describe("advanced export workflow", () => {
 		expect(estimate.estimatedBytes).toBeGreaterThan(120_000_000);
 		expect(estimate.estimatedRenderSeconds).toBeGreaterThan(1);
 		expect(estimate.label).toContain("estimate");
+		expect(
+			validateExportDraft({
+				draft: {
+					...draft,
+					range: { startSeconds: 119, endSeconds: 121 },
+				},
+				timelineDurationSeconds: 120,
+			}).map((issue) => issue.code),
+		).toContain("invalid_range");
 	});
 
 	test("preflight combines addressable health, render samples, and encoding checks", () => {
@@ -108,7 +117,7 @@ describe("advanced export workflow", () => {
 				],
 				counts: { error: 1, warning: 0, note: 0 },
 				exportReady: false,
-				timelineDurationSeconds: 12,
+				timelineSeconds: 12,
 			},
 			renderSamples: [
 				{ atSeconds: 0, success: true },
@@ -215,6 +224,11 @@ describe("advanced export workflow", () => {
 			sizeBytes: 1234,
 			error: null,
 		});
+		expect(entry.available).toBe(false);
+		history.reconcileAvailability({
+			availableNames: new Set(["vertical.mp4"]),
+		});
+		expect(history.list()[0]?.available).toBe(true);
 		history.reconcileAvailability({
 			availableNames: new Set<string>(),
 		});

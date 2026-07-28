@@ -20,11 +20,33 @@ export type ExportFormat = (typeof EXPORT_FORMAT_VALUES)[number];
 export type ExportQuality = (typeof EXPORT_QUALITY_VALUES)[number];
 export type AgentExportQuality = (typeof AGENT_EXPORT_QUALITY_VALUES)[number];
 
+export type ExportVideoCodec = "avc" | "vp9" | "av1";
+export type ExportAudioCodec = "aac" | "opus";
+export type ExportHardwareAcceleration =
+	| "no-preference"
+	| "prefer-hardware"
+	| "prefer-software";
+
+export interface ExportRange {
+	startSeconds: number;
+	endSeconds: number;
+}
+
 export interface ExportOptions {
 	format: ExportFormat;
 	quality: AgentExportQuality;
 	fps?: FrameRate;
 	includeAudio?: boolean;
+	width?: number;
+	height?: number;
+	videoCodec?: ExportVideoCodec;
+	videoBitrate?: number;
+	audioCodec?: ExportAudioCodec;
+	audioBitrate?: number;
+	includeAlpha?: boolean;
+	hardwareAcceleration?: ExportHardwareAcceleration;
+	range?: ExportRange;
+	destinationName?: string;
 }
 
 export interface ExportResult {

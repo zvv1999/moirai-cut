@@ -5,6 +5,7 @@ import type {
 	TProjectSortKey,
 	TProjectSortOption,
 	TProjectSettings,
+	TSortOrder,
 	TTimelineViewState,
 } from "@/project/types";
 import type { ExportOptions, ExportResult, ExportState } from "@/export";
@@ -373,9 +374,15 @@ export class ProjectManager {
 		if (!project) return;
 		const id = project.metadata.id;
 		if (this.getKnownFileRevision(id) === null) return;
-		// Same name the browser download gets: a re-export overwrites, so the
-		// folder holds the human's LATEST render rather than one per attempt.
-		const name = `${safeExportName(project.metadata.name)}.${options.format}`;
+		const requestedName = options.destinationName;
+		const suffix = `.${options.format}`;
+		const requestedBase = requestedName?.toLocaleLowerCase().endsWith(suffix)
+			? requestedName.slice(0, -suffix.length)
+			: requestedName;
+		// A single export keeps a stable latest-render name. Queue callers supply
+		// a preset/range-specific destination so independent deliverables do not
+		// overwrite one another.
+		const name = `${safeExportName(requestedBase ?? project.metadata.name)}${suffix}`;
 		try {
 			const response = await fetch(
 				`/api/exports/${encodeURIComponent(id)}/${encodeURIComponent(name)}`,
@@ -734,10 +741,20 @@ export class ProjectManager {
 			project.name.toLowerCase().includes(searchQuery.toLowerCase()),
 		);
 
-		const [key, order] = sortOption.split("-") as [
-			TProjectSortKey,
-			"asc" | "desc",
-		];
+		const sortParts: Record<
+			TProjectSortOption,
+			readonly [TProjectSortKey, TSortOrder]
+		> = {
+			"createdAt-asc": ["createdAt", "asc"],
+			"createdAt-desc": ["createdAt", "desc"],
+			"updatedAt-asc": ["updatedAt", "asc"],
+			"updatedAt-desc": ["updatedAt", "desc"],
+			"name-asc": ["name", "asc"],
+			"name-desc": ["name", "desc"],
+			"duration-asc": ["duration", "asc"],
+			"duration-desc": ["duration", "desc"],
+		};
+		const [key, order] = sortParts[sortOption];
 
 		const sortedProjects = [...filteredProjects].sort((a, b) => {
 			const aValue = a[key];

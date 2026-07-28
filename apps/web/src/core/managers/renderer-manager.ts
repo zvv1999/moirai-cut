@@ -4,11 +4,46 @@ import type { ExportOptions, ExportResult } from "@/export";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
 import { SceneExporter } from "@/services/renderer/scene-exporter";
 import { buildScene } from "@/services/renderer/scene-builder";
-import { createTimelineAudioBuffer } from "@/media/audio";
+import { createAudioContext, createTimelineAudioBuffer } from "@/media/audio";
 import { formatTimecode } from "opencut-wasm";
-import { frameRateToFloat } from "@/fps/utils";
 import { downloadBlob } from "@/utils/browser";
-import type { MediaTime } from "@/wasm";
+import {
+	mediaTimeFromSeconds,
+	mediaTimeToSeconds,
+	type MediaTime,
+} from "@/wasm";
+
+function sliceAudioBuffer({
+	buffer,
+	startSeconds,
+	endSeconds,
+}: {
+	buffer: AudioBuffer;
+	startSeconds: number;
+	endSeconds: number;
+}): AudioBuffer {
+	const startSample = Math.max(
+		0,
+		Math.min(buffer.length, Math.floor(startSeconds * buffer.sampleRate)),
+	);
+	const endSample = Math.max(
+		startSample,
+		Math.min(buffer.length, Math.ceil(endSeconds * buffer.sampleRate)),
+	);
+	const context = createAudioContext({ sampleRate: buffer.sampleRate });
+	const sliced = context.createBuffer(
+		buffer.numberOfChannels,
+		endSample - startSample,
+		buffer.sampleRate,
+	);
+	for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+		sliced.copyToChannel(
+			buffer.getChannelData(channel).slice(startSample, endSample),
+			channel,
+		);
+	}
+	return sliced;
+}
 
 type SnapshotResult =
 	| { success: true; blob: Blob; filename: string }
@@ -54,12 +89,14 @@ export class RendererManager {
 	 * Unlike `createSnapshot`, the time is a parameter and not the playhead: a
 	 * caller verifying an edit needs to look where the edit is.
 	 */
-	async renderFrame({
-		time,
-	}: {
-		time: MediaTime;
-	}): Promise<
-		| { success: true; dataUrl: string; width: number; height: number; time: MediaTime }
+	async renderFrame({ time }: { time: MediaTime }): Promise<
+		| {
+				success: true;
+				dataUrl: string;
+				width: number;
+				height: number;
+				time: MediaTime;
+		  }
 		| { success: false; error: string }
 	> {
 		try {
@@ -91,7 +128,11 @@ export class RendererManager {
 			const canvas = document.createElement("canvas");
 			canvas.width = canvasSize.width;
 			canvas.height = canvasSize.height;
-			await renderer.renderToCanvas({ node: scene, time: renderTime, targetCanvas: canvas });
+			await renderer.renderToCanvas({
+				node: scene,
+				time: renderTime,
+				targetCanvas: canvas,
+			});
 
 			return {
 				success: true,
@@ -191,7 +232,10 @@ export class RendererManager {
 				return { success: false, error: "Failed to create image" };
 			}
 
-			const timecode = formatTimecode({ time: renderTime, rate: fps })!.replace(/:/g, "-");
+			const timecode = formatTimecode({ time: renderTime, rate: fps })!.replace(
+				/:/g,
+				"-",
+			);
 			const safeName =
 				activeProject.metadata.name.replace(/[<>:"/\\|?*]/g, "-").trim() ||
 				"snapshot";
@@ -216,7 +260,21 @@ export class RendererManager {
 		onProgress?: ({ progress }: { progress: number }) => void;
 		onCancel?: () => boolean;
 	}): Promise<ExportResult> {
-		const { format, quality, fps, includeAudio } = options;
+		const {
+			format,
+			quality,
+			fps,
+			includeAudio,
+			width,
+			height,
+			videoCodec,
+			videoBitrate,
+			audioCodec,
+			audioBitrate,
+			includeAlpha,
+			hardwareAcceleration,
+			range,
+		} = options;
 
 		try {
 			const tracks = this.editor.scenes.getActiveScene().tracks;
@@ -233,7 +291,56 @@ export class RendererManager {
 			}
 
 			const exportFps = fps ?? activeProject.settings.fps;
-			const canvasSize = activeProject.settings.canvasSize;
+			const projectCanvasSize = activeProject.settings.canvasSize;
+			const canvasSize = {
+				width: width ?? projectCanvasSize.width,
+				height: height ?? projectCanvasSize.height,
+			};
+			const totalDurationSeconds = mediaTimeToSeconds({ time: duration });
+			const rangeStartSeconds = range
+				? Math.max(0, Math.min(range.startSeconds, totalDurationSeconds))
+				: 0;
+			const rangeEndSeconds = range
+				? Math.max(
+						rangeStartSeconds,
+						Math.min(range.endSeconds, totalDurationSeconds),
+					)
+				: totalDurationSeconds;
+			if (rangeEndSeconds <= rangeStartSeconds) {
+				return { success: false, error: "Export range is empty" };
+			}
+			const exportStartTime = mediaTimeFromSeconds({
+				seconds: rangeStartSeconds,
+			});
+			const exportEndTime = mediaTimeFromSeconds({
+				seconds: rangeEndSeconds,
+			});
+
+			if (
+				(format === "mp4" && videoCodec && videoCodec !== "avc") ||
+				(format === "webm" && videoCodec === "avc")
+			) {
+				return {
+					success: false,
+					error: "Selected video codec is incompatible with the container",
+				};
+			}
+			if (
+				includeAudio &&
+				((format === "mp4" && audioCodec && audioCodec !== "aac") ||
+					(format === "webm" && audioCodec && audioCodec !== "opus"))
+			) {
+				return {
+					success: false,
+					error: "Selected audio codec is incompatible with the container",
+				};
+			}
+			if (includeAlpha && format !== "webm") {
+				return {
+					success: false,
+					error: "Transparent video requires WebM",
+				};
+			}
 
 			let audioBuffer: AudioBuffer | null = null;
 			if (includeAudio) {
@@ -243,6 +350,16 @@ export class RendererManager {
 					mediaAssets,
 					duration,
 				});
+				if (
+					audioBuffer &&
+					(rangeStartSeconds > 0 || rangeEndSeconds < totalDurationSeconds)
+				) {
+					audioBuffer = sliceAudioBuffer({
+						buffer: audioBuffer,
+						startSeconds: rangeStartSeconds,
+						endSeconds: rangeEndSeconds,
+					});
+				}
 			}
 
 			const scene = buildScene({
@@ -250,7 +367,9 @@ export class RendererManager {
 				mediaAssets,
 				duration,
 				canvasSize,
-				background: activeProject.settings.background,
+				background: includeAlpha
+					? { type: "color", color: "transparent" }
+					: activeProject.settings.background,
 			});
 
 			const exporter = new SceneExporter({
@@ -259,6 +378,12 @@ export class RendererManager {
 				fps: exportFps,
 				format,
 				quality,
+				videoCodec,
+				videoBitrate,
+				audioCodec,
+				audioBitrate,
+				includeAlpha,
+				hardwareAcceleration,
 				shouldIncludeAudio: !!includeAudio,
 				audioBuffer: audioBuffer || undefined,
 			});
@@ -281,7 +406,11 @@ export class RendererManager {
 			const cancelInterval = setInterval(checkCancel, 100);
 
 			try {
-				const buffer = await exporter.export({ rootNode: scene });
+				const buffer = await exporter.export({
+					rootNode: scene,
+					startTime: exportStartTime,
+					endTime: exportEndTime,
+				});
 				clearInterval(cancelInterval);
 
 				if (cancelled) {
