@@ -801,6 +801,40 @@ export function createOpenCutMcpServer() {
   );
 
   server.registerTool(
+    "compare_revision",
+    {
+      description:
+        "Compare the current project timeline with a saved revision before restoring it. Returns structured add, remove, move, rename, and content-change counts plus per-clip details.",
+      inputSchema: {
+        projectId: z.string().min(1),
+        revision: z.number().int().positive().describe("From list_revisions."),
+      },
+      annotations: readOnly,
+    },
+    async ({ projectId: id, revision }) => {
+      try {
+        const base = process.env.OPENCUT_BASE_URL ?? "http://localhost:3000";
+        const response = await fetch(
+          `${base}/api/projects/${encodeURIComponent(id)}/compare/${revision}`,
+        );
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          return asError({
+            code: "compare_failed",
+            message: payload.error ?? `${response.status}`,
+          });
+        }
+        return asText(payload);
+      } catch (error) {
+        return asError({
+          code: "driver_error",
+          message: String(error?.message ?? error),
+        });
+      }
+    },
+  );
+
+  server.registerTool(
     "restore_revision",
     {
       description:
@@ -814,9 +848,16 @@ export function createOpenCutMcpServer() {
     async ({ projectId: id, revision }) => {
       try {
         const base = process.env.OPENCUT_BASE_URL ?? "http://localhost:3000";
+        const document = await readProject({ projectId: id });
+        const expectedRevision =
+          typeof document.revision === "number" ? document.revision : 0;
         const response = await fetch(
           `${base}/api/projects/${encodeURIComponent(id)}/restore/${revision}`,
-          { method: "POST" },
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ expectedRevision }),
+          },
         );
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {

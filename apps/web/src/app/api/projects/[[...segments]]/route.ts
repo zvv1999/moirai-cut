@@ -3,6 +3,10 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import {
+	compareProjectRevisions,
+	summarizeProjectRevision,
+} from "@/project/revision-diff";
 
 /**
  * Project files on disk.
@@ -89,6 +93,24 @@ function withProjectLock<T>(id: string, work: () => Promise<T>): Promise<T> {
   return next;
 }
 
+async function pruneRevisionHistory({
+  revDir,
+  limit = 50,
+}: {
+  revDir: string;
+  limit?: number;
+}) {
+  const entries = (await readdir(revDir))
+    .filter((entry) => /^\d{6}\.json$/.test(entry))
+    .sort();
+  for (const stale of entries.slice(0, Math.max(0, entries.length - limit))) {
+    await rm(path.join(revDir, stale), { force: true });
+    await rm(path.join(revDir, stale.replace(/\.json$/, ".meta.json")), {
+      force: true,
+    });
+  }
+}
+
 type Context = { params: Promise<{ segments?: string[] }> };
 
 export async function GET(_request: Request, { params }: Context) {
@@ -106,18 +128,67 @@ export async function GET(_request: Request, { params }: Context) {
       const revisions = [];
       for (const entry of entries.filter((f) => /^\d{6}\.json$/.test(f)).sort().reverse()) {
         try {
-          const parsed = JSON.parse(await readFile(path.join(revDir, entry), "utf8"));
+          // Listing must stay cheap even when every snapshot is a multi-megabyte
+          // document. Only named snapshots have a sidecar; automatic revisions
+          // use the file's mtime and load their body lazily when compared.
+          const snapshotPath = path.join(revDir, entry);
+          const [metadata, fileInfo] = await Promise.all([
+            readFile(
+              path.join(revDir, entry.replace(/\.json$/, ".meta.json")),
+              "utf8",
+            )
+              .then((value) => JSON.parse(value) as Record<string, unknown>)
+              .catch(() => null),
+            stat(snapshotPath),
+          ]);
           revisions.push({
             revision: Number(entry.slice(0, 6)),
-            savedName: parsed.metadata?.name ?? null,
-            updatedAt: parsed.metadata?.updatedAt ?? null,
-            durationTicks: parsed.metadata?.duration ?? null,
+            name: typeof metadata?.name === "string" ? metadata.name : null,
+            kind: metadata ? "named" : "automatic",
+            createdAt:
+              typeof metadata?.createdAt === "string" ? metadata.createdAt : null,
+            updatedAt: fileInfo.mtime.toISOString(),
+            summary:
+              metadata?.summary &&
+              typeof metadata.summary === "object" &&
+              !Array.isArray(metadata.summary)
+                ? metadata.summary
+                : undefined,
           });
         } catch {
           /* unreadable snapshot — skip */
         }
       }
       return NextResponse.json({ revisions });
+    }
+    // GET <id>/compare/<revision> — diff current timeline against a snapshot.
+    if (segments && segments.length === 3 && segments[1] === "compare") {
+      const [projectId, , revisionRaw] = segments;
+      const revisionNumber = Number(revisionRaw);
+      if (!Number.isInteger(revisionNumber) || revisionNumber <= 0) {
+        return failed(new Error(`Not a revision number: ${revisionRaw}`));
+      }
+      const targetPath = path.join(
+        projectDir(projectId),
+        "revisions",
+        `${String(revisionNumber).padStart(6, "0")}.json`,
+      );
+      const targetText = await readFile(targetPath, "utf8").catch((error) => {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+        throw error;
+      });
+      if (targetText === null) {
+        return failed(
+          new Error(
+            `No snapshot for revision ${revisionNumber} (history keeps the newest 50)`,
+          ),
+          404,
+        );
+      }
+      const currentText = await readFile(projectFile(projectId), "utf8");
+      const current = JSON.parse(currentText);
+      const target = JSON.parse(targetText);
+      return NextResponse.json(compareProjectRevisions({ current, target }));
     }
     if (segments && segments.length > 1) {
       return failed(new Error("Unknown project sub-resource"), 404);
@@ -198,10 +269,7 @@ async function writeProjectFile(id: string, body: string, ifMatch: string | null
         const revDir = path.join(dir, "revisions");
         await mkdir(revDir, { recursive: true });
         await writeFile(path.join(revDir, `${String(onDisk).padStart(6, "0")}.json`), previous, "utf8");
-        const entries = (await readdir(revDir)).filter((f) => /^\d{6}\.json$/.test(f)).sort();
-        for (const stale of entries.slice(0, Math.max(0, entries.length - 50))) {
-          await rm(path.join(revDir, stale), { force: true });
-        }
+        await pruneRevisionHistory({ revDir });
       } catch {
         // A failed snapshot must not block the write itself.
       }
@@ -223,6 +291,63 @@ async function writeProjectFile(id: string, body: string, ifMatch: string | null
 
 export async function POST(request: Request, { params }: Context) {
   const segments = (await params).segments;
+  // POST <id>/snapshots — name the current revision without mutating it.
+  if (segments && segments.length === 2 && segments[1] === "snapshots") {
+    const id = segments[0];
+    const body = (await request.json().catch(() => ({}))) as {
+      name?: unknown;
+      expectedRevision?: unknown;
+    };
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    if (!name || name.length > 80) {
+      return failed(new Error("Snapshot name must be between 1 and 80 characters"));
+    }
+    return withProjectLock(id, async () => {
+      try {
+        const documentText = await readFile(projectFile(id), "utf8");
+        const document = JSON.parse(documentText) as Record<string, unknown>;
+        const revision =
+          typeof document.revision === "number" ? document.revision : 0;
+        if (
+          body.expectedRevision !== undefined &&
+          Number(body.expectedRevision) !== revision
+        ) {
+          return NextResponse.json(
+            {
+              error: `Project ${id} is at revision ${revision}, not ${body.expectedRevision}. Refresh before snapshotting.`,
+              code: "revision_conflict",
+              revision,
+            },
+            { status: 409 },
+          );
+        }
+        if (revision <= 0) {
+          return failed(new Error("Save the project before creating a snapshot"));
+        }
+        const revDir = path.join(projectDir(id), "revisions");
+        await mkdir(revDir, { recursive: true });
+        const stem = String(revision).padStart(6, "0");
+        await writeFile(path.join(revDir, `${stem}.json`), documentText, "utf8");
+        await writeFile(
+          path.join(revDir, `${stem}.meta.json`),
+          JSON.stringify(
+            {
+              name,
+              createdAt: new Date().toISOString(),
+              summary: summarizeProjectRevision({ document }),
+            },
+            null,
+            2,
+          ),
+          "utf8",
+        );
+        await pruneRevisionHistory({ revDir });
+        return NextResponse.json({ ok: true, name, revision });
+      } catch (error) {
+        return failed(error);
+      }
+    }) as Promise<NextResponse>;
+  }
   // POST <id>/restore/<revision> — roll the document back to a snapshot.
   if (!segments || segments.length !== 3 || segments[1] !== "restore") {
     return failed(new Error("POST supports only <id>/restore/<revision>"), 405);
@@ -232,7 +357,9 @@ export async function POST(request: Request, { params }: Context) {
   if (!Number.isInteger(revisionNumber) || revisionNumber <= 0) {
     return failed(new Error(`Not a revision number: ${revisionRaw}`));
   }
-  void request;
+  const body = (await request.json().catch(() => ({}))) as {
+    expectedRevision?: unknown;
+  };
   return withProjectLock(id, async () => {
     try {
       const snapshotPath = path.join(
@@ -248,6 +375,22 @@ export async function POST(request: Request, { params }: Context) {
       // Rewinding the counter would let a stale CAS token authorise a write.
       const document = JSON.parse(snapshot) as Record<string, unknown>;
       const onDisk = await currentRevision(id);
+      const expectedRevision =
+        request.headers.get("if-match") ?? body.expectedRevision;
+      if (
+        expectedRevision !== undefined &&
+        expectedRevision !== null &&
+        Number(expectedRevision) !== onDisk
+      ) {
+        return NextResponse.json(
+          {
+            error: `Project ${id} is at revision ${onDisk}, not ${expectedRevision}. Compare again before restoring.`,
+            code: "revision_conflict",
+            revision: onDisk,
+          },
+          { status: 409 },
+        );
+      }
       const revision = onDisk + 1;
       const contents = JSON.stringify({ ...document, revision }, null, 2);
       const dir = projectDir(id);
@@ -257,6 +400,7 @@ export async function POST(request: Request, { params }: Context) {
         const revDir = path.join(dir, "revisions");
         await mkdir(revDir, { recursive: true });
         await writeFile(path.join(revDir, `${String(onDisk).padStart(6, "0")}.json`), current, "utf8");
+        await pruneRevisionHistory({ revDir });
       } catch {
         /* best effort */
       }

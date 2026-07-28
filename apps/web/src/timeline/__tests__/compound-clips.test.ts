@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { SceneTracks } from "@/timeline";
-import type { MediaTime } from "@/wasm";
+import { mediaTime } from "@/wasm";
 import {
 	breakApartCompoundClip,
 	createCompoundClip,
@@ -10,7 +10,7 @@ import {
 } from "@/timeline/compound-clips";
 
 const S = 120_000;
-const mt = (value: number) => value as MediaTime;
+const mt = (value: number) => mediaTime({ ticks: value });
 
 function makeTracks(): SceneTracks {
 	return {
@@ -134,8 +134,8 @@ describe("compound clips", () => {
 				(element) => [element.id, element.startTime],
 			),
 		).toEqual([
-			["clip-a", 2 * S],
-			["clip-b", 4 * S],
+			["clip-a", mt(2 * S)],
+			["clip-b", mt(4 * S)],
 		]);
 	});
 
