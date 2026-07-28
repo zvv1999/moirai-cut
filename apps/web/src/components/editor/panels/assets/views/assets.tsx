@@ -97,6 +97,13 @@ import {
 } from "@/media/organization";
 import { MediaBinBrowserView } from "./media-bin-browser";
 import { MediaMetadataEditorDialog } from "./media-metadata-editor";
+import { SourceMonitorDialog } from "./source-monitor";
+import {
+	buildElementFromSourceRange,
+	resolveSourceOverwriteTarget,
+	type SourceRange,
+} from "@/media/source-range";
+import { useElementSelection } from "@/timeline/hooks/element/use-element-selection";
 
 export function MediaView() {
 	const editor = useEditor();
@@ -127,8 +134,12 @@ export function MediaView() {
 	const [metadataEditorAssetIds, setMetadataEditorAssetIds] = useState<
 		string[]
 	>([]);
+	const [sourceMonitorAssetId, setSourceMonitorAssetId] = useState<
+		string | null
+	>(null);
 	const relinkInputRef = useRef<HTMLInputElement>(null);
 	const relinkTargetIdsRef = useRef<string[]>([]);
+	const { selectedElements: selectedTimelineElements } = useElementSelection();
 	const mediaOrganization = useMemo(
 		() =>
 			normalizeMediaOrganization({
@@ -176,6 +187,25 @@ export function MediaView() {
 			}),
 		[activeTracks, mediaFiles],
 	);
+	const sourceMonitorAsset =
+		mediaFiles.find((asset) => asset.id === sourceMonitorAssetId) ?? null;
+	const sourceOverwriteTarget = useMemo(
+		() =>
+			sourceMonitorAsset
+				? resolveSourceOverwriteTarget({
+						tracks: activeTracks,
+						selectedElements: selectedTimelineElements,
+						mediaType: sourceMonitorAsset.type,
+					})
+				: { trackId: null, reason: null },
+		[activeTracks, selectedTimelineElements, sourceMonitorAsset],
+	);
+	const sourceOverwriteTrack =
+		sourceOverwriteTarget.trackId === null
+			? null
+			: editor.timeline.getTrackById({
+					trackId: sourceOverwriteTarget.trackId,
+				});
 
 	const processFiles = async ({ files }: { files: File[] }) => {
 		if (!files || files.length === 0) return;
@@ -527,6 +557,44 @@ export function MediaView() {
 		);
 	};
 
+	const handleInsertSourceRange = ({ range }: { range: SourceRange }) => {
+		if (!sourceMonitorAsset) return;
+		const startTime = editor.playback.getCurrentTime();
+		editor.timeline.insertElement({
+			element: buildElementFromSourceRange({
+				asset: sourceMonitorAsset,
+				range,
+				startTime,
+			}),
+			placement: { mode: "auto" },
+		});
+		toast.success("Inserted source range", {
+			description: `${sourceMonitorAsset.name} was added at the playhead.`,
+		});
+	};
+
+	const handleOverwriteSourceRange = ({ range }: { range: SourceRange }) => {
+		if (!sourceMonitorAsset || sourceOverwriteTarget.trackId === null) {
+			toast.error("Cannot overwrite source range", {
+				description:
+					sourceOverwriteTarget.reason ??
+					"Select or unlock a compatible timeline track.",
+			});
+			return;
+		}
+		editor.timeline.overwriteElement({
+			element: buildElementFromSourceRange({
+				asset: sourceMonitorAsset,
+				range,
+				startTime: editor.playback.getCurrentTime(),
+			}),
+			trackId: sourceOverwriteTarget.trackId,
+		});
+		toast.success("Overwrote timeline range", {
+			description: `${sourceMonitorAsset.name} replaced the matching span on ${sourceOverwriteTrack?.name ?? "the target track"}.`,
+		});
+	};
+
 	const filteredMediaItems = useMemo(() => {
 		const filtered = filterMediaLibraryAssets({
 			assets: mediaFiles,
@@ -683,6 +751,17 @@ export function MediaView() {
 
 	return (
 		<>
+			<SourceMonitorDialog
+				open={sourceMonitorAsset !== null}
+				asset={sourceMonitorAsset}
+				overwriteTargetLabel={sourceOverwriteTrack?.name ?? null}
+				overwriteDisabledReason={sourceOverwriteTarget.reason}
+				onOpenChange={(open) => {
+					if (!open) setSourceMonitorAssetId(null);
+				}}
+				onInsert={handleInsertSourceRange}
+				onOverwrite={handleOverwriteSourceRange}
+			/>
 			<MediaMetadataEditorDialog
 				open={metadataEditorAssetIds.length > 0}
 				assetCount={metadataEditorAssetIds.length}
@@ -818,6 +897,9 @@ export function MediaView() {
 									mode={mediaViewMode}
 									bins={mediaOrganization.bins}
 									organization={mediaOrganization}
+									onOpenSource={({ assetId }) =>
+										setSourceMonitorAssetId(assetId)
+									}
 									onEditMetadata={({ assetIds }) =>
 										setMetadataEditorAssetIds(assetIds)
 									}
@@ -1001,6 +1083,7 @@ function MediaItemWithContextMenu({
 	bins,
 	organization,
 	children,
+	onOpenSource,
 	onEditMetadata,
 	onAssignToBin,
 	onRemove,
@@ -1009,6 +1092,7 @@ function MediaItemWithContextMenu({
 	bins: ReturnType<typeof getMediaBinTree>[number]["bin"][];
 	organization: ReturnType<typeof normalizeMediaOrganization>;
 	children: React.ReactNode;
+	onOpenSource: (args: { assetId: string }) => void;
 	onEditMetadata: (args: { assetIds: string[] }) => void;
 	onAssignToBin: (args: {
 		assetIds: string[];
@@ -1038,6 +1122,11 @@ function MediaItemWithContextMenu({
 		<ContextMenu>
 			<ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
 			<ContextMenuContent>
+				<ContextMenuItem
+					onSelect={() => onOpenSource({ assetId: item.id })}
+				>
+					Open in source monitor
+				</ContextMenuItem>
 				<ContextMenuItem>Export clips</ContextMenuItem>
 				<ContextMenuItem
 					onSelect={() => onEditMetadata({ assetIds: idsToDelete })}
@@ -1093,6 +1182,7 @@ function MediaItemList({
 	mode,
 	bins,
 	organization,
+	onOpenSource,
 	onEditMetadata,
 	onAssignToBin,
 	onRemove,
@@ -1101,6 +1191,7 @@ function MediaItemList({
 	mode: MediaViewMode;
 	bins: ReturnType<typeof getMediaBinTree>[number]["bin"][];
 	organization: ReturnType<typeof normalizeMediaOrganization>;
+	onOpenSource: (args: { assetId: string }) => void;
 	onEditMetadata: (args: { assetIds: string[] }) => void;
 	onAssignToBin: (args: {
 		assetIds: string[];
@@ -1128,12 +1219,17 @@ function MediaItemList({
 					item={item}
 					bins={bins}
 					organization={organization}
+					onOpenSource={onOpenSource}
 					onEditMetadata={onEditMetadata}
 					onAssignToBin={onAssignToBin}
 					onRemove={onRemove}
 					key={item.id}
 				>
-					<SelectableItem className={cn(!isGrid && "w-full")} id={item.id}>
+					<SelectableItem
+						className={cn(!isGrid && "w-full")}
+						id={item.id}
+						onDoubleClick={() => onOpenSource({ assetId: item.id })}
+					>
 						<MediaAssetDraggable
 							item={item}
 							preview={
@@ -1236,36 +1332,12 @@ function MediaPreview({
 	}
 
 	if (item.type === "video") {
-		if (item.thumbnailUrl) {
-			return (
-				<div className="relative size-full">
-					<Image
-						src={item.thumbnailUrl}
-						alt={item.name}
-						fill
-						sizes="100vw"
-						className="rounded object-cover"
-						loading="lazy"
-						unoptimized
-					/>
-					{shouldShowDurationBadge ? (
-						<MediaDurationBadge duration={item.duration} />
-					) : null}
-					<MediaMetadataBadges metadata={metadata} />
-				</div>
-			);
-		}
-
 		return (
-			<div className="relative size-full">
-				<MediaTypePlaceholder
-					icon={Video01Icon}
-					label="Video"
-					duration={item.duration}
-					variant="muted"
-				/>
-				<MediaMetadataBadges metadata={metadata} />
-			</div>
+			<HoverScrubVideoPreview
+				item={item}
+				metadata={metadata}
+				showDurationBadge={shouldShowDurationBadge}
+			/>
 		);
 	}
 
@@ -1286,6 +1358,84 @@ function MediaPreview({
 	return (
 		<div className="relative size-full">
 			<MediaTypePlaceholder icon={Image02Icon} label="Unknown" variant="muted" />
+			<MediaMetadataBadges metadata={metadata} />
+		</div>
+	);
+}
+
+function HoverScrubVideoPreview({
+	item,
+	metadata,
+	showDurationBadge,
+}: {
+	item: MediaAsset;
+	metadata: MediaAssetMetadata;
+	showDurationBadge: boolean;
+}) {
+	const videoRef = useRef<HTMLVideoElement>(null);
+	const [isHovering, setIsHovering] = useState(false);
+	const [scrubTime, setScrubTime] = useState(0);
+
+	const scrub = ({ event }: { event: React.PointerEvent<HTMLDivElement> }) => {
+		const duration = item.duration ?? videoRef.current?.duration ?? 0;
+		if (duration <= 0) return;
+		const bounds = event.currentTarget.getBoundingClientRect();
+		const ratio = Math.min(
+			1,
+			Math.max(0, (event.clientX - bounds.left) / Math.max(1, bounds.width)),
+		);
+		const time = ratio * duration;
+		setScrubTime(time);
+		if (videoRef.current && Number.isFinite(videoRef.current.duration)) {
+			videoRef.current.currentTime = time;
+		}
+	};
+
+	return (
+		<div
+			className="relative size-full"
+			onPointerEnter={() => setIsHovering(true)}
+			onPointerMove={(event) => scrub({ event })}
+			onPointerLeave={() => {
+				setIsHovering(false);
+				setScrubTime(0);
+			}}
+			title="Hover to scrub · double-click for source monitor"
+		>
+			{isHovering && item.url ? (
+				<video
+					ref={videoRef}
+					src={item.url}
+					className="size-full object-cover"
+					muted
+					playsInline
+					preload="metadata"
+				/>
+			) : item.thumbnailUrl ? (
+				<Image
+					src={item.thumbnailUrl}
+					alt={item.name}
+					fill
+					sizes="100vw"
+					className="rounded object-cover"
+					loading="lazy"
+					unoptimized
+				/>
+			) : (
+				<MediaTypePlaceholder
+					icon={Video01Icon}
+					label="Video"
+					duration={item.duration}
+					variant="muted"
+				/>
+			)}
+			{isHovering ? (
+				<span className="absolute inset-x-1 bottom-1 rounded bg-black/75 px-1 py-0.5 text-center text-[9px] text-white">
+					Scrub {formatDuration({ duration: scrubTime })} · double-click source
+				</span>
+			) : showDurationBadge ? (
+				<MediaDurationBadge duration={item.duration} />
+			) : null}
 			<MediaMetadataBadges metadata={metadata} />
 		</div>
 	);

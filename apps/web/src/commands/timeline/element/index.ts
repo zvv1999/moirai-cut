@@ -1,4 +1,5 @@
 export { InsertElementCommand } from "./insert-element";
+export { OverwriteElementCommand } from "./overwrite-element";
 export { DeleteElementsCommand } from "./delete-elements";
 export { DuplicateElementsCommand } from "./duplicate-elements";
 export { SplitElementsCommand } from "./split-elements";

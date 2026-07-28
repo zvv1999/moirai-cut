@@ -1,25 +1,27 @@
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { SourceMonitorDialog } from "@/components/editor/panels/assets/views/source-monitor";
+import { SourceMonitorView } from "@/components/editor/panels/assets/views/source-monitor";
+import { Dialog } from "@/components/ui/dialog";
 
 test("source monitor exposes playback, in/out, insert, and overwrite controls", () => {
 	const markup = renderToStaticMarkup(
-		<SourceMonitorDialog
-			open={true}
-			asset={{
-				id: "source",
-				name: "Source.mov",
-				type: "video",
-				duration: 12,
-				file: new File([], "Source.mov"),
-				url: "blob:source",
-			}}
-			overwriteTargetLabel="Main Track"
-			overwriteDisabledReason={null}
-			onOpenChange={() => {}}
-			onInsert={() => {}}
-			onOverwrite={() => {}}
-		/>,
+		<Dialog open={true}>
+			<SourceMonitorView
+				asset={{
+					id: "source",
+					name: "Source.mov",
+					type: "video",
+					duration: 12,
+					file: new File([], "Source.mov"),
+					url: "blob:source",
+				}}
+				overwriteTargetLabel="Main Track"
+				overwriteDisabledReason={null}
+				onInsert={() => {}}
+				onOverwrite={() => {}}
+				onClose={() => {}}
+			/>
+		</Dialog>,
 	);
 
 	expect(markup).toContain('aria-label="Source monitor"');

@@ -36,6 +36,7 @@ import {
 	ToggleTrackVisibilityCommand,
 	UpdateTrackControlsCommand,
 	InsertElementCommand,
+	OverwriteElementCommand,
 	DeleteElementsCommand,
 	DuplicateElementsCommand,
 	UpdateElementsCommand,
@@ -87,6 +88,18 @@ export class TimelineManager {
 	insertElement({ element, placement }: InsertElementParams): void {
 		const command = new InsertElementCommand({ element, placement });
 		this.editor.command.execute({ command });
+	}
+
+	overwriteElement({
+		element,
+		trackId,
+	}: {
+		element: InsertElementParams["element"];
+		trackId: string;
+	}): void {
+		this.editor.command.execute({
+			command: new OverwriteElementCommand({ element, trackId }),
+		});
 	}
 
 	updateElementTrim({
