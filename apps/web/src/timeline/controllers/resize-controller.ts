@@ -8,6 +8,7 @@ import {
 	minMediaTime,
 	subMediaTime,
 	TICKS_PER_SECOND,
+	ZERO_MEDIA_TIME,
 } from "@/wasm";
 import {
 	computeGroupResize,
@@ -37,6 +38,12 @@ import {
 	buildPrecisionTrimPlan,
 	type PrecisionTrimMode,
 } from "@/timeline/precision-trim";
+import {
+	buildResizeFeedback,
+	buildRippleResizePreview,
+	type DirectManipulationFeedback,
+	type ResizePreviewUpdate,
+} from "@/timeline/direct-manipulation-feedback";
 
 // --- Session ---
 
@@ -50,6 +57,9 @@ interface ResizeSession {
 	elementId: string;
 	members: GroupResizeMember[];
 	result: GroupResizeResult | null;
+	requestedDeltaTime: MediaTime;
+	snapPoint: SnapPoint | null;
+	rippleShiftedElementCount: number;
 }
 
 type Session = { kind: "idle" } | ResizeSession;
@@ -66,7 +76,7 @@ export interface ResizeConfig {
 	getTrimMode: () => PrecisionTrimMode;
 	selectedElements: ElementRef[];
 	discardPreview: () => void;
-	previewElements: (updates: GroupResizeUpdate[]) => void;
+	previewElements: (updates: ResizePreviewUpdate[]) => void;
 	commitElements: (updates: GroupResizeUpdate[]) => void;
 	onSnapPointChange?: (snapPoint: SnapPoint | null) => void;
 }
@@ -74,6 +84,17 @@ export interface ResizeConfig {
 export interface ResizeConfigRef {
 	readonly current: ResizeConfig;
 }
+
+export type ResizeView =
+	| { readonly kind: "idle" }
+	| {
+			readonly kind: "resizing";
+			readonly feedback: DirectManipulationFeedback;
+			readonly mode: PrecisionTrimMode;
+			readonly side: ResizeSide;
+	  };
+
+const IDLE_RESIZE_VIEW: ResizeView = { kind: "idle" };
 
 // --- Pure helpers ---
 
@@ -187,6 +208,23 @@ export class ResizeController {
 		return this.session.kind === "active";
 	}
 
+	get view(): ResizeView {
+		if (this.session.kind !== "active") return IDLE_RESIZE_VIEW;
+		return {
+			kind: "resizing",
+			mode: this.session.mode,
+			side: this.session.side,
+			feedback: buildResizeFeedback({
+				mode: this.session.mode,
+				side: this.session.side,
+				requestedDeltaTime: this.session.requestedDeltaTime,
+				result: this.session.result,
+				snapPoint: this.session.snapPoint,
+				rippleShiftedElementCount: this.session.rippleShiftedElementCount,
+			}),
+		};
+	}
+
 	subscribe(fn: () => void): () => void {
 		this.subscribers.add(fn);
 		return () => this.subscribers.delete(fn);
@@ -252,6 +290,9 @@ export class ResizeController {
 			elementId: element.id,
 			members,
 			result: null,
+			requestedDeltaTime: ZERO_MEDIA_TIME,
+			snapPoint: null,
+			rippleShiftedElementCount: 0,
 		};
 		this.activate();
 		this.notify();
@@ -289,6 +330,7 @@ export class ResizeController {
 
 		if (!snappingEnabled || isShiftHeld()) {
 			this.config.onSnapPointChange?.(null);
+			session.snapPoint = null;
 			return rawDeltaTime;
 		}
 
@@ -334,6 +376,7 @@ export class ResizeController {
 		}
 
 		this.config.onSnapPointChange?.(closestSnapPoint);
+		session.snapPoint = closestSnapPoint;
 		return deltaTime;
 	}
 
@@ -354,6 +397,7 @@ export class ResizeController {
 				: this.snappedDelta({ session, rawDeltaTime });
 		if (session.mode === "slip") {
 			this.config.onSnapPointChange?.(null);
+			session.snapPoint = null;
 		}
 		const result =
 			session.mode === "standard" || session.mode === "ripple"
@@ -366,7 +410,20 @@ export class ResizeController {
 				: this.buildPrecisionResult({ session, deltaTime });
 
 		session.result = result;
-		this.config.previewElements(result.updates);
+		session.requestedDeltaTime = rawDeltaTime;
+		const preview =
+			session.mode === "ripple"
+				? buildRippleResizePreview({
+						tracks: this.config.getSceneTracks(),
+						updates: result.updates,
+					})
+				: {
+						updates: result.updates,
+						shiftedElementCount: 0,
+						totalShift: ZERO_MEDIA_TIME,
+					};
+		session.rippleShiftedElementCount = preview.shiftedElementCount;
+		this.config.previewElements(preview.updates);
 	}
 
 	private buildPrecisionResult({

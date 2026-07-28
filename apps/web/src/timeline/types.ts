@@ -299,6 +299,7 @@ export type ElementDragView =
 			readonly currentMouseX: number;
 			readonly currentMouseY: number;
 			readonly dropTarget: DropTarget | null;
+			readonly feedback: import("./direct-manipulation-feedback").DirectManipulationFeedback;
 	  };
 
 export interface DropTarget {

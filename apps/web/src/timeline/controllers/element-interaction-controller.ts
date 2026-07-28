@@ -31,6 +31,7 @@ import type {
 	TimelineTrack,
 } from "@/timeline";
 import type { TimelineSelectionIntent } from "@/timeline/element-selection";
+import { buildMoveFeedback } from "@/timeline/direct-manipulation-feedback";
 
 const MOUSE_BUTTON_RIGHT = 2;
 
@@ -114,6 +115,7 @@ interface DragProgress {
 	currentMouseY: number;
 	groupMoveResult: GroupMoveResult | null;
 	dropTarget: DropTarget | null;
+	snapPoint: SnapPoint | null;
 }
 
 type Session =
@@ -328,6 +330,13 @@ export class ElementInteractionController {
 			currentMouseX: drag.currentMouseX,
 			currentMouseY: drag.currentMouseY,
 			dropTarget: drag.dropTarget,
+			feedback: buildMoveFeedback({
+				anchorTime: drag.currentTime,
+				elementCount: drag.moveGroup.members.length,
+				result: drag.groupMoveResult,
+				tracks: this.deps.scene.getTracks(),
+				snapPoint: drag.snapPoint,
+			}),
 		};
 	}
 
@@ -619,6 +628,7 @@ export class ElementInteractionController {
 			currentMouseY: clientY,
 			groupMoveResult: null,
 			dropTarget: null,
+			snapPoint,
 		};
 
 		this.session = { kind: "dragging", mousedown, drag };
@@ -667,6 +677,7 @@ export class ElementInteractionController {
 		drag.currentTime = snappedTime;
 		drag.currentMouseX = clientX;
 		drag.currentMouseY = clientY;
+		drag.snapPoint = snapPoint;
 
 		this.updateDropTarget({
 			clientX,

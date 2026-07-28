@@ -95,6 +95,7 @@ import { getRevealPlayheadScrollLeft } from "@/timeline/navigation";
 import { TimelineModeStatus } from "./timeline-mode-status";
 import { TrackControlRowView } from "./track-control-row";
 import { PrecisionTrimModeSelector } from "./precision-trim-mode-selector";
+import { DirectManipulationHud } from "./direct-manipulation-hud";
 
 const TRACKS_CONTAINER_MAX_HEIGHT = 800;
 const FALLBACK_CONTAINER_WIDTH = 1000;
@@ -176,7 +177,7 @@ export function Timeline() {
 			tracksScrollRef,
 			rulerScrollRef,
 		});
-	const { isResizing, handleResizeStart } = useTimelineResize({
+	const { isResizing, resizeView, handleResizeStart } = useTimelineResize({
 		zoomLevel,
 		onSnapPointChange: handleSnapPointChange,
 	});
@@ -340,6 +341,12 @@ export function Timeline() {
 		onSnapPointChange: handleSnapPointChange,
 	});
 	const isElementDragging = dragView.kind === "dragging";
+	const directManipulationFeedback =
+		dragView.kind === "dragging"
+			? dragView.feedback
+			: resizeView.kind === "resizing"
+				? resizeView.feedback
+				: null;
 
 	const {
 		dragState: bookmarkDragState,
@@ -663,6 +670,7 @@ export function Timeline() {
 							showSnapIndicator && currentSnapPoint?.type === "playhead"
 						}
 					/>
+					<DirectManipulationHud feedback={directManipulationFeedback} />
 				</div>
 				<SnapIndicator
 					snapPoint={currentSnapPoint}

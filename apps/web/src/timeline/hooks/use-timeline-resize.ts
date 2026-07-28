@@ -83,6 +83,7 @@ export function useTimelineResize({
 
 	return {
 		isResizing: controller.isResizing,
+		resizeView: controller.view,
 		handleResizeStart: controller.onResizeStart,
 	};
 }

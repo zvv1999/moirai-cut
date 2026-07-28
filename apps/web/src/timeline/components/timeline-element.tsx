@@ -407,6 +407,7 @@ export function TimelineElement({
 							onElementMouseDown={onElementMouseDown}
 							onResizeStart={onResizeStart}
 							isDropTarget={isDropTarget}
+							isBeingDragged={isBeingDragged}
 						/>
 						{isSelected && (
 							<div
@@ -527,6 +528,7 @@ function ElementInner({
 	onElementMouseDown,
 	onResizeStart,
 	isDropTarget = false,
+	isBeingDragged = false,
 }: {
 	element: TimelineElementType;
 	displayElement?: TimelineElementType;
@@ -550,6 +552,7 @@ function ElementInner({
 		side: "left" | "right";
 	}) => void;
 	isDropTarget?: boolean;
+	isBeingDragged?: boolean;
 }) {
 	const visibleElement = displayElement ?? element;
 	const isReducedOpacity =
@@ -577,7 +580,10 @@ function ElementInner({
 					className={cn(
 						"absolute inset-0 rounded-sm",
 						isExpanded && "bg-background",
+						isBeingDragged &&
+							"ring-primary/70 scale-[1.015] opacity-85 shadow-xl ring-1",
 					)}
+					data-direct-manipulation={isBeingDragged ? "moving" : undefined}
 				>
 					<TimelineElementInteractionShell
 						baseTrackHeight={baseTrackHeight}
