@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 13,
-		"automatedTestsPassing": 393,
-		"archivedScreenshots": 12
+		"greenCapabilities": 14,
+		"automatedTestsPassing": 400,
+		"archivedScreenshots": 13
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -17,6 +17,7 @@
 		"W05",
 		"W06",
 		"W07",
+		"W08",
 		"M02",
 		"T07",
 		"G01",
@@ -25,6 +26,22 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["W08"],
+			"redCommits": ["9384172"],
+			"greenCommit": "d1bad1e",
+			"result": "A persistent precision-trim row now exposes Standard, Ripple, Roll, Slip, and Slide with selection-aware availability reasons. Roll shares one frame-aligned cut between touching clips, Slip shifts source in and out without moving the timeline span, and Slide moves the selected clip while rolling both neighbours. All operations use the existing preview, command history, and undo paths.",
+			"tests": {
+				"targeted": "7/7",
+				"fullSuite": "400/400 with the required WASM test preload",
+				"functionCoverage": "86.67% for the precision-trim core",
+				"lineCoverage": "83.54% for the precision-trim core",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
+			},
+			"screenshots": [
+				"assets/screenshots/W08-precision-trim-modes.png"
+			]
+		},
 		{
 			"featureIds": ["W07"],
 			"redCommits": ["57e699f"],

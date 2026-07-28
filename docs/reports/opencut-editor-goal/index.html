@@ -38,7 +38,7 @@
 						再用共享原子命令、计划预览和可审查变更形成 Agent 原生优势。
 					</p>
 					<div class="hero__meta">
-						<span class="status status--building">ACTIVE · M1</span>
+						<span class="status status--building">ACTIVE · M2</span>
 						<span class="pill">分支 feat/agent-drivable</span>
 						<span class="pill">目标 019fa427…914f</span>
 						<span class="pill">证据随每批实现持续更新</span>
@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">13</strong>
+							<strong class="metric__value">14</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">393</strong>
+							<strong class="metric__value">400</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">12</strong>
+							<strong class="metric__value">13</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -106,7 +106,7 @@
 								<h3>P0 工作台基础</h3>
 								<p>丢失素材、检查器、关键帧、播放、导航、轨道和精修。</p>
 							</div>
-							<span class="status status--building">BUILDING</span>
+							<span class="status status--green">DONE</span>
 						</article>
 						<article class="milestone">
 							<span class="milestone__id">M2</span>
@@ -116,7 +116,7 @@
 									素材组织、源预览、选择、编组、标记、转场、复合片段和快照。
 								</p>
 							</div>
-							<span class="status status--todo">TODO</span>
+							<span class="status status--building">BUILDING</span>
 						</article>
 						<article class="milestone">
 							<span class="milestone__id">M3</span>
@@ -177,6 +177,30 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/W08-precision-trim-modes.png"
+								data-lightbox-label="W08 帧精确高级修剪模式"
+							>
+								<img
+									src="assets/screenshots/W08-precision-trim-modes.png"
+									alt="时间线上方显示 Standard、Ripple、Roll、Slip、Slide 修剪工具，真实片段处于 Roll 模式并选中共享剪切点"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">W08 · PRECISION TRIM</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>五类修剪语义可见、可用、可撤销</h3>
+								<p>
+									Standard、Ripple、Roll、Slip 与 Slide 常驻时间线上方，并根据真实片段与相邻关系解释可用性；Roll 保持相邻片段总时长，Slide 同步滚动两侧剪切点，所有位移按项目帧率对齐并进入统一撤销历史。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -470,6 +494,16 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>W08</strong></td>
+									<td><code>9384172</code> RED + <code>d1bad1e</code> GREEN</td>
+									<td>目标 7/7；全量 400/400；精修核心 86.67% / 83.54%；生产构建通过</td>
+									<td>
+										Roll 共享剪切点/撤销；Slide
+										移动中间片段与两侧边界/撤销；可用性原因；Standard 与 Ripple Off 已恢复
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>W07</strong></td>
 									<td><code>57e699f</code> RED + <code>0e02216</code> GREEN</td>
