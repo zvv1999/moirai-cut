@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 12,
-		"automatedTestsPassing": 386,
-		"archivedScreenshots": 11
+		"greenCapabilities": 13,
+		"automatedTestsPassing": 393,
+		"archivedScreenshots": 12
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -16,6 +16,7 @@
 		"W04",
 		"W05",
 		"W06",
+		"W07",
 		"M02",
 		"T07",
 		"G01",
@@ -24,6 +25,22 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["W07"],
+			"redCommits": ["57e699f"],
+			"greenCommit": "0e02216",
+			"result": "Track headers now expose names, accepted media types, and direct lock, solo, mute or visibility, resize, and delete controls. A persistent add menu creates all five track types. Control mutations share command history, lock protects clip edits, solo affects preview and export audio collection, and optional fields keep old projects compatible.",
+			"tests": {
+				"targeted": "7/7",
+				"fullSuite": "393/393 with the required WASM test preload",
+				"functionCoverage": "100% for the track-control core",
+				"lineCoverage": "100% for the track-control core",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
+			},
+			"screenshots": [
+				"assets/screenshots/W07-professional-track-controls.png"
+			]
+		},
 		{
 			"featureIds": ["W06"],
 			"redCommits": ["08da1db"],
