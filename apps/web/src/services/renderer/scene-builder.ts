@@ -17,6 +17,7 @@ import {
 	readBlendModeFromParams,
 	readOpacityFromParams,
 } from "@/rendering";
+import { getMediaAssetPlaybackSource } from "@/media/proxy";
 
 const PREVIEW_MAX_IMAGE_SIZE = 2048;
 
@@ -64,13 +65,17 @@ function buildTrackNodes({
 				if (!mediaAsset?.file || !mediaAsset?.url) {
 					continue;
 				}
+				const playbackSource = getMediaAssetPlaybackSource({
+					asset: mediaAsset,
+					isPreview,
+				});
 
 				if (element.type === "video" && mediaAsset.type === "video") {
 					nodes.push(
 						new VideoNode({
-							mediaId: mediaAsset.id,
-							url: mediaAsset.url,
-							file: mediaAsset.file,
+							mediaId: playbackSource.mediaId,
+							url: playbackSource.url,
+							file: playbackSource.file,
 							duration: element.duration,
 							timeOffset: element.startTime,
 							trimStart: element.trimStart,
@@ -88,7 +93,7 @@ function buildTrackNodes({
 				if (element.type === "image" && mediaAsset.type === "image") {
 					nodes.push(
 						new ImageNode({
-							url: mediaAsset.url,
+							url: playbackSource.url,
 							duration: element.duration,
 							timeOffset: element.startTime,
 							trimStart: element.trimStart,
@@ -169,10 +174,12 @@ function buildBlurBackgroundNodes({
 	track,
 	mediaMap,
 	blurIntensity,
+	isPreview,
 }: {
 	track: TimelineTrack | undefined;
 	mediaMap: Map<string, MediaAsset>;
 	blurIntensity: number;
+	isPreview?: boolean;
 }): AnyBaseNode[] {
 	if (!track) {
 		return [];
@@ -195,11 +202,15 @@ function buildBlurBackgroundNodes({
 			continue;
 		}
 
+		const playbackSource = getMediaAssetPlaybackSource({
+			asset: mediaAsset,
+			isPreview,
+		});
 		nodes.push(
 			new BlurBackgroundNode({
-				mediaId: mediaAsset.id,
-				url: mediaAsset.url,
-				file: mediaAsset.file,
+				mediaId: playbackSource.mediaId,
+				url: playbackSource.url,
+				file: playbackSource.file,
 				mediaType: mediaAsset.type,
 				duration: element.duration,
 				timeOffset: element.startTime,
@@ -254,6 +265,7 @@ export function buildScene({
 			mediaMap,
 			blurIntensity:
 				background.blurIntensity ?? DEFAULT_BACKGROUND_BLUR_INTENSITY,
+			isPreview,
 		});
 		for (const node of blurNodes) {
 			rootNode.add(node);

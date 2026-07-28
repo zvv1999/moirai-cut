@@ -98,12 +98,15 @@ import {
 import { MediaBinBrowserView } from "./media-bin-browser";
 import { MediaMetadataEditorDialog } from "./media-metadata-editor";
 import { SourceMonitorDialog } from "./source-monitor";
+import { MediaBatchOperationsDialog } from "./media-batch-operations-dialog";
 import {
 	buildElementFromSourceRange,
 	resolveSourceOverwriteTarget,
 	type SourceRange,
 } from "@/media/source-range";
 import { useElementSelection } from "@/timeline/hooks/element/use-element-selection";
+import { generateMediaProxy } from "@/media/proxy";
+import { downloadBlob } from "@/utils/browser";
 
 export function MediaView() {
 	const editor = useEditor();
@@ -137,6 +140,11 @@ export function MediaView() {
 	const [sourceMonitorAssetId, setSourceMonitorAssetId] = useState<
 		string | null
 	>(null);
+	const [batchOperationAssetIds, setBatchOperationAssetIds] = useState<string[]>(
+		[],
+	);
+	const [batchStatus, setBatchStatus] = useState<string | null>(null);
+	const [batchProgress, setBatchProgress] = useState(0);
 	const relinkInputRef = useRef<HTMLInputElement>(null);
 	const relinkTargetIdsRef = useRef<string[]>([]);
 	const { selectedElements: selectedTimelineElements } = useElementSelection();
@@ -189,6 +197,9 @@ export function MediaView() {
 	);
 	const sourceMonitorAsset =
 		mediaFiles.find((asset) => asset.id === sourceMonitorAssetId) ?? null;
+	const batchOperationAssets = mediaFiles.filter((asset) =>
+		batchOperationAssetIds.includes(asset.id),
+	);
 	const sourceOverwriteTarget = useMemo(
 		() =>
 			sourceMonitorAsset
@@ -377,6 +388,239 @@ export function MediaView() {
 		invokeAction("remove-media-assets", {
 			projectId: activeProject.metadata.id,
 			assetIds: ids,
+		});
+	};
+
+	const removeBatchAssets = () => {
+		if (batchOperationAssetIds.length === 0) return;
+		invokeAction("remove-media-assets", {
+			projectId: activeProject.metadata.id,
+			assetIds: batchOperationAssetIds,
+		});
+		setBatchOperationAssetIds([]);
+		toast.success(
+			`Removed ${batchOperationAssetIds.length} ${
+				batchOperationAssetIds.length === 1 ? "asset" : "assets"
+			}`,
+			{ description: "Undo restores source media and timeline uses." },
+		);
+	};
+
+	const handleBatchRename = ({
+		prefix,
+		startIndex,
+	}: {
+		prefix: string;
+		startIndex: number;
+	}) => {
+		editor.media.renameMediaAssets({
+			projectId: activeProject.metadata.id,
+			assets: batchOperationAssets,
+			prefix,
+			startIndex,
+		});
+		toast.success(`Renamed ${batchOperationAssets.length} assets`, {
+			description: "File extensions and timeline identities were preserved.",
+		});
+	};
+
+	const handleBatchReplace = async ({
+		files,
+		matchByName,
+	}: {
+		files: File[];
+		matchByName: boolean;
+	}) => {
+		const normalizedBaseName = (name: string) =>
+			name
+				.slice(0, Math.max(0, name.lastIndexOf(".")) || name.length)
+				.trim()
+				.toLocaleLowerCase();
+		const pairs = matchByName
+			? batchOperationAssets.flatMap((asset) => {
+					const file = files.find(
+						(candidate) =>
+							normalizedBaseName(candidate.name) ===
+							normalizedBaseName(asset.name),
+					);
+					return file ? [{ asset, file }] : [];
+				})
+			: batchOperationAssets
+					.slice(0, files.length)
+					.map((asset, index) => ({ asset, file: files[index] }));
+		const validPairs = pairs.filter(
+			({ asset, file }) => getMediaTypeFromFile({ file }) === asset.type,
+		);
+		if (validPairs.length === 0) {
+			toast.error("No compatible replacement files", {
+				description: matchByName
+					? "Filenames and media types must match."
+					: "Select files in the same order and media type.",
+			});
+			return;
+		}
+
+		setIsProcessing(true);
+		setBatchStatus(
+			matchByName ? "Relinking matched filenames…" : "Replacing source files…",
+		);
+		setBatchProgress(0);
+		try {
+			const processed = await processMediaAssets({
+				files: validPairs.map(({ file }) => file),
+				onProgress: ({ progress }) => {
+					setProgress(progress);
+					setBatchProgress(progress);
+				},
+			});
+			editor.media.relinkMediaAssets({
+				projectId: activeProject.metadata.id,
+				items: processed.map((asset, index) => ({
+					assetId: validPairs[index].asset.id,
+					asset,
+				})),
+			});
+			setBatchProgress(100);
+			setBatchStatus(
+				`${processed.length} ${
+					processed.length === 1 ? "asset" : "assets"
+				} replaced`,
+			);
+			toast.success(`Replaced ${processed.length} source files`, {
+				description: "Timeline edits and media identities were preserved.",
+			});
+		} catch (error) {
+			console.error("Batch media replacement failed:", error);
+			toast.error("Could not replace selected media", {
+				description: error instanceof Error ? error.message : undefined,
+			});
+		} finally {
+			setIsProcessing(false);
+			setProgress(0);
+		}
+	};
+
+	const handleExportOriginals = () => {
+		for (const asset of batchOperationAssets) {
+			downloadBlob({ blob: asset.file, filename: asset.file.name });
+		}
+		toast.success(
+			`Exported ${batchOperationAssets.length} original ${
+				batchOperationAssets.length === 1 ? "file" : "files"
+			}`,
+		);
+	};
+
+	const handleGenerateProxies = async () => {
+		const candidates = batchOperationAssets.filter(
+			(asset) => asset.type !== "audio",
+		);
+		if (candidates.length === 0) return;
+		setIsProcessing(true);
+		setBatchProgress(0);
+		setBatchStatus(`Generating proxy 1 of ${candidates.length}…`);
+		const updates: Array<{
+			assetId: string;
+			update: (asset: MediaAsset) => MediaAsset;
+		}> = [];
+		const failures: string[] = [];
+		try {
+			for (let index = 0; index < candidates.length; index++) {
+				const asset = candidates[index];
+				setBatchStatus(
+					`Generating proxy ${index + 1} of ${candidates.length}: ${asset.name}`,
+				);
+				try {
+					const proxy = await generateMediaProxy({
+						asset,
+						onProgress: (itemProgress) =>
+							setBatchProgress(
+								((index + itemProgress) / candidates.length) * 100,
+							),
+					});
+					updates.push({
+						assetId: asset.id,
+						update: (current) => ({
+							...current,
+							proxy: proxy.metadata,
+							proxyFile: proxy.file,
+							proxyUrl: proxy.url,
+						}),
+					});
+				} catch (error) {
+					console.error(`Proxy generation failed for ${asset.name}:`, error);
+					failures.push(asset.name);
+				}
+			}
+			editor.media.updateMediaAssets({
+				projectId: activeProject.metadata.id,
+				updates,
+			});
+			setBatchProgress(100);
+			setBatchStatus(
+				`${updates.length} proxies ready${failures.length > 0 ? ` · ${failures.length} failed` : ""}`,
+			);
+			if (updates.length > 0) {
+				toast.success(`Generated ${updates.length} proxies`, {
+					description:
+						"Preview uses proxies; final export remains original quality.",
+				});
+			}
+			if (failures.length > 0) {
+				toast.warning(`${failures.length} proxies could not be generated`, {
+					description: failures.slice(0, 3).join(", "),
+				});
+			}
+		} finally {
+			setIsProcessing(false);
+		}
+	};
+
+	const handleToggleProxies = () => {
+		const proxyAssets = batchOperationAssets.filter((asset) => asset.proxy);
+		const enable = !proxyAssets.every((asset) => asset.proxy?.enabled);
+		editor.media.updateMediaAssets({
+			projectId: activeProject.metadata.id,
+			updates: proxyAssets.map((asset) => ({
+				assetId: asset.id,
+				update: (current) => ({
+					...current,
+					proxy: current.proxy
+						? { ...current.proxy, enabled: enable }
+						: undefined,
+				}),
+			})),
+		});
+		setBatchStatus(
+			`${proxyAssets.length} ${
+				proxyAssets.length === 1 ? "proxy" : "proxies"
+			} ${enable ? "enabled" : "disabled"}`,
+		);
+		setBatchProgress(100);
+	};
+
+	const handleRemoveProxies = () => {
+		const proxyAssets = batchOperationAssets.filter((asset) => asset.proxy);
+		editor.media.updateMediaAssets({
+			projectId: activeProject.metadata.id,
+			updates: proxyAssets.map((asset) => ({
+				assetId: asset.id,
+				update: (current) => ({
+					...current,
+					proxy: undefined,
+					proxyFile: undefined,
+					proxyUrl: undefined,
+				}),
+			})),
+		});
+		setBatchStatus(
+			`Removed ${proxyAssets.length} ${
+				proxyAssets.length === 1 ? "proxy" : "proxies"
+			}`,
+		);
+		setBatchProgress(100);
+		toast.success("Removed preview proxies", {
+			description: "Original source media was kept. Undo is available.",
 		});
 	};
 
@@ -770,6 +1014,32 @@ export function MediaView() {
 				}}
 				onApply={handleApplyAssetMetadata}
 			/>
+			<MediaBatchOperationsDialog
+				open={batchOperationAssetIds.length > 0}
+				assets={batchOperationAssets}
+				busy={isProcessing}
+				progress={batchProgress}
+				status={batchStatus}
+				onOpenChange={(open) => {
+					if (!open) {
+						setBatchOperationAssetIds([]);
+						setBatchStatus(null);
+						setBatchProgress(0);
+					}
+				}}
+				onRename={handleBatchRename}
+				onReplace={(files) =>
+					void handleBatchReplace({ files, matchByName: false })
+				}
+				onRelinkByName={(files) =>
+					void handleBatchReplace({ files, matchByName: true })
+				}
+				onExport={handleExportOriginals}
+				onGenerateProxies={() => void handleGenerateProxies()}
+				onToggleProxies={handleToggleProxies}
+				onRemoveProxies={handleRemoveProxies}
+				onRemoveAssets={removeBatchAssets}
+			/>
 			<input {...fileInputProps} />
 			<input
 				ref={relinkInputRef}
@@ -903,6 +1173,11 @@ export function MediaView() {
 									onEditMetadata={({ assetIds }) =>
 										setMetadataEditorAssetIds(assetIds)
 									}
+									onBatchOperations={({ assetIds }) => {
+										setBatchStatus(null);
+										setBatchProgress(0);
+										setBatchOperationAssetIds(assetIds);
+									}}
 									onAssignToBin={handleAssignAssetsToBin}
 									onRemove={handleRemove}
 								/>
@@ -1085,6 +1360,7 @@ function MediaItemWithContextMenu({
 	children,
 	onOpenSource,
 	onEditMetadata,
+	onBatchOperations,
 	onAssignToBin,
 	onRemove,
 }: {
@@ -1094,6 +1370,7 @@ function MediaItemWithContextMenu({
 	children: React.ReactNode;
 	onOpenSource: (args: { assetId: string }) => void;
 	onEditMetadata: (args: { assetIds: string[] }) => void;
+	onBatchOperations: (args: { assetIds: string[] }) => void;
 	onAssignToBin: (args: {
 		assetIds: string[];
 		binId: string | null;
@@ -1127,11 +1404,20 @@ function MediaItemWithContextMenu({
 				>
 					Open in source monitor
 				</ContextMenuItem>
-				<ContextMenuItem>Export clips</ContextMenuItem>
+				<ContextMenuItem
+					onSelect={() => onBatchOperations({ assetIds: idsToDelete })}
+				>
+					Export originals…
+				</ContextMenuItem>
 				<ContextMenuItem
 					onSelect={() => onEditMetadata({ assetIds: idsToDelete })}
 				>
 					Edit tags, favorite &amp; color…
+				</ContextMenuItem>
+				<ContextMenuItem
+					onSelect={() => onBatchOperations({ assetIds: idsToDelete })}
+				>
+					Batch media operations…
 				</ContextMenuItem>
 				<ContextMenuSub>
 					<ContextMenuSubTrigger>Move to bin</ContextMenuSubTrigger>
@@ -1184,6 +1470,7 @@ function MediaItemList({
 	organization,
 	onOpenSource,
 	onEditMetadata,
+	onBatchOperations,
 	onAssignToBin,
 	onRemove,
 }: {
@@ -1193,6 +1480,7 @@ function MediaItemList({
 	organization: ReturnType<typeof normalizeMediaOrganization>;
 	onOpenSource: (args: { assetId: string }) => void;
 	onEditMetadata: (args: { assetIds: string[] }) => void;
+	onBatchOperations: (args: { assetIds: string[] }) => void;
 	onAssignToBin: (args: {
 		assetIds: string[];
 		binId: string | null;
@@ -1221,6 +1509,7 @@ function MediaItemList({
 					organization={organization}
 					onOpenSource={onOpenSource}
 					onEditMetadata={onEditMetadata}
+					onBatchOperations={onBatchOperations}
 					onAssignToBin={onAssignToBin}
 					onRemove={onRemove}
 					key={item.id}
@@ -1327,6 +1616,7 @@ function MediaPreview({
 					unoptimized
 				/>
 				<MediaMetadataBadges metadata={metadata} />
+				<MediaProxyBadge item={item} />
 			</div>
 		);
 	}
@@ -1351,6 +1641,7 @@ function MediaPreview({
 					variant="bordered"
 				/>
 				<MediaMetadataBadges metadata={metadata} />
+				<MediaProxyBadge item={item} />
 			</div>
 		);
 	}
@@ -1359,7 +1650,23 @@ function MediaPreview({
 		<div className="relative size-full">
 			<MediaTypePlaceholder icon={Image02Icon} label="Unknown" variant="muted" />
 			<MediaMetadataBadges metadata={metadata} />
+			<MediaProxyBadge item={item} />
 		</div>
+	);
+}
+
+function MediaProxyBadge({ item }: { item: MediaAsset }) {
+	if (!item.proxy) return null;
+	return (
+		<span
+			className={cn(
+				"absolute top-1 left-1 rounded px-1 py-0.5 text-[9px] font-bold tracking-wide text-white shadow",
+				item.proxy.enabled ? "bg-sky-500" : "bg-slate-500",
+			)}
+			title={`${item.proxy.enabled ? "Proxy preview enabled" : "Proxy preview disabled"} · export uses original`}
+		>
+			P
+		</span>
 	);
 }
 
@@ -1375,6 +1682,8 @@ function HoverScrubVideoPreview({
 	const videoRef = useRef<HTMLVideoElement>(null);
 	const [isHovering, setIsHovering] = useState(false);
 	const [scrubTime, setScrubTime] = useState(0);
+	const previewUrl =
+		item.proxy?.enabled && item.proxyUrl ? item.proxyUrl : item.url;
 
 	const scrub = ({ event }: { event: React.PointerEvent<HTMLDivElement> }) => {
 		const duration = item.duration ?? videoRef.current?.duration ?? 0;
@@ -1402,10 +1711,10 @@ function HoverScrubVideoPreview({
 			}}
 			title="Hover to scrub · double-click for source monitor"
 		>
-			{isHovering && item.url ? (
+			{isHovering && previewUrl ? (
 				<video
 					ref={videoRef}
-					src={item.url}
+					src={previewUrl}
 					className="size-full object-cover"
 					muted
 					playsInline
@@ -1437,6 +1746,7 @@ function HoverScrubVideoPreview({
 				<MediaDurationBadge duration={item.duration} />
 			) : null}
 			<MediaMetadataBadges metadata={metadata} />
+			<MediaProxyBadge item={item} />
 		</div>
 	);
 }

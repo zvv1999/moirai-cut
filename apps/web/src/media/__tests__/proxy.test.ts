@@ -61,7 +61,7 @@ describe("media proxy workflow", () => {
 
 		expect(getMediaAssetPlaybackSource({ asset, isPreview: true })).toEqual({
 			mediaId: "media-1.__proxy",
-			file: asset.proxyFile,
+			file: asset.proxyFile!,
 			url: "blob:proxy",
 		});
 		expect(getMediaAssetPlaybackSource({ asset, isPreview: false })).toEqual({

@@ -6,4 +6,6 @@ export interface MediaAsset
 	extends Omit<MediaAssetData, "size" | "lastModified"> {
 	file: File;
 	url?: string;
+	proxyFile?: File;
+	proxyUrl?: string;
 }

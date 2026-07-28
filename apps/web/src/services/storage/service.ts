@@ -338,6 +338,7 @@ class StorageService {
 	}): Promise<void> {
 		const { mediaMetadataAdapter, mediaAssetsAdapter } =
 			this.getProjectMediaAdapters({ projectId });
+		const previousMetadata = await mediaMetadataAdapter.get(mediaAsset.id);
 
 		const metadata: MediaAssetData = {
 			id: mediaAsset.id,
@@ -348,8 +349,11 @@ class StorageService {
 			width: mediaAsset.width,
 			height: mediaAsset.height,
 			duration: mediaAsset.duration,
+			fps: mediaAsset.fps,
+			hasAudio: mediaAsset.hasAudio,
 			thumbnailUrl: mediaAsset.thumbnailUrl,
 			ephemeral: mediaAsset.ephemeral,
+			proxy: mediaAsset.proxy,
 		};
 
 		try {
@@ -357,6 +361,18 @@ class StorageService {
 				key: mediaAsset.id,
 				value: mediaAsset.file,
 			});
+			if (mediaAsset.proxy && mediaAsset.proxyFile) {
+				await mediaAssetsAdapter.set({
+					key: mediaAsset.proxy.storageId,
+					value: mediaAsset.proxyFile,
+				});
+			}
+			if (
+				previousMetadata?.proxy &&
+				previousMetadata.proxy.storageId !== mediaAsset.proxy?.storageId
+			) {
+				await mediaAssetsAdapter.remove(previousMetadata.proxy.storageId);
+			}
 			await mediaMetadataAdapter.set({
 				key: mediaAsset.id,
 				value: metadata,
@@ -364,6 +380,9 @@ class StorageService {
 		} catch (error) {
 			try {
 				await mediaAssetsAdapter.remove(mediaAsset.id);
+				if (mediaAsset.proxy) {
+					await mediaAssetsAdapter.remove(mediaAsset.proxy.storageId);
+				}
 			} catch {
 				// Ignore cleanup failures so the original storage error is preserved.
 			}
@@ -376,6 +395,65 @@ class StorageService {
 
 			throw error;
 		}
+	}
+
+	async saveMediaAssetMetadata({
+		projectId,
+		mediaAsset,
+	}: {
+		projectId: string;
+		mediaAsset: MediaAsset;
+	}): Promise<void> {
+		const { mediaMetadataAdapter } = this.getProjectMediaAdapters({
+			projectId,
+		});
+		await mediaMetadataAdapter.set({
+			key: mediaAsset.id,
+			value: {
+				id: mediaAsset.id,
+				name: mediaAsset.name,
+				type: mediaAsset.type,
+				size: mediaAsset.file.size,
+				lastModified: mediaAsset.file.lastModified,
+				width: mediaAsset.width,
+				height: mediaAsset.height,
+				duration: mediaAsset.duration,
+				fps: mediaAsset.fps,
+				hasAudio: mediaAsset.hasAudio,
+				thumbnailUrl: mediaAsset.thumbnailUrl,
+				ephemeral: mediaAsset.ephemeral,
+				proxy: mediaAsset.proxy,
+			},
+		});
+	}
+
+	async saveMediaProxy({
+		projectId,
+		mediaAsset,
+	}: {
+		projectId: string;
+		mediaAsset: MediaAsset;
+	}): Promise<void> {
+		if (!mediaAsset.proxy || !mediaAsset.proxyFile) {
+			throw new Error("Proxy metadata and bytes are required");
+		}
+		const { mediaAssetsAdapter } = this.getProjectMediaAdapters({ projectId });
+		await mediaAssetsAdapter.set({
+			key: mediaAsset.proxy.storageId,
+			value: mediaAsset.proxyFile,
+		});
+		await this.saveMediaAssetMetadata({ projectId, mediaAsset });
+	}
+
+	async deleteMediaProxy({
+		projectId,
+		storageId,
+	}: {
+		projectId: string;
+		storageId: string;
+	}): Promise<void> {
+		const { mediaAssetsAdapter } = this.getProjectMediaAdapters({ projectId });
+		await mediaAssetsAdapter.remove(storageId);
 	}
 
 	async loadMediaAsset({
@@ -412,6 +490,11 @@ class StorageService {
 			url = URL.createObjectURL(file);
 		}
 
+		const proxyFile = metadata.proxy
+			? await mediaAssetsAdapter.get(metadata.proxy.storageId)
+			: null;
+		const proxyUrl = proxyFile ? URL.createObjectURL(proxyFile) : undefined;
+
 		return {
 			id: metadata.id,
 			name: metadata.name,
@@ -421,8 +504,13 @@ class StorageService {
 			width: metadata.width,
 			height: metadata.height,
 			duration: metadata.duration,
+			fps: metadata.fps,
+			hasAudio: metadata.hasAudio,
 			thumbnailUrl: metadata.thumbnailUrl,
 			ephemeral: metadata.ephemeral,
+			proxy: proxyFile ? metadata.proxy : undefined,
+			proxyFile: proxyFile ?? undefined,
+			proxyUrl,
 		};
 	}
 
@@ -458,8 +546,12 @@ class StorageService {
 		const { mediaMetadataAdapter, mediaAssetsAdapter } =
 			this.getProjectMediaAdapters({ projectId });
 
+		const metadata = await mediaMetadataAdapter.get(id);
 		await Promise.all([
 			mediaAssetsAdapter.remove(id),
+			...(metadata?.proxy
+				? [mediaAssetsAdapter.remove(metadata.proxy.storageId)]
+				: []),
 			mediaMetadataAdapter.remove(id),
 		]);
 	}

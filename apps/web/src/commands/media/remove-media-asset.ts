@@ -49,6 +49,9 @@ export class RemoveMediaAssetCommand extends Command {
 		if (this.removedAsset.thumbnailUrl) {
 			URL.revokeObjectURL(this.removedAsset.thumbnailUrl);
 		}
+		if (this.removedAsset.proxyUrl) {
+			URL.revokeObjectURL(this.removedAsset.proxyUrl);
+		}
 
 		videoCache.clearVideo({ mediaId: this.assetId });
 		waveformCache.clearSource({
@@ -94,6 +97,9 @@ export class RemoveMediaAssetCommand extends Command {
 			const restoredAsset: MediaAsset = {
 				...this.removedAsset,
 				url: URL.createObjectURL(this.removedAsset.file),
+				proxyUrl: this.removedAsset.proxyFile
+					? URL.createObjectURL(this.removedAsset.proxyFile)
+					: undefined,
 			};
 
 			editor.media.setAssets({

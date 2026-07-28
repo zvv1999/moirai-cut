@@ -9,7 +9,9 @@ import {
 	BatchCommand,
 	RelinkMediaAssetCommand,
 	RemoveMediaAssetCommand,
+	UpdateMediaAssetCommand,
 } from "@/commands";
+import { buildBatchMediaNames } from "@/media/proxy";
 
 export class MediaManager {
 	private assets: MediaAsset[] = [];
@@ -129,6 +131,52 @@ export class MediaManager {
 		this.editor.command.execute({ command });
 	}
 
+	renameMediaAssets({
+		projectId,
+		assets,
+		prefix,
+		startIndex,
+	}: {
+		projectId: string;
+		assets: MediaAsset[];
+		prefix: string;
+		startIndex: number;
+	}): void {
+		const names = buildBatchMediaNames({ assets, prefix, startIndex });
+		const commands = names.map(
+			({ assetId, name }) =>
+				new UpdateMediaAssetCommand({
+					projectId,
+					assetId,
+					update: (asset) => ({ ...asset, name }),
+				}),
+		);
+		if (commands.length === 0) return;
+		this.editor.command.execute({
+			command: commands.length === 1 ? commands[0] : new BatchCommand(commands),
+		});
+	}
+
+	updateMediaAssets({
+		projectId,
+		updates,
+	}: {
+		projectId: string;
+		updates: Array<{
+			assetId: string;
+			update: (asset: MediaAsset) => MediaAsset;
+		}>;
+	}): void {
+		const commands = updates.map(
+			({ assetId, update }) =>
+				new UpdateMediaAssetCommand({ projectId, assetId, update }),
+		);
+		if (commands.length === 0) return;
+		this.editor.command.execute({
+			command: commands.length === 1 ? commands[0] : new BatchCommand(commands),
+		});
+	}
+
 	async loadProjectMedia({ projectId }: { projectId: string }): Promise<void> {
 		this.isLoading = true;
 		this.notify();
@@ -157,6 +205,9 @@ export class MediaManager {
 			if (asset.thumbnailUrl) {
 				URL.revokeObjectURL(asset.thumbnailUrl);
 			}
+			if (asset.proxyUrl) {
+				URL.revokeObjectURL(asset.proxyUrl);
+			}
 		});
 
 		const mediaIds = this.assets.map((asset) => asset.id);
@@ -184,6 +235,9 @@ export class MediaManager {
 			}
 			if (asset.thumbnailUrl) {
 				URL.revokeObjectURL(asset.thumbnailUrl);
+			}
+			if (asset.proxyUrl) {
+				URL.revokeObjectURL(asset.proxyUrl);
 			}
 		});
 
