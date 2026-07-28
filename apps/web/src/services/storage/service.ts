@@ -25,6 +25,7 @@ import {
 } from "@/services/storage/migrations";
 import type { Bookmark, SceneTracks, TScene } from "@/timeline";
 import { roundMediaTime } from "@/wasm";
+import { isMediaProxyStorageId } from "@/media/proxy";
 
 function normalizeBookmarks({ raw }: { raw: unknown }): Bookmark[] {
 	if (!Array.isArray(raw)) return [];
@@ -523,7 +524,9 @@ class StorageService {
 			projectId,
 		});
 
-		const mediaIds = await mediaMetadataAdapter.list();
+		const mediaIds = (await mediaMetadataAdapter.list()).filter(
+			(id) => !isMediaProxyStorageId({ storageId: id }),
+		);
 		const mediaItems: MediaAsset[] = [];
 
 		for (const id of mediaIds) {
@@ -547,13 +550,11 @@ class StorageService {
 			this.getProjectMediaAdapters({ projectId });
 
 		const metadata = await mediaMetadataAdapter.get(id);
-		await Promise.all([
-			mediaAssetsAdapter.remove(id),
-			...(metadata?.proxy
-				? [mediaAssetsAdapter.remove(metadata.proxy.storageId)]
-				: []),
-			mediaMetadataAdapter.remove(id),
-		]);
+		if (metadata?.proxy) {
+			await mediaAssetsAdapter.remove(metadata.proxy.storageId);
+		}
+		await mediaAssetsAdapter.remove(id);
+		await mediaMetadataAdapter.remove(id);
 	}
 
 	async deleteProjectMedia({

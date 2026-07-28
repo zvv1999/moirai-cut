@@ -5,6 +5,7 @@ import {
 	computeProxyDimensions,
 	getMediaAssetPlaybackSource,
 	getMediaProxyStorageId,
+	isMediaProxyStorageId,
 } from "@/media/proxy";
 
 function videoAsset(): MediaAsset {
@@ -19,8 +20,8 @@ function videoAsset(): MediaAsset {
 		width: 3840,
 		height: 2160,
 		duration: 12,
-		proxy: {
-			storageId: "media-1.__proxy",
+			proxy: {
+			storageId: "media-1-proxy",
 			name: "Interview.proxy.mp4",
 			mimeType: "video/mp4",
 			size: 5,
@@ -60,7 +61,7 @@ describe("media proxy workflow", () => {
 		const asset = videoAsset();
 
 		expect(getMediaAssetPlaybackSource({ asset, isPreview: true })).toEqual({
-			mediaId: "media-1.__proxy",
+			mediaId: "media-1-proxy",
 			file: asset.proxyFile!,
 			url: "blob:proxy",
 		});
@@ -87,8 +88,10 @@ describe("media proxy workflow", () => {
 
 	test("generates stable proxy storage ids and extension-preserving batch names", () => {
 		expect(getMediaProxyStorageId({ mediaId: "media-1" })).toBe(
-			"media-1.__proxy",
+			"media-1-proxy",
 		);
+		expect(isMediaProxyStorageId({ storageId: "media-1-proxy" })).toBe(true);
+		expect(isMediaProxyStorageId({ storageId: "media-1" })).toBe(false);
 		expect(
 			buildBatchMediaNames({
 				assets: [

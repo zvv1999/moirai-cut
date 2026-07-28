@@ -63,7 +63,7 @@ describe("UpdateMediaAssetCommand", () => {
 			update: (current) => ({
 				...current,
 				proxy: {
-					storageId: "media-1.__proxy",
+					storageId: "media-1-proxy",
 					name: proxyFile.name,
 					mimeType: proxyFile.type,
 					size: proxyFile.size,
@@ -103,7 +103,7 @@ describe("UpdateMediaAssetCommand", () => {
 		expect(assets[0].proxy).toBeUndefined();
 		expect(deleteMediaProxy).toHaveBeenCalledWith({
 			projectId: "project-1",
-			storageId: "media-1.__proxy",
+			storageId: "media-1-proxy",
 		});
 	});
 });

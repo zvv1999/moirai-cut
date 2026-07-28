@@ -34,7 +34,15 @@ export function getMediaProxyStorageId({
 }: {
 	mediaId: string;
 }): string {
-	return `${mediaId}.__proxy`;
+	return `${mediaId}-proxy`;
+}
+
+export function isMediaProxyStorageId({
+	storageId,
+}: {
+	storageId: string;
+}): boolean {
+	return storageId.endsWith("-proxy");
 }
 
 export function computeProxyDimensions({
@@ -143,7 +151,6 @@ async function generateImageProxy({
 	const dimensions = computeProxyDimensions({
 		width: asset.width ?? bitmap.width,
 		height: asset.height ?? bitmap.height,
-		maxLongEdge: 1600,
 	});
 	const canvas = document.createElement("canvas");
 	canvas.width = dimensions.width;
