@@ -1,0 +1,35 @@
+{
+  "goalId": "019fa427-c03a-7dd2-850c-0e25523c914f",
+  "updatedAt": "2026-07-28",
+  "branch": "feat/agent-drivable",
+  "status": "ACTIVE",
+  "summary": {
+    "cataloguedCapabilities": 74,
+    "greenCapabilities": 7,
+    "automatedTestsPassing": 345,
+    "archivedScreenshots": 3
+  },
+  "greenFeatureIds": ["W06", "M02", "T07", "G01", "G04", "G06", "G07"],
+  "evidence": [
+    {
+      "featureIds": ["M0"],
+      "result": "Versioned goal plan and portable HTML report rendered in the in-app browser, screenshot lightbox worked, and no browser console warning or error was recorded.",
+      "screenshots": [
+        "assets/screenshots/M0-html-report-baseline.png"
+      ]
+    },
+    {
+      "featureIds": ["M02", "W06", "T07"],
+      "commit": "8086fad",
+      "result": "Filename search returned 1 of 44 assets, type filtering returned 6 of 44 assets, and edit modes displayed current shortcut labels.",
+      "screenshots": [
+        "assets/screenshots/M02-W06-editor-workbench-baseline.png",
+        "assets/screenshots/M02-media-search-filtered.png"
+      ]
+    },
+    {
+      "featureIds": ["G01", "G04", "G06", "G07"],
+      "result": "Existing atomic operation registry, project inspection, revision and idempotency checks, and guardrail schema tests accepted as the agent foundation."
+    }
+  ]
+}

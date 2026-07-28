@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="OpenCut editor goal progress, implementation evidence, and visual qualification report."
+    />
+    <title>OpenCut 编辑器目标报告</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="shell masthead__inner">
+        <div class="brand">
+          <span class="brand__mark" aria-hidden="true"></span>
+          OpenCut / Editor Goal
+        </div>
+        <nav aria-label="报告目录">
+          <a href="#progress">进度</a>
+          <a href="#roadmap">里程碑</a>
+          <a href="#evidence">界面证据</a>
+          <a href="#ledger">验证记录</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero shell">
+        <div>
+          <p class="eyebrow"><span class="pulse"></span>目标执行中 · 2026-07-28 更新</p>
+          <h1>让 OpenCut 真正成为剪辑工作台。</h1>
+          <p class="hero__lede">
+            以剪映级日常易用性为基线，补齐专业时间线、素材、音频、字幕、画面、可靠性与导出能力；
+            再用共享原子命令、计划预览和可审查变更形成 Agent 原生优势。
+          </p>
+          <div class="hero__meta">
+            <span class="status status--building">ACTIVE · M1</span>
+            <span class="pill">分支 feat/agent-drivable</span>
+            <span class="pill">目标 019fa427…914f</span>
+            <span class="pill">证据随每批实现持续更新</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="progress">
+        <div class="shell">
+          <div class="section__head">
+            <div>
+              <p class="kicker">Live progress</p>
+              <h2>当前基线</h2>
+            </div>
+            <p class="section__intro">
+              “GREEN”仅代表该能力已有针对性测试和可运行基础；最终 DONE 仍需完整回归、浏览器验收、迁移与证据闭环。
+            </p>
+          </div>
+          <div class="metrics" aria-label="当前进度摘要">
+            <article class="metric">
+              <strong class="metric__value">74</strong>
+              <span class="metric__label">已登记能力点</span>
+            </article>
+            <article class="metric">
+              <strong class="metric__value">7</strong>
+              <span class="metric__label">当前 GREEN 能力</span>
+            </article>
+            <article class="metric">
+              <strong class="metric__value">345</strong>
+              <span class="metric__label">既有自动化测试通过</span>
+            </article>
+            <article class="metric">
+              <strong class="metric__value">3</strong>
+              <span class="metric__label">已归档界面截图</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="roadmap">
+        <div class="shell">
+          <div class="section__head">
+            <div>
+              <p class="kicker">Delivery map</p>
+              <h2>八个里程碑</h2>
+            </div>
+            <p class="section__intro">
+              顺序优先解决阻断真实剪辑的基础交互，再补齐深度工具，最后完成导出、Agent 审查流和全量资格验证。
+            </p>
+          </div>
+          <div class="timeline">
+            <article class="milestone">
+              <span class="milestone__id">M0</span>
+              <div>
+                <h3>计划、证据与报告基础设施</h3>
+                <p>版本化功能矩阵、截图目录、可浏览 HTML 报告。</p>
+              </div>
+              <span class="status status--green">DONE</span>
+            </article>
+            <article class="milestone">
+              <span class="milestone__id">M1</span>
+              <div>
+                <h3>P0 工作台基础</h3>
+                <p>丢失素材、检查器、关键帧、播放、导航、轨道和精修。</p>
+              </div>
+              <span class="status status--building">BUILDING</span>
+            </article>
+            <article class="milestone">
+              <span class="milestone__id">M2</span>
+              <div>
+                <h3>素材库与专业时间线</h3>
+                <p>素材组织、源预览、选择、编组、标记、转场、复合片段和快照。</p>
+              </div>
+              <span class="status status--todo">TODO</span>
+            </article>
+            <article class="milestone">
+              <span class="milestone__id">M3</span>
+              <div>
+                <h3>音频、字幕与文本</h3>
+                <p>包络、响度、录音、转写、样式、双语和字幕质检。</p>
+              </div>
+              <span class="status status--todo">TODO</span>
+            </article>
+            <article class="milestone">
+              <span class="milestone__id">M4</span>
+              <div>
+                <h3>画面工具与效果</h3>
+                <p>调色、蒙版、跟踪、变速、稳定、抠像与效果预设。</p>
+              </div>
+              <span class="status status--todo">TODO</span>
+            </article>
+            <article class="milestone">
+              <span class="milestone__id">M5</span>
+              <div>
+                <h3>工程可靠性与导出</h3>
+                <p>自动保存、恢复、版本、健康检查、性能、后台任务与完整导出流。</p>
+              </div>
+              <span class="status status--todo">TODO</span>
+            </article>
+            <article class="milestone">
+              <span class="milestone__id">M6</span>
+              <div>
+                <h3>Agent 原生剪辑</h3>
+                <p>计划预览、变更审查、语义编辑、共享撤销与视觉质检。</p>
+              </div>
+              <span class="status status--todo">TODO</span>
+            </article>
+            <article class="milestone">
+              <span class="milestone__id">M7</span>
+              <div>
+                <h3>最终资格验证</h3>
+                <p>回归、浏览器、性能、迁移、截图目录和交付报告。</p>
+              </div>
+              <span class="status status--todo">TODO</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="evidence">
+        <div class="shell">
+          <div class="section__head">
+            <div>
+              <p class="kicker">Visual evidence</p>
+              <h2>已验证界面</h2>
+            </div>
+            <p class="section__intro">
+              截图来自真实项目和真实编辑器状态。点击图片可放大查看；后续每个可视功能均按 Feature ID 追加。
+            </p>
+          </div>
+          <div class="evidence-grid">
+            <article class="evidence-card">
+              <button
+                class="evidence-card__image"
+                type="button"
+                data-lightbox-src="assets/screenshots/M02-W06-editor-workbench-baseline.png"
+                data-lightbox-label="M02 / W06 编辑工作台基线"
+              >
+                <img
+                  src="assets/screenshots/M02-W06-editor-workbench-baseline.png"
+                  alt="OpenCut 编辑器素材面板、画布、检查器和时间线工作台"
+                />
+              </button>
+              <div class="evidence-card__body">
+                <div class="evidence-card__topline">
+                  <span class="feature-id">M02 · W06 · T07</span>
+                  <span class="status status--green">GREEN</span>
+                </div>
+                <h3>编辑模式可被识别</h3>
+                <p>
+                  素材面板、当前选择、编辑模式、快捷键提示和时间线处于同一工作台上下文，图标按钮具备可访问名称。
+                </p>
+              </div>
+            </article>
+
+            <article class="evidence-card">
+              <button
+                class="evidence-card__image"
+                type="button"
+                data-lightbox-src="assets/screenshots/M02-media-search-filtered.png"
+                data-lightbox-label="M02 素材文件名搜索"
+              >
+                <img
+                  src="assets/screenshots/M02-media-search-filtered.png"
+                  alt="素材面板搜索 reed 后显示 1 of 44 assets"
+                />
+              </button>
+              <div class="evidence-card__body">
+                <div class="evidence-card__topline">
+                  <span class="feature-id">M02</span>
+                  <span class="status status--green">GREEN</span>
+                </div>
+                <h3>素材搜索保留剪辑上下文</h3>
+                <p>
+                  输入 <code>reed</code> 后结果从 44 项收窄到 1 项，画布、检查器、播放头和现有选择保持不变。
+                </p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="ledger">
+        <div class="shell">
+          <div class="section__head">
+            <div>
+              <p class="kicker">Evidence ledger</p>
+              <h2>实现与验证记录</h2>
+            </div>
+            <p class="section__intro">
+              报告不会用截图代替测试，也不会用单元测试代替真实界面验收。每批能力都要同时留下代码、测试和视觉证据。
+            </p>
+          </div>
+          <div class="ledger">
+            <table>
+              <thead>
+                <tr>
+                  <th>能力</th>
+                  <th>实现</th>
+                  <th>自动化验证</th>
+                  <th>浏览器验证</th>
+                  <th>状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>M02 / W06 / T07</strong></td>
+                  <td><code>8086fad</code></td>
+                  <td>针对性测试 + 全量 345/345</td>
+                  <td>搜索 1/44；视频 6/44；快捷键标签可见</td>
+                  <td><span class="status status--green">GREEN</span></td>
+                </tr>
+                <tr>
+                  <td><strong>G01 / G04 / G06 / G07</strong></td>
+                  <td>既有 Agent manager 与 operation registry</td>
+                  <td>revision、idempotency、schema drift</td>
+                  <td>最终 Agent 审查流阶段补充</td>
+                  <td><span class="status status--green">GREEN</span></td>
+                </tr>
+                <tr>
+                  <td><strong>M0</strong></td>
+                  <td>计划文档、数据清单、HTML 报告</td>
+                  <td>JSON、静态资源、DOM、lightbox</td>
+                  <td>零 console 警告/错误；首屏截图已归档</td>
+                  <td><span class="status status--green">DONE</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell">
+          <div class="callout">
+            <div>
+              <h3>完整验收条件与能力矩阵</h3>
+              <p>计划文档是范围和完成标准的唯一来源；本报告专注于进度和证据展示。</p>
+            </div>
+            <a class="button" href="../../roadmap/opencut-editor-goal-plan.md">打开目标计划</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="shell footer">
+      <span>OpenCut editor goal · evidence-first delivery</span>
+      <span>最后更新：2026-07-28</span>
+    </footer>
+
+    <dialog class="lightbox" aria-label="截图预览">
+      <div class="lightbox__bar">
+        <span data-lightbox-title>截图预览</span>
+        <button class="lightbox__close" type="button">关闭</button>
+      </div>
+      <img src="" alt="" data-lightbox-image />
+    </dialog>
+
+    <script>
+      const dialog = document.querySelector(".lightbox");
+      const dialogImage = document.querySelector("[data-lightbox-image]");
+      const dialogTitle = document.querySelector("[data-lightbox-title]");
+
+      document.querySelectorAll("[data-lightbox-src]").forEach((trigger) => {
+        trigger.addEventListener("click", () => {
+          const label = trigger.dataset.lightboxLabel || "截图预览";
+          dialogImage.src = trigger.dataset.lightboxSrc;
+          dialogImage.alt = label;
+          dialogTitle.textContent = label;
+          dialog.showModal();
+        });
+      });
+
+      document.querySelector(".lightbox__close").addEventListener("click", () => {
+        dialog.close();
+      });
+
+      dialog.addEventListener("click", (event) => {
+        if (event.target === dialog) {
+          dialog.close();
+        }
+      });
+    </script>
+  </body>
+</html>
