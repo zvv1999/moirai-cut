@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import {
 	getFrameStepTarget,
 	getPreviewFrameStep,
+	isPlaybackRate,
+	isPreviewQuality,
 	resolvePlaybackAdvance,
 } from "@/playback/transport";
 import { mediaTimeFromSeconds } from "@/wasm";
@@ -52,7 +54,7 @@ describe("playback transport timing", () => {
 		const input = {
 			startTime: mediaTimeFromSeconds({ seconds: 1.8 }),
 			elapsedMilliseconds: 200,
-			playbackRate: 2,
+			playbackRate: 2 as const,
 			duration: mediaTimeFromSeconds({ seconds: 2 }),
 			fps: FPS_30,
 		};
@@ -75,5 +77,12 @@ describe("preview quality cadence", () => {
 		expect(getPreviewFrameStep({ quality: "full" })).toBe(1);
 		expect(getPreviewFrameStep({ quality: "balanced" })).toBe(2);
 		expect(getPreviewFrameStep({ quality: "performance" })).toBe(4);
+	});
+
+	test("rejects unsupported persisted transport values", () => {
+		expect(isPlaybackRate(1.5)).toBe(true);
+		expect(isPlaybackRate(3)).toBe(false);
+		expect(isPreviewQuality("performance")).toBe(true);
+		expect(isPreviewQuality("ultra")).toBe(false);
 	});
 });

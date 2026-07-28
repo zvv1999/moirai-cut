@@ -6,11 +6,7 @@ import { formatTimecode } from "opencut-wasm";
 import { invokeAction } from "@/actions";
 import { EditableTimecode } from "@/components/editable-timecode";
 import { Button } from "@/components/ui/button";
-import {
-	FullScreenIcon,
-	PauseIcon,
-	PlayIcon,
-} from "@hugeicons/core-free-icons";
+import { FullScreenIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -22,9 +18,9 @@ import {
 } from "@/components/ui/select";
 import { PREVIEW_ZOOM_PRESETS } from "@/preview/zoom";
 import { usePreviewViewport } from "./preview-viewport";
-import { GridPopover } from "./guide-popover";
 import { usePreviewStore } from "@/preview/preview-store";
 import type { MediaTime } from "@/wasm";
+import { PlaybackTransportControls } from "./playback-transport-controls";
 
 export function PreviewToolbar({
 	onToggleFullscreen,
@@ -32,29 +28,25 @@ export function PreviewToolbar({
 	onToggleFullscreen: () => void;
 }) {
 	return (
-		<div className="grid grid-cols-[1fr_auto_1fr] items-center pb-3 pt-5 px-5">
-			<TimecodeDisplay />
-			<PlayPauseButton />
-			<div className="justify-self-end flex items-center gap-2.5">
-				<ZoomSelect />
-				<Separator orientation="vertical" className="h-4" />
-				{/* v0.4.0 */}
-				{/* <GridPopover>
+		<div className="flex flex-col gap-1.5 px-3 pb-2 pt-3">
+			<div className="flex min-w-0 items-center justify-between gap-2">
+				<TimecodeDisplay />
+				<div className="flex shrink-0 items-center gap-1">
+					<ZoomSelect />
+					<Separator orientation="vertical" className="h-4" />
 					<Button
-						variant={activeGuideDefinition ? "secondary" : "text"}
+						variant="text"
 						size="icon"
+						className="size-7"
+						aria-label="Toggle fullscreen preview"
+						title="Toggle fullscreen preview"
+						onClick={onToggleFullscreen}
 					>
-						{activeGuideDefinition ? (
-							activeGuideDefinition.renderTriggerIcon()
-						) : (
-							<HugeiconsIcon icon={GridTableIcon} />
-						)}
+						<HugeiconsIcon icon={FullScreenIcon} />
 					</Button>
-				</GridPopover> */}
-				<Button variant="text" onClick={onToggleFullscreen}>
-					<HugeiconsIcon icon={FullScreenIcon} />
-				</Button>
+				</div>
 			</div>
+			<PlaybackControls />
 		</div>
 	);
 }
@@ -77,7 +69,7 @@ function TimecodeDisplay() {
 	}, [editor.playback]);
 
 	return (
-		<div className="flex items-center">
+		<div className="flex min-w-0 items-center overflow-hidden">
 			<EditableTimecode
 				time={currentTime}
 				duration={totalDuration}
@@ -132,15 +124,41 @@ function ZoomSelect() {
 }
 
 function PlayPauseButton() {
+	const editor = useEditor();
 	const isPlaying = useEditor((e) => e.playback.getIsPlaying());
+	const loopEnabled = useEditor((e) => e.playback.getLoopEnabled());
+	const playbackRate = useEditor((e) => e.playback.getPlaybackRate());
+	const previewQuality = usePreviewStore((state) => state.quality);
+	const setPreviewQuality = usePreviewStore((state) => state.setQuality);
 
 	return (
-		<Button
-			variant="text"
-			size="icon"
-			onClick={() => invokeAction("toggle-play")}
-		>
-			<HugeiconsIcon icon={isPlaying ? PauseIcon : PlayIcon} />
-		</Button>
+		<PlaybackTransportControls
+			isPlaying={isPlaying}
+			loopEnabled={loopEnabled}
+			playbackRate={playbackRate}
+			previewQuality={previewQuality}
+			onGoToStart={() => invokeAction("goto-start")}
+			onStepBackward={() => {
+				editor.playback.pause();
+				invokeAction("frame-step-backward");
+			}}
+			onTogglePlay={() => invokeAction("toggle-play")}
+			onStepForward={() => {
+				editor.playback.pause();
+				invokeAction("frame-step-forward");
+			}}
+			onGoToEnd={() => invokeAction("goto-end")}
+			onToggleLoop={() => editor.playback.toggleLoop()}
+			onPlaybackRateChange={(rate) => editor.playback.setPlaybackRate({ rate })}
+			onPreviewQualityChange={setPreviewQuality}
+		/>
+	);
+}
+
+function PlaybackControls() {
+	return (
+		<div className="min-w-0">
+			<PlayPauseButton />
+		</div>
 	);
 }

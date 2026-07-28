@@ -28,6 +28,7 @@ import {
 import { useCommittedRef } from "@/hooks/use-committed-ref";
 import { getKeyframeById } from "@/animation";
 import { buildKeyframeRetimePlan } from "@/timeline/keyframe-actions";
+import { getFrameStepTarget } from "@/playback/transport";
 
 export function useEditorActions() {
 	const editor = useEditor();
@@ -162,18 +163,12 @@ export function useEditorActions() {
 		"frame-step-forward",
 		() => {
 			const fps = editor.project.getActive().settings.fps;
-			const ticksPerFrame = mediaTime({
-				ticks: Math.round(
-					(TICKS_PER_SECOND * fps.denominator) / fps.numerator,
-				),
-			});
 			editor.playback.seek({
-				time: minMediaTime({
-					a: editor.timeline.getTotalDuration(),
-					b: addMediaTime({
-						a: editor.playback.getCurrentTime(),
-						b: ticksPerFrame,
-					}),
+				time: getFrameStepTarget({
+					currentTime: editor.playback.getCurrentTime(),
+					direction: 1,
+					duration: editor.timeline.getTotalDuration(),
+					fps,
 				}),
 			});
 		},
@@ -184,18 +179,12 @@ export function useEditorActions() {
 		"frame-step-backward",
 		() => {
 			const fps = editor.project.getActive().settings.fps;
-			const ticksPerFrame = mediaTime({
-				ticks: Math.round(
-					(TICKS_PER_SECOND * fps.denominator) / fps.numerator,
-				),
-			});
 			editor.playback.seek({
-				time: maxMediaTime({
-					a: ZERO_MEDIA_TIME,
-					b: subMediaTime({
-						a: editor.playback.getCurrentTime(),
-						b: ticksPerFrame,
-					}),
+				time: getFrameStepTarget({
+					currentTime: editor.playback.getCurrentTime(),
+					direction: -1,
+					duration: editor.timeline.getTotalDuration(),
+					fps,
 				}),
 			});
 		},

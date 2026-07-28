@@ -3,22 +3,15 @@ import { persist } from "zustand/middleware";
 import { isGuideId, type GuideId } from "@/guides";
 import { DEFAULT_GRID_CONFIG } from "@/guides/grid";
 import type { GridConfig } from "@/guides/types";
+import { isPreviewQuality, type PreviewQuality } from "@/playback/transport";
 
 type PreviewOverlaysState = Record<string, boolean>;
-
-interface PersistedPreviewState {
-	activeGuide?: string | null;
-	layoutGuide?: {
-		platform?: string | null;
-	};
-	overlays?: PreviewOverlaysState;
-	gridConfig?: GridConfig;
-}
 
 interface PreviewState {
 	activeGuide: GuideId | null;
 	overlays: PreviewOverlaysState;
 	gridConfig: GridConfig;
+	quality: PreviewQuality;
 	toggleGuide: (guideId: GuideId) => void;
 	setGridConfig: (config: Partial<GridConfig>) => void;
 	setOverlayVisibility: ({
@@ -29,15 +22,32 @@ interface PreviewState {
 		isVisible: boolean;
 	}) => void;
 	toggleOverlayVisibility: ({ overlayId }: { overlayId: string }) => void;
+	setQuality: (quality: PreviewQuality) => void;
 }
 
 const DEFAULT_PREVIEW_OVERLAYS: PreviewOverlaysState = {};
 
-function getPersistedActiveGuide(
-	state: PersistedPreviewState | undefined,
-): GuideId | null {
+function readPersistedProperty({
+	value,
+	key,
+}: {
+	value: unknown;
+	key: string;
+}): unknown {
+	if (typeof value !== "object" || value === null) {
+		return undefined;
+	}
+	return Reflect.get(value, key);
+}
+
+function getPersistedActiveGuide(state: unknown): GuideId | null {
 	const persistedGuide =
-		state?.activeGuide ?? state?.layoutGuide?.platform ?? null;
+		readPersistedProperty({ value: state, key: "activeGuide" }) ??
+		readPersistedProperty({
+			value: readPersistedProperty({ value: state, key: "layoutGuide" }),
+			key: "platform",
+		}) ??
+		null;
 
 	if (typeof persistedGuide !== "string") {
 		return null;
@@ -52,6 +62,7 @@ export const usePreviewStore = create<PreviewState>()(
 			activeGuide: null,
 			overlays: DEFAULT_PREVIEW_OVERLAYS,
 			gridConfig: DEFAULT_GRID_CONFIG,
+			quality: "full",
 			toggleGuide: (guideId) => {
 				set((state) => ({
 					activeGuide: state.activeGuide === guideId ? null : guideId,
@@ -78,26 +89,56 @@ export const usePreviewStore = create<PreviewState>()(
 					},
 				}));
 			},
+			setQuality: (quality) => {
+				set({ quality });
+			},
 		}),
 		{
 			name: "preview-settings",
-			version: 6,
+			version: 7,
 			migrate: (persistedState) => {
-				const state = persistedState as PersistedPreviewState | undefined;
+				const gridConfig = readPersistedProperty({
+					value: persistedState,
+					key: "gridConfig",
+				});
+				const persistedRows = readPersistedProperty({
+					value: gridConfig,
+					key: "rows",
+				});
+				const persistedCols = readPersistedProperty({
+					value: gridConfig,
+					key: "cols",
+				});
+				const persistedQuality = readPersistedProperty({
+					value: persistedState,
+					key: "quality",
+				});
 
 				return {
-					activeGuide: getPersistedActiveGuide(state),
+					activeGuide: getPersistedActiveGuide(persistedState),
 					overlays: DEFAULT_PREVIEW_OVERLAYS,
 					gridConfig: {
-						rows: state?.gridConfig?.rows ?? DEFAULT_GRID_CONFIG.rows,
-						cols: state?.gridConfig?.cols ?? DEFAULT_GRID_CONFIG.cols,
+						rows:
+							typeof persistedRows === "number"
+								? persistedRows
+								: DEFAULT_GRID_CONFIG.rows,
+						cols:
+							typeof persistedCols === "number"
+								? persistedCols
+								: DEFAULT_GRID_CONFIG.cols,
 					},
+					quality:
+						typeof persistedQuality === "string" &&
+						isPreviewQuality(persistedQuality)
+							? persistedQuality
+							: "full",
 				};
 			},
 			partialize: (state) => ({
 				activeGuide: state.activeGuide,
 				overlays: state.overlays,
 				gridConfig: state.gridConfig,
+				quality: state.quality,
 			}),
 		},
 	),

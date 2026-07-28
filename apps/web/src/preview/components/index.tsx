@@ -25,6 +25,8 @@ import {
 	PreviewViewportProvider,
 	usePreviewViewportState,
 } from "./preview-viewport";
+import { usePreviewStore } from "@/preview/preview-store";
+import { getPreviewFrameStep } from "@/playback/transport";
 
 function usePreviewSize() {
 	const canvasSize = useEditor(
@@ -154,6 +156,7 @@ function PreviewCanvas({
 	);
 	const mediaAssets = useEditor((e) => e.media.getAssets());
 	const currentTime = useEditor((e) => e.playback.getCurrentTime());
+	const previewQuality = usePreviewStore((state) => state.quality);
 	const activeMissingMedia = useMemo(
 		() =>
 			findActiveMissingVisualElements({
@@ -198,6 +201,10 @@ function PreviewCanvas({
 		};
 	}, [renderer]);
 
+	useEffect(() => {
+		lastFrameRef.current = -1;
+	}, [previewQuality]);
+
 	const render = useCallback(() => {
 		if (!renderTree || renderingRef.current) return;
 
@@ -209,18 +216,29 @@ function PreviewCanvas({
 			(TICKS_PER_SECOND * renderer.fps.denominator) / renderer.fps.numerator,
 		);
 		const frame = Math.floor(renderTime / ticksPerFrame);
+		const previewFrameStep = getPreviewFrameStep({ quality: previewQuality });
+		const sampledFrame = editor.playback.getIsPlaying()
+			? frame - (frame % previewFrameStep)
+			: frame;
+		const sampledTime = Math.min(
+			sampledFrame * ticksPerFrame,
+			editor.timeline.getLastFrameTime(),
+		);
 
-		if (frame === lastFrameRef.current && renderTree === lastSceneRef.current) {
+		if (
+			sampledFrame === lastFrameRef.current &&
+			renderTree === lastSceneRef.current
+		) {
 			return;
 		}
 
 		renderingRef.current = true;
 		lastSceneRef.current = renderTree;
-		lastFrameRef.current = frame;
-		renderer.render({ node: renderTree, time: renderTime }).then(() => {
+		lastFrameRef.current = sampledFrame;
+		renderer.render({ node: renderTree, time: sampledTime }).finally(() => {
 			renderingRef.current = false;
 		});
-	}, [renderer, renderTree, editor.playback, editor.timeline]);
+	}, [renderer, renderTree, editor.playback, editor.timeline, previewQuality]);
 
 	useRafLoop(render);
 

@@ -1,12 +1,9 @@
 import type { EditorCore } from "@/core";
+import { clampMediaTime, type MediaTime, ZERO_MEDIA_TIME } from "@/wasm";
 import {
-	addMediaTime,
-	clampMediaTime,
-	type MediaTime,
-	mediaTimeFromSeconds,
-	roundFrameTime,
-	ZERO_MEDIA_TIME,
-} from "@/wasm";
+	resolvePlaybackAdvance,
+	type PlaybackRate,
+} from "@/playback/transport";
 
 export class PlaybackManager {
 	private isPlaying = false;
@@ -21,6 +18,8 @@ export class PlaybackManager {
 	private playbackTimer: number | null = null;
 	private playbackStartWallTime = 0;
 	private playbackStartTime: MediaTime = ZERO_MEDIA_TIME;
+	private playbackRate: PlaybackRate = 1;
+	private loopEnabled = false;
 	private timelineScopeBound = false;
 
 	constructor(private editor: EditorCore) {}
@@ -66,6 +65,39 @@ export class PlaybackManager {
 		} else {
 			this.play();
 		}
+	}
+
+	setPlaybackRate({ rate }: { rate: PlaybackRate }): void {
+		if (rate === this.playbackRate) {
+			return;
+		}
+
+		this.playbackRate = rate;
+		if (this.isPlaying) {
+			this.playbackStartWallTime = performance.now();
+			this.playbackStartTime = this.currentTime;
+		}
+		this.notify();
+	}
+
+	getPlaybackRate(): PlaybackRate {
+		return this.playbackRate;
+	}
+
+	setLoopEnabled({ enabled }: { enabled: boolean }): void {
+		if (enabled === this.loopEnabled) {
+			return;
+		}
+		this.loopEnabled = enabled;
+		this.notify();
+	}
+
+	toggleLoop(): void {
+		this.setLoopEnabled({ enabled: !this.loopEnabled });
+	}
+
+	getLoopEnabled(): boolean {
+		return this.loopEnabled;
 	}
 
 	seek({ time }: { time: MediaTime }): void {
@@ -214,27 +246,41 @@ export class PlaybackManager {
 		if (!this.isPlaying) return;
 
 		const fps = this.editor.project.getActive()?.settings.fps;
-		const elapsedSeconds =
-			(performance.now() - this.playbackStartWallTime) / 1000;
-		const rawTime = addMediaTime({
-			a: this.playbackStartTime,
-			b: mediaTimeFromSeconds({ seconds: elapsedSeconds }),
-		});
-		const newTime = fps ? roundFrameTime({ time: rawTime, fps }) : rawTime;
 		const maxTime = this.editor.timeline.getTotalDuration();
-
-		if (newTime >= maxTime) {
-			this.pause();
-			this.currentTime = maxTime;
-			this.notify();
-		this.notifySeek(maxTime);
-		this.dispatchSeekEvent(maxTime);
-		return;
+		if (!fps) {
+			return;
 		}
 
-		this.currentTime = newTime;
-		this.notifyUpdate(newTime);
-		this.dispatchUpdateEvent(newTime);
+		const advance = resolvePlaybackAdvance({
+			startTime: this.playbackStartTime,
+			elapsedMilliseconds: performance.now() - this.playbackStartWallTime,
+			playbackRate: this.playbackRate,
+			duration: maxTime,
+			fps,
+			loopEnabled: this.loopEnabled,
+		});
+
+		if (advance.ended) {
+			this.isPlaying = false;
+			this.stopTimer();
+			this.currentTime = advance.time;
+			this.notify();
+			this.notifySeek(advance.time);
+			this.dispatchSeekEvent(advance.time);
+			return;
+		}
+
+		this.currentTime = advance.time;
+		if (advance.wrapped) {
+			this.playbackStartWallTime = performance.now();
+			this.playbackStartTime = advance.time;
+			this.notify();
+			this.notifySeek(advance.time);
+			this.dispatchSeekEvent(advance.time);
+		} else {
+			this.notifyUpdate(advance.time);
+			this.dispatchUpdateEvent(advance.time);
+		}
 		this.playbackTimer = requestAnimationFrame(this.updateTime);
 	};
 
@@ -243,13 +289,13 @@ export class PlaybackManager {
 		return clampMediaTime({ time, min: ZERO_MEDIA_TIME, max: maxTime });
 	}
 
-	private dispatchSeekEvent(time: MediaTime): void {
+	private dispatchSeekEvent(_time: MediaTime): void {
 		if (typeof window === "undefined") {
 			return;
 		}
 	}
 
-	private dispatchUpdateEvent(time: MediaTime): void {
+	private dispatchUpdateEvent(_time: MediaTime): void {
 		if (typeof window === "undefined") {
 			return;
 		}

@@ -20,6 +20,7 @@ import {
 	Input,
 	type WrappedAudioBuffer,
 } from "mediabunny";
+import type { PlaybackRate } from "@/playback/transport";
 
 export class AudioManager {
 	private audioContext: AudioContext | null = null;
@@ -43,11 +44,13 @@ export class AudioManager {
 	private playbackSessionId = 0;
 	private lastIsPlaying = false;
 	private lastVolume = 1;
+	private lastPlaybackRate: PlaybackRate = 1;
 	private playbackLatencyCompensationSeconds = 0;
 	private unsubscribers: Array<() => void> = [];
 
 	constructor(private editor: EditorCore) {
 		this.lastVolume = this.editor.playback.getVolume();
+		this.lastPlaybackRate = this.editor.playback.getPlaybackRate();
 
 		this.unsubscribers.push(
 			this.editor.playback.subscribe(this.handlePlaybackChange),
@@ -76,10 +79,16 @@ export class AudioManager {
 	private handlePlaybackChange = (): void => {
 		const isPlaying = this.editor.playback.getIsPlaying();
 		const volume = this.editor.playback.getVolume();
+		const playbackRate = this.editor.playback.getPlaybackRate();
+		const playbackRateChanged = playbackRate !== this.lastPlaybackRate;
 
 		if (volume !== this.lastVolume) {
 			this.lastVolume = volume;
 			this.updateGain();
+		}
+
+		if (playbackRateChanged) {
+			this.lastPlaybackRate = playbackRate;
 		}
 
 		if (isPlaying !== this.lastIsPlaying) {
@@ -91,6 +100,13 @@ export class AudioManager {
 			} else {
 				this.stopPlayback();
 			}
+			return;
+		}
+
+		if (playbackRateChanged && isPlaying) {
+			void this.startPlayback({
+				time: this.editor.playback.getCurrentTime() / TICKS_PER_SECOND,
+			});
 		}
 	};
 
@@ -143,7 +159,7 @@ export class AudioManager {
 		if (!this.audioContext) return this.playbackStartTime;
 		const elapsed =
 			this.audioContext.currentTime - this.playbackStartContextTime;
-		return this.playbackStartTime + elapsed;
+		return this.playbackStartTime + elapsed * this.lastPlaybackRate;
 	}
 
 	private async startPlayback({ time }: { time: number }): Promise<void> {
@@ -183,7 +199,8 @@ export class AudioManager {
 		if (!this.editor.playback.getIsPlaying()) return;
 
 		const currentTime = this.getPlaybackTime();
-		const windowEnd = currentTime + this.lookaheadSeconds;
+		const windowEnd =
+			currentTime + this.lookaheadSeconds * this.lastPlaybackRate;
 
 		for (const clip of this.clips) {
 			if (clip.muted) continue;
@@ -225,7 +242,9 @@ export class AudioManager {
 		for (const source of this.queuedSources) {
 			try {
 				source.stop();
-			} catch {}
+			} catch {
+				// The source may already have ended between scheduling and teardown.
+			}
 			source.disconnect();
 		}
 		this.queuedSources.clear();
@@ -283,9 +302,10 @@ export class AudioManager {
 
 			const node = audioContext.createBufferSource();
 			node.buffer = buffer;
-			if (clip.retime) {
-				node.playbackRate.value = clampRetimeRate({ rate: clip.retime.rate });
-			}
+			const clipPlaybackRate = clip.retime
+				? clampRetimeRate({ rate: clip.retime.rate })
+				: 1;
+			node.playbackRate.value = clipPlaybackRate * this.lastPlaybackRate;
 			const clipGain = audioContext.createGain();
 			clipGain.gain.value = clip.volume;
 			node.connect(clipGain);
@@ -294,22 +314,23 @@ export class AudioManager {
 			const startTimestamp =
 				this.playbackStartContextTime +
 				this.playbackLatencyCompensationSeconds +
-				(timelineTime - this.playbackStartTime);
+				(timelineTime - this.playbackStartTime) / this.lastPlaybackRate;
 
 			if (startTimestamp >= audioContext.currentTime) {
 				node.start(startTimestamp);
 				consecutiveDroppedBufferCount = 0;
 			} else {
-				const offset = audioContext.currentTime - startTimestamp;
-				if (offset < buffer.duration) {
-					node.start(audioContext.currentTime, offset);
+				const lateBy = audioContext.currentTime - startTimestamp;
+				const bufferOffset = lateBy * node.playbackRate.value;
+				if (bufferOffset < buffer.duration) {
+					node.start(audioContext.currentTime, bufferOffset);
 					consecutiveDroppedBufferCount = 0;
 				} else {
 					consecutiveDroppedBufferCount += 1;
 					if (consecutiveDroppedBufferCount >= 5) {
 						const nextCompensationSeconds = Math.max(
 							this.playbackLatencyCompensationSeconds,
-							Math.min(0.25, offset + 0.01),
+							Math.min(0.25, lateBy + 0.01),
 						);
 						if (
 							nextCompensationSeconds >
@@ -338,8 +359,9 @@ export class AudioManager {
 			});
 
 			const aheadTime = timelineTime - this.getPlaybackTime();
-			if (aheadTime >= 1) {
-				await this.waitUntilCaughtUp({ timelineTime, targetAhead: 1 });
+			const targetAhead = this.lastPlaybackRate;
+			if (aheadTime >= targetAhead) {
+				await this.waitUntilCaughtUp({ timelineTime, targetAhead });
 				if (sessionId !== this.playbackSessionId) return;
 			}
 		}
@@ -379,6 +401,7 @@ export class AudioManager {
 
 		const node = audioContext.createBufferSource();
 		node.buffer = buffer;
+		node.playbackRate.value = this.lastPlaybackRate;
 		const clipGain = audioContext.createGain();
 		node.connect(clipGain);
 		clipGain.connect(this.masterGain ?? audioContext.destination);
@@ -386,7 +409,7 @@ export class AudioManager {
 		const startTimestamp =
 			this.playbackStartContextTime +
 			this.playbackLatencyCompensationSeconds +
-			(effectiveStartTime - this.playbackStartTime);
+			(effectiveStartTime - this.playbackStartTime) / this.lastPlaybackRate;
 		const clipOffset = effectiveStartTime - clipStart;
 		let actualStartTimestamp = startTimestamp;
 		let actualClipOffset = clipOffset;
@@ -394,7 +417,8 @@ export class AudioManager {
 		if (startTimestamp >= audioContext.currentTime) {
 			node.start(startTimestamp, clipOffset);
 		} else {
-			const lateOffset = audioContext.currentTime - startTimestamp;
+			const lateOffset =
+				(audioContext.currentTime - startTimestamp) * this.lastPlaybackRate;
 			actualStartTimestamp = audioContext.currentTime;
 			actualClipOffset = clipOffset + lateOffset;
 			node.start(actualStartTimestamp, actualClipOffset);
@@ -470,8 +494,12 @@ export class AudioManager {
 	}
 
 	private hasCurveRetime({ clip }: { clip: AudioClipSource }): boolean {
-		const mode = (clip.retime as { mode?: unknown } | undefined)?.mode;
-		return mode === "curve";
+		const retime = clip.retime;
+		return (
+			typeof retime === "object" &&
+			retime !== null &&
+			Reflect.get(retime, "mode") === "curve"
+		);
 	}
 
 	private scheduleClipGainAutomation({
@@ -508,7 +536,8 @@ export class AudioManager {
 		for (let index = 1; index < points.length; index++) {
 			const point = points[index];
 			const pointTimestamp =
-				startTimestamp + (point.localTime - startLocalTime);
+				startTimestamp +
+				(point.localTime - startLocalTime) / this.lastPlaybackRate;
 			if (pointTimestamp < audioContext.currentTime) {
 				continue;
 			}
