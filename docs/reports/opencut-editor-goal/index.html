@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">25</strong>
+							<strong class="metric__value">26</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">445</strong>
+							<strong class="metric__value">449</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">26</strong>
+							<strong class="metric__value">27</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,30 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/T06-timeline-snapshots.png"
+								data-lightbox-label="T06 可比较时间线快照与安全恢复"
+							>
+								<img
+									src="assets/screenshots/T06-timeline-snapshots.png"
+									alt="OpenCut 项目快照面板比较 revision 257 与命名 baseline 255，显示新增两个原始片段、移除一个临时复合片段，并在恢复前要求二次确认"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">T06 · TIMELINE SNAPSHOTS</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>恢复前先看清楚会改变什么</h3>
+								<p>
+									真实工程保存了命名基线，把两个片段临时合成为复合片段，再得到 Add 2 / Remove 1 的结构化差异和逐项说明。恢复需要二次确认并校验当前 revision；完成后以新版本向前推进，原始两个片段返回，临时复合片段消失。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -812,6 +836,15 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>T06</strong></td>
+									<td><code>754cecc</code> RED + <code>d1967c5</code> GREEN</td>
+									<td>目标 4/4 + MCP 工具面回归；全量 449/449；TypeScript / 新模块 ESLint / 生产构建通过</td>
+									<td>
+										命名 rev 255；临时复合后 257→255 显示 Add 2 / Remove 1；二次确认恢复为 rev 258；原始片段返回、复合为 0；历史固定 50 条
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>T05</strong></td>
 									<td><code>212125e</code> RED + <code>06cc72b</code> GREEN</td>

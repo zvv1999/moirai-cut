@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 25,
-		"automatedTestsPassing": 445,
-		"archivedScreenshots": 26
+		"greenCapabilities": 26,
+		"automatedTestsPassing": 449,
+		"archivedScreenshots": 27
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -30,6 +30,7 @@
 		"T03",
 		"T04",
 		"T05",
+		"T06",
 		"T07",
 		"G01",
 		"G04",
@@ -37,6 +38,25 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": [
+				"T06"
+			],
+			"redCommits": [
+				"754cecc"
+			],
+			"greenCommit": "d1967c5",
+			"result": "A persistent History surface saves named timeline snapshots, lists the newest 50 revisions from lightweight metadata, compares a selected snapshot as structured add, remove, move, rename, and content changes, and restores only after a second confirmation plus compare-and-swap revision check. Restores move forward and preserve the replaced state. MCP agents can request the same diff and stale agent restores are rejected.",
+			"tests": {
+				"targeted": "4/4 new revision summary and diff tests plus MCP tool-surface regression",
+				"fullSuite": "449/449 from the repository root with the required WASM test preload",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
+			},
+			"browserVerification": "Saved Approved opening baseline at revision 255, created one temporary compound from two source clips, compared revision 257 to 255 as Add 2 and Remove 1, reviewed the clip-level changes, confirmed the restore warning, and restored as revision 258. The original clips returned with zero compounds; final API checks retained exactly 50 revisions, returned zero diff to the baseline, and returned 404 for a missing snapshot.",
+			"screenshots": [
+				"assets/screenshots/T06-timeline-snapshots.png"
+			]
+		},
 		{
 			"featureIds": ["T05"],
 			"redCommits": ["212125e"],
