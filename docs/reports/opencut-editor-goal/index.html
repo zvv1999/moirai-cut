@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">14</strong>
+							<strong class="metric__value">15</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">400</strong>
+							<strong class="metric__value">405</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">13</strong>
+							<strong class="metric__value">14</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,30 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/M01-nested-media-bins.png"
+								data-lightbox-label="M01 嵌套素材箱与安全归档"
+							>
+								<img
+									src="assets/screenshots/M01-nested-media-bins.png"
+									alt="素材面板显示 All assets、Unfiled、Reed selects 与二级 Interviews 素材箱，嵌套素材箱内有一个真实素材"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">M01 · MEDIA BINS</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>大素材库开始具备可维护的层级</h3>
+								<p>
+									素材箱可创建、命名、嵌套、排序和跨层移动；已有多选语义延伸到“Move to bin”。删除操作明确保留源素材，并把子树中的全部素材安全回迁；命令撤销和刷新持久化均已在真实工程验证。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -494,6 +518,16 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>M01</strong></td>
+									<td><code>53b94a4</code> RED + <code>c71775f</code> GREEN</td>
+									<td>目标 5/5；全量 405/405；素材组织核心 92.5% / 88.67%；生产构建通过</td>
+									<td>
+										根级/嵌套创建；重命名；真实素材归档；安全删除/撤销；刷新持久化；44
+										项素材已恢复为未归档
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>W08</strong></td>
 									<td><code>9384172</code> RED + <code>d1bad1e</code> GREEN</td>

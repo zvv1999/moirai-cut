@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 14,
-		"automatedTestsPassing": 400,
-		"archivedScreenshots": 13
+		"greenCapabilities": 15,
+		"automatedTestsPassing": 405,
+		"archivedScreenshots": 14
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -18,6 +18,7 @@
 		"W06",
 		"W07",
 		"W08",
+		"M01",
 		"M02",
 		"T07",
 		"G01",
@@ -26,6 +27,22 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["M01"],
+			"redCommits": ["53b94a4"],
+			"greenCommit": "c71775f",
+			"result": "The media library now persists a project-scoped bin tree with direct All Assets and Unfiled views. Users can create, rename, nest, reorder, and reparent bins, move one or many assets from the existing selection-aware context menu, and delete a subtree with explicit keep-media semantics. Deletion rehomes every source reference and all organization mutations share command undo.",
+			"tests": {
+				"targeted": "5/5",
+				"fullSuite": "405/405 with the required WASM test preload",
+				"functionCoverage": "92.5% for the media-organization core",
+				"lineCoverage": "88.67% for the media-organization core",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
+			},
+			"screenshots": [
+				"assets/screenshots/M01-nested-media-bins.png"
+			]
+		},
 		{
 			"featureIds": ["W08"],
 			"redCommits": ["9384172"],
