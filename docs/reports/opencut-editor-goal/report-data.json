@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 34,
-		"automatedTestsPassing": 464,
-		"archivedScreenshots": 38
+		"greenCapabilities": 41,
+		"automatedTestsPassing": 475,
+		"archivedScreenshots": 45
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -40,12 +40,54 @@
 		"A05",
 		"A06",
 		"A07",
+		"C01",
+		"C02",
+		"C03",
+		"C04",
+		"C05",
+		"C06",
+		"C07",
 		"G01",
 		"G04",
 		"G06",
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": [
+				"C01",
+				"C02",
+				"C03",
+				"C04",
+				"C05",
+				"C06",
+				"C07"
+			],
+			"redCommits": [
+				"7935b41",
+				"b3fe623"
+			],
+			"greenCommit": "b9fa6ba",
+			"supportingCommits": [
+				"827d8b6"
+			],
+			"result": "The Captions workbench now provides scoped transcription with progress, cancel, and retry; speaker and editable word timing; explicit cue saves and bulk correction; reusable project-level styles; linked bilingual text with independently rendered secondary colour and size; structural quality checks; and SRT, VTT, and ASS import/export with explicit loss warnings.",
+			"tests": {
+				"targeted": "10/10 focused caption-model, style-library, quality, VTT, SRT, and ASS tests with 33 expectations",
+				"fullSuite": "475/475 with 1047 expectations from the repository root and required WASM preload",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation for all 18 static pages at b9fa6ba in a clean worktree"
+			},
+			"browserVerification": "Pasted three speaker-tagged VTT cues; created six editable word timings; reduced spelling findings from one to zero; bulk-replaced Listen with Stay; shifted all three cues by +0.2 seconds; created, applied, detached, and undid the Reed Bilingual style; rendered the secondary line in cyan at its own size; reviewed caption quality findings; exercised selection-scope retry; and confirmed SRT metadata-loss warnings. Final API verification at revision 344 retained zero caption styles and zero caption elements.",
+			"screenshots": [
+				"assets/screenshots/C01-transcription-scope-retry.png",
+				"assets/screenshots/C02-speaker-word-timing.png",
+				"assets/screenshots/C03-caption-bulk-edit.png",
+				"assets/screenshots/C04-caption-style-library.png",
+				"assets/screenshots/C05-bilingual-caption-editor.png",
+				"assets/screenshots/C06-caption-quality-checks.png",
+				"assets/screenshots/C07-caption-interchange.png"
+			]
+		},
 		{
 			"featureIds": [
 				"A03",

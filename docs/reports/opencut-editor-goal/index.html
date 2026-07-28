@@ -38,7 +38,7 @@
 						再用共享原子命令、计划预览和可审查变更形成 Agent 原生优势。
 					</p>
 					<div class="hero__meta">
-						<span class="status status--building">ACTIVE · M3</span>
+						<span class="status status--building">ACTIVE · M4</span>
 						<span class="pill">分支 feat/agent-drivable</span>
 						<span class="pill">目标 019fa427…914f</span>
 						<span class="pill">证据随每批实现持续更新</span>
@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">34</strong>
+							<strong class="metric__value">41</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">464</strong>
+							<strong class="metric__value">475</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">38</strong>
+							<strong class="metric__value">45</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -124,7 +124,7 @@
 								<h3>音频、字幕与文本</h3>
 								<p>包络、响度、录音、转写、样式、双语和字幕质检。</p>
 							</div>
-							<span class="status status--building">BUILDING</span>
+							<span class="status status--green">DONE</span>
 						</article>
 						<article class="milestone">
 							<span class="milestone__id">M4</span>
@@ -177,6 +177,160 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/C01-transcription-scope-retry.png"
+								data-lightbox-label="C01 全时间线或选区转写、进度、取消与重试"
+							>
+								<img
+									src="assets/screenshots/C01-transcription-scope-retry.png"
+									alt="OpenCut 字幕工作台显示全时间线和选区转写范围、进度、取消、重试及选区缺失反馈"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">C01 · AUTOMATIC TRANSCRIPTION</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>转写成为可恢复的编辑任务</h3>
+								<p>可选择全时间线或当前选区，过程显示进度并允许取消；失败保留明确原因和 Retry。无选区验证会在下载模型或处理音频前安全停止。</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/C02-speaker-word-timing.png"
+								data-lightbox-label="C02 说话人信息与可编辑逐词时间"
+							>
+								<img
+									src="assets/screenshots/C02-speaker-word-timing.png"
+									alt="OpenCut 字幕卡片显示说话人字段和六个可独立编辑起止时间的单词"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">C02 · SPEAKER & WORD TIMING</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>说话人与逐词时间不会在导入后丢失</h3>
+								<p>转写请求真实 word timestamps，并保留说话人元数据；只有 cue 级时间的外部字幕也能一键生成可编辑逐词时间，本次验收生成并编辑了六个词。</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/C03-caption-bulk-edit.png"
+								data-lightbox-label="C03 多条字幕搜索替换、拼写清理与批量移时"
+							>
+								<img
+									src="assets/screenshots/C03-caption-bulk-edit.png"
+									alt="OpenCut 字幕批量编辑器显示三条已选字幕、搜索替换、拼写检查和时间偏移控制"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">C03 · BULK TEXT EDITING</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>字幕校对从逐条返工变成批量流程</h3>
+								<p>搜索替换、多选、重复词与双空格清理、整体移时共用一个可撤销模型。验收将 Listen 批量改为 Stay，并把三条 cue 安全后移 0.2 秒。</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/C04-caption-style-library.png"
+								data-lightbox-label="C04 可复用字幕样式库"
+							>
+								<img
+									src="assets/screenshots/C04-caption-style-library.png"
+									alt="OpenCut 字幕样式库显示 Reed Bilingual 样式以及创建、更新、复制、应用和分离操作"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">C04 · GLOBAL CAPTION STYLES</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>字幕样式成为工程资产</h3>
+								<p>样式随项目保存，可创建、更新、复制、批量应用或分离；样式和时间线写入都经过撤销历史。浏览器验证完成 Reed Bilingual 的应用、分离和撤销。</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/C05-bilingual-caption-editor.png"
+								data-lightbox-label="C05 主副字幕独立样式与共享时间"
+							>
+								<img
+									src="assets/screenshots/C05-bilingual-caption-editor.png"
+									alt="OpenCut 画布同时渲染白色主字幕和更小的青色副字幕，右侧可独立编辑副字幕颜色和字号"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">C05 · BILINGUAL CAPTIONS</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>双语不是简单拼成一段文字</h3>
+								<p>主副文本共享 cue 时间，但使用独立布局、字号和颜色；渲染器按组合边界计算背景和换行。验收画面中副字幕以青色和更小字号单独呈现。</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/C06-caption-quality-checks.png"
+								data-lightbox-label="C06 字幕质量检查与定位"
+							>
+								<img
+									src="assets/screenshots/C06-caption-quality-checks.png"
+									alt="OpenCut 字幕质量面板列出长行、安全区域、重叠、间隔、阅读速度和越界问题"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">C06 · CAPTION QUALITY</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>字幕问题在导出前可见</h3>
+								<p>检查器覆盖过长行、危险位置、重叠、异常间隙、过短时长、CPS 阅读速度和工程边界，并直接关联到 cue，避免把结构问题留到成片。</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/C07-caption-interchange.png"
+								data-lightbox-label="C07 SRT、VTT、ASS 导入导出"
+							>
+								<img
+									src="assets/screenshots/C07-caption-interchange.png"
+									alt="OpenCut 字幕互换区显示 SRT VTT ASS 文件与粘贴导入、三种导出按钮和格式损失警告"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">C07 · CAPTION INTERCHANGE</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>字幕可进可出，并说明格式损失</h3>
+								<p>文件选择和粘贴源都支持 SRT、VTT、ASS；导出保留各格式能表达的信息，并明确提示 SRT 无法保存说话人与可复用样式等限制。</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -1100,6 +1254,15 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>C01–C07</strong></td>
+									<td><code>7935b41</code> RED + <code>827d8b6</code> GREEN + <code>b3fe623</code> 样式 RED + <code>b9fa6ba</code> 样式 GREEN</td>
+									<td>目标 10/10、33 断言；全量 475/475、1047 断言；TypeScript / ESLint / 干净生产构建通过</td>
+									<td>
+										粘贴导入 3 条说话人 VTT；生成 6 个逐词时间；拼写 1→0；批量替换和 +0.2s 移时；样式创建/应用/分离/撤销；青色独立副字幕；质量检查、转写重试和 SRT 损失提示；最终字幕与样式均清零
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>A03–A07</strong></td>
 									<td><code>1dc3446</code> RED + <code>e71c53c</code> GREEN + <code>0e226a7</code> 窄栏修复</td>
