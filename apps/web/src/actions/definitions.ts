@@ -224,5 +224,9 @@ export function getDefaultShortcuts(): Map<
 export function isActionWithOptionalArgs(
 	value: string,
 ): value is TActionWithOptionalArgs {
-	return Object.hasOwn(ACTIONS, value);
+	return (
+		Object.hasOwn(ACTIONS, value) &&
+		value !== "remove-media-asset" &&
+		value !== "remove-media-assets"
+	);
 }

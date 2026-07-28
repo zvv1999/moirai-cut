@@ -8,11 +8,13 @@ test("timeline edit modes expose persistent state, labels, and shortcuts", () =>
 			snappingEnabled={true}
 			snappingShortcut="N"
 			rippleEditingEnabled={false}
+			rippleEditingShortcut="R"
 			sourceAudio={{
 				status: "linked",
 				label: "Source audio linked",
 				canToggle: true,
 			}}
+			sourceAudioShortcut="A"
 			onToggleSnapping={() => {}}
 			onToggleRippleEditing={() => {}}
 			onToggleSourceAudio={() => {}}
@@ -27,12 +29,14 @@ test("timeline edit modes expose persistent state, labels, and shortcuts", () =>
 	expect(markup).toContain("On");
 	expect(markup).toContain("<kbd");
 	expect(markup).toContain(">N</kbd>");
-	expect(markup).toContain('aria-label="Ripple editing: Off"');
+	expect(markup).toContain('aria-label="Ripple editing: Off (R)"');
 	expect(markup).toContain("Ripple");
 	expect(markup).toContain("Off");
-	expect(markup).toContain('aria-label="Source audio linked"');
+	expect(markup).toContain(">R</kbd>");
+	expect(markup).toContain('aria-label="Source audio linked (A)"');
 	expect(markup).toContain("Audio");
 	expect(markup).toContain("Linked");
+	expect(markup).toContain(">A</kbd>");
 });
 
 test("source audio stays discoverable when the selection cannot use it", () => {
@@ -41,11 +45,13 @@ test("source audio stays discoverable when the selection cannot use it", () => {
 			snappingEnabled={false}
 			snappingShortcut={null}
 			rippleEditingEnabled={true}
+			rippleEditingShortcut={null}
 			sourceAudio={{
 				status: "unavailable",
 				label: "Select one video clip to manage source audio",
 				canToggle: false,
 			}}
+			sourceAudioShortcut={null}
 			onToggleSnapping={() => {}}
 			onToggleRippleEditing={() => {}}
 			onToggleSourceAudio={() => {}}

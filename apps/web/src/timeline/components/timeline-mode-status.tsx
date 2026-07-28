@@ -60,12 +60,7 @@ function ModeButton({
 		>
 			<span className="flex size-3.5 items-center justify-center">{icon}</span>
 			<span>{name}</span>
-			<span
-				className={cn(
-					"text-foreground/65",
-					isActive && "text-primary/80",
-				)}
-			>
+			<span className={cn("text-foreground/65", isActive && "text-primary/80")}>
 				{state}
 			</span>
 			{shortcut && (
@@ -81,7 +76,9 @@ export function TimelineModeStatusView({
 	snappingEnabled,
 	snappingShortcut,
 	rippleEditingEnabled,
+	rippleEditingShortcut,
 	sourceAudio,
+	sourceAudioShortcut,
 	selectionCount = 0,
 	onToggleSnapping,
 	onToggleRippleEditing,
@@ -90,7 +87,9 @@ export function TimelineModeStatusView({
 	snappingEnabled: boolean;
 	snappingShortcut: string | null;
 	rippleEditingEnabled: boolean;
+	rippleEditingShortcut: string | null;
 	sourceAudio: SourceAudioStatus;
+	sourceAudioShortcut: string | null;
 	selectionCount?: number;
 	onToggleSnapping: () => void;
 	onToggleRippleEditing: () => void;
@@ -101,6 +100,9 @@ export function TimelineModeStatusView({
 	}${snappingShortcut ? ` (${snappingShortcut})` : ""}`;
 	const rippleLabel = `Ripple editing: ${
 		rippleEditingEnabled ? "On" : "Off"
+	}${rippleEditingShortcut ? ` (${rippleEditingShortcut})` : ""}`;
+	const sourceAudioLabel = `${sourceAudio.label}${
+		sourceAudioShortcut ? ` (${sourceAudioShortcut})` : ""
 	}`;
 	const audioIsSeparated = sourceAudio.status === "separated";
 
@@ -128,15 +130,14 @@ export function TimelineModeStatusView({
 				icon={<OcRippleIcon size={15} />}
 				name="Ripple"
 				state={rippleEditingEnabled ? "On" : "Off"}
+				shortcut={rippleEditingShortcut}
 				onClick={onToggleRippleEditing}
 			/>
 			<ModeButton
-				label={sourceAudio.label}
+				label={sourceAudioLabel}
 				isActive={audioIsSeparated}
 				icon={
-					<HugeiconsIcon
-						icon={audioIsSeparated ? Unlink02Icon : Link02Icon}
-					/>
+					<HugeiconsIcon icon={audioIsSeparated ? Unlink02Icon : Link02Icon} />
 				}
 				name="Audio"
 				state={
@@ -147,6 +148,7 @@ export function TimelineModeStatusView({
 							: "Unavailable"
 				}
 				disabled={!sourceAudio.canToggle}
+				shortcut={sourceAudioShortcut}
 				onClick={onToggleSourceAudio}
 			/>
 			<span
@@ -175,8 +177,14 @@ export function TimelineModeStatus() {
 	);
 	const { shortcuts } = useKeyboardShortcutsHelp();
 	const snappingShortcut =
-		shortcuts.find((shortcut) => shortcut.action === "toggle-snapping")?.keys[0] ??
-		null;
+		shortcuts.find((shortcut) => shortcut.action === "toggle-snapping")
+			?.keys[0] ?? null;
+	const rippleEditingShortcut =
+		shortcuts.find((shortcut) => shortcut.action === "toggle-ripple-editing")
+			?.keys[0] ?? null;
+	const sourceAudioShortcut =
+		shortcuts.find((shortcut) => shortcut.action === "toggle-source-audio")
+			?.keys[0] ?? null;
 	const selectedElement =
 		selectedElements.length === 1
 			? (editor.timeline.getElementsWithTracks({
@@ -188,9 +196,7 @@ export function TimelineModeStatus() {
 			return null;
 		}
 		const mediaId = selectedElement.element.mediaId;
-		return (
-			mediaAssets.find((asset) => asset.id === mediaId) ?? null
-		);
+		return mediaAssets.find((asset) => asset.id === mediaId) ?? null;
 	})();
 	const sourceAudio: SourceAudioStatus = (() => {
 		if (!selectedElement || selectedElement.element.type !== "video") {
@@ -226,7 +232,9 @@ export function TimelineModeStatus() {
 			snappingEnabled={snappingEnabled}
 			snappingShortcut={snappingShortcut}
 			rippleEditingEnabled={rippleEditingEnabled}
+			rippleEditingShortcut={rippleEditingShortcut}
 			sourceAudio={sourceAudio}
+			sourceAudioShortcut={sourceAudioShortcut}
 			selectionCount={selectedElements.length}
 			onToggleSnapping={() => invokeAction("toggle-snapping")}
 			onToggleRippleEditing={() => invokeAction("toggle-ripple-editing")}
