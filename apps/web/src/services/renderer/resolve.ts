@@ -8,8 +8,16 @@ import {
 	buildGaussianBlurPasses,
 	intensityToSigma,
 } from "@/effects/definitions/blur";
-import { effectsRegistry, resolveEffectPasses } from "@/effects";
-import type { Effect, EffectPass } from "@/effects/types";
+import {
+	effectsRegistry,
+	resolveCanvasEffectTreatment,
+	resolveEffectPasses,
+} from "@/effects";
+import type {
+	CanvasEffectTreatment,
+	Effect,
+	EffectPass,
+} from "@/effects/types";
 import { getSourceTimeAtClipTime } from "@/retime";
 import {
 	DEFAULT_GRAPHIC_SOURCE_SIZE,
@@ -52,6 +60,89 @@ type ResolveContext = {
 	renderer: CanvasRenderer;
 	time: number;
 };
+
+function toAnimatableParamValues({
+	params,
+}: {
+	params: object;
+}): ParamValues {
+	const values: ParamValues = {};
+	for (const [key, value] of Object.entries(params)) {
+		if (
+			typeof value === "number" ||
+			typeof value === "string" ||
+			typeof value === "boolean"
+		) {
+			values[key] = value;
+		}
+	}
+	return values;
+}
+
+function resolveMaskAtTime({
+	mask,
+	animations,
+	localTime,
+}: {
+	mask: Mask;
+	animations: VisualNodeParams["animations"];
+	localTime: number;
+}): Mask {
+	const resolvedParams = resolveMaskParamsAtTime({
+		maskId: mask.id,
+		params: toAnimatableParamValues({ params: mask.params }),
+		animations,
+		localTime,
+	});
+
+	switch (mask.type) {
+		case "split":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+		case "cinematic-bars":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+		case "rectangle":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+		case "ellipse":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+		case "heart":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+		case "diamond":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+		case "star":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+		case "text":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+		case "freeform":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+	}
+}
 
 export async function resolveRenderTree({
 	node,
@@ -128,7 +219,34 @@ function resolveEffectPassGroups({
 				width,
 				height,
 			});
+		})
+		.filter((passes) => passes.length > 0);
+}
+
+function resolveCanvasEffects({
+	effects,
+	animations,
+	localTime,
+}: {
+	effects: Effect[] | undefined;
+	animations: VisualNodeParams["animations"];
+	localTime: number;
+}): CanvasEffectTreatment[] {
+	return (effects ?? []).flatMap((effect) => {
+		if (!effect.enabled) return [];
+		const definition = effectsRegistry.get(effect.type);
+		const resolvedParams = resolveEffectParamsAtTime({
+			effectId: effect.id,
+			params: effect.params,
+			animations,
+			localTime,
 		});
+		const treatment = resolveCanvasEffectTreatment({
+			definition,
+			effectParams: resolvedParams,
+		});
+		return treatment ? [treatment] : [];
+	});
 }
 
 function resolveVisualState({
@@ -177,24 +295,17 @@ function resolveVisualState({
 		localTime,
 		transform,
 		opacity,
+		appearance: params.appearance,
 		// Sampled values are overlaid on the authored params rather than replacing
 		// them: a freeform mask carries a `path` array that is not a ParamValue
 		// and must survive untouched. Only the scalar keys a mask definition
 		// declares can be keyframed, so the overlay never widens the shape.
-		masks: (params.masks ?? []).map(
-			(mask) =>
-				({
-					...mask,
-					params: {
-						...mask.params,
-						...resolveMaskParamsAtTime({
-							maskId: mask.id,
-							params: mask.params as unknown as ParamValues,
-							animations: params.animations,
-							localTime,
-						}),
-					},
-				}) as unknown as Mask,
+		masks: (params.masks ?? []).map((mask) =>
+			resolveMaskAtTime({
+				mask,
+				animations: params.animations,
+				localTime,
+			}),
 		),
 		effectPasses: resolveEffectPassGroups({
 			effects: params.effects,
@@ -202,6 +313,11 @@ function resolveVisualState({
 			localTime,
 			width: effectWidth,
 			height: effectHeight,
+		}),
+		canvasEffects: resolveCanvasEffects({
+			effects: params.effects,
+			animations: params.animations,
+			localTime,
 		}),
 	};
 }
@@ -388,6 +504,11 @@ function resolveTextNode({
 			width: context.renderer.width,
 			height: context.renderer.height,
 		}),
+		canvasEffects: resolveCanvasEffects({
+			effects: node.params.effects,
+			animations: node.params.animations,
+			localTime,
+		}),
 		measuredText: measureTextElement({
 			element: node.params,
 			canvasHeight: node.params.canvasHeight,
@@ -491,11 +612,17 @@ function resolveEffectLayerNode({
 		width: context.renderer.width,
 		height: context.renderer.height,
 	});
-	if (passes.length === 0) {
+	const canvasTreatment = resolveCanvasEffectTreatment({
+		definition,
+		effectParams: node.params.effectParams,
+	});
+	const canvasEffects = canvasTreatment ? [canvasTreatment] : [];
+	if (passes.length === 0 && canvasEffects.length === 0) {
 		return null;
 	}
 
 	return {
 		passes,
+		canvasEffects,
 	};
 }

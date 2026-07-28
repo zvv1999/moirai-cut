@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ParamValues } from "@/params";
 import type { Effect } from "@/effects/types";
 import type { EffectElement, VisualElement } from "@/timeline";
@@ -26,6 +26,8 @@ import {
 import { cn } from "@/utils/ui";
 import { Separator } from "@/components/ui/separator";
 import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
+import { parseCubeLut } from "@/visual/appearance";
+import { toast } from "sonner";
 
 export function StandaloneEffectTab({
 	element,
@@ -56,7 +58,7 @@ export function StandaloneEffectTab({
 	return (
 		<div className="flex flex-col h-full">
 			<div className="border-b px-3.5 h-11 shrink-0 flex items-center">
-				<SectionTitle>Effect</SectionTitle>
+				<SectionTitle>Adjustment layer</SectionTitle>
 			</div>
 			<EffectSection
 				effect={effect}
@@ -246,6 +248,29 @@ function EffectSection({
 	onRemove?: () => void;
 }) {
 	const definition = effectsRegistry.get(effect.type);
+	const lutInputRef = useRef<HTMLInputElement>(null);
+	const lutSource =
+		typeof renderParams.lutSource === "string" ? renderParams.lutSource : "";
+	let lutTitle = "";
+	if (lutSource) {
+		try {
+			lutTitle = parseCubeLut({ source: lutSource }).title;
+		} catch {
+			lutTitle = "Invalid LUT";
+		}
+	}
+
+	const importLut = async (file: File) => {
+		try {
+			const source = await file.text();
+			const lut = parseCubeLut({ source });
+			previewParam("lutSource")(source);
+			onCommit();
+			toast.success(`Imported LUT: ${lut.title}`);
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : "Could not import LUT");
+		}
+	};
 
 	return (
 		<Section
@@ -289,19 +314,62 @@ function EffectSection({
 				className={cn("p-0", onToggle && !effect.enabled && "opacity-50")}
 			>
 				<SectionFields>
-					{definition.params.map((param) => (
-						<div key={param.key} className="flex flex-col gap-3.5">
-							<div className="px-4">
-								<PropertyParamField
-									param={param}
-									value={renderParams[param.key] ?? param.default}
-									onPreview={previewParam(param.key)}
-									onCommit={onCommit}
-								/>
+					{definition.type === "color-grade" ? (
+						<div className="flex flex-col gap-2 border-b px-4 pb-3">
+							<input
+								ref={lutInputRef}
+								type="file"
+								accept=".cube,text/plain"
+								className="hidden"
+								aria-label="Import LUT file"
+								onChange={(event) => {
+									const file = event.target.files?.[0];
+									if (file) void importLut(file);
+									event.currentTarget.value = "";
+								}}
+							/>
+							<div className="text-muted-foreground text-xs">
+								{lutSource ? `LUT: ${lutTitle}` : "No LUT imported"}
 							</div>
-							<Separator />
+							<div className="grid grid-cols-2 gap-1.5">
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									onClick={() => lutInputRef.current?.click()}
+								>
+									Import .cube
+								</Button>
+								<Button
+									type="button"
+									size="sm"
+									variant="ghost"
+									disabled={!lutSource}
+									onClick={() => {
+										previewParam("lutSource")("");
+										onCommit();
+									}}
+								>
+									Remove LUT
+								</Button>
+							</div>
 						</div>
-					))}
+					) : null}
+					{definition.params
+						.filter((param) => param.key !== "lutSource")
+						.map((param) => (
+							<div key={param.key} className="flex flex-col gap-3.5">
+								<div className="px-4">
+									<PropertyParamField
+										param={param}
+										value={renderParams[param.key] ?? param.default}
+										onPreview={previewParam(param.key)}
+										onCommit={onCommit}
+									/>
+								</div>
+								<Separator />
+							</div>
+						))}
 				</SectionFields>
 			</SectionContent>
 		</Section>

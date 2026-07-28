@@ -1,12 +1,13 @@
 import { BaseNode } from "./base-node";
 import type { TextElement } from "@/timeline";
-import type { EffectPass } from "@/effects/types";
+import type { CanvasEffectTreatment, EffectPass } from "@/effects/types";
 import type { BlendMode, Transform } from "@/rendering";
 import {
 	drawMeasuredTextBackground,
 	drawMeasuredTextLayout,
 } from "@/text/primitives";
 import type { MeasuredTextElement } from "@/text/measure-element";
+import type { VisualAppearance } from "@/visual/appearance";
 
 export type TextNodeParams = TextElement & {
 	transform: Transform;
@@ -15,6 +16,7 @@ export type TextNodeParams = TextElement & {
 	canvasCenter: { x: number; y: number };
 	canvasHeight: number;
 	textBaseline?: CanvasTextBaseline;
+	appearance: VisualAppearance;
 };
 
 export interface ResolvedTextNodeState {
@@ -23,6 +25,7 @@ export interface ResolvedTextNodeState {
 	textColor: string;
 	backgroundColor: string;
 	effectPasses: EffectPass[][];
+	canvasEffects: CanvasEffectTreatment[];
 	measuredText: MeasuredTextElement;
 }
 

@@ -1,4 +1,4 @@
-import type { EffectPass } from "@/effects/types";
+import type { CanvasEffectTreatment, EffectPass } from "@/effects/types";
 import type { ParamValues } from "@/params";
 import { BaseNode } from "./base-node";
 
@@ -11,6 +11,7 @@ export type EffectLayerNodeParams = {
 
 export type ResolvedEffectLayerNodeState = {
 	passes: EffectPass[];
+	canvasEffects: CanvasEffectTreatment[];
 };
 
 export class EffectLayerNode extends BaseNode<

@@ -14,6 +14,13 @@ export interface EffectPass {
 	uniforms: Record<string, EffectUniformValue>;
 }
 
+export interface CanvasEffectTreatment {
+	type: string;
+	filter: string;
+	lutSource?: string;
+	lutStrength?: number;
+}
+
 export interface EffectPassTemplate {
 	shader: string;
 	uniforms(params: {
@@ -25,6 +32,11 @@ export interface EffectPassTemplate {
 
 export interface EffectRendererConfig {
 	passes: EffectPassTemplate[];
+	/**
+	 * Canvas filters cover effects that can be expressed without a dedicated
+	 * GPU shader. They use the same authored params for preview and export.
+	 */
+	canvasFilter?: (effectParams: ParamValues) => string;
 	buildPasses?: (params: {
 		effectParams: ParamValues;
 		width: number;

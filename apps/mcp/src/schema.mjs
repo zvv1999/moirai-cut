@@ -55,7 +55,7 @@ const elementDraft = z
       .describe("Required for graphic: rectangle | ellipse | polygon | star."),
     hidden: z.boolean().optional().describe("Visual elements only; ignored for audio."),
     effectType: z
-      .enum(["blur"])
+      .enum(["blur", "color-grade"])
       .optional()
       .describe("Required for an effect element (an adjustment layer on an effect track)."),
     sourceDurationSeconds: z
@@ -183,7 +183,7 @@ export const OperationSchema = z
         type: z.literal("element.addEffect"),
         trackId,
         elementId,
-        effectType: z.enum(["blur"]).describe("Effect id from the registry."),
+        effectType: z.enum(["blur", "color-grade"]).describe("Effect id from the registry."),
       })
       .describe("Attach an effect to a visual clip. Read it back from get_state to get its id."),
     z.object({
@@ -206,7 +206,9 @@ export const OperationSchema = z
         effectId: z.string().min(1),
         params: z
           .record(z.union([z.number(), z.string(), z.boolean()]))
-          .describe("Merged over the current values. blur takes { intensity: 0..100 }."),
+          .describe(
+            "Merged over current values. blur takes intensity; color-grade takes exposure, contrast, temperature, saturation, highlights, shadows, curve, lutStrength, and lutSource.",
+          ),
       })
       .describe("Tune an effect's parameters."),
     z
@@ -221,6 +223,9 @@ export const OperationSchema = z
             "opacity", "volume", "fontSize", "letterSpacing", "lineHeight",
             "background.cornerRadius", "background.paddingX", "background.paddingY",
             "background.offsetX", "background.offsetY",
+            "geometry.cornerRadius", "geometry.shadow.blur",
+            "geometry.shadow.offsetX", "geometry.shadow.offsetY",
+            "geometry.stroke.width",
           ])
           .describe("Which property to animate. Colour params are not available here — they need the open tab."),
         timeSeconds: seconds("Measured from the CLIP's own start, not the timeline. Clamped into the clip."),
@@ -262,13 +267,16 @@ export const OperationSchema = z
         trackId,
         elementId,
         effectId: z.string().min(1).describe("From the clip's effects[] in get_state."),
-        paramKey: z.string().min(1).describe('e.g. "intensity" for blur.'),
+        paramKey: z
+          .string()
+          .min(1)
+          .describe('e.g. "intensity" for blur or "exposure" for color-grade.'),
         timeSeconds: seconds("From the CLIP's start."),
         value: z.number().finite(),
         interpolation: z.enum(["linear", "hold", "bezier"]).optional(),
         keyframeId: z.string().min(1).optional(),
       })
-      .describe("Animate an effect's parameter over time — a blur that ramps up, for instance."),
+      .describe("Animate an effect parameter over time, such as blur intensity or exposure."),
     z
       .object({
         type: z.literal("element.upsertMaskKeyframe"),

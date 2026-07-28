@@ -378,6 +378,23 @@ test("effects attach only to visual elements, and their params are validated", (
 
   const removed = apply(toggled, { type: "element.removeEffect", ...ref, effectId: effect.id });
   assert.equal(removed.scenes[0].tracks.main.elements[0].effects.length, 0);
+
+  const graded = apply(withClip, {
+    type: "element.addEffect",
+    ...ref,
+    effectType: "color-grade",
+  });
+  assert.deepEqual(graded.scenes[0].tracks.main.elements[0].effects[0].params, {
+    exposure: 0,
+    contrast: 0,
+    temperature: 0,
+    saturation: 0,
+    highlights: 0,
+    shadows: 0,
+    curve: 0,
+    lutStrength: 100,
+    lutSource: "",
+  });
 });
 
 test("effects cannot be attached to audio", () => {

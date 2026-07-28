@@ -36,6 +36,20 @@ const TRANSFORM_PARAM_KEYS = [
 	"transform.scaleX",
 	"transform.scaleY",
 	"transform.rotate",
+	"geometry.mirrorX",
+	"geometry.mirrorY",
+	"crop.left",
+	"crop.right",
+	"crop.top",
+	"crop.bottom",
+	"geometry.cornerRadius",
+	"geometry.shadow.enabled",
+	"geometry.shadow.color",
+	"geometry.shadow.blur",
+	"geometry.shadow.offsetX",
+	"geometry.shadow.offsetY",
+	"geometry.stroke.width",
+	"geometry.stroke.color",
 ] as const;
 
 const BLENDING_PARAM_KEYS = ["opacity", "blendMode"] as const;

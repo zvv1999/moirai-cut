@@ -19,6 +19,7 @@ import {
 } from "@/rendering";
 import { getMediaAssetPlaybackSource } from "@/media/proxy";
 import { expandCompoundElements } from "@/timeline/compound-clips";
+import { normalizeVisualAppearance } from "@/visual/appearance";
 
 const PREVIEW_MAX_IMAGE_SIZE = 2048;
 
@@ -88,6 +89,7 @@ function buildTrackNodes({
 							blendMode: readBlendModeFromParams({ params: element.params }),
 							effects: element.effects ?? [],
 							masks: element.masks ?? [],
+							appearance: normalizeVisualAppearance(element.params),
 						}),
 					);
 				}
@@ -105,6 +107,7 @@ function buildTrackNodes({
 							blendMode: readBlendModeFromParams({ params: element.params }),
 							effects: element.effects ?? [],
 							masks: element.masks ?? [],
+							appearance: normalizeVisualAppearance(element.params),
 							...(isPreview && {
 								maxSourceSize: PREVIEW_MAX_IMAGE_SIZE,
 							}),
@@ -124,6 +127,7 @@ function buildTrackNodes({
 						canvasHeight: canvasSize.height,
 						textBaseline: "middle",
 						effects: element.effects ?? [],
+						appearance: normalizeVisualAppearance(element.params),
 					}),
 				);
 			}
@@ -143,6 +147,7 @@ function buildTrackNodes({
 						opacity: readOpacityFromParams({ params: element.params }),
 						blendMode: readBlendModeFromParams({ params: element.params }),
 						effects: element.effects ?? [],
+						appearance: normalizeVisualAppearance(element.params),
 					}),
 				);
 			}
@@ -162,6 +167,7 @@ function buildTrackNodes({
 						blendMode: readBlendModeFromParams({ params: element.params }),
 						effects: element.effects ?? [],
 						masks: element.masks ?? [],
+						appearance: normalizeVisualAppearance(element.params),
 					}),
 				);
 			}

@@ -1,5 +1,7 @@
 import { drawCssBackground } from "@/gradients";
 import { getMaskDefinition } from "@/masks";
+import { buildMaskStackPlan } from "@/masks/stack";
+import type { Mask } from "@/masks/types";
 import { incrementCounter } from "@/diagnostics/render-perf";
 import type { AnyBaseNode } from "../nodes/base-node";
 import type { CanvasRenderer } from "../canvas-renderer";
@@ -26,6 +28,12 @@ import type {
 	TextureUploadDescriptor,
 } from "./types";
 import { DEFAULT_GRAPHIC_SOURCE_SIZE } from "@/graphics";
+import {
+	drawCanvasEffectSource,
+	drawStyledVisualSource,
+	hasVisualDecoration,
+} from "@/visual/render-appearance";
+import type { CanvasEffectTreatment } from "@/effects/types";
 
 export async function buildFrameDescriptor({
 	node,
@@ -121,13 +129,23 @@ async function collectNode({
 	}
 
 	if (node instanceof EffectLayerNode) {
-		if (!node.resolved || node.resolved.passes.length === 0) {
+		if (!node.resolved) {
 			return;
 		}
-		items.push({
-			type: "sceneEffect",
-			effectPassGroups: [node.resolved.passes],
-		});
+		if (node.resolved.canvasEffects.length > 0) {
+			applyCanvasAdjustmentToCollectedLayers({
+				path,
+				items,
+				textures,
+				canvasEffects: node.resolved.canvasEffects,
+			});
+		}
+		if (node.resolved.passes.length > 0) {
+			items.push({
+				type: "sceneEffect",
+				effectPassGroups: [node.resolved.passes],
+			});
+		}
 		return;
 	}
 
@@ -240,13 +258,39 @@ async function collectVisualSourceNode({
 			: (node.resolved as ResolvedVisualSourceNodeState).sourceHeight;
 
 	const textureId = `${path}:source`;
-	textures.set(textureId, {
-		kind: "external",
-		id: textureId,
-		source,
-		width: sourceWidth,
-		height: sourceHeight,
-	});
+	const needsCanvasRendering =
+		hasVisualDecoration({ appearance: node.resolved.appearance }) ||
+		node.resolved.canvasEffects.length > 0;
+	if (needsCanvasRendering) {
+		textures.set(textureId, {
+			kind: "rendered",
+			id: textureId,
+			contentHash: `visual:${identityKey(source)}:${sourceWidth}x${sourceHeight}:${JSON.stringify({
+				appearance: node.resolved.appearance,
+				canvasEffects: node.resolved.canvasEffects,
+			})}`,
+			width: sourceWidth,
+			height: sourceHeight,
+			draw: (ctx) => {
+				drawStyledVisualSource({
+					ctx,
+					source,
+					width: sourceWidth,
+					height: sourceHeight,
+					appearance: node.resolved!.appearance,
+					canvasEffects: node.resolved!.canvasEffects,
+				});
+			},
+		});
+	} else {
+		textures.set(textureId, {
+			kind: "external",
+			id: textureId,
+			source,
+			width: sourceWidth,
+			height: sourceHeight,
+		});
+	}
 
 	const transform = computeVisualTransform({
 		renderer,
@@ -254,7 +298,7 @@ async function collectVisualSourceNode({
 		sourceWidth,
 		sourceHeight,
 	});
-	const { mask, strokeLayer } = buildMaskArtifacts({
+	const { mask, strokeLayers } = buildMaskArtifacts({
 		node,
 		renderer,
 		path,
@@ -271,7 +315,7 @@ async function collectVisualSourceNode({
 		effectPassGroups: node.resolved.effectPasses,
 		mask,
 	});
-	if (strokeLayer) {
+	for (const strokeLayer of strokeLayers) {
 		items.push(strokeLayer);
 	}
 }
@@ -310,7 +354,19 @@ function collectTextNode({
 		width,
 		height,
 		draw: (ctx) => {
-			renderTextToContext({ node, ctx });
+			if (node.resolved!.canvasEffects.length === 0) {
+				renderTextToContext({ node, ctx });
+				return;
+			}
+			const { canvas, context } = createCanvasSurface({ width, height });
+			renderTextToContext({ node, ctx: context });
+			drawCanvasEffectSource({
+				ctx,
+				source: canvas,
+				width,
+				height,
+				canvasEffects: node.resolved!.canvasEffects,
+			});
 		},
 	});
 	items.push({
@@ -322,6 +378,70 @@ function collectTextNode({
 		effectPassGroups: node.resolved.effectPasses,
 		mask: null,
 	});
+}
+
+function applyCanvasAdjustmentToCollectedLayers({
+	path,
+	items,
+	textures,
+	canvasEffects,
+}: {
+	path: string;
+	items: FrameItemDescriptor[];
+	textures: Map<string, TextureUploadDescriptor>;
+	canvasEffects: CanvasEffectTreatment[];
+}): void {
+	const serializedEffects = JSON.stringify(canvasEffects);
+	for (let index = 0; index < items.length; index++) {
+		const item = items[index];
+		if (item.type !== "layer") continue;
+		if (
+			item.textureId.endsWith(":color") ||
+			item.textureId.endsWith(":blur-background") ||
+			item.textureId.includes(":mask-stroke")
+		) {
+			continue;
+		}
+		const sourceTexture = textures.get(item.textureId);
+		if (!sourceTexture) continue;
+		const adjustedTextureId = `${path}:adjustment:${index}:${item.textureId}`;
+		const sourceHash =
+			sourceTexture.kind === "external"
+				? identityKey(sourceTexture.source)
+				: sourceTexture.contentHash;
+		textures.set(adjustedTextureId, {
+			kind: "rendered",
+			id: adjustedTextureId,
+			contentHash: `adjustment:${sourceHash}:${serializedEffects}`,
+			width: sourceTexture.width,
+			height: sourceTexture.height,
+			draw: (ctx) => {
+				if (sourceTexture.kind === "external") {
+					drawCanvasEffectSource({
+						ctx,
+						source: sourceTexture.source,
+						width: sourceTexture.width,
+						height: sourceTexture.height,
+						canvasEffects,
+					});
+					return;
+				}
+				const { canvas, context } = createCanvasSurface({
+					width: sourceTexture.width,
+					height: sourceTexture.height,
+				});
+				sourceTexture.draw(context);
+				drawCanvasEffectSource({
+					ctx,
+					source: canvas,
+					width: sourceTexture.width,
+					height: sourceTexture.height,
+					canvasEffects,
+				});
+			},
+		});
+		item.textureId = adjustedTextureId;
+	}
 }
 
 function computeVisualTransform({
@@ -350,8 +470,8 @@ function computeVisualTransform({
 		width: absWidth,
 		height: absHeight,
 		rotationDegrees: resolved.transform.rotate,
-		flipX: scaledWidth < 0,
-		flipY: scaledHeight < 0,
+		flipX: (scaledWidth < 0) !== resolved.appearance.mirrorX,
+		flipY: (scaledHeight < 0) !== resolved.appearance.mirrorY,
 	};
 }
 
@@ -383,83 +503,74 @@ function buildMaskArtifacts({
 	textures: Map<string, TextureUploadDescriptor>;
 }): {
 	mask: LayerMaskDescriptor | null;
-	strokeLayer: FrameItemDescriptor | null;
+	strokeLayers: FrameItemDescriptor[];
 } {
 	// The RESOLVED masks, not node.params.masks: the latter holds the static
 	// authored values, so an animated feather or position would never move.
-	const mask = node.resolved?.masks?.[0] ?? node.params.masks?.[0];
-	if (!mask) {
-		return { mask: null, strokeLayer: null };
+	const masks = (node.resolved?.masks ?? node.params.masks ?? []).filter(
+		(mask) => getMaskDefinition(mask.type).isActive?.(mask.params) !== false,
+	);
+	if (masks.length === 0) {
+		return { mask: null, strokeLayers: [] };
 	}
-
-	const definition = getMaskDefinition(mask.type);
-
-	if (definition.isActive?.(mask.params) === false) {
-		return { mask: null, strokeLayer: null };
-	}
-
-	const { body } = definition.renderer;
-	const usesOpaqueFastPath =
-		body.kind === "drawWithFeather" &&
-		mask.params.feather === 0 &&
-		Boolean(body.opaqueFastPath);
-	// drawWithFeather renderers encode feathering analytically in their canvas output
-	// (e.g. split mask uses a linear gradient instead of JFA). The descriptor feather is
-	// zeroed so the GPU compositor copies the mask texture as-is and does not run a second
-	// JFA feather pass on top of an already-soft texture.
-	const feather = body.kind === "drawWithFeather" ? 0 : mask.params.feather;
 
 	const maskTextureId = `${path}:mask`;
 	const { width: canvasWidth, height: canvasHeight } = renderer;
-	const maskContentHash = `mask:${mask.type}:${JSON.stringify(mask.params)}:${transformHash(transform)}:${canvasWidth}x${canvasHeight}:body=${body.kind}:fastPath=${usesOpaqueFastPath}`;
+	const stackPlan = buildMaskStackPlan({
+		masks: masks.map((mask) => ({
+			id: mask.id,
+			combineMode: mask.combineMode,
+			feather: mask.params.feather,
+			inverted: mask.params.inverted,
+		})),
+	});
+	const maskContentHash = `mask-stack:${JSON.stringify(masks)}:${transformHash(transform)}:${canvasWidth}x${canvasHeight}`;
 	const drawMask: TextureCanvasDrawFn = (ctx) => {
-		const { canvas: elementMaskCanvas, context: elementMaskCtx } =
-			createCanvasSurface({
-				width: Math.round(transform.width),
-				height: Math.round(transform.height),
+		for (let index = 0; index < masks.length; index++) {
+			const authoredMask = masks[index];
+			const { canvas: fullMaskCanvas, context: fullMaskCtx } =
+				createCanvasSurface({
+					width: canvasWidth,
+					height: canvasHeight,
+				});
+			const { canvas: elementMaskCanvas, context: elementMaskCtx } =
+				createCanvasSurface({
+					width: Math.max(1, Math.round(transform.width)),
+					height: Math.max(1, Math.round(transform.height)),
+				});
+			drawMaskBody({
+				mask: authoredMask,
+				ctx: elementMaskCtx,
+				width: transform.width,
+				height: transform.height,
+			});
+			drawTransformedCanvas({
+				ctx: fullMaskCtx,
+				source: elementMaskCanvas,
+				transform,
 			});
 
-		switch (body.kind) {
-			case "fillPath": {
-				const path2d = body.buildPath({
-					resolvedParams: mask.params,
-					width: transform.width,
-					height: transform.height,
-				});
-				elementMaskCtx.fillStyle = "white";
-				elementMaskCtx.fill(path2d);
-				break;
+			if (stackPlan.steps[index]?.inverted) {
+				const { canvas: invertedCanvas, context: invertedCtx } =
+					createCanvasSurface({
+						width: canvasWidth,
+						height: canvasHeight,
+					});
+				invertedCtx.fillStyle = "white";
+				invertedCtx.fillRect(0, 0, canvasWidth, canvasHeight);
+				invertedCtx.globalCompositeOperation = "destination-out";
+				invertedCtx.drawImage(fullMaskCanvas, 0, 0);
+				invertedCtx.globalCompositeOperation = "source-over";
+				ctx.globalCompositeOperation =
+					stackPlan.steps[index]?.compositeOperation ?? "source-over";
+				ctx.drawImage(invertedCanvas, 0, 0);
+			} else {
+				ctx.globalCompositeOperation =
+					stackPlan.steps[index]?.compositeOperation ?? "source-over";
+				ctx.drawImage(fullMaskCanvas, 0, 0);
 			}
-			case "drawOpaque":
-				body.drawOpaque({
-					resolvedParams: mask.params,
-					ctx: elementMaskCtx,
-					width: Math.round(transform.width),
-					height: Math.round(transform.height),
-				});
-				break;
-			case "drawWithFeather":
-				if (usesOpaqueFastPath && body.opaqueFastPath) {
-					const path2d = body.opaqueFastPath.buildPath({
-						resolvedParams: mask.params,
-						width: transform.width,
-						height: transform.height,
-					});
-					elementMaskCtx.fillStyle = "white";
-					elementMaskCtx.fill(path2d);
-				} else {
-					body.drawWithFeather({
-						resolvedParams: mask.params,
-						ctx: elementMaskCtx,
-						width: Math.round(transform.width),
-						height: Math.round(transform.height),
-						feather: mask.params.feather,
-					});
-				}
-				break;
 		}
-
-		drawTransformedCanvas({ ctx, source: elementMaskCanvas, transform });
+		ctx.globalCompositeOperation = "source-over";
 	};
 	textures.set(maskTextureId, {
 		kind: "rendered",
@@ -470,22 +581,24 @@ function buildMaskArtifacts({
 		draw: drawMask,
 	});
 
-	const stroke = definition.renderer.stroke;
-	const hasStroke = mask.params.strokeWidth > 0 && Boolean(stroke);
-	let strokeLayer: FrameItemDescriptor | null = null;
-	if (hasStroke && stroke) {
-		const strokeTextureId = `${path}:mask-stroke`;
-		const strokeContentHash = `stroke:${mask.type}:${JSON.stringify(mask.params)}:${transformHash(transform)}:${canvasWidth}x${canvasHeight}:stroke=${stroke.kind}`;
+	const strokeLayers: FrameItemDescriptor[] = [];
+	for (let index = 0; index < masks.length; index++) {
+		const authoredMask = masks[index];
+		const definition = getMaskDefinition(authoredMask.type);
+		const stroke = definition.renderer.stroke;
+		if (authoredMask.params.strokeWidth <= 0 || !stroke) continue;
+		const strokeTextureId = `${path}:mask-stroke:${index}`;
+		const strokeContentHash = `stroke:${authoredMask.type}:${JSON.stringify(authoredMask.params)}:${transformHash(transform)}:${canvasWidth}x${canvasHeight}:stroke=${stroke.kind}`;
 		const drawStroke: TextureCanvasDrawFn = (ctx) => {
 			const { canvas: strokeCanvas, context: strokeCtx } = createCanvasSurface({
-				width: Math.round(transform.width),
-				height: Math.round(transform.height),
+				width: Math.max(1, Math.round(transform.width)),
+				height: Math.max(1, Math.round(transform.height)),
 			});
 
 			switch (stroke.kind) {
 				case "renderStroke":
 					stroke.renderStroke({
-						resolvedParams: mask.params,
+						resolvedParams: authoredMask.params,
 						ctx: strokeCtx,
 						width: transform.width,
 						height: transform.height,
@@ -493,12 +606,12 @@ function buildMaskArtifacts({
 					break;
 				case "strokeFromPath": {
 					const strokePath = stroke.buildStrokePath({
-						resolvedParams: mask.params,
+						resolvedParams: authoredMask.params,
 						width: transform.width,
 						height: transform.height,
 					});
-					strokeCtx.strokeStyle = mask.params.strokeColor;
-					strokeCtx.lineWidth = mask.params.strokeWidth;
+					strokeCtx.strokeStyle = authoredMask.params.strokeColor;
+					strokeCtx.lineWidth = authoredMask.params.strokeWidth;
 					strokeCtx.stroke(strokePath);
 					break;
 				}
@@ -514,7 +627,7 @@ function buildMaskArtifacts({
 			height: canvasHeight,
 			draw: drawStroke,
 		});
-		strokeLayer = {
+		strokeLayers.push({
 			type: "layer",
 			textureId: strokeTextureId,
 			transform: fullCanvasTransform(renderer),
@@ -522,17 +635,74 @@ function buildMaskArtifacts({
 			blendMode: "normal",
 			effectPassGroups: [],
 			mask: null,
-		};
+		});
 	}
 
 	return {
 		mask: {
 			textureId: maskTextureId,
-			feather,
-			inverted: mask.params.inverted,
+			feather: stackPlan.maxFeather,
+			inverted: false,
 		},
-		strokeLayer,
+		strokeLayers,
 	};
+}
+
+function drawMaskBody({
+	mask,
+	ctx,
+	width,
+	height,
+}: {
+	mask: Mask;
+	ctx: OffscreenCanvasRenderingContext2D;
+	width: number;
+	height: number;
+}): void {
+	const body = getMaskDefinition(mask.type).renderer.body;
+	const usesOpaqueFastPath =
+		body.kind === "drawWithFeather" &&
+		mask.params.feather === 0 &&
+		Boolean(body.opaqueFastPath);
+	switch (body.kind) {
+		case "fillPath": {
+			const path2d = body.buildPath({
+				resolvedParams: mask.params,
+				width,
+				height,
+			});
+			ctx.fillStyle = "white";
+			ctx.fill(path2d);
+			break;
+		}
+		case "drawOpaque":
+			body.drawOpaque({
+				resolvedParams: mask.params,
+				ctx,
+				width: Math.round(width),
+				height: Math.round(height),
+			});
+			break;
+		case "drawWithFeather":
+			if (usesOpaqueFastPath && body.opaqueFastPath) {
+				const path2d = body.opaqueFastPath.buildPath({
+					resolvedParams: mask.params,
+					width,
+					height,
+				});
+				ctx.fillStyle = "white";
+				ctx.fill(path2d);
+			} else {
+				body.drawWithFeather({
+					resolvedParams: mask.params,
+					ctx,
+					width: Math.round(width),
+					height: Math.round(height),
+					feather: mask.params.feather,
+				});
+			}
+			break;
+	}
 }
 
 function drawTransformedCanvas({

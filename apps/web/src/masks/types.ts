@@ -2,6 +2,7 @@ import type { ElementBounds } from "@/preview/element-bounds";
 import type { SnapLine } from "@/preview/preview-snap";
 import type { ParamDefinition } from "@/params";
 import type { FreeformPathPoint } from "@/masks/freeform/path";
+import type { MaskCombineMode } from "@/masks/stack";
 import type {
 	TextDecoration,
 	TextFontStyle,
@@ -131,7 +132,10 @@ export interface FreeformPathMask {
 	params: FreeformPathMaskParams;
 }
 
-export type Mask = BuiltinShapeMask | FreeformPathMask;
+export type Mask = (BuiltinShapeMask | FreeformPathMask) & {
+	/** Ordered boolean composition. The first mask always establishes the stack. */
+	combineMode?: MaskCombineMode;
+};
 
 export type MaskByType<TType extends MaskType> = Extract<Mask, { type: TType }>;
 export type MaskParamsByType<TType extends MaskType> =

@@ -1,8 +1,13 @@
 import { BaseNode } from "./base-node";
-import type { Effect, EffectPass } from "@/effects/types";
+import type {
+	CanvasEffectTreatment,
+	Effect,
+	EffectPass,
+} from "@/effects/types";
 import type { Mask } from "@/masks/types";
 import type { BlendMode, Transform } from "@/rendering";
 import type { RetimeConfig, VisualElement } from "@/timeline";
+import type { VisualAppearance } from "@/visual/appearance";
 
 export interface VisualNodeParams {
 	duration: number;
@@ -16,6 +21,7 @@ export interface VisualNodeParams {
 	blendMode?: BlendMode;
 	effects?: Effect[];
 	masks?: Mask[];
+	appearance: VisualAppearance;
 }
 
 export interface ResolvedVisualNodeState {
@@ -23,6 +29,8 @@ export interface ResolvedVisualNodeState {
 	transform: Transform;
 	opacity: number;
 	effectPasses: EffectPass[][];
+	canvasEffects: CanvasEffectTreatment[];
+	appearance: VisualAppearance;
 	/**
 	 * Masks with any keyframed parameters sampled at `localTime`. Resolved here
 	 * alongside transform and opacity so the compositor never has to decide

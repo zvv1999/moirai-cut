@@ -2,6 +2,7 @@
 
 import type { MaskableElement } from "@/timeline";
 import type { Mask, MaskType, TextMask } from "@/masks/types";
+import type { MaskCombineMode } from "@/masks/stack";
 import type { NumberParamDefinition, SelectParamDefinition } from "@/params";
 import {
 	buildDefaultMaskInstance,
@@ -41,11 +42,6 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
 	clamp,
 	formatNumberForDisplay,
 	getFractionDigitsForStep,
@@ -79,6 +75,8 @@ type MaskItemProps = {
 	mask: Mask;
 	previewParam: (key: string) => (value: number | string | boolean) => void;
 	onCommit: () => void;
+	isFirst: boolean;
+	onCombineModeChange: (mode: MaskCombineMode) => void;
 };
 
 type EmptyViewProps = {
@@ -93,6 +91,15 @@ type RegisteredMaskDefinition = ReturnType<typeof getMaskDefinition>;
 
 function isTextMask(mask: Mask): mask is TextMask {
 	return mask.type === "text";
+}
+
+function isMaskCombineMode(value: string): value is MaskCombineMode {
+	return (
+		value === "add" ||
+		value === "intersect" ||
+		value === "subtract" ||
+		value === "exclude"
+	);
 }
 
 function withPreviewedMaskParam({
@@ -145,7 +152,6 @@ export function MasksTab({ element, trackId }: MasksTabProps) {
 	);
 	const masks = element.masks ?? [];
 	const renderMasks = renderElement.masks ?? masks;
-	const hasMask = masks.length > 0;
 	const { onPointerLeave, onOpenChange, markCommitted } = useMenuPreview();
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 	const elementBounds = useMemo(() => {
@@ -176,7 +182,6 @@ export function MasksTab({ element, trackId }: MasksTabProps) {
 	]);
 
 	const handleDropdownOpenChange = (open: boolean) => {
-		if (hasMask && open) return;
 		setIsDropdownOpen(open);
 		onOpenChange(open);
 	};
@@ -189,6 +194,7 @@ export function MasksTab({ element, trackId }: MasksTabProps) {
 					elementId: element.id,
 					updates: {
 						masks: [
+							...masks,
 							buildDefaultMaskInstance({
 								maskType,
 								elementSize: elementBounds
@@ -216,6 +222,7 @@ export function MasksTab({ element, trackId }: MasksTabProps) {
 						elementId: element.id,
 						patch: {
 							masks: [
+								...masks,
 								buildDefaultMaskInstance({
 									maskType,
 									elementSize: elementBounds
@@ -251,40 +258,34 @@ export function MasksTab({ element, trackId }: MasksTabProps) {
 			previewUpdates({ masks: updatedMasks });
 		};
 
+	const updateCombineMode = ({
+		index,
+		mode,
+	}: {
+		index: number;
+		mode: MaskCombineMode;
+	}) => {
+		previewUpdates({
+			masks: renderMasks.map((mask, maskIndex) =>
+				maskIndex === index ? { ...mask, combineMode: mode } : mask,
+			),
+		});
+		commit();
+	};
+
 	return (
 		<div className="flex flex-col h-full">
 			<div className="border-b px-3.5 h-11 shrink-0 flex items-center justify-between gap-2">
 				<SectionTitle>Masks</SectionTitle>
 				<DropdownMenu
-					open={hasMask ? false : isDropdownOpen}
+					open={isDropdownOpen}
 					onOpenChange={handleDropdownOpenChange}
 				>
-					{hasMask ? (
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<span className="inline-flex">
-									<Button
-										variant="ghost"
-										size="icon"
-										disabled
-										aria-label="Add mask"
-									>
-										<HugeiconsIcon icon={PlusSignIcon} className="size-3.5!" />
-									</Button>
-								</span>
-							</TooltipTrigger>
-							<TooltipContent className="max-w-56 text-balance">
-								Only one mask is supported right now. If you need more,
-								duplicate the clip and apply a different mask to each copy.
-							</TooltipContent>
-						</Tooltip>
-					) : (
-						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" size="icon" aria-label="Add mask">
-								<HugeiconsIcon icon={PlusSignIcon} className="size-3.5!" />
-							</Button>
-						</DropdownMenuTrigger>
-					)}
+					<DropdownMenuTrigger asChild>
+						<Button variant="ghost" size="icon" aria-label="Add mask">
+							<HugeiconsIcon icon={PlusSignIcon} className="size-3.5!" />
+						</Button>
+					</DropdownMenuTrigger>
 					<DropdownMenuContent className="w-40" onPointerLeave={onPointerLeave}>
 						{maskDefs.map((definition) => (
 							<DropdownMenuItem
@@ -315,6 +316,10 @@ export function MasksTab({ element, trackId }: MasksTabProps) {
 							previewMaskParam({ index, key: paramKey })
 						}
 						onCommit={commit}
+						isFirst={index === 0}
+						onCombineModeChange={(mode) =>
+							updateCombineMode({ index, mode })
+						}
 					/>
 				))
 			)}
@@ -328,6 +333,8 @@ function MaskItem({
 	mask,
 	previewParam,
 	onCommit,
+	isFirst,
+	onCombineModeChange,
 }: MaskItemProps) {
 	const editor = useEditor();
 	const definition = getMaskDefinition(mask.type);
@@ -378,6 +385,28 @@ function MaskItem({
 				</div>
 			</SectionHeader>
 			<SectionContent>
+				<SectionField label="Combine">
+					<Select
+						value={isFirst ? "base" : (mask.combineMode ?? "add")}
+						disabled={isFirst}
+						onValueChange={(value) => {
+							if (isMaskCombineMode(value)) {
+								onCombineModeChange(value);
+							}
+						}}
+					>
+						<SelectTrigger aria-label={`${definition.name} combine mode`}>
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{isFirst ? <SelectItem value="base">Base mask</SelectItem> : null}
+							<SelectItem value="add">Add</SelectItem>
+							<SelectItem value="intersect">Intersect</SelectItem>
+							<SelectItem value="subtract">Subtract</SelectItem>
+							<SelectItem value="exclude">Exclude</SelectItem>
+						</SelectContent>
+					</Select>
+				</SectionField>
 				<MaskParamsFields
 					mask={mask}
 					definition={definition}

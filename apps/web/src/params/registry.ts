@@ -160,6 +160,102 @@ const visualElementParams: ElementParamDefinition[] = [
 	},
 ];
 
+const mediaGeometryParams: ElementParamDefinition[] = [
+	{
+		key: "geometry.mirrorX",
+		label: "Mirror Horizontally",
+		type: "boolean",
+		default: false,
+		keyframable: false,
+	},
+	{
+		key: "geometry.mirrorY",
+		label: "Mirror Vertically",
+		type: "boolean",
+		default: false,
+		keyframable: false,
+	},
+	...(["left", "right", "top", "bottom"] as const).map(
+		(side): ElementParamDefinition => ({
+			key: `crop.${side}`,
+			label: `Crop ${side[0].toUpperCase()}${side.slice(1)} (%)`,
+			type: "number",
+			default: 0,
+			min: 0,
+			max: 49.5,
+			step: 0.5,
+		}),
+	),
+	{
+		key: "geometry.cornerRadius",
+		label: "Corner Radius (%)",
+		type: "number",
+		default: 0,
+		min: 0,
+		max: 50,
+		step: 1,
+	},
+	{
+		key: "geometry.shadow.enabled",
+		label: "Shadow",
+		type: "boolean",
+		default: false,
+		keyframable: false,
+	},
+	{
+		key: "geometry.shadow.color",
+		label: "Shadow Color",
+		type: "color",
+		default: "#00000080",
+		dependencies: [{ param: "geometry.shadow.enabled", equals: true }],
+	},
+	{
+		key: "geometry.shadow.blur",
+		label: "Shadow Blur",
+		type: "number",
+		default: 0,
+		min: 0,
+		max: 200,
+		step: 1,
+		dependencies: [{ param: "geometry.shadow.enabled", equals: true }],
+	},
+	{
+		key: "geometry.shadow.offsetX",
+		label: "Shadow Offset X",
+		type: "number",
+		default: 0,
+		min: -500,
+		max: 500,
+		step: 1,
+		dependencies: [{ param: "geometry.shadow.enabled", equals: true }],
+	},
+	{
+		key: "geometry.shadow.offsetY",
+		label: "Shadow Offset Y",
+		type: "number",
+		default: 8,
+		min: -500,
+		max: 500,
+		step: 1,
+		dependencies: [{ param: "geometry.shadow.enabled", equals: true }],
+	},
+	{
+		key: "geometry.stroke.width",
+		label: "Stroke Width",
+		type: "number",
+		default: 0,
+		min: 0,
+		max: 200,
+		step: 1,
+	},
+	{
+		key: "geometry.stroke.color",
+		label: "Stroke Color",
+		type: "color",
+		default: "#ffffff",
+	},
+];
+
 const audioElementParams: ElementParamDefinition[] = [
 	{
 		key: "volume",
@@ -377,9 +473,16 @@ export const elementParamRegistry = new DefinitionRegistry<
 
 elementParamRegistry.register({
 	key: "video",
-	definition: [...visualElementParams, ...audioElementParams],
+	definition: [
+		...visualElementParams,
+		...mediaGeometryParams,
+		...audioElementParams,
+	],
 });
-elementParamRegistry.register({ key: "image", definition: visualElementParams });
+elementParamRegistry.register({
+	key: "image",
+	definition: [...visualElementParams, ...mediaGeometryParams],
+});
 elementParamRegistry.register({
 	key: "text",
 	definition: [...textElementParams, ...visualElementParams],
@@ -390,7 +493,7 @@ elementParamRegistry.register({
 });
 elementParamRegistry.register({
 	key: "graphic",
-	definition: visualElementParams,
+	definition: [...visualElementParams, ...mediaGeometryParams],
 });
 elementParamRegistry.register({ key: "audio", definition: audioElementParams });
 elementParamRegistry.register({ key: "effect", definition: [] });

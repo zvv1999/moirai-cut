@@ -1,8 +1,13 @@
 import { createCanvasSurface } from "./canvas-utils";
-import { effectsRegistry, resolveEffectPasses } from "@/effects";
+import {
+	effectsRegistry,
+	resolveCanvasEffectTreatment,
+	resolveEffectPasses,
+} from "@/effects";
 import { buildDefaultParamValues } from "@/params/registry";
 import type { ParamValues } from "@/params";
 import { gpuRenderer } from "./gpu-renderer";
+import { drawCanvasEffectSource } from "@/visual/render-appearance";
 
 const PREVIEW_SIZE = 160;
 const PREVIEW_IMAGE_PATH = "/effects/preview.jpg";
@@ -57,6 +62,20 @@ class EffectPreviewService {
 				Object.keys(params).length > 0
 					? params
 					: buildDefaultParamValues(definition.params);
+			const canvasTreatment = resolveCanvasEffectTreatment({
+				definition,
+				effectParams: resolvedParams,
+			});
+			if (canvasTreatment) {
+				drawCanvasEffectSource({
+					ctx: targetCtx,
+					source,
+					width: size,
+					height: size,
+					canvasEffects: [canvasTreatment],
+				});
+				return;
+			}
 
 			const passes = resolveEffectPasses({
 				definition,

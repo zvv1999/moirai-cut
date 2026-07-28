@@ -65,12 +65,23 @@ const REQUIRED_SOURCE = {
 const DEFAULT_DURATION_TICKS = 5 * TICKS_PER_SECOND;
 
 /**
- * Mirrors the effect registry (effects/definitions/index.ts). Only `blur` is
- * registered today; its defaults come from buildDefaultParamValues over the
- * definition's params, so they must match blur.ts exactly.
+ * Mirrors the effect registry (effects/definitions/index.ts). Defaults come
+ * from buildDefaultParamValues over each definition's params, so they must
+ * remain compatible with the editor registry.
  */
 const EFFECT_DEFINITIONS = {
   blur: { intensity: 15 },
+  "color-grade": {
+    exposure: 0,
+    contrast: 0,
+    temperature: 0,
+    saturation: 0,
+    highlights: 0,
+    shadows: 0,
+    curve: 0,
+    lutStrength: 100,
+    lutSource: "",
+  },
 };
 
 /** Effects attach to visual elements only — VISUAL_ELEMENT_TYPES. */
@@ -106,6 +117,11 @@ const KEYFRAMABLE_PARAMS = {
   "background.paddingY": { min: 0, max: null, step: 1 },
   "background.offsetX": { min: -100000, max: null, step: 1 },
   "background.offsetY": { min: -100000, max: null, step: 1 },
+  "geometry.cornerRadius": { min: 0, max: 50, step: 1 },
+  "geometry.shadow.blur": { min: 0, max: 200, step: 1 },
+  "geometry.shadow.offsetX": { min: -500, max: 500, step: 1 },
+  "geometry.shadow.offsetY": { min: -500, max: 500, step: 1 },
+  "geometry.stroke.width": { min: 0, max: 200, step: 1 },
 };
 
 /** Exported for the drift test that re-parses the editor's registry. */
