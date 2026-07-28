@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">29</strong>
+							<strong class="metric__value">34</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">458</strong>
+							<strong class="metric__value">464</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">32</strong>
+							<strong class="metric__value">38</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -221,6 +221,150 @@
 								<h3>淡入淡出拥有同一套实时状态</h3>
 								<p>
 									时间线手柄、遮罩斜线和数值字段共享预览感知元素；输入数值会移动手柄，反向拖动也会更新检查器。窗口级指针生命周期避免重渲染中断拖拽，嵌套按钮导致的两条水合 Issues 已归零，验收后 Fade In 已持久化恢复为 0。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/A03-loudness-analysis.png"
+								data-lightbox-label="A03 真实配乐响度、峰值与安全标准化"
+							>
+								<img
+									src="assets/screenshots/A03-loudness-analysis.png"
+									alt="OpenCut Audio workbench 显示真实配乐的综合响度、峰值、削波样本和安全增益建议"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">A03 · LOUDNESS & PEAKS</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>标准化先看峰值余量，再决定增益</h3>
+								<p>
+									46.3 秒真实 WAV 在浏览器本地测得 −23.6 LUFS 与 −1.5 dBFS。目标差距虽有 9.6 dB，工作台仍按峰值上限建议 +0.5 dB，并把削波警告和“源文件不被改写”写在操作旁；写入后可由同一命令历史完整撤销。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/A04-source-audio-recovery.png"
+								data-lightbox-label="A04 可识别生成伴音的源音频分离与恢复"
+							>
+								<img
+									src="assets/screenshots/A04-source-audio-recovery.png"
+									alt="OpenCut 源音频区域显示已分离状态、已找到生成伴音，并提供恢复并删除伴音按钮"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">A04 · SOURCE AUDIO</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>恢复不再留下第二份声音</h3>
+								<p>
+									分离时写入稳定来源地址；恢复会把音量、动画与处理参数带回视频，并只删除对应生成伴音。真实工程验证时间线音频片段从 1→2→1，残留伴音为 0；若伴音已经发生时间漂移，界面会阻止恢复而不是静默丢编辑。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/A05-processing-chain.png"
+								data-lightbox-label="A05 可逆降噪、人声增强、声道和平衡增益"
+							>
+								<img
+									src="assets/screenshots/A05-processing-chain.png"
+									alt="OpenCut 音频处理链启用降噪和人声增强，并显示声道平衡与处理增益"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">A05 · PROCESSING CHAIN</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>预览与导出共用一条非破坏处理链</h3>
+								<p>
+									降噪、人声增强、声道平衡和独立处理增益都保存在片段参数中；实时播放通过 Web Audio 节点，最终混音走相同设置。真实工程连续启用两项处理后分别撤销，持久化参数精确回到基线。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/A06-waveform-cache.png"
+								data-lightbox-label="A06 波形缓存复用和可视区渲染诊断"
+							>
+								<img
+									src="assets/screenshots/A06-waveform-cache.png"
+									alt="OpenCut 波形性能区域显示缓存源、命中、构建和错误计数"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">A06 · WAVEFORM CACHE</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>长音频只分析一次，只绘制眼前范围</h3>
+								<p>
+									同一源的并发分析被合并成一个 Promise，后续片段直接复用摘要；滚动、缩放和修剪只重新采样当前可视区。诊断区公开缓存数、命中、构建和错误，并允许仅重建当前波形。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/A07-voice-over-input.png"
+								data-lightbox-label="A07 输入设备与倒计时"
+							>
+								<img
+									src="assets/screenshots/A07-voice-over-input.png"
+									alt="OpenCut 配音录制区域识别 Microphone 1，并提供无倒计时、3 秒和 5 秒三种选择"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">A07 · INPUT & COUNT-IN</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>设备和准备节奏在录音前就能确认</h3>
+								<p>
+									工作台实时枚举输入设备，真实浏览器识别到 Microphone 1；0、3、5 秒倒计时始终可见，默认 3 秒状态明确高亮。设备变化会自动刷新，录音进行中则锁定配置避免中途切源。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/A07-voice-over-ready.png"
+								data-lightbox-label="A07 配音设备、倒计时、电平与播放头落位"
+							>
+								<img
+									src="assets/screenshots/A07-voice-over-ready.png"
+									alt="OpenCut 配音录制区域识别 Microphone 1，提供倒计时、电平表和在播放头录制按钮"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">A07 · VOICE-OVER</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>录音从设备选择一直走到可撤销落位</h3>
+								<p>
+									可选择输入设备和 0/3/5 秒倒计时，电平表只监看输入以避免回授；停止后生成顺序命名的 take，并把媒体导入与时间线落位合成一个原子命令。验收识别到 Microphone 1；为避免后台意外收录环境声，没有在自动测试中启动真实采集。
 								</p>
 							</div>
 						</article>
@@ -956,6 +1100,15 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>A03–A07</strong></td>
+									<td><code>1dc3446</code> RED + <code>e71c53c</code> GREEN + <code>0e226a7</code> 窄栏修复</td>
+									<td>目标 9/9；全量 464/464、1013 断言；TypeScript / ESLint / 干净生产构建通过</td>
+									<td>
+										真实 WAV −23.6 LUFS / −1.5 dBFS / +0.5 dB 建议；标准化和两项处理均撤销；源音频 1→2→1 且伴音归零；识别 Microphone 1、倒计时和电平入口；验收改动已恢复
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>A01 / A02</strong></td>
 									<td><code>3773a24</code> RED + <code>386bab2</code> GREEN</td>

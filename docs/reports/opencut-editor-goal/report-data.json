@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 29,
-		"automatedTestsPassing": 458,
-		"archivedScreenshots": 32
+		"greenCapabilities": 34,
+		"automatedTestsPassing": 464,
+		"archivedScreenshots": 38
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -35,12 +35,45 @@
 		"T08",
 		"A01",
 		"A02",
+		"A03",
+		"A04",
+		"A05",
+		"A06",
+		"A07",
 		"G01",
 		"G04",
 		"G06",
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": [
+				"A03",
+				"A04",
+				"A05",
+				"A06",
+				"A07"
+			],
+			"redCommits": [
+				"1dc3446"
+			],
+			"greenCommit": "e71c53c",
+			"result": "The Audio workbench now combines local loudness and peak analysis, peak-safe non-destructive normalization, reversible denoise/voice/balance/gain processing, lossless source-audio separation recovery, waveform cache diagnostics, and a complete voice-over capture surface. Preview and export share the same processing and dynamic-gain model. Generated source companions carry a stable origin address; recovery copies audio edits back, removes only that companion, and blocks drifted clips rather than losing work.",
+			"tests": {
+				"targeted": "9/9 focused loudness, processing, voice-over state, source recovery, cache, and fade tests",
+				"fullSuite": "464/464 with 1013 expectations from the repository root and required WASM preload",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation for all 18 static pages in a clean worktree"
+			},
+			"browserVerification": "The real 46.3-second WAV measured -23.6 LUFS and -1.5 dBFS with a peak-safe +0.5 dB suggestion. Normalization and both processing toggles were applied and undone through command history. The first real video separated and recovered as 1 to 2 to 1 timeline audio elements with zero generated companions remaining, then all verification changes were restored. The recorder enumerated Microphone 1 and exposed count-in and metering; capture was not started to avoid ambient recording without dedicated consent.",
+			"screenshots": [
+				"assets/screenshots/A03-loudness-analysis.png",
+				"assets/screenshots/A04-source-audio-recovery.png",
+				"assets/screenshots/A05-processing-chain.png",
+				"assets/screenshots/A06-waveform-cache.png",
+				"assets/screenshots/A07-voice-over-input.png",
+				"assets/screenshots/A07-voice-over-ready.png"
+			]
+		},
 		{
 			"featureIds": [
 				"A01",
