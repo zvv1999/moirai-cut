@@ -47,5 +47,8 @@ describe("TimelineElementInteractionShell", () => {
 		expect(html).toContain(
 			'class="absolute inset-x-0 bottom-0 z-20"',
 		);
+		expect(html).toContain(
+			'class="absolute inset-x-0 top-0 flex overflow-hidden rounded-sm"',
+		);
 	});
 });
