@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 49,
-		"automatedTestsPassing": 489,
-		"archivedScreenshots": 53
+		"greenCapabilities": 53,
+		"automatedTestsPassing": 498,
+		"archivedScreenshots": 57
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -55,12 +55,34 @@
 		"V06",
 		"V07",
 		"V08",
+		"R01",
+		"R02",
+		"R03",
+		"R04",
 		"G01",
 		"G04",
 		"G06",
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["R01", "R02", "R03", "R04"],
+			"redCommits": ["cfc79df"],
+			"greenCommit": "b0cbfb7",
+			"result": "Continuous autosave now publishes dirty, saving, saved, and error states, retains failed work for explicit retry, and fails closed on disk conflicts. Interrupted sessions offer an explicit recovery choice. History supports named snapshots, compare, forward-only restore, and independent version duplication. Human command history exposes labelled undo and redo depth while restoring selection deterministically.",
+			"tests": {
+				"targeted": "15/15 focused tests with 35 expectations",
+				"fullSuite": "Web 415/415 with 1104 expectations, MCP 58/58, and ESLint custom rules 25/25 for 498 repository-relevant tests",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation for all 18 static pages at b0cbfb7 in a clean worktree using Node 24"
+			},
+			"browserVerification": "On the real project, duplicate immediately produced Unsaved changes and autosaved at revision 408; undo then saved at revision 409 with Redo Duplicate Elements visible. Named Reliability baseline, duplicated it into independent revision-one project 5f3e1650…, and verified its media reused safe hard links before deleting the temporary project. Closing during the debounce window produced a real 407-to-409 crash-recovery choice. A real multi-tab conflict led to the two-step disk-version review path and a retry regression. Exact compare-and-swap cleanup restored the revision-400 payload at revision 410 except revision and updatedAt.",
+			"screenshots": [
+				"assets/screenshots/R01-continuous-autosave.png",
+				"assets/screenshots/R02-crash-recovery-choice.png",
+				"assets/screenshots/R03-version-history-duplicate.png",
+				"assets/screenshots/R04-shared-undo-redo.png"
+			]
+		},
 		{
 			"featureIds": ["V05", "V06", "V07", "V08"],
 			"redCommits": ["ffae1bb"],

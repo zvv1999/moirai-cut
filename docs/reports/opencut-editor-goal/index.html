@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">49</strong>
+							<strong class="metric__value">53</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">489</strong>
+							<strong class="metric__value">498</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">53</strong>
+							<strong class="metric__value">57</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,106 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/R01-continuous-autosave.png"
+								data-lightbox-label="R01 连续自动保存与明确状态"
+							>
+								<img
+									src="assets/screenshots/R01-continuous-autosave.png"
+									alt="OpenCut 历史面板显示连续自动保存到 revision 408 以及可撤销的复制操作"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">R01 · CONTINUOUS AUTOSAVE</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>保存成为持续且可观察的后台状态</h3>
+								<p>
+									编辑后立即显示未保存，再经过防抖自动写入；保存中、已保存、失败和磁盘冲突都有明确反馈，失败内容保留并允许安全重试。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/R02-crash-recovery-choice.png"
+								data-lightbox-label="R02 中断会话恢复选择"
+							>
+								<img
+									src="assets/screenshots/R02-crash-recovery-choice.png"
+									alt="OpenCut 崩溃恢复对话框允许保留 recovery revision 409 或恢复 revision 407"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">R02 · CRASH RECOVERY</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>意外关闭后由用户决定恢复方向</h3>
+								<p>
+									未正常结束的会话会比较打开版本与最后自动保存版本，并明确提供“保留恢复内容”或“恢复会话前版本”；恢复仍向前创建新
+									revision。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/R03-version-history-duplicate.png"
+								data-lightbox-label="R03 命名版本与独立复制"
+							>
+								<img
+									src="assets/screenshots/R03-version-history-duplicate.png"
+									alt="OpenCut 历史面板显示 Reliability baseline 命名版本及 Duplicate 操作"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">R03 · VERSION HISTORY</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>任意历史版本可比较、恢复或分叉</h3>
+								<p>
+									最新 50
+									个自动或命名版本保持可浏览；恢复前先比较并使用并发修订检查，Duplicate
+									直接生成 revision-one 独立工程且复用安全的不可变媒体。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/R04-shared-undo-redo.png"
+								data-lightbox-label="R04 可解释的共享撤销与重做"
+							>
+								<img
+									src="assets/screenshots/R04-shared-undo-redo.png"
+									alt="OpenCut 历史面板显示 Redo Duplicate Elements 及撤销重做深度"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">R04 · UNDO / REDO INTEGRITY</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>历史记录说明下一步会撤销什么</h3>
+								<p>
+									人类与 Agent
+									继续共享命令语义；历史面板公开可读标签、撤销/重做深度，并在往返操作时确定性恢复相关选择。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -1516,6 +1616,22 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>R01–R04</strong></td>
+									<td><code>cfc79df</code> RED + <code>b0cbfb7</code> GREEN</td>
+									<td>
+										目标 15/15、35 断言；Web 415/415、1104 断言；MCP 58/58；规则
+										25/25；共 498 项；TypeScript / ESLint / Node 24
+										干净生产构建通过
+									</td>
+									<td>
+										真实工程完成未保存→revision 408 自动保存、撤销→revision
+										409；命名并复制独立 revision-one 工程；关闭防抖窗口复现
+										407→409 恢复选择；多标签并发冲突推动双确认磁盘版本处理；最终
+										revision 410 精确恢复原工程内容
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>V05–V08</strong></td>
 									<td><code>ffae1bb</code> RED + <code>f98f392</code> GREEN</td>
