@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 22,
-		"automatedTestsPassing": 433,
-		"archivedScreenshots": 23
+		"greenCapabilities": 23,
+		"automatedTestsPassing": 437,
+		"archivedScreenshots": 24
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -27,6 +27,7 @@
 		"M07",
 		"T01",
 		"T02",
+		"T03",
 		"T07",
 		"G01",
 		"G04",
@@ -34,6 +35,19 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["T03"],
+			"redCommits": ["8f40359"],
+			"greenCommit": "ff88630",
+			"result": "Markers now persist stable IDs, names, notes, colours, duration ranges, timeline or clip scope, and optional clip addresses. The marker manager adds playhead and full-clip ranges, exposes ID prefixes, navigates previous or next, and deletes through history. Agent state, in-page operations, and MCP document operations can address markers by stable ID while retaining legacy time fallback.",
+			"tests": {
+				"targeted": "4/4 new model tests plus MCP document, schema-drift, and agent-manager regressions",
+				"fullSuite": "437/437 from the repository root with the required WASM test preload",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
+			},
+			"browserVerification": "The real project received a coloured Beat change timeline marker with note and a full-span clip marker. Previous/Next navigated 1.40s to 0.00s and back, refresh retained both IDs and names, and deleting both followed by global undo/redo restored 2 then 0. The persisted project ended with zero verification markers.",
+			"screenshots": ["assets/screenshots/T03-markers-ranges.png"]
+		},
 		{
 			"featureIds": ["T02"],
 			"redCommits": ["873eba8"],

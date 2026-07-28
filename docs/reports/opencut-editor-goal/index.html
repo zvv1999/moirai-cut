@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">22</strong>
+							<strong class="metric__value">23</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">433</strong>
+							<strong class="metric__value">437</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">23</strong>
+							<strong class="metric__value">24</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,32 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/T03-markers-ranges.png"
+								data-lightbox-label="T03 可寻址标记与片段范围"
+							>
+								<img
+									src="assets/screenshots/T03-markers-ranges.png"
+									alt="OpenCut 标记管理器显示一个绑定片段的绿色范围标记和一个橙色 Beat change 时间线标记，并展示作用域、时间和稳定 ID 前缀"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">T03 · MARKERS & RANGES</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>标记既是人的注释，也是 Agent 的稳定地址</h3>
+								<p>
+									管理器同时展示片段范围与时间线标记的名称、颜色、时间、作用域和 ID
+									前缀。真实工程验证了备注、前后导航、刷新持久化，以及删除后的全局撤销/重做；MCP
+									与页面操作均支持按稳定 ID 更新。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -738,6 +764,15 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>T03</strong></td>
+									<td><code>8f40359</code> RED + <code>ff88630</code> GREEN</td>
+									<td>目标 4/4 + MCP/Agent 回归；全量 437/437；TypeScript / 新模块 ESLint / 生产构建通过</td>
+									<td>
+										时间线与片段范围各 1 个；命名、备注、颜色、ID、0.00/1.40s 导航、刷新持久化；删除后撤销 2、重做 0，工程已清理
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>T02</strong></td>
 									<td><code>873eba8</code> RED + <code>f72d2f0</code> GREEN</td>
