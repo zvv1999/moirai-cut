@@ -38,7 +38,7 @@
 						再用共享原子命令、计划预览和可审查变更形成 Agent 原生优势。
 					</p>
 					<div class="hero__meta">
-						<span class="status status--building">ACTIVE · M5</span>
+						<span class="status status--building">ACTIVE · M6</span>
 						<span class="pill">分支 feat/agent-drivable</span>
 						<span class="pill">目标 019fa427…914f</span>
 						<span class="pill">证据随每批实现持续更新</span>
@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">57</strong>
+							<strong class="metric__value">64</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">506</strong>
+							<strong class="metric__value">513</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">61</strong>
+							<strong class="metric__value">68</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -142,7 +142,7 @@
 									自动保存、恢复、版本、健康检查、性能、后台任务与完整导出流。
 								</p>
 							</div>
-							<span class="status status--building">ACTIVE</span>
+							<span class="status status--green">DONE</span>
 						</article>
 						<article class="milestone">
 							<span class="milestone__id">M6</span>
@@ -150,7 +150,7 @@
 								<h3>Agent 原生剪辑</h3>
 								<p>计划预览、变更审查、语义编辑、共享撤销与视觉质检。</p>
 							</div>
-							<span class="status status--todo">TODO</span>
+							<span class="status status--building">ACTIVE</span>
 						</article>
 						<article class="milestone">
 							<span class="milestone__id">M7</span>
@@ -177,6 +177,183 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/E01-platform-presets.png"
+								data-lightbox-label="E01 可编辑平台预设"
+							>
+								<img
+									src="assets/screenshots/E01-platform-presets.png"
+									alt="OpenCut 导出工作台展示源尺寸、横版、竖版、方形、4K 与透明 WebM 预设"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">E01 · PLATFORM PRESETS</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>平台预设只是可编辑起点</h3>
+								<p>
+									源尺寸、横版、竖版、方形、YouTube 4K 和透明 WebM
+									均可一键选择，同时保留全部真实编码参数供继续修改。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/E02-advanced-encoding-estimates.png"
+								data-lightbox-label="E02 高级编码与能力检测"
+							>
+								<img
+									src="assets/screenshots/E02-advanced-encoding-estimates.png"
+									alt="OpenCut 显示容器、分辨率、帧率、编解码器、码率、Alpha 与硬件能力检测"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">E02 · ADVANCED ENCODING</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>编码能力透明且失败关闭</h3>
+								<p>
+									容器、尺寸、FPS、视频与音频编码器、码率、Alpha
+									和硬件偏好均显式可见；当前浏览器缺少 VideoEncoder
+									时直接阻止导出而不是伪装成功。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/E03-export-preflight.png"
+								data-lightbox-label="E03 三帧导出预检"
+							>
+								<img
+									src="assets/screenshots/E03-export-preflight.png"
+									alt="OpenCut 导出预检完成工程健康检查并成功渲染三个代表帧"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">E03 · PREFLIGHT</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>先检查工程，再支付完整编码成本</h3>
+								<p>
+									同一次预检合并工程健康、首中尾三个真实渲染样本与编码能力检查；
+									本次 3/3 帧通过，仅留下可解释的环境编码器阻断。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/E04-size-time-estimates.png"
+								data-lightbox-label="E04 区间大小与耗时预估"
+							>
+								<img
+									src="assets/screenshots/E04-size-time-estimates.png"
+									alt="OpenCut 对 0.5 秒选择区间显示约 766.5 KB 与约 1 秒渲染预估"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">E04 · SIZE / TIME ESTIMATES</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>范围、大小与时间预估有依据</h3>
+								<p>
+									输出区间受工程时长约束，文件大小由所选码率计算，渲染耗时由像素吞吐估算，
+									并始终标注为规划参考而非确定承诺。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/E05-component-exports.png"
+								data-lightbox-label="E05 组件与分轨导出"
+							>
+								<img
+									src="assets/screenshots/E05-component-exports.png"
+									alt="OpenCut 组件导出列出完整混音、两个分轨、字幕、当前帧、透明视频与选择区间"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">E05 · COMPONENT EXPORTS</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>交付物不再只有一条成片</h3>
+								<p>
+									完整 WAV 混音、逐轨 WAV、WebVTT、当前帧 PNG、透明 WebM
+									和选择区间各自可导出；没有字幕提示时诚实禁用对应输出。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/E06-batch-export-queue.png"
+								data-lightbox-label="E06 批量导出队列"
+							>
+								<img
+									src="assets/screenshots/E06-batch-export-queue.png"
+									alt="OpenCut 批量队列显示一个重试到第二次的待执行任务与一个独立失败任务"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">E06 · BATCH EXPORT</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>预设、范围和工程版本各自保留状态</h3>
+								<p>
+									队列按顺序执行并锁定开始时
+									revision；一个任务失败后可独立重试为 attempt
+									2，不改变另一个任务的错误、进度与设置。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/E07-export-history.png"
+								data-lightbox-label="E07 导出历史与重跑"
+							>
+								<img
+									src="assets/screenshots/E07-export-history.png"
+									alt="OpenCut 导出历史保留 WebM 与 MP4 的版本、尺寸、错误和原设置重跑结果"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">E07 · EXPORT HISTORY</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>结果、错误、文件状态和设置都可追溯</h3>
+								<p>
+									有界历史保存版本、格式、尺寸、目标文件、字节数与错误；重跑复用原设置，
+									而文件可用性只在磁盘精确确认后才显示为可用。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -1716,6 +1893,22 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>E01–E07</strong></td>
+									<td><code>449b9e1</code> RED + <code>f0ddb4b</code> GREEN</td>
+									<td>
+										目标 7/7、20 断言；Web 430/430、1144 断言；MCP 58/58；规则
+										25/25；共 513 项；TypeScript / ESLint / Node 24
+										干净生产构建与 18 个静态页面通过
+									</td>
+									<td>
+										真实 47.70 秒工程完成 3/3 代表帧预检；内置浏览器没有
+										VideoEncoder 时 AVC/VP9 均被明确阻止；两个队列任务独立失败，
+										其中一个重试到 attempt 2，历史按原 WebM 设置重跑；组件导出、
+										范围预估和精确文件清理均已验收
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>R05–R08</strong></td>
 									<td><code>0221846</code> RED + <code>7585b64</code> GREEN</td>

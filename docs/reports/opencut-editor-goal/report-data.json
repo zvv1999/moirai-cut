@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 57,
-		"automatedTestsPassing": 506,
-		"archivedScreenshots": 61
+		"greenCapabilities": 64,
+		"automatedTestsPassing": 513,
+		"archivedScreenshots": 68
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -63,12 +63,40 @@
 		"R06",
 		"R07",
 		"R08",
+		"E01",
+		"E02",
+		"E03",
+		"E04",
+		"E05",
+		"E06",
+		"E07",
 		"G01",
 		"G04",
 		"G06",
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["E01", "E02", "E03", "E04", "E05", "E06", "E07"],
+			"redCommits": ["449b9e1"],
+			"greenCommit": "f0ddb4b",
+			"result": "The human export surface is now a five-tab workspace with editable source, landscape, vertical, square, 4K, and transparent presets; explicit encoding and hardware controls; bounded selected ranges; evidence-labelled estimates; project-health plus three-frame render preflight; component outputs; revision-bound sequential batch jobs; and persistent history with exact file availability and settings-preserving reruns. The renderer applies custom dimensions, codecs, bitrates, alpha, hardware preference, and range-rebased video and audio timestamps, while safe unique destination names prevent queue collisions.",
+			"tests": {
+				"targeted": "7/7 focused export-workflow tests with 20 expectations",
+				"fullSuite": "Web 430/430 with 1144 expectations, MCP 58/58, and ESLint custom rules 25/25 for 513 repository-relevant tests",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation for all 18 static pages at f0ddb4b in a clean worktree using Node 24"
+			},
+			"browserVerification": "On the real 47.70-second, 31-clip project, preflight rendered 3/3 representative frames and found only the in-app browser environment's absent VideoEncoder. The UI correctly blocked AVC and VP9, kept two independent failed queue items, retried one as attempt 2 without disturbing the other, and reran the original WebM settings from history. Components exposed a PNG still, audio mix, two stems, transparent video, and selected range while honestly disabling caption export for zero cues. A 2-byte PUT/list/DELETE smoke output returned HTTP 404 after exact cleanup. The live project remained equal to the revision-400 baseline except revision and updatedAt, at revision 429.",
+			"screenshots": [
+				"assets/screenshots/E01-platform-presets.png",
+				"assets/screenshots/E02-advanced-encoding-estimates.png",
+				"assets/screenshots/E03-export-preflight.png",
+				"assets/screenshots/E04-size-time-estimates.png",
+				"assets/screenshots/E05-component-exports.png",
+				"assets/screenshots/E06-batch-export-queue.png",
+				"assets/screenshots/E07-export-history.png"
+			]
+		},
 		{
 			"featureIds": ["R05", "R06", "R07", "R08"],
 			"redCommits": ["0221846"],
