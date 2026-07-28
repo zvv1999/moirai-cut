@@ -571,7 +571,7 @@ function ElementInner({
 			>
 				<div
 					className={cn(
-						"absolute inset-0 overflow-hidden rounded-sm",
+						"absolute inset-0 rounded-sm",
 						isExpanded && "bg-background",
 					)}
 				>

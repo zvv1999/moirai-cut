@@ -20,7 +20,7 @@ export function TimelineElementInteractionShell({
 			<button
 				type="button"
 				tabIndex={-1}
-				className="absolute inset-x-0 top-0 flex"
+				className="absolute inset-x-0 top-0 flex overflow-hidden rounded-sm"
 				style={{ height: `${baseTrackHeight}px` }}
 				onClick={onClick}
 				onMouseDown={onMouseDown}
@@ -29,7 +29,7 @@ export function TimelineElementInteractionShell({
 			</button>
 			{expandedContent && (
 				<div
-					className="absolute inset-x-0 bottom-0"
+					className="absolute inset-x-0 bottom-0 z-20"
 					style={{ top: `${baseTrackHeight}px` }}
 				>
 					{expandedContent}
