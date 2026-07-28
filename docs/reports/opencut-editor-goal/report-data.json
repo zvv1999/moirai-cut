@@ -5,14 +5,15 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 10,
-		"automatedTestsPassing": 371,
-		"archivedScreenshots": 8
+		"greenCapabilities": 11,
+		"automatedTestsPassing": 378,
+		"archivedScreenshots": 9
 	},
 	"greenFeatureIds": [
 		"W01",
 		"W02",
 		"W03",
+		"W04",
 		"W06",
 		"M02",
 		"T07",
@@ -22,6 +23,21 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["W04"],
+			"redCommits": ["64897bf"],
+			"greenCommit": "6487908",
+			"result": "The preview toolbar now exposes exact previous and next frame stepping, play and pause, timeline start and end, loop playback, five playback speeds, and three persisted preview-cadence modes. Audio scheduling follows the selected playback rate.",
+			"tests": {
+				"targeted": "7/7",
+				"fullSuite": "378/378",
+				"functionCoverage": "100% for the transport timing core",
+				"lineCoverage": "98.75% for the transport timing core"
+			},
+			"screenshots": [
+				"assets/screenshots/W04-playback-transport-controls.png"
+			]
+		},
 		{
 			"featureIds": ["W03"],
 			"redCommits": ["c9f6ac8", "d50740a"],

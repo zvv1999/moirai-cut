@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">10</strong>
+							<strong class="metric__value">11</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">371</strong>
+							<strong class="metric__value">378</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">8</strong>
+							<strong class="metric__value">9</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,30 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/W04-playback-transport-controls.png"
+								data-lightbox-label="W04 逐帧播放控制与预览模式"
+							>
+								<img
+									src="assets/screenshots/W04-playback-transport-controls.png"
+									alt="预览工具栏显示起点、上一帧、播放、下一帧、终点、循环、二倍速和 Performance 预览控制"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">W04 · PLAYBACK</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>逐帧、变速、循环和预览性能可直接控制</h3>
+								<p>
+									所有播放动作都保持可见并有明确名称；逐帧移动对齐项目帧率，变速同步音频调度，循环可在尾点携带余量回绕，Performance 模式则在播放时降低预览渲染频率。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -374,6 +398,15 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>W04</strong></td>
+									<td><code>64897bf</code> RED + <code>6487908</code> GREEN</td>
+									<td>目标 7/7；全量 378/378；时间推进核心 100% / 98.75%</td>
+									<td>
+										起点/终点；前后逐帧；播放暂停；2×；循环回绕；Performance 预览
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>W03</strong></td>
 									<td>
