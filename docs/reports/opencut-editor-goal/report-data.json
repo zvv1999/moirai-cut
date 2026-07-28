@@ -2,12 +2,12 @@
 	"goalId": "019fa427-c03a-7dd2-850c-0e25523c914f",
 	"updatedAt": "2026-07-28",
 	"branch": "feat/agent-drivable",
-	"status": "ACTIVE",
+	"status": "COMPLETE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 68,
+		"greenCapabilities": 74,
 		"automatedTestsPassing": 522,
-		"archivedScreenshots": 76
+		"archivedScreenshots": 82
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -77,9 +77,39 @@
 		"G05",
 		"G06",
 		"G07",
-		"G08"
+		"G08",
+		"Q01",
+		"Q02",
+		"Q03",
+		"Q04",
+		"Q05",
+		"Q06"
 	],
 	"evidence": [
+		{
+			"featureIds": ["Q01", "Q02", "Q03", "Q04", "Q05", "Q06"],
+			"supportingCommits": ["17b05f7"],
+			"result": "Final qualification closes every gate. The complete automated suite, real-project browser journeys, performance budgets, schema migration coverage, screenshot catalogue, and portable HTML report are all reproducible. The report distinguishes completed product scope from non-blocking environment and dependency risks instead of hiding them.",
+			"tests": {
+				"targeted": "97/97 migration tests with 271 expectations plus report-catalogue validation",
+				"fullSuite": "Web 439/439 with 1182 expectations, MCP 58/58, and ESLint custom rules 25/25 for 522 repository-relevant tests",
+				"productionBuild": "Final code state passed a clean-worktree Node 24 build: compilation, TypeScript, page data, and all 18 static pages"
+			},
+			"browserVerification": "The real 47.70-second project opened at schema v31 and revision 441 with 44 media assets, 4 tracks, and 31 clips. Health returned 0 errors, 0 warnings, 0 notes, and Export-ready. Performance measured 44 mounted media cards, 31 mounted timeline clips, 98% thumbnail reuse, and 0.4 ms interaction as PASS; waveform reuse remained an explicit 67% WARN. The browser collected 100 log entries with zero warning/error. The final report DOM, navigation, screenshot lightbox, qualification ledger, and image catalogue were verified in the right-side in-app browser.",
+			"limitations": [
+				"The in-app browser does not expose VideoEncoder, so export remains correctly blocked in this environment after successful frame preflight.",
+				"Waveform cache reuse measured 67% and remains a visible non-blocking performance warning for this project.",
+				"bun audit reports two existing critical advisories: tar decompression/parse DoS and a better-auth OAuth refresh-token replay advisory."
+			],
+			"screenshots": [
+				"assets/screenshots/Q01-automated-regression.png",
+				"assets/screenshots/Q02-browser-qualification.png",
+				"assets/screenshots/Q03-performance-qualification.png",
+				"assets/screenshots/Q04-migration-qualification.png",
+				"assets/screenshots/Q05-screenshot-catalogue.png",
+				"assets/screenshots/Q06-final-html-report.png"
+			]
+		},
 		{
 			"featureIds": ["G01", "G02", "G03", "G04", "G05", "G06", "G07", "G08"],
 			"redCommits": ["d4e0a3d"],

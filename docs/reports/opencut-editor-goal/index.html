@@ -22,6 +22,7 @@
 					<a href="#roadmap">里程碑</a>
 					<a href="#evidence">界面证据</a>
 					<a href="#ledger">验证记录</a>
+					<a href="#risks">风险</a>
 				</nav>
 			</div>
 		</header>
@@ -30,7 +31,7 @@
 			<section class="hero shell">
 				<div>
 					<p class="eyebrow">
-						<span class="pulse"></span>目标执行中 · 2026-07-28 更新
+						<span class="pulse"></span>目标已完成 · 2026-07-28
 					</p>
 					<h1>让 OpenCut 真正成为剪辑工作台。</h1>
 					<p class="hero__lede">
@@ -38,10 +39,10 @@
 						再用共享原子命令、计划预览和可审查变更形成 Agent 原生优势。
 					</p>
 					<div class="hero__meta">
-						<span class="status status--building">ACTIVE · M7</span>
+						<span class="status status--green">COMPLETE · M7</span>
 						<span class="pill">分支 feat/agent-drivable</span>
 						<span class="pill">目标 019fa427…914f</span>
-						<span class="pill">证据随每批实现持续更新</span>
+						<span class="pill">74/74 能力完成 · 证据已冻结</span>
 					</div>
 				</div>
 			</section>
@@ -54,8 +55,8 @@
 							<h2>当前基线</h2>
 						</div>
 						<p class="section__intro">
-							“GREEN”仅代表该能力已有针对性测试和可运行基础；最终 DONE
-							仍需完整回归、浏览器验收、迁移与证据闭环。
+							全部 74 个能力点均已完成代码、自动化、真实工程浏览器与证据闭环；
+							剩余环境和依赖风险在报告末尾单独列出。
 						</p>
 					</div>
 					<div class="metrics" aria-label="当前进度摘要">
@@ -64,15 +65,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">68</strong>
-							<span class="metric__label">当前 GREEN 能力</span>
+							<strong class="metric__value">74</strong>
+							<span class="metric__label">已完成能力</span>
 						</article>
 						<article class="metric">
 							<strong class="metric__value">522</strong>
-							<span class="metric__label">既有自动化测试通过</span>
+							<span class="metric__label">最终自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">76</strong>
+							<strong class="metric__value">82</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -158,7 +159,7 @@
 								<h3>最终资格验证</h3>
 								<p>回归、浏览器、性能、迁移、截图目录和交付报告。</p>
 							</div>
-							<span class="status status--building">ACTIVE</span>
+							<span class="status status--green">DONE</span>
 						</article>
 					</div>
 				</div>
@@ -177,6 +178,159 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/Q01-automated-regression.png"
+								data-lightbox-label="Q01 最终自动化回归"
+							>
+								<img
+									src="assets/screenshots/Q01-automated-regression.png"
+									alt="最终资格记录展示 Web、MCP、自定义规则、TypeScript 与生产构建全部通过"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">Q01 · AUTOMATED REGRESSION</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>522 项最终回归全部通过</h3>
+								<p>
+									Web 439/439（1182 断言）、MCP 58/58、自定义规则
+									25/25；TypeScript 与 Node 24
+									干净生产构建、页面数据和 18 个静态页面全部通过。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/Q02-browser-qualification.png"
+								data-lightbox-label="Q02 真实工程浏览器资格"
+							>
+								<img
+									src="assets/screenshots/Q02-browser-qualification.png"
+									alt="真实工程健康检查显示零错误、零警告、零备注并可导出"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">Q02 · BROWSER QUALIFICATION</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>每个里程碑均有真实工程证据</h3>
+								<p>
+									47.70 秒工程以 44 素材、4 轨、31
+									片段完整打开；最终健康检查 0/0/0，100 条浏览器日志中无 warning
+									或 error。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/Q03-performance-qualification.png"
+								data-lightbox-label="Q03 性能资格"
+							>
+								<img
+									src="assets/screenshots/Q03-performance-qualification.png"
+									alt="性能面板显示素材卡、时间线片段、缩略图复用和交互延迟通过，波形复用告警"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">Q03 · PERFORMANCE</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>关键预算已测量，告警没有被隐藏</h3>
+								<p>
+									44 个素材卡、31 个时间线片段、98% 缩略图复用和 0.4ms
+									交互通过；67% 波形复用保留为非阻断 WARN 和后续优化基线。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/Q04-migration-qualification.png"
+								data-lightbox-label="Q04 旧工程迁移资格"
+							>
+								<img
+									src="assets/screenshots/Q04-migration-qualification.png"
+									alt="旧工程以 schema 31 和 revision 441 完整打开并通过健康检查"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">Q04 · MIGRATION</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>schema 0→31 有测试，真实旧工程无数据丢失</h3>
+								<p>
+									迁移专项 97/97、271
+									断言通过；现有工程以 v31 / revision 441 打开，素材、轨道、片段和
+									47.70 秒时长均保留。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/Q05-screenshot-catalogue.png"
+								data-lightbox-label="Q05 截图证据目录"
+							>
+								<img
+									src="assets/screenshots/Q05-screenshot-catalogue.png"
+									alt="最终报告展示 74 个已完成能力和 82 张稳定 ID 截图目录"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">Q05 · SCREENSHOT CATALOGUE</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>82 张截图全部可寻址、可放大、可验证</h3>
+								<p>
+									校验器强制 Feature ID 前缀、唯一引用、真实文件、有效图像字节与
+									HTML 可达性；没有脱离能力矩阵的孤立截图。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/Q06-final-html-report.png"
+								data-lightbox-label="Q06 最终 HTML 报告"
+							>
+								<img
+									src="assets/screenshots/Q06-final-html-report.png"
+									alt="最终 HTML 报告首屏显示目标完成、74 个能力、522 项测试与 82 张截图"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">Q06 · HTML REPORT</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>报告无需运行编辑器即可独立浏览</h3>
+								<p>
+									本地报告文件夹包含范围、实现、提交、测试、构建、浏览器证据、截图、
+									限制和剩余风险；目录、锚点与 lightbox 已在右侧浏览器验收。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -2033,7 +2187,7 @@
 							<div class="evidence-card__body">
 								<div class="evidence-card__topline">
 									<span class="feature-id">M02 · W06 · T07</span>
-									<span class="status status--green">GREEN</span>
+									<span class="status status--green">DONE</span>
 								</div>
 								<h3>编辑模式可被识别</h3>
 								<p>
@@ -2057,12 +2211,37 @@
 							<div class="evidence-card__body">
 								<div class="evidence-card__topline">
 									<span class="feature-id">M02</span>
-									<span class="status status--green">GREEN</span>
+									<span class="status status--green">DONE</span>
 								</div>
 								<h3>素材搜索保留剪辑上下文</h3>
 								<p>
 									输入 <code>reed</code> 后结果从 44 项收窄到 1
 									项，画布、检查器、播放头和现有选择保持不变。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/M0-html-report-baseline.png"
+								data-lightbox-label="M0 报告基础设施基线"
+							>
+								<img
+									src="assets/screenshots/M0-html-report-baseline.png"
+									alt="OpenCut 目标报告最初基线展示进度、里程碑和截图证据结构"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">M0 · REPORT BASELINE</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>证据基础设施从第一批起持续生长</h3>
+								<p>
+									最初报告基线已纳入最终目录，与后续 81
+									张功能和资格截图使用相同 lightbox、说明文字和验证规则。
 								</p>
 							</div>
 						</article>
@@ -2093,6 +2272,24 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>Q01–Q06</strong></td>
+									<td>
+										最终代码状态 <code>8e77c05</code>；M6 证据
+										<code>17b05f7</code>；最终资格与报告归档
+									</td>
+									<td>
+										Web 439/439、1182 断言；MCP 58/58；规则 25/25，共
+										522 项；迁移专项 97/97、271 断言；TypeScript、报告校验器与
+										Node 24 干净生产构建、18 个静态页面通过
+									</td>
+									<td>
+										v31 / revision 441 真实旧工程完整打开并保持 44 素材、4 轨、31
+										片段；健康 0/0/0；性能四项 PASS、一项 67% 非阻断 WARN；100
+										条浏览器日志中零 warning/error；报告导航和 lightbox 通过
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>G01–G08</strong></td>
 									<td>
@@ -2522,7 +2719,7 @@
 									<td><code>8086fad</code></td>
 									<td>针对性测试 + 全量 357/357</td>
 									<td>搜索 1/44；视频 6/44；快捷键标签可见</td>
-									<td><span class="status status--green">GREEN</span></td>
+									<td><span class="status status--green">DONE</span></td>
 								</tr>
 								<tr>
 									<td><strong>M0</strong></td>
@@ -2537,13 +2734,63 @@
 				</div>
 			</section>
 
+			<section class="section" id="risks">
+				<div class="shell">
+					<div class="section__head">
+						<div>
+							<p class="kicker">Known limitations</p>
+							<h2>已完成范围之外的剩余风险</h2>
+						</div>
+						<p class="section__intro">
+							这些项目没有被伪装成绿色，也不表示能力矩阵仍有漏项；它们是当前运行环境、
+							缓存热度和依赖供应链的明确后续风险。
+						</p>
+					</div>
+					<div class="timeline">
+						<article class="milestone">
+							<span class="milestone__id">ENV</span>
+							<div>
+								<h3>内置浏览器没有 VideoEncoder</h3>
+								<p>
+									首中尾代表帧均能渲染，但当前环境无法进行 WebCodecs
+									视频编码；OpenCut 会在预检阻止导出并给出原因。
+								</p>
+							</div>
+							<span class="status status--building">KNOWN</span>
+						</article>
+						<article class="milestone">
+							<span class="milestone__id">PERF</span>
+							<div>
+								<h3>波形缓存复用率 67%</h3>
+								<p>
+									素材、时间线、缩略图和交互预算通过；当前工程的波形缓存热度低于绿色阈值，
+									作为后续长音频优化基线保留。
+								</p>
+							</div>
+							<span class="status status--building">WARN</span>
+						</article>
+						<article class="milestone">
+							<span class="milestone__id">SEC</span>
+							<div>
+								<h3>两个既有 critical 依赖公告</h3>
+								<p>
+									<code>tar</code> 存在解压/解析 DoS 公告；<code>better-auth</code>
+									存在特定 OAuth 刷新令牌重放公告。最终功能批次未做破坏性的全依赖升级。
+								</p>
+							</div>
+							<span class="status status--building">AUDIT</span>
+						</article>
+					</div>
+				</div>
+			</section>
+
 			<section class="section">
 				<div class="shell">
 					<div class="callout">
 						<div>
-							<h3>完整验收条件与能力矩阵</h3>
+							<h3>74/74 能力已完成</h3>
 							<p>
-								计划文档是范围和完成标准的唯一来源；本报告专注于进度和证据展示。
+								计划文档保留完整验收条件和追加式证据；本报告文件夹可离线浏览全部结果。
 							</p>
 						</div>
 						<a class="button" href="../../roadmap/opencut-editor-goal-plan.md"
