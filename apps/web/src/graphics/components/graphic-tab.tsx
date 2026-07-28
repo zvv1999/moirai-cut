@@ -211,6 +211,8 @@ function AnimatedGraphicParamField({
 			trackId,
 			elementId: element.id,
 			animations: element.animations,
+			elementStartTime: element.startTime,
+			elementDuration: element.duration,
 			localTime,
 			isPlayheadWithinElementRange,
 			resolvedValue: resolvedParams[param.key] ?? param.default,
@@ -232,7 +234,12 @@ function AnimatedGraphicParamField({
 			keyframe={{
 				isActive: animatedParam.isKeyframedAtTime,
 				isDisabled: !isPlayheadWithinElementRange,
+				keyframeCount: animatedParam.keyframeCount,
+				canGoPrevious: animatedParam.canGoPrevious,
+				canGoNext: animatedParam.canGoNext,
+				onPrevious: animatedParam.goToPreviousKeyframe,
 				onToggle: animatedParam.toggleKeyframe,
+				onNext: animatedParam.goToNextKeyframe,
 			}}
 		/>
 	);

@@ -26,6 +26,8 @@ import {
 	type ScopeEntry,
 } from "@/selection/scope";
 import { useCommittedRef } from "@/hooks/use-committed-ref";
+import { getKeyframeById } from "@/animation";
+import { buildKeyframeRetimePlan } from "@/timeline/keyframe-actions";
 
 export function useEditorActions() {
 	const editor = useEditor();
@@ -48,6 +50,41 @@ export function useEditorActions() {
 	const clearTimelineActiveSelectionRef = useCommittedRef(() => {
 		editor.selection.clearMostSpecificSelection();
 	});
+	const nudgeSelectedKeyframes = (direction: -1 | 1) => {
+		if (selectedKeyframes.length === 0) {
+			return;
+		}
+
+		const fps = editor.project.getActive().settings.fps;
+		const ticksPerFrame = mediaTime({
+			ticks: Math.round((TICKS_PER_SECOND * fps.denominator) / fps.numerator),
+		});
+		const plan = buildKeyframeRetimePlan({
+			selectedKeyframes,
+			delta: mediaTime({ ticks: ticksPerFrame * direction }),
+			resolveKeyframe: (keyframeRef) => {
+				const selectedElement = editor.timeline.getElementsWithTracks({
+					elements: [keyframeRef],
+				})[0];
+				if (!selectedElement) {
+					return null;
+				}
+
+				const keyframe = getKeyframeById({
+					animations: selectedElement.element.animations,
+					propertyPath: keyframeRef.propertyPath,
+					keyframeId: keyframeRef.keyframeId,
+				});
+				return keyframe
+					? {
+							time: keyframe.time,
+							duration: selectedElement.element.duration,
+						}
+					: null;
+			},
+		});
+		editor.timeline.retimeKeyframes({ keyframes: plan });
+	};
 	const [timelineScope] = useState<ScopeEntry>(() => ({
 		hasSelection: () => hasTimelineSelectionRef.current,
 		clear: () => {
@@ -473,6 +510,22 @@ export function useEditorActions() {
 		"toggle-ripple-editing",
 		() => {
 			toggleRippleEditing();
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"nudge-keyframes-backward",
+		() => {
+			nudgeSelectedKeyframes(-1);
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"nudge-keyframes-forward",
+		() => {
+			nudgeSelectedKeyframes(1);
 		},
 		undefined,
 	);

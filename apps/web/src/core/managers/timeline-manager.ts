@@ -612,6 +612,36 @@ export class TimelineManager {
 		this.editor.command.execute({ command });
 	}
 
+	retimeKeyframes({
+		keyframes,
+	}: {
+		keyframes: Array<{
+			trackId: string;
+			elementId: string;
+			propertyPath: AnimationPath;
+			keyframeId: string;
+			time: MediaTime;
+		}>;
+	}): void {
+		if (keyframes.length === 0) {
+			return;
+		}
+
+		const commands = keyframes.map(
+			({ trackId, elementId, propertyPath, keyframeId, time }) =>
+				new RetimeKeyframeCommand({
+					trackId,
+					elementId,
+					propertyPath,
+					keyframeId,
+					nextTime: time,
+				}),
+		);
+		const command =
+			commands.length === 1 ? commands[0] : new BatchCommand(commands);
+		this.editor.command.execute({ command });
+	}
+
 	updateKeyframeCurves({
 		keyframes,
 	}: {

@@ -3,28 +3,33 @@
 import { useEditor } from "@/editor/use-editor";
 import {
 	buildGraphicParamPath,
+	getElementKeyframes,
 	getKeyframeAtTime,
 	hasKeyframesForPath,
 	upsertPathKeyframe,
 } from "@/animation";
-import type {
-	AnimationPath,
-	ElementAnimations,
-} from "@/animation/types";
+import { getAdjacentKeyframeTimes } from "@/animation/keyframe-navigation";
+import type { AnimationPath, ElementAnimations } from "@/animation/types";
 import {
 	coerceParamValue,
 	getParamChannelLayout,
 	type ParamDefinition,
 } from "@/params";
 import type { TimelineElement } from "@/timeline";
-import type { MediaTime } from "@/wasm";
+import { generateUUID } from "@/utils/id";
+import { addMediaTime, type MediaTime } from "@/wasm";
 
 export interface KeyframedParamPropertyResult {
 	hasAnimatedKeyframes: boolean;
 	isKeyframedAtTime: boolean;
 	keyframeIdAtTime: string | null;
+	keyframeCount: number;
+	canGoPrevious: boolean;
+	canGoNext: boolean;
 	onPreview: (value: number | string | boolean) => void;
 	onCommit: () => void;
+	goToPreviousKeyframe: () => void;
+	goToNextKeyframe: () => void;
 	toggleKeyframe: () => void;
 }
 
@@ -34,6 +39,8 @@ export function useKeyframedParamProperty({
 	elementId,
 	animations,
 	propertyPath,
+	elementStartTime,
+	elementDuration,
 	localTime,
 	isPlayheadWithinElementRange,
 	resolvedValue,
@@ -44,6 +51,8 @@ export function useKeyframedParamProperty({
 	elementId: string;
 	animations: ElementAnimations | undefined;
 	propertyPath?: AnimationPath;
+	elementStartTime: MediaTime;
+	elementDuration: MediaTime;
 	localTime: MediaTime;
 	isPlayheadWithinElementRange: boolean;
 	resolvedValue: number | string | boolean;
@@ -54,11 +63,28 @@ export function useKeyframedParamProperty({
 	}) => Partial<TimelineElement>;
 }): KeyframedParamPropertyResult {
 	const editor = useEditor();
+	const playheadTime = useEditor((currentEditor) =>
+		currentEditor.playback.getCurrentTime(),
+	);
 	const resolvedPropertyPath =
 		propertyPath ?? buildGraphicParamPath({ paramKey: param.key });
 	const hasAnimatedKeyframes = hasKeyframesForPath({
 		animations,
 		propertyPath: resolvedPropertyPath,
+	});
+	const pathKeyframes = getElementKeyframes({ animations }).filter(
+		(keyframe) => keyframe.propertyPath === resolvedPropertyPath,
+	);
+	const playheadPosition =
+		playheadTime < elementStartTime
+			? "before"
+			: playheadTime > addMediaTime({ a: elementStartTime, b: elementDuration })
+				? "after"
+				: "inside";
+	const adjacentKeyframes = getAdjacentKeyframeTimes({
+		times: pathKeyframes.map((keyframe) => keyframe.time),
+		localTime,
+		position: playheadPosition,
 	});
 	const keyframeAtTime = isPlayheadWithinElementRange
 		? getKeyframeAtTime({
@@ -71,6 +97,37 @@ export function useKeyframedParamProperty({
 	const isKeyframedAtTime = keyframeAtTime !== null;
 	const shouldUseAnimatedChannel =
 		hasAnimatedKeyframes && isPlayheadWithinElementRange;
+
+	const selectAndSeekKeyframe = ({ time }: { time: MediaTime }) => {
+		const keyframe = getKeyframeAtTime({
+			animations,
+			propertyPath: resolvedPropertyPath,
+			time,
+		});
+		if (!keyframe) {
+			return;
+		}
+
+		editor.selection.setSelectedKeyframes({
+			keyframes: [
+				{
+					trackId,
+					elementId,
+					propertyPath: resolvedPropertyPath,
+					keyframeId: keyframe.id,
+				},
+			],
+			anchorKeyframe: {
+				trackId,
+				elementId,
+				propertyPath: resolvedPropertyPath,
+				keyframeId: keyframe.id,
+			},
+		});
+		editor.playback.seek({
+			time: addMediaTime({ a: elementStartTime, b: time }),
+		});
+	};
 
 	const previewValue: KeyframedParamPropertyResult["onPreview"] = (value) => {
 		if (shouldUseAnimatedChannel) {
@@ -126,9 +183,11 @@ export function useKeyframedParamProperty({
 					},
 				],
 			});
+			editor.selection.clearKeyframeSelection();
 			return;
 		}
 
+		const keyframeId = generateUUID();
 		editor.timeline.upsertKeyframes({
 			keyframes: [
 				{
@@ -137,8 +196,25 @@ export function useKeyframedParamProperty({
 					propertyPath: resolvedPropertyPath,
 					time: localTime,
 					value: resolvedValue,
+					keyframeId,
 				},
 			],
+		});
+		editor.selection.setSelectedKeyframes({
+			keyframes: [
+				{
+					trackId,
+					elementId,
+					propertyPath: resolvedPropertyPath,
+					keyframeId,
+				},
+			],
+			anchorKeyframe: {
+				trackId,
+				elementId,
+				propertyPath: resolvedPropertyPath,
+				keyframeId,
+			},
 		});
 	};
 
@@ -146,8 +222,21 @@ export function useKeyframedParamProperty({
 		hasAnimatedKeyframes,
 		isKeyframedAtTime,
 		keyframeIdAtTime,
+		keyframeCount: adjacentKeyframes.count,
+		canGoPrevious: adjacentKeyframes.previous !== null,
+		canGoNext: adjacentKeyframes.next !== null,
 		onPreview: previewValue,
 		onCommit: () => editor.timeline.commitPreview(),
+		goToPreviousKeyframe: () => {
+			if (adjacentKeyframes.previous !== null) {
+				selectAndSeekKeyframe({ time: adjacentKeyframes.previous });
+			}
+		},
+		goToNextKeyframe: () => {
+			if (adjacentKeyframes.next !== null) {
+				selectAndSeekKeyframe({ time: adjacentKeyframes.next });
+			}
+		},
 		toggleKeyframe,
 	};
 }

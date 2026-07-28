@@ -22,7 +22,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { usePropertyDraft } from "../hooks/use-property-draft";
-import { KeyframeToggle } from "./keyframe-toggle";
+import { KeyframeControls } from "./keyframe-controls";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
@@ -40,7 +40,12 @@ export function PropertyParamField({
 	keyframe?: {
 		isActive: boolean;
 		isDisabled: boolean;
+		keyframeCount?: number;
+		canGoPrevious?: boolean;
+		canGoNext?: boolean;
+		onPrevious?: () => void;
 		onToggle: () => void;
+		onNext?: () => void;
 	};
 }) {
 	const isDefault = value === param.default;
@@ -54,11 +59,16 @@ export function PropertyParamField({
 			label={param.label}
 			beforeLabel={
 				keyframe && param.keyframable !== false ? (
-					<KeyframeToggle
+					<KeyframeControls
+						label={param.label}
 						isActive={keyframe.isActive}
 						isDisabled={keyframe.isDisabled}
-						title={`Toggle ${param.label.toLowerCase()} keyframe`}
+						keyframeCount={keyframe.keyframeCount ?? 0}
+						canGoPrevious={keyframe.canGoPrevious ?? false}
+						canGoNext={keyframe.canGoNext ?? false}
+						onPrevious={() => keyframe.onPrevious?.()}
 						onToggle={keyframe.onToggle}
+						onNext={() => keyframe.onNext?.()}
 					/>
 				) : undefined
 			}

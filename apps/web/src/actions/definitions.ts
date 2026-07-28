@@ -102,6 +102,14 @@ export const ACTIONS = {
 		description: "Extract or recover source audio",
 		category: "editing",
 	},
+	"nudge-keyframes-backward": {
+		description: "Nudge selected keyframes backward one frame",
+		category: "editing",
+	},
+	"nudge-keyframes-forward": {
+		description: "Nudge selected keyframes forward one frame",
+		category: "editing",
+	},
 	"select-all": {
 		description: "Select all elements",
 		category: "selection",
@@ -169,6 +177,8 @@ const ACTION_DEFAULT_SHORTCUTS = [
 	["copy-selected", ["ctrl+c"]],
 	["paste-copied", ["ctrl+v"]],
 	["toggle-snapping", ["n"]],
+	["nudge-keyframes-backward", ["alt+left"]],
+	["nudge-keyframes-forward", ["alt+right"]],
 	["select-all", ["ctrl+a"]],
 	["cancel-interaction", ["escape"]],
 	["duplicate-selected", ["ctrl+d"]],

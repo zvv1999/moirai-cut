@@ -36,6 +36,7 @@ import {
 	Link02Icon,
 	Layers01Icon,
 	Chart03Icon,
+	KeyframeIcon,
 	Unlink02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -46,6 +47,8 @@ import { useGraphEditorController } from "./graph-editor/use-controller";
 import { useMemo } from "react";
 import { useKeyboardShortcutsHelp } from "@/actions/use-keyboard-shortcuts-help";
 import { TimelineToolbarButton } from "./timeline-toolbar-button";
+import { KeyframeSelectionToolbar } from "./keyframe-selection-toolbar";
+import { getElementKeyframes } from "@/animation";
 
 export { TimelineToolbarButton } from "./timeline-toolbar-button";
 
@@ -127,6 +130,19 @@ function ToolbarLeftSection() {
 		isSourceAudioSeparated({
 			element: selectedElement.element,
 		});
+	const hasSelectedElementKeyframes =
+		!!selectedElement &&
+		getElementKeyframes({
+			animations: selectedElement.element.animations,
+		}).length > 0;
+	const isSelectedElementExpanded = useTimelineStore(
+		(state) =>
+			!!selectedElement &&
+			state.expandedElementIds.has(selectedElement.element.id),
+	);
+	const toggleElementExpanded = useTimelineStore(
+		(state) => state.toggleElementExpanded,
+	);
 
 	const handleAction = ({
 		action,
@@ -245,6 +261,25 @@ function ToolbarLeftSection() {
 						}
 					/>
 				</GraphEditorPopover>
+
+				<TimelineToolbarButton
+					icon={<HugeiconsIcon icon={KeyframeIcon} />}
+					isActive={isSelectedElementExpanded}
+					tooltip={
+						isSelectedElementExpanded
+							? "Collapse keyframe lanes"
+							: "Expand keyframe lanes"
+					}
+					disabled={!hasSelectedElementKeyframes}
+					onClick={({ event }) => {
+						event.stopPropagation();
+						if (selectedElement) {
+							toggleElementExpanded(selectedElement.element.id);
+						}
+					}}
+				/>
+
+				<KeyframeSelectionToolbar />
 			</TooltipProvider>
 		</div>
 	);
