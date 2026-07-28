@@ -1,5 +1,4 @@
 import { describe, expect, mock, test } from "bun:test";
-import type { EditorCore } from "@/core";
 import { RelinkMediaAssetCommand } from "@/commands/media/relink-media-asset";
 import type { MediaAsset } from "@/media/types";
 
@@ -34,7 +33,7 @@ function editorWithAssets(initialAssets: MediaAsset[]) {
 			getAssets: () => assets,
 			setAssets,
 		},
-	} as unknown as EditorCore;
+	};
 
 	return {
 		editor,
@@ -65,19 +64,17 @@ describe("RelinkMediaAssetCommand", () => {
 			contents: "replacement",
 		});
 
-		const command = new RelinkMediaAssetCommand(
-			{
-				projectId: "project-1",
-				assetId: "missing-media",
-				asset: replacement,
-			},
-			{
+		const command = new RelinkMediaAssetCommand({
+			projectId: "project-1",
+			assetId: "missing-media",
+			asset: replacement,
+			dependencies: {
 				getEditor: () => state.editor,
 				saveMediaAsset,
 				deleteMediaAsset,
 				clearCaches: mock(() => undefined),
 			},
-		);
+		});
 
 		command.execute();
 
@@ -109,19 +106,17 @@ describe("RelinkMediaAssetCommand", () => {
 		const state = editorWithAssets([original]);
 		const saveMediaAsset = mock(() => Promise.resolve());
 		const clearCaches = mock(() => undefined);
-		const command = new RelinkMediaAssetCommand(
-			{
-				projectId: "project-1",
-				assetId: "media-1",
-				asset: replacement,
-			},
-			{
+		const command = new RelinkMediaAssetCommand({
+			projectId: "project-1",
+			assetId: "media-1",
+			asset: replacement,
+			dependencies: {
 				getEditor: () => state.editor,
 				saveMediaAsset,
 				deleteMediaAsset: mock(() => Promise.resolve()),
 				clearCaches,
 			},
-		);
+		});
 
 		command.execute();
 		command.undo();
@@ -137,23 +132,21 @@ describe("RelinkMediaAssetCommand", () => {
 	test("undo returns a newly relinked id to its missing state", () => {
 		const state = editorWithAssets([]);
 		const deleteMediaAsset = mock(() => Promise.resolve());
-		const command = new RelinkMediaAssetCommand(
-			{
-				projectId: "project-1",
-				assetId: "missing-media",
-				asset: asset({
-					id: "ignored",
-					name: "Recovered.mov",
-					contents: "replacement",
-				}),
-			},
-			{
+		const command = new RelinkMediaAssetCommand({
+			projectId: "project-1",
+			assetId: "missing-media",
+			asset: asset({
+				id: "ignored",
+				name: "Recovered.mov",
+				contents: "replacement",
+			}),
+			dependencies: {
 				getEditor: () => state.editor,
 				saveMediaAsset: mock(() => Promise.resolve()),
 				deleteMediaAsset,
 				clearCaches: mock(() => undefined),
 			},
-		);
+		});
 
 		command.execute();
 		command.undo();
@@ -163,5 +156,51 @@ describe("RelinkMediaAssetCommand", () => {
 			projectId: "project-1",
 			id: "missing-media",
 		});
+	});
+
+	test("a failed save restores the previous asset and invalidates replacement caches", async () => {
+		const original = asset({
+			id: "media-1",
+			name: "Original.mov",
+			contents: "original",
+		});
+		const state = editorWithAssets([original]);
+		const clearCaches = mock(() => undefined);
+		let rejectSave: ((error: Error) => void) | undefined;
+		const saveMediaAsset = mock(
+			() =>
+				new Promise<void>((_resolve, reject) => {
+					rejectSave = reject;
+				}),
+		);
+		const originalConsoleError = console.error;
+		console.error = mock(() => undefined);
+
+		try {
+			const command = new RelinkMediaAssetCommand({
+				projectId: "project-1",
+				assetId: "media-1",
+				asset: asset({
+					id: "ignored",
+					name: "Replacement.mov",
+					contents: "replacement",
+				}),
+				dependencies: {
+					getEditor: () => state.editor,
+					saveMediaAsset,
+					deleteMediaAsset: mock(() => Promise.resolve()),
+					clearCaches,
+				},
+			});
+
+			command.execute();
+			rejectSave?.(new Error("disk full"));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(state.getAssets()).toEqual([original]);
+			expect(clearCaches).toHaveBeenCalledTimes(2);
+		} finally {
+			console.error = originalConsoleError;
+		}
 	});
 });
