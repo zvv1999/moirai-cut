@@ -208,11 +208,13 @@ export function SectionFields({
 export function SectionField({
 	label,
 	beforeLabel,
+	afterLabel,
 	children,
 	className,
 }: {
 	label: string;
 	beforeLabel?: React.ReactNode;
+	afterLabel?: React.ReactNode;
 	children: React.ReactNode;
 	className?: string;
 }) {
@@ -221,6 +223,9 @@ export function SectionField({
 			<div className="flex h-4 items-center gap-1.5">
 				{beforeLabel}
 				<Label>{label}</Label>
+				{afterLabel ? (
+					<div className="ml-auto flex items-center">{afterLabel}</div>
+				) : null}
 			</div>
 			{children}
 		</div>

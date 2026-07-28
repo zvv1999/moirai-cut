@@ -24,6 +24,7 @@ import {
 import { usePropertyDraft } from "../hooks/use-property-draft";
 import { KeyframeToggle } from "./keyframe-toggle";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 
 export function PropertyParamField({
 	param,
@@ -42,6 +43,12 @@ export function PropertyParamField({
 		onToggle: () => void;
 	};
 }) {
+	const isDefault = value === param.default;
+	const reset = () => {
+		onPreview(param.default);
+		onCommit();
+	};
+
 	return (
 		<SectionField
 			label={param.label}
@@ -54,6 +61,20 @@ export function PropertyParamField({
 						onToggle={keyframe.onToggle}
 					/>
 				) : undefined
+			}
+			afterLabel={
+				<Button
+					type="button"
+					variant="text"
+					size="text"
+					className="text-muted-foreground h-4 px-1 text-xs"
+					aria-label={`Reset ${param.label.toLocaleLowerCase()}`}
+					title={`Reset ${param.label.toLocaleLowerCase()}`}
+					disabled={isDefault}
+					onClick={reset}
+				>
+					↶
+				</Button>
 			}
 		>
 			<ParamInput
@@ -180,9 +201,7 @@ function NumberParamField({
 		);
 
 	const previewFromDisplay = (displayVal: number) => {
-		const clamped = clampDisplayValue(
-			snapToStep({ value: displayVal, step }),
-		);
+		const clamped = clampDisplayValue(snapToStep({ value: displayVal, step }));
 		onPreview(clamped / displayMultiplier);
 	};
 
