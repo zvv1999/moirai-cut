@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 21,
-		"automatedTestsPassing": 429,
-		"archivedScreenshots": 22
+		"greenCapabilities": 22,
+		"automatedTestsPassing": 433,
+		"archivedScreenshots": 23
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -26,6 +26,7 @@
 		"M06",
 		"M07",
 		"T01",
+		"T02",
 		"T07",
 		"G01",
 		"G04",
@@ -33,6 +34,19 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["T02"],
+			"redCommits": ["873eba8"],
+			"greenCommit": "f72d2f0",
+			"result": "Timeline clips now persist independent general group and audio/video link relationships. The toolbar groups or ungroups any multi-selection and links or unlinks only overlapping visual/audio media, while G/L badges expose state. Selecting one relation member expands the full connected set, so existing move and delete commands operate predictably and every relationship mutation remains undoable.",
+			"tests": {
+				"targeted": "4/4 new relation-planner tests plus retained selection regressions",
+				"fullSuite": "433/433 from the repository root with the required WASM test preload",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
+			},
+			"browserVerification": "Two main clips grouped and expanded from one click before ungrouping. The first main clip and overlapping score linked, survived refresh, and reselected as a pair from one clip. Unlink, undo, and redo produced 0, 2, and 0 link badges, leaving the project clean.",
+			"screenshots": ["assets/screenshots/T02-groups-links.png"]
+		},
 		{
 			"featureIds": ["T01"],
 			"redCommits": ["af30d41"],

@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">21</strong>
+							<strong class="metric__value">22</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">429</strong>
+							<strong class="metric__value">433</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">22</strong>
+							<strong class="metric__value">23</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,31 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/T02-groups-links.png"
+								data-lightbox-label="T02 可撤销片段编组与音视频链接"
+							>
+								<img
+									src="assets/screenshots/T02-groups-links.png"
+									alt="OpenCut 时间线首个视频片段和整段配乐同时选中，工具栏链接按钮激活，片段显示 L 链接标记"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">T02 · GROUPS & LINKS</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>关系可见、可持久化，也可随时拆开</h3>
+								<p>
+									普通编组与音视频链接使用独立关系，G/L 徽标直接出现在片段上。真实工程的首段视频与配乐链接后刷新仍保留，点击任一成员会选中两者；取消、撤销、重做验证为 0→2→0
+									个徽标并恢复干净工程。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -713,6 +738,15 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>T02</strong></td>
+									<td><code>873eba8</code> RED + <code>f72d2f0</code> GREEN</td>
+									<td>目标 4/4 + 选择回归；全量 433/433；TypeScript / ESLint / 生产构建通过</td>
+									<td>
+										两主轨片段编组联选；视频 + 配乐链接刷新持久化；单击选中整组；取消/撤销/重做为 0→2→0，工程已清理
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>T01</strong></td>
 									<td><code>af30d41</code> RED + <code>cf4b5de</code> GREEN</td>
