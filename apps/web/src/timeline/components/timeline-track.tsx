@@ -48,7 +48,10 @@ export function TimelineTrackContent({
 	const { isElementSelected } = useElementSelection();
 
 	return (
-		<div className="relative size-full">
+		<div
+			className="relative size-full"
+			data-track-locked={track.locked ? "true" : "false"}
+		>
 			<button
 				type="button"
 				className="absolute inset-0 m-0 size-full appearance-none border-0 bg-transparent p-0"
@@ -64,7 +67,7 @@ export function TimelineTrackContent({
 			/>
 			{/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- spatial gesture surface; the wrapping <button> handles keyboard track selection, this <div> only forwards background clicks for box-select / deselect. */}
 			<div
-				className="relative h-full min-w-full"
+				className={`relative h-full min-w-full ${track.locked ? "bg-amber-500/5" : ""}`}
 				style={{ zIndex: TIMELINE_LAYERS.trackContent }}
 				onMouseUp={(event) => {
 					if (event.target !== event.currentTarget) return;
@@ -94,9 +97,11 @@ export function TimelineTrackContent({
 								zoomLevel={zoomLevel}
 								isSelected={isSelected}
 								onResizeStart={({ event, element, side }) =>
+									!track.locked &&
 									onResizeStart({ event, element, track, side })
 								}
 								onElementMouseDown={({ event, element }) =>
+									!track.locked &&
 									onElementMouseDown({ event, element, track })
 								}
 								onElementClick={({ event, element }) =>

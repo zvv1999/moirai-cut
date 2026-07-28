@@ -16,7 +16,7 @@ import {
 } from "@/timeline/audio-state";
 import { doesElementHaveEnabledAudio } from "@/timeline/audio-separation";
 import { canElementHaveAudio, hasMediaId } from "@/timeline/element-utils";
-import { canTrackHaveAudio } from "@/timeline";
+import { canTrackHaveAudio, isTrackAudible } from "@/timeline";
 import { mediaSupportsAudio } from "@/media/media-utils";
 import { getSourceTimeAtClipTime, renderRetimedBuffer } from "@/retime";
 import { Input, ALL_FORMATS, BlobSource, AudioBufferSink } from "mediabunny";
@@ -103,7 +103,8 @@ export function collectAudibleCandidates({
 	const candidates: AudibleElementCandidate[] = [];
 
 	for (const track of allTracks) {
-		if (canTrackHaveAudio(track) && track.muted) continue;
+		if (canTrackHaveAudio(track) && !isTrackAudible({ track, tracks: allTracks }))
+			continue;
 
 		for (const element of track.elements) {
 			if (!canElementHaveAudio(element)) continue;
@@ -498,7 +499,11 @@ export async function collectAudioMixSources({
 	const pendingLibrarySources: Array<Promise<AudioMixSource | null>> = [];
 
 	for (const track of orderedTracks) {
-		if (canTrackHaveAudio(track) && track.muted) continue;
+		if (
+			canTrackHaveAudio(track) &&
+			!isTrackAudible({ track, tracks: orderedTracks })
+		)
+			continue;
 
 		for (const element of track.elements) {
 			if (!canElementHaveAudio(element)) continue;
@@ -561,7 +566,9 @@ export async function collectAudioClips({
 	const pendingLibraryClips: Array<Promise<AudioClipSource | null>> = [];
 
 	for (const track of orderedTracks) {
-		const isTrackMuted = canTrackHaveAudio(track) && track.muted;
+		const isTrackMuted =
+			canTrackHaveAudio(track) &&
+			!isTrackAudible({ track, tracks: orderedTracks });
 
 		for (const element of track.elements) {
 			if (!canElementHaveAudio(element)) continue;

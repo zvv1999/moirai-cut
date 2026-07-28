@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { TrackControlRowView } from "@/timeline/components/track-control-row";
-import { buildEmptyTrack } from "@/timeline/placement";
+import { buildEmptyTrack } from "@/timeline/placement/track-factory";
 
 test("track headers expose identity, compatibility, and direct controls", () => {
 	const track = {

@@ -2,24 +2,25 @@
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+	Add01Icon,
 	Delete02Icon,
-	MagicWand05Icon,
-	MusicNote03Icon,
 	TaskAdd02Icon,
-	TextIcon,
 	ViewIcon,
-	ViewOffSlashIcon,
 	VolumeHighIcon,
-	VolumeOffIcon,
 } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
-import { OcShapesIcon, OcVideoIcon } from "@/components/icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	ContextMenu,
 	ContextMenuContent,
 	ContextMenuItem,
 	ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useTimelineZoom } from "@/timeline/hooks/use-timeline-zoom";
 import {
 	useCallback,
@@ -27,7 +28,6 @@ import {
 	useMemo,
 	useRef,
 	useState,
-	type ReactNode,
 } from "react";
 import { useContainerSize } from "@/hooks/use-container-size";
 import type { MediaTime } from "@/wasm";
@@ -93,33 +93,11 @@ import {
 } from "./timeline-navigation";
 import { getRevealPlayheadScrollLeft } from "@/timeline/navigation";
 import { TimelineModeStatus } from "./timeline-mode-status";
+import { TrackControlRowView } from "./track-control-row";
 
 const TRACKS_CONTAINER_MAX_HEIGHT = 800;
 const FALLBACK_CONTAINER_WIDTH = 1000;
 const TRACKS_CONTAINER_HEIGHT = { min: 0, max: TRACKS_CONTAINER_MAX_HEIGHT };
-const TRACK_ICONS: Record<TimelineTrack["type"], ReactNode> = {
-	video: <OcVideoIcon className="text-muted-foreground size-4 shrink-0" />,
-	text: (
-		<HugeiconsIcon
-			icon={TextIcon}
-			className="text-muted-foreground size-4 shrink-0"
-		/>
-	),
-	audio: (
-		<HugeiconsIcon
-			icon={MusicNote03Icon}
-			className="text-muted-foreground size-4 shrink-0"
-		/>
-	),
-	graphic: <OcShapesIcon className="text-muted-foreground size-4 shrink-0" />,
-	effect: (
-		<HugeiconsIcon
-			icon={MagicWand05Icon}
-			className="text-muted-foreground size-4 shrink-0"
-		/>
-	),
-};
-
 export function Timeline() {
 	const snappingEnabled = useTimelineStore((s) => s.snappingEnabled);
 	const {
@@ -749,9 +727,46 @@ function TrackLabelsPanel({
 			style={{ width: `${TIMELINE_TRACK_LABELS_COLUMN_WIDTH_PX}px` }}
 		>
 			<div
-				className="shrink-0"
+				className="flex shrink-0 items-end justify-between gap-2 border-b px-2 pb-2"
 				style={{ height: timelineHeaderHeight || 48 }}
-			/>
+			>
+				<div className="min-w-0">
+					<p className="text-[11px] font-semibold">Tracks</p>
+					<p className="text-muted-foreground truncate text-[9px]">
+						{tracks.length} lanes · every change is undoable
+					</p>
+				</div>
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<button
+							type="button"
+							aria-label="Add track"
+							title="Add track"
+							className="hover:bg-muted text-muted-foreground hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded border transition-colors"
+						>
+							<HugeiconsIcon icon={Add01Icon} className="size-4" />
+						</button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="start" className="w-44">
+						{(
+							[
+								["video", "Video track"],
+								["audio", "Audio track"],
+								["text", "Text track"],
+								["graphic", "Graphic track"],
+								["effect", "Effect track"],
+							] as const
+						).map(([type, label]) => (
+							<DropdownMenuItem
+								key={type}
+								onClick={() => editor.timeline.addTrack({ type })}
+							>
+								{label}
+							</DropdownMenuItem>
+						))}
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</div>
 			<div ref={trackLabelsRef} className="flex-1 overflow-hidden">
 				<div ref={trackLabelsScrollRef} className="size-full overflow-hidden">
 					{tracks.length > 0 && (
@@ -761,7 +776,7 @@ function TrackLabelsPanel({
 						>
 							{tracks.map((track, index) => {
 								const expandedRows = trackExpandedRowsMap[index];
-								const baseHeight = getTrackHeight({ type: track.type });
+								const baseHeight = getTrackHeight({ track });
 
 								return (
 									<div
@@ -775,39 +790,48 @@ function TrackLabelsPanel({
 											height: `${baseHeight + getTrackExpansionHeight(index)}px`,
 										}}
 									>
-										<div
-											className="flex shrink-0 items-center justify-end gap-2 px-3"
-											style={{ height: `${baseHeight}px` }}
-										>
-											{canTrackHaveAudio(track) && (
-												<TrackToggleIcon
-													isOff={track.muted}
-													icons={{
-														on: VolumeHighIcon,
-														off: VolumeOffIcon,
-													}}
-													onClick={() =>
-														editor.timeline.toggleTrackMute({
-															trackId: track.id,
-														})
-													}
-												/>
-											)}
-											{canTrackBeHidden(track) && (
-												<TrackToggleIcon
-													isOff={track.hidden}
-													icons={{
-														on: ViewIcon,
-														off: ViewOffSlashIcon,
-													}}
-													onClick={() =>
-														editor.timeline.toggleTrackVisibility({
-															trackId: track.id,
-														})
-													}
-												/>
-											)}
-											<TrackIcon track={track} />
+										<div className="shrink-0" style={{ height: `${baseHeight}px` }}>
+											<TrackControlRowView
+												track={track}
+												isMainTrack={track.id === scene?.tracks.main.id}
+												onRename={(name) =>
+													editor.timeline.renameTrack({
+														trackId: track.id,
+														name,
+													})
+												}
+												onToggleLock={() =>
+													editor.timeline.toggleTrackLock({
+														trackId: track.id,
+													})
+												}
+												onToggleSolo={() =>
+													editor.timeline.toggleTrackSolo({
+														trackId: track.id,
+													})
+												}
+												onToggleMute={() =>
+													editor.timeline.toggleTrackMute({
+														trackId: track.id,
+													})
+												}
+												onToggleVisibility={() =>
+													editor.timeline.toggleTrackVisibility({
+														trackId: track.id,
+													})
+												}
+												onSetHeight={(height) =>
+													editor.timeline.setTrackHeight({
+														trackId: track.id,
+														height,
+													})
+												}
+												onDelete={() =>
+													editor.timeline.removeTrack({
+														trackId: track.id,
+													})
+												}
+											/>
 										</div>
 										{expandedRows.length > 0 && (
 											<PropertyTree rows={expandedRows} />
@@ -923,7 +947,7 @@ function TimelineTrackRows({
 							)}
 							style={{
 								top: `${TIMELINE_CONTENT_TOP_PADDING_PX + getCumulativeHeightBefore({ tracks, trackIndex: index, getExtraHeight: getTrackExpansionHeight })}px`,
-								height: `${getTrackHeight({ type: track.type }) + getTrackExpansionHeight(index)}px`,
+								height: `${getTrackHeight({ track }) + getTrackExpansionHeight(index)}px`,
 							}}
 						>
 							<TimelineTrackContent
@@ -954,28 +978,28 @@ function TimelineTrackRows({
 						>
 							Paste elements
 						</ContextMenuItem>
-						<ContextMenuItem
-							icon={<HugeiconsIcon icon={VolumeHighIcon} />}
-							onClick={(event: React.MouseEvent) => {
-								event.stopPropagation();
-								timeline.toggleTrackMute({ trackId: track.id });
-							}}
-						>
-							{canTrackHaveAudio(track) && track.muted
-								? "Unmute track"
-								: "Mute track"}
-						</ContextMenuItem>
-						<ContextMenuItem
-							icon={<HugeiconsIcon icon={ViewIcon} />}
-							onClick={(event: React.MouseEvent) => {
-								event.stopPropagation();
-								timeline.toggleTrackVisibility({ trackId: track.id });
-							}}
-						>
-							{canTrackBeHidden(track) && track.hidden
-								? "Show track"
-								: "Hide track"}
-						</ContextMenuItem>
+						{canTrackHaveAudio(track) && (
+							<ContextMenuItem
+								icon={<HugeiconsIcon icon={VolumeHighIcon} />}
+								onClick={(event: React.MouseEvent) => {
+									event.stopPropagation();
+									timeline.toggleTrackMute({ trackId: track.id });
+								}}
+							>
+								{track.muted ? "Unmute track" : "Mute track"}
+							</ContextMenuItem>
+						)}
+						{canTrackBeHidden(track) && (
+							<ContextMenuItem
+								icon={<HugeiconsIcon icon={ViewIcon} />}
+								onClick={(event: React.MouseEvent) => {
+									event.stopPropagation();
+									timeline.toggleTrackVisibility({ trackId: track.id });
+								}}
+							>
+								{track.hidden ? "Show track" : "Hide track"}
+							</ContextMenuItem>
+						)}
 						{track.id !== mainTrackId && (
 							<ContextMenuItem
 								icon={<HugeiconsIcon icon={Delete02Icon} />}
@@ -1005,41 +1029,6 @@ function TimelineGutter({
 	return (
 		// eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- spatial gesture surface (empty space below tracks); clicks here clear selection. Keyboard control is global timeline shortcuts.
 		<div className="flex-1" onMouseDown={onMouseDown} onClick={onClick} />
-	);
-}
-
-function TrackIcon({ track }: { track: TimelineTrack }) {
-	return <>{TRACK_ICONS[track.type]}</>;
-}
-
-function TrackToggleIcon({
-	isOff,
-	icons,
-	onClick,
-}: {
-	isOff: boolean;
-	icons: {
-		on: IconSvgElement;
-		off: IconSvgElement;
-	};
-	onClick: () => void;
-}) {
-	return (
-		<>
-			{isOff ? (
-				<HugeiconsIcon
-					icon={icons.off}
-					className="text-destructive size-4 cursor-pointer"
-					onClick={onClick}
-				/>
-			) : (
-				<HugeiconsIcon
-					icon={icons.on}
-					className="text-muted-foreground size-4 cursor-pointer"
-					onClick={onClick}
-				/>
-			)}
-		</>
 	);
 }
 

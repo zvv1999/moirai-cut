@@ -10,6 +10,7 @@ function removeTrackElements<TTrack extends TimelineTrack>({
 	track: TTrack;
 	elements: { trackId: string; elementId: string }[];
 }): TTrack {
+	if (track.locked) return track;
 	const nextElements = track.elements.filter(
 		(element) =>
 			!elements.some(

@@ -55,7 +55,7 @@ function getTrackAtY({
 	let cumulativeHeight = 0;
 
 	for (let i = 0; i < tracks.length; i++) {
-		const trackHeight = getTrackHeight({ type: tracks[i].type });
+		const trackHeight = getTrackHeight({ track: tracks[i] });
 		const trackTop = cumulativeHeight;
 		const trackBottom = trackTop + trackHeight;
 
@@ -214,7 +214,7 @@ export function computeDropTarget({
 		}
 	}
 
-	const trackHeight = getTrackHeight({ type: track.type });
+	const trackHeight = getTrackHeight({ track });
 	const placementResult = resolveTrackPlacement({
 		tracks,
 		elementType,
@@ -268,7 +268,7 @@ export function getDropLineY({
 	let y = 0;
 
 	for (let i = 0; i < safeTrackIndex; i++) {
-		y += getTrackHeight({ type: tracks[i].type }) + TIMELINE_TRACK_GAP_PX;
+		y += getTrackHeight({ track: tracks[i] }) + TIMELINE_TRACK_GAP_PX;
 	}
 
 	return y;

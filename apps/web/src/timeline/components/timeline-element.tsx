@@ -352,7 +352,7 @@ export function TimelineElement({
 		element.type === "video" && isSourceAudioSeparated({ element });
 	const hasKeyframes = elementKeyframes.length > 0;
 	const expansionHeight = getExpansionHeight({ rows: expandedRows });
-	const baseTrackHeight = getTrackHeight({ type: track.type });
+	const baseTrackHeight = getTrackHeight({ track });
 
 	const expandedContent =
 		isExpanded && expandedRows.length > 0 ? (
@@ -1130,7 +1130,7 @@ function TiledMediaContent({
 		);
 	}
 
-	const trackHeight = getTrackHeight({ type: track.type });
+	const trackHeight = getTrackHeight({ track });
 
 	return (
 		<>

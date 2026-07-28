@@ -71,6 +71,9 @@ export class MoveElementCommand extends Command {
 			if (!targetTrack) {
 				throw new Error("Target track not found");
 			}
+			if (sourceTrack.locked || targetTrack.locked) {
+				return undefined;
+			}
 
 			const validation = validateElementTrackCompatibility({
 				element: sourceElement,

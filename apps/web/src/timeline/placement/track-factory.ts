@@ -7,7 +7,7 @@ import type {
 	TrackType,
 	TimelineTrack,
 	VideoTrack,
-} from "@/timeline";
+} from "@/timeline/types";
 
 export function buildEmptyTrack({
 	id,

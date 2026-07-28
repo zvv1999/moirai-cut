@@ -8,7 +8,7 @@ import type {
 	TimelineElement,
 	RetimeConfig,
 } from "@/timeline";
-import { calculateTotalDuration } from "@/timeline";
+import { calculateTotalDuration, canTrackHaveAudio } from "@/timeline";
 import { TimelineDragSource } from "@/timeline/drag-source";
 import { findTrackInSceneTracks } from "@/timeline/track-element-update";
 import { lastFrameMediaTime, type MediaTime, ZERO_MEDIA_TIME } from "@/wasm";
@@ -34,6 +34,7 @@ import {
 	RemoveTrackCommand,
 	ToggleTrackMuteCommand,
 	ToggleTrackVisibilityCommand,
+	UpdateTrackControlsCommand,
 	InsertElementCommand,
 	DeleteElementsCommand,
 	DuplicateElementsCommand,
@@ -182,6 +183,42 @@ export class TimelineManager {
 	toggleTrackVisibility({ trackId }: { trackId: string }): void {
 		const command = new ToggleTrackVisibilityCommand(trackId);
 		this.editor.command.execute({ command });
+	}
+
+	renameTrack({ trackId, name }: { trackId: string; name: string }): void {
+		this.editor.command.execute({
+			command: new UpdateTrackControlsCommand(trackId, { name }),
+		});
+	}
+
+	toggleTrackLock({ trackId }: { trackId: string }): void {
+		const track = this.getTrackById({ trackId });
+		if (!track) return;
+		this.editor.command.execute({
+			command: new UpdateTrackControlsCommand(trackId, {
+				locked: !track.locked,
+			}),
+		});
+	}
+
+	toggleTrackSolo({ trackId }: { trackId: string }): void {
+		const track = this.getTrackById({ trackId });
+		if (!track || !canTrackHaveAudio(track)) return;
+		this.editor.command.execute({
+			command: new UpdateTrackControlsCommand(trackId, { solo: !track.solo }),
+		});
+	}
+
+	setTrackHeight({
+		trackId,
+		height,
+	}: {
+		trackId: string;
+		height: number;
+	}): void {
+		this.editor.command.execute({
+			command: new UpdateTrackControlsCommand(trackId, { height }),
+		});
 	}
 
 	splitElements({

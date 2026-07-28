@@ -1,23 +1,29 @@
-import type { TrackType } from "@/timeline";
+import type { TimelineTrack, TrackType } from "@/timeline";
+import { getTrackDisplayHeight } from "@/timeline";
 import {
 	KEYFRAME_LANE_HEIGHT_PX,
 	TIMELINE_TRACK_GAP_PX,
-	TIMELINE_TRACK_HEIGHTS_PX,
 } from "./layout";
 
-export function getTrackHeight({ type }: { type: TrackType }): number {
-	return TIMELINE_TRACK_HEIGHTS_PX[type];
+export function getTrackHeight({
+	track,
+}: {
+	track: Pick<TimelineTrack, "type" | "height">;
+}): number {
+	return getTrackDisplayHeight({ track });
 }
 
 export function getExpandedTrackHeight({
 	type,
+	height,
 	expandedLaneCount,
 }: {
 	type: TrackType;
+	height?: number;
 	expandedLaneCount: number;
 }): number {
 	return (
-		TIMELINE_TRACK_HEIGHTS_PX[type] +
+		getTrackDisplayHeight({ track: { type, height } }) +
 		expandedLaneCount * KEYFRAME_LANE_HEIGHT_PX
 	);
 }
@@ -27,7 +33,7 @@ export function getCumulativeHeightBefore({
 	trackIndex,
 	getExtraHeight,
 }: {
-	tracks: Array<{ type: TrackType }>;
+	tracks: Array<Pick<TimelineTrack, "type" | "height">>;
 	trackIndex: number;
 	getExtraHeight?: (trackIndex: number) => number;
 }): number {
@@ -36,7 +42,7 @@ export function getCumulativeHeightBefore({
 		.reduce(
 			(sum, track, i) =>
 				sum +
-				getTrackHeight({ type: track.type }) +
+				getTrackHeight({ track }) +
 				(getExtraHeight?.(i) ?? 0) +
 				TIMELINE_TRACK_GAP_PX,
 			0,
@@ -47,12 +53,12 @@ export function getTotalTracksHeight({
 	tracks,
 	getExtraHeight,
 }: {
-	tracks: Array<{ type: TrackType }>;
+	tracks: Array<Pick<TimelineTrack, "type" | "height">>;
 	getExtraHeight?: (trackIndex: number) => number;
 }): number {
 	const tracksHeight = tracks.reduce(
 		(sum, track, i) =>
-			sum + getTrackHeight({ type: track.type }) + (getExtraHeight?.(i) ?? 0),
+			sum + getTrackHeight({ track }) + (getExtraHeight?.(i) ?? 0),
 		0,
 	);
 	const gapsHeight = Math.max(0, tracks.length - 1) * TIMELINE_TRACK_GAP_PX;

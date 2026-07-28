@@ -1,13 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import {
+	applyTrackControlPatch,
 	getTrackCompatibilityLabel,
 	getTrackDisplayHeight,
+	getNextTrackDisplayHeight,
 	isTrackAudible,
+	isTrackLocked,
 	normalizeTrackName,
 	TRACK_HEIGHT_MAX_PX,
 	TRACK_HEIGHT_MIN_PX,
 } from "@/timeline/track-controls";
-import { buildEmptyTrack } from "@/timeline/placement";
+import { buildEmptyTrack } from "@/timeline/placement/track-factory";
 
 describe("timeline track controls", () => {
 	test("describes the media each track type accepts", () => {
@@ -40,6 +43,40 @@ describe("timeline track controls", () => {
 		expect(
 			getTrackDisplayHeight({ track: { ...video, height: 999 } }),
 		).toBe(TRACK_HEIGHT_MAX_PX);
+		expect(getNextTrackDisplayHeight({ track: video })).toBe(101);
+		expect(
+			getNextTrackDisplayHeight({ track: { ...video, height: 101 } }),
+		).toBe(TRACK_HEIGHT_MAX_PX);
+		expect(
+			getNextTrackDisplayHeight({
+				track: { ...video, height: TRACK_HEIGHT_MAX_PX },
+			}),
+		).toBe(TRACK_HEIGHT_MIN_PX);
+	});
+
+	test("applies safe, type-aware control patches", () => {
+		const video = buildEmptyTrack({ id: "video", type: "video" });
+		const text = buildEmptyTrack({ id: "text", type: "text" });
+		const updatedVideo = applyTrackControlPatch({
+			track: video,
+			patch: {
+				name: "  Camera A  ",
+				locked: true,
+				solo: true,
+				height: 999,
+			},
+		});
+		const updatedText = applyTrackControlPatch({
+			track: text,
+			patch: { solo: true },
+		});
+
+		expect(updatedVideo.name).toBe("Camera A");
+		expect(updatedVideo.height).toBe(TRACK_HEIGHT_MAX_PX);
+		expect(updatedVideo.solo).toBe(true);
+		expect(isTrackLocked({ track: updatedVideo })).toBe(true);
+		expect(updatedText.solo).toBeUndefined();
+		expect(isTrackLocked({ track: text })).toBe(false);
 	});
 
 	test("solo isolates audio-capable tracks and still respects mute", () => {

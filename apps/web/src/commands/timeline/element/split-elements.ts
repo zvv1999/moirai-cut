@@ -48,10 +48,15 @@ export class SplitElementsCommand extends Command {
 		this.rightSideElements = [];
 
 		const splitTrack = <
-			TTrack extends { id: string; elements: TimelineElement[] },
+			TTrack extends {
+				id: string;
+				locked?: boolean;
+				elements: TimelineElement[];
+			},
 		>(
 			track: TTrack,
 		): TTrack => {
+			if (track.locked) return track;
 			const elementsToSplit = this.elements.filter(
 				(target) => target.trackId === track.id,
 			);

@@ -31,6 +31,12 @@ export type TrackType = "video" | "text" | "audio" | "graphic" | "effect";
 interface BaseTrack {
 	id: string;
 	name: string;
+	/** Prevent human timeline gestures and destructive edit commands on this track. */
+	locked?: boolean;
+	/** User-selected lane height. Older projects safely fall back to the type default. */
+	height?: number;
+	/** Isolate this track when any audio-capable track is soloed. */
+	solo?: boolean;
 }
 
 export interface VideoTrack extends BaseTrack {
