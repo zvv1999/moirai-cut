@@ -5,13 +5,14 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 9,
-		"automatedTestsPassing": 362,
-		"archivedScreenshots": 6
+		"greenCapabilities": 10,
+		"automatedTestsPassing": 371,
+		"archivedScreenshots": 8
 	},
 	"greenFeatureIds": [
 		"W01",
 		"W02",
+		"W03",
 		"W06",
 		"M02",
 		"T07",
@@ -21,6 +22,22 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["W03"],
+			"redCommits": ["c9f6ac8", "d50740a"],
+			"greenCommit": "07bef55",
+			"result": "The human keyframe workflow now exposes previous, next, add, delete, and current-playhead state in the inspector; expandable parameter lanes support multi-selection, frame nudging, clipboard operations, interpolation changes, deletion, and curve editing.",
+			"tests": {
+				"targeted": "11/11",
+				"fullSuite": "371/371",
+				"functionCoverage": "100% for new navigation, action-planning, and inspector-control modules",
+				"lineCoverage": "100% for new navigation, action-planning, and inspector-control modules"
+			},
+			"screenshots": [
+				"assets/screenshots/W03-keyframe-navigation-toolbar-curve.png",
+				"assets/screenshots/W03-keyframe-multiselect-lanes.png"
+			]
+		},
 		{
 			"featureIds": ["W02"],
 			"redCommits": ["78e250c"],

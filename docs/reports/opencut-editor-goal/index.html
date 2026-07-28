@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">9</strong>
+							<strong class="metric__value">10</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">362</strong>
+							<strong class="metric__value">371</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">6</strong>
+							<strong class="metric__value">8</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,54 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/W03-keyframe-navigation-toolbar-curve.png"
+								data-lightbox-label="W03 关键帧导航、动作栏与曲线编辑"
+							>
+								<img
+									src="assets/screenshots/W03-keyframe-navigation-toolbar-curve.png"
+									alt="检查器显示关键帧前后导航和当前状态，时间线显示关键帧动作栏与贝塞尔曲线编辑器"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">W03 · KEYFRAMES</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>人工关键帧操作形成完整闭环</h3>
+								<p>
+									属性行可前后跳转、在播放头增删并反馈当前状态；选中关键帧后可按帧移动、复制粘贴、切换插值并打开曲线编辑器。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/W03-keyframe-multiselect-lanes.png"
+								data-lightbox-label="W03 展开轨道与多选关键帧"
+							>
+								<img
+									src="assets/screenshots/W03-keyframe-multiselect-lanes.png"
+									alt="时间线展开 Scale X 和 Scale Y 关键帧轨道并显示两个关键帧已选中"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">W03 · MULTI-SELECT</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>轨道内可见、可多选、可精确调整</h3>
+								<p>
+									关键帧轨道可展开或收起；点击、组合键和框选可建立多选集合，并由统一动作栏完成一帧移动、复制、粘贴、插值和删除。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -326,6 +374,18 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>W03</strong></td>
+									<td>
+										<code>c9f6ac8</code> / <code>d50740a</code> RED +
+										<code>07bef55</code> GREEN
+									</td>
+									<td>目标 11/11；全量 371/371；新导航、动作计划与检查器控件 100%</td>
+									<td>
+										前后/当前导航；轨道展开；多选；复制粘贴；按帧移动；插值与曲线
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>W02</strong></td>
 									<td><code>78e250c</code> RED + <code>4408d7b</code> GREEN</td>
