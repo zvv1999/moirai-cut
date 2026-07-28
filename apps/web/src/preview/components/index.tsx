@@ -10,6 +10,8 @@ import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
 import { TICKS_PER_SECOND } from "@/wasm";
 import type { RootNode } from "@/services/renderer/nodes/root-node";
 import { buildScene } from "@/services/renderer/scene-builder";
+import { findActiveMissingVisualElements } from "@/media/missing-media";
+import { MissingMediaPlaceholder } from "@/media/missing-media-placeholder";
 import { PreviewOverlayLayer } from "./overlay-layer";
 import { PreviewInteractionOverlay } from "./preview-interaction-overlay";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
@@ -147,6 +149,20 @@ function PreviewCanvas({
 	const editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActive());
 	const renderTree = useEditor((e) => e.renderer.getRenderTree());
+	const previewTracks = useEditor(
+		(e) => e.timeline.getPreviewTracks() ?? e.scenes.getActiveScene().tracks,
+	);
+	const mediaAssets = useEditor((e) => e.media.getAssets());
+	const currentTime = useEditor((e) => e.playback.getCurrentTime());
+	const activeMissingMedia = useMemo(
+		() =>
+			findActiveMissingVisualElements({
+				tracks: previewTracks,
+				assets: mediaAssets,
+				time: currentTime,
+			}),
+		[previewTracks, mediaAssets, currentTime],
+	);
 	const viewport = usePreviewViewportState({
 		canvasHeight: nativeHeight,
 		canvasWidth: nativeWidth,
@@ -194,21 +210,16 @@ function PreviewCanvas({
 		);
 		const frame = Math.floor(renderTime / ticksPerFrame);
 
-		if (
-			frame === lastFrameRef.current &&
-			renderTree === lastSceneRef.current
-		) {
+		if (frame === lastFrameRef.current && renderTree === lastSceneRef.current) {
 			return;
 		}
 
 		renderingRef.current = true;
 		lastSceneRef.current = renderTree;
 		lastFrameRef.current = frame;
-		renderer
-			.render({ node: renderTree, time: renderTime })
-			.then(() => {
-				renderingRef.current = false;
-			});
+		renderer.render({ node: renderTree, time: renderTime }).then(() => {
+			renderingRef.current = false;
+		});
 	}, [renderer, renderTree, editor.playback, editor.timeline]);
 
 	useRafLoop(render);
@@ -308,20 +319,35 @@ function PreviewCanvas({
 								ref={viewportRef}
 								className="relative flex size-full min-h-0 min-w-0 items-center justify-center overflow-hidden"
 							>
-							<div
-								ref={canvasMountRef}
-								className="absolute block border"
-								style={{
-									left: viewport.sceneLeft,
-									top: viewport.sceneTop,
-									width: viewport.sceneWidth,
-									height: viewport.sceneHeight,
-									background:
-										activeProject.settings.background.type === "blur"
-											? "transparent"
-											: activeProject?.settings.background.color,
-								}}
-							/>
+								<div
+									ref={canvasMountRef}
+									className="absolute block border"
+									style={{
+										left: viewport.sceneLeft,
+										top: viewport.sceneTop,
+										width: viewport.sceneWidth,
+										height: viewport.sceneHeight,
+										background:
+											activeProject.settings.background.type === "blur"
+												? "transparent"
+												: activeProject?.settings.background.color,
+									}}
+								>
+									{activeMissingMedia[0] ? (
+										<MissingMediaPlaceholder
+											surface="canvas"
+											mediaId={activeMissingMedia[0].mediaId}
+											name={
+												activeMissingMedia.length > 1
+													? `${activeMissingMedia[0].name} (+${
+															activeMissingMedia.length - 1
+														} more)`
+													: activeMissingMedia[0].name
+											}
+											type={activeMissingMedia[0].type}
+										/>
+									) : null}
+								</div>
 								<PreviewOverlayLayer
 									instances={overlayInstances}
 									plane="under-interaction"

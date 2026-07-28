@@ -76,7 +76,7 @@ Every feature must satisfy the applicable gates:
 
 | ID | Capability | Acceptance conditions | Status |
 | --- | --- | --- | --- |
-| W01 | Missing-media management | Detect missing media; show a consistent red placeholder in library, canvas, and timeline; relink one or many files without losing cuts, trims, retime, effects, masks, or keyframes | `TODO` |
+| W01 | Missing-media management | Detect missing media; show a consistent red placeholder in library, canvas, and timeline; relink one or many files without losing cuts, trims, retime, effects, masks, or keyframes | `DONE` |
 | W02 | Inspector information architecture | Show selected item identity, type, duration, and grouped Basic/Transform/Blend/Mask/Effect sections; every editable value has reset and keyframe affordances | `TODO` |
 | W03 | Complete keyframe interaction | Add/delete, previous/next, current-time state, multi-select, copy/paste, drag, keyboard movement, interpolation, and curve editing all work from the human UI | `TODO` |
 | W04 | Playback transport | Previous/next frame, play/pause, start/end, loop, playback speed, and preview quality are visible, labelled, and frame-accurate | `TODO` |
@@ -202,6 +202,7 @@ Evidence is append-only. Each entry must identify feature IDs.
 
 | Date | Feature IDs | Evidence | Result |
 | --- | --- | --- | --- |
+| 2026-07-28 | W01 | RED commits `c0f0a73`, `157a7a5`, `33e3206`, `393bacc`; 12 targeted tests; 82.35-100% function and 89.86-100% line coverage across new core modules; full suite 357/357; real file moved offline and relinked from browser; byte hashes matched; zero browser error; screenshots `W01-missing-media-library-timeline-canvas.png` and `W01-missing-media-relinked.png` | Capability complete |
 | 2026-07-28 | M0 | Versioned plan, report data, portable HTML/CSS report, browser DOM and lightbox verification, zero browser console warnings/errors, screenshot `M0-html-report-baseline.png` | Milestone complete |
 | 2026-07-28 | M02, W06, T07 | Commit `8086fad`; browser search `reed` returned 1/44; video filter returned 6/44; toolbar showed current shortcut labels | Partial capabilities verified |
 | 2026-07-28 | G01, G04, G06, G07 | Existing agent manager, operation registry, revision/idempotency tests, MCP schema drift tests | Existing foundation accepted as GREEN, final browser/report evidence still required |

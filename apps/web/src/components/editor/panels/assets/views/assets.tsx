@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { MediaDragOverlay } from "@/components/editor/panels/assets/drag-overlay";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
@@ -52,6 +52,13 @@ import {
 } from "@/components/editor/panels/assets/assets-panel-store";
 import { MASKABLE_ELEMENT_TYPES } from "@/timeline";
 import type { MediaAsset } from "@/media/types";
+import {
+	findMissingMediaReferences,
+	matchFilesToMissingMedia,
+	type MissingMediaReference,
+} from "@/media/missing-media";
+import { MissingMediaPlaceholder } from "@/media/missing-media-placeholder";
+import { getMediaTypeFromFile } from "@/media/media-utils";
 import { cn } from "@/utils/ui";
 import {
 	FilterHorizontalIcon,
@@ -73,6 +80,7 @@ import {
 export function MediaView() {
 	const editor = useEditor();
 	const mediaFiles = useEditor((e) => e.media.getAssets());
+	const activeTracks = useEditor((e) => e.scenes.getActiveScene().tracks);
 	const activeProject = useEditor((e) => e.project.getActive());
 
 	const {
@@ -90,6 +98,17 @@ export function MediaView() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [mediaTypeFilter, setMediaTypeFilter] =
 		useState<MediaTypeFilter>("all");
+	const relinkInputRef = useRef<HTMLInputElement>(null);
+	const relinkTargetIdsRef = useRef<string[]>([]);
+
+	const missingReferences = useMemo(
+		() =>
+			findMissingMediaReferences({
+				tracks: activeTracks,
+				assets: mediaFiles,
+			}),
+		[activeTracks, mediaFiles],
+	);
 
 	const processFiles = async ({ files }: { files: File[] }) => {
 		if (!files || files.length === 0) return;
@@ -135,6 +154,119 @@ export function MediaView() {
 			multiple: true,
 			onFilesSelected: (files) => processFiles({ files }),
 		});
+
+	const openRelinkPicker = ({
+		references,
+	}: {
+		references: MissingMediaReference[];
+	}) => {
+		const input = relinkInputRef.current;
+		if (!input || references.length === 0) return;
+		relinkTargetIdsRef.current = references.map(
+			(reference) => reference.mediaId,
+		);
+		input.multiple = references.length > 1;
+		input.click();
+	};
+
+	const handleRelinkFiles = async ({
+		files,
+	}: {
+		files: File[];
+	}): Promise<void> => {
+		if (files.length === 0) return;
+		const targetIds = new Set(relinkTargetIdsRef.current);
+		const targetReferences = missingReferences.filter((reference) =>
+			targetIds.has(reference.mediaId),
+		);
+		if (targetReferences.length === 0) {
+			toast.error("The missing media selection is no longer available");
+			return;
+		}
+
+		setIsProcessing(true);
+		setProgress(0);
+		try {
+			if (targetReferences.length === 1) {
+				const [reference] = targetReferences;
+				const [file] = files;
+				const fileType = getMediaTypeFromFile({ file });
+				if (fileType !== reference.type) {
+					toast.error(`Choose a ${reference.type} file`, {
+						description: `${file.name} is ${
+							fileType ? `a ${fileType}` : "not supported"
+						}.`,
+					});
+					return;
+				}
+
+				const [processed] = await processMediaAssets({
+					files: [file],
+					onProgress: ({ progress }) => setProgress(progress),
+				});
+				if (!processed) return;
+
+				editor.media.relinkMediaAsset({
+					projectId: activeProject.metadata.id,
+					assetId: reference.mediaId,
+					asset: processed,
+				});
+				toast.success(`Relinked ${reference.name}`, {
+					description: `Using ${file.name}. Timeline edits were preserved.`,
+				});
+				return;
+			}
+
+			const matching = matchFilesToMissingMedia({
+				references: targetReferences,
+				files,
+			});
+			const processedAssets = await processMediaAssets({
+				files: matching.matches.map((match) => match.file),
+				onProgress: ({ progress }) => setProgress(progress),
+			});
+			const processedByFile = new Map(
+				processedAssets.map((asset) => [asset.file, asset]),
+			);
+			const items = matching.matches.flatMap((match) => {
+				const processed = processedByFile.get(match.file);
+				return processed
+					? [{ assetId: match.reference.mediaId, asset: processed }]
+					: [];
+			});
+
+			editor.media.relinkMediaAssets({
+				projectId: activeProject.metadata.id,
+				items,
+			});
+
+			if (items.length > 0) {
+				toast.success(
+					`Relinked ${items.length} missing ${
+						items.length === 1 ? "file" : "files"
+					}`,
+					{ description: "Timeline edits were preserved." },
+				);
+			}
+			if (
+				matching.unmatchedReferences.length > 0 ||
+				matching.unmatchedFiles.length > 0
+			) {
+				toast.warning("Some files could not be matched", {
+					description: `${matching.unmatchedReferences.length} missing references and ${matching.unmatchedFiles.length} selected files remain unmatched.`,
+				});
+			}
+		} catch (error) {
+			console.error("Error relinking media:", error);
+			toast.error("Could not relink media", {
+				description: error instanceof Error ? error.message : undefined,
+			});
+		} finally {
+			setIsProcessing(false);
+			setProgress(0);
+			relinkTargetIdsRef.current = [];
+		}
+	};
 
 	const handleRemove = ({
 		event,
@@ -201,14 +333,23 @@ export function MediaView() {
 
 		return filtered;
 	}, [mediaFiles, mediaSortBy, mediaSortOrder, mediaTypeFilter, searchQuery]);
+	const filteredMissingReferences = useMemo(() => {
+		const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
+		return missingReferences.filter(
+			(reference) =>
+				(mediaTypeFilter === "all" || mediaTypeFilter === reference.type) &&
+				(!normalizedQuery ||
+					reference.name.toLocaleLowerCase().includes(normalizedQuery)),
+		);
+	}, [mediaTypeFilter, missingReferences, searchQuery]);
 	const mediaLibraryItemCount = useMemo(
 		() =>
 			filterMediaLibraryAssets({
 				assets: mediaFiles,
 				query: "",
 				type: "all",
-			}).length,
-		[mediaFiles],
+			}).length + missingReferences.length,
+		[mediaFiles, missingReferences.length],
 	);
 	const orderedMediaIds = useMemo(() => {
 		return filteredMediaItems.map((item) => item.id);
@@ -217,6 +358,18 @@ export function MediaView() {
 	return (
 		<>
 			<input {...fileInputProps} />
+			<input
+				ref={relinkInputRef}
+				type="file"
+				accept="image/*,video/*,audio/*"
+				className="hidden"
+				aria-label="Choose files to relink missing media"
+				onChange={(event) => {
+					const files = Array.from(event.currentTarget.files ?? []);
+					event.currentTarget.value = "";
+					void handleRelinkFiles({ files });
+				}}
+			/>
 
 			<PanelView
 				title="Assets"
@@ -252,7 +405,20 @@ export function MediaView() {
 							onQueryChange={setSearchQuery}
 							onTypeChange={setMediaTypeFilter}
 						/>
-						{filteredMediaItems.length === 0 ? (
+						{filteredMissingReferences.length > 0 ? (
+							<MissingMediaSection
+								references={filteredMissingReferences}
+								isProcessing={isProcessing}
+								onRelink={(reference) =>
+									openRelinkPicker({ references: [reference] })
+								}
+								onRelinkAll={() =>
+									openRelinkPicker({ references: missingReferences })
+								}
+							/>
+						) : null}
+						{filteredMediaItems.length === 0 &&
+						filteredMissingReferences.length === 0 ? (
 							<MediaLibraryEmptySearch
 								query={searchQuery}
 								type={mediaTypeFilter}
@@ -261,7 +427,7 @@ export function MediaView() {
 									setMediaTypeFilter("all");
 								}}
 							/>
-						) : (
+						) : filteredMediaItems.length > 0 ? (
 							<SelectableSurface
 								ariaLabel="Assets"
 								orderedIds={orderedMediaIds}
@@ -275,7 +441,7 @@ export function MediaView() {
 									onRemove={handleRemove}
 								/>
 							</SelectableSurface>
-						)}
+						) : null}
 					</div>
 				)}
 			</PanelView>
@@ -407,6 +573,64 @@ function MediaLibraryEmptySearch({
 				No assets match {query || "the selected media type"}
 			</span>
 		</div>
+	);
+}
+
+function MissingMediaSection({
+	references,
+	isProcessing,
+	onRelink,
+	onRelinkAll,
+}: {
+	references: MissingMediaReference[];
+	isProcessing: boolean;
+	onRelink: (reference: MissingMediaReference) => void;
+	onRelinkAll: () => void;
+}) {
+	return (
+		<section
+			className="border-b border-red-500/20 px-2 pb-3"
+			aria-label={`${references.length} missing media ${
+				references.length === 1 ? "file" : "files"
+			}`}
+		>
+			<div className="mb-2 flex items-center justify-between gap-2">
+				<div className="min-w-0">
+					<p className="text-xs font-bold text-red-400">
+						{references.length} missing{" "}
+						{references.length === 1 ? "file" : "files"}
+					</p>
+					<p className="text-muted-foreground truncate text-[11px]">
+						Relink to restore preview and export
+					</p>
+				</div>
+				{references.length > 1 ? (
+					<Button
+						type="button"
+						size="sm"
+						variant="outline"
+						className="h-6 text-xs"
+						disabled={isProcessing}
+						onClick={onRelinkAll}
+					>
+						Relink all
+					</Button>
+				) : null}
+			</div>
+			<div className="grid grid-cols-[repeat(auto-fill,minmax(7rem,1fr))] gap-2">
+				{references.map((reference) => (
+					<MissingMediaPlaceholder
+						key={reference.mediaId}
+						surface="library"
+						mediaId={reference.mediaId}
+						name={reference.name}
+						type={reference.type}
+						usageCount={reference.usages.length}
+						onRelink={isProcessing ? undefined : () => onRelink(reference)}
+					/>
+				))}
+			</div>
+		</section>
 	);
 }
 

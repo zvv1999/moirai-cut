@@ -209,9 +209,7 @@ describe("findMissingMediaReferences", () => {
 				mediaId: "missing-audio",
 				name: "Room tone.wav",
 				type: "audio",
-				usages: [
-					{ trackId: "audio", elementId: "missing-audio-element" },
-				],
+				usages: [{ trackId: "audio", elementId: "missing-audio-element" }],
 			},
 		]);
 	});

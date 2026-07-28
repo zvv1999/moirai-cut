@@ -5,7 +5,11 @@ import { storageService } from "@/services/storage/service";
 import { generateUUID } from "@/utils/id";
 import { videoCache } from "@/services/video-cache/service";
 import { waveformCache } from "@/services/waveform-cache/service";
-import { BatchCommand, RemoveMediaAssetCommand } from "@/commands";
+import {
+	BatchCommand,
+	RelinkMediaAssetCommand,
+	RemoveMediaAssetCommand,
+} from "@/commands";
 
 export class MediaManager {
 	private assets: MediaAsset[] = [];
@@ -73,14 +77,55 @@ export class MediaManager {
 						assetId: uniqueIds[0],
 					})
 				: new BatchCommand(
-						uniqueIds.map((id) =>
-							new RemoveMediaAssetCommand({
-								projectId,
-								assetId: id,
-							}),
+						uniqueIds.map(
+							(id) =>
+								new RemoveMediaAssetCommand({
+									projectId,
+									assetId: id,
+								}),
 						),
 					);
 
+		this.editor.command.execute({ command });
+	}
+
+	relinkMediaAsset({
+		projectId,
+		assetId,
+		asset,
+	}: {
+		projectId: string;
+		assetId: string;
+		asset: Omit<MediaAsset, "id">;
+	}): void {
+		this.relinkMediaAssets({
+			projectId,
+			items: [{ assetId, asset }],
+		});
+	}
+
+	relinkMediaAssets({
+		projectId,
+		items,
+	}: {
+		projectId: string;
+		items: Array<{
+			assetId: string;
+			asset: Omit<MediaAsset, "id">;
+		}>;
+	}): void {
+		if (items.length === 0) return;
+
+		const commands = items.map(
+			({ assetId, asset }) =>
+				new RelinkMediaAssetCommand({
+					projectId,
+					assetId,
+					asset,
+				}),
+		);
+		const command =
+			commands.length === 1 ? commands[0] : new BatchCommand(commands);
 		this.editor.command.execute({ command });
 	}
 

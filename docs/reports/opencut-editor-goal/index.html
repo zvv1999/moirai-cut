@@ -61,15 +61,15 @@
               <span class="metric__label">已登记能力点</span>
             </article>
             <article class="metric">
-              <strong class="metric__value">7</strong>
+              <strong class="metric__value">8</strong>
               <span class="metric__label">当前 GREEN 能力</span>
             </article>
             <article class="metric">
-              <strong class="metric__value">345</strong>
+              <strong class="metric__value">357</strong>
               <span class="metric__label">既有自动化测试通过</span>
             </article>
             <article class="metric">
-              <strong class="metric__value">3</strong>
+              <strong class="metric__value">5</strong>
               <span class="metric__label">已归档界面截图</span>
             </article>
           </div>
@@ -172,6 +172,54 @@
               <button
                 class="evidence-card__image"
                 type="button"
+                data-lightbox-src="assets/screenshots/W01-missing-media-library-timeline-canvas.png"
+                data-lightbox-label="W01 丢失素材检测"
+              >
+                <img
+                  src="assets/screenshots/W01-missing-media-library-timeline-canvas.png"
+                  alt="素材库和画布同时显示红色媒体离线状态"
+                />
+              </button>
+              <div class="evidence-card__body">
+                <div class="evidence-card__topline">
+                  <span class="feature-id">W01 · OFFLINE</span>
+                  <span class="status status--green">DONE</span>
+                </div>
+                <h3>丢失状态不会静默</h3>
+                <p>
+                  真实时间线图片被临时移出媒体目录后，素材库、时间线和当前播放头画布同时进入一致的红色离线状态，并给出明确重链接入口。
+                </p>
+              </div>
+            </article>
+
+            <article class="evidence-card">
+              <button
+                class="evidence-card__image"
+                type="button"
+                data-lightbox-src="assets/screenshots/W01-missing-media-relinked.png"
+                data-lightbox-label="W01 重链接成功"
+              >
+                <img
+                  src="assets/screenshots/W01-missing-media-relinked.png"
+                  alt="重链接后素材库恢复为 44 项且画布恢复图片"
+                />
+              </button>
+              <div class="evidence-card__body">
+                <div class="evidence-card__topline">
+                  <span class="feature-id">W01 · RELINKED</span>
+                  <span class="status status--green">DONE</span>
+                </div>
+                <h3>重链接保留全部剪辑</h3>
+                <p>
+                  从界面选择原文件后复用同一 mediaId，素材数恢复 44，画布立即恢复；变换、裁边和 4 个关键帧保持不变，文件哈希一致。
+                </p>
+              </div>
+            </article>
+
+            <article class="evidence-card">
+              <button
+                class="evidence-card__image"
+                type="button"
                 data-lightbox-src="assets/screenshots/M02-W06-editor-workbench-baseline.png"
                 data-lightbox-label="M02 / W06 编辑工作台基线"
               >
@@ -243,9 +291,16 @@
               </thead>
               <tbody>
                 <tr>
+                  <td><strong>W01</strong></td>
+                  <td>4 个 RED 提交 + GREEN checkpoint</td>
+                  <td>目标 12/12；全量 357/357；新核心模块覆盖率 &gt;80%</td>
+                  <td>真实文件离线/重链接；SHA-256 一致；0 error</td>
+                  <td><span class="status status--green">DONE</span></td>
+                </tr>
+                <tr>
                   <td><strong>M02 / W06 / T07</strong></td>
                   <td><code>8086fad</code></td>
-                  <td>针对性测试 + 全量 345/345</td>
+                  <td>针对性测试 + 全量 357/357</td>
                   <td>搜索 1/44；视频 6/44；快捷键标签可见</td>
                   <td><span class="status status--green">GREEN</span></td>
                 </tr>

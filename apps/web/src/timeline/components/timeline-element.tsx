@@ -42,12 +42,16 @@ import type {
 } from "@/timeline";
 import type { MediaAsset } from "@/media/types";
 import { mediaSupportsAudio } from "@/media/media-utils";
+import { MissingMediaPlaceholder } from "@/media/missing-media-placeholder";
 import {
 	canToggleSourceAudio,
 	getSourceAudioActionLabel,
 	isSourceAudioSeparated,
 } from "@/timeline/audio-separation";
-import { buildWaveformGainSamples, isElementMuted } from "@/timeline/audio-state";
+import {
+	buildWaveformGainSamples,
+	isElementMuted,
+} from "@/timeline/audio-state";
 import { getTimelinePixelsPerSecond } from "@/timeline";
 import { buildWaveformSourceKey } from "@/media/waveform-summary";
 import { addMediaTime, type MediaTime, TICKS_PER_SECOND } from "@/wasm";
@@ -907,7 +911,9 @@ function TextElementContent({
 	return (
 		<div className="flex size-full items-center justify-start pl-2">
 			<span className="truncate text-xs text-white">
-				{typeof element.params.content === "string" ? element.params.content : ""}
+				{typeof element.params.content === "string"
+					? element.params.content
+					: ""}
 			</span>
 		</div>
 	);
@@ -1014,6 +1020,17 @@ function AudioElementContent({
 			}),
 		[element],
 	);
+	if (element.sourceType === "upload" && !mediaAsset) {
+		return (
+			<MissingMediaPlaceholder
+				surface="timeline"
+				mediaId={element.mediaId}
+				name={element.name}
+				type="audio"
+			/>
+		);
+	}
+
 	if (audioBuffer || audioUrl || sourceFile) {
 		return (
 			<div className="group/audio relative size-full">
@@ -1093,6 +1110,17 @@ function TiledMediaContent({
 		element.type === "video"
 			? mediaAsset?.thumbnailUrl
 			: (mediaAsset?.thumbnailUrl ?? mediaAsset?.url);
+
+	if (!mediaAsset) {
+		return (
+			<MissingMediaPlaceholder
+				surface="timeline"
+				mediaId={element.mediaId}
+				name={element.name}
+				type={element.type}
+			/>
+		);
+	}
 
 	if (!imageUrl) {
 		return (
