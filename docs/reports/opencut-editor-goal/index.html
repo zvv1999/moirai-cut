@@ -68,11 +68,11 @@
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">453</strong>
+							<strong class="metric__value">455</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">29</strong>
+							<strong class="metric__value">30</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -116,7 +116,7 @@
 									素材组织、源预览、选择、编组、标记、转场、复合片段和快照。
 								</p>
 							</div>
-							<span class="status status--building">BUILDING</span>
+							<span class="status status--green">DONE</span>
 						</article>
 						<article class="milestone">
 							<span class="milestone__id">M3</span>
@@ -177,6 +177,30 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/T07-shortcut-workbench.png"
+								data-lightbox-label="T07 可搜索、可导入导出的快捷键工作台"
+							>
+								<img
+									src="assets/screenshots/T07-shortcut-workbench.png"
+									alt="OpenCut 快捷键工作台搜索 Ripple，将未分配命令设为 R，并显示导入、导出和恢复默认入口"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">T07 · SHORTCUT WORKBENCH</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>快捷键终于是可管理的系统，不是静态说明</h3>
+								<p>
+									30 个可绑定命令包含未分配项，可按描述、分类、Action ID 或当前按键搜索。自定义绑定会同步到菜单、工具提示和常驻模式条；冲突被拒绝，JSON 可导入导出，并可一键恢复默认。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -884,6 +908,15 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>T07</strong></td>
+									<td><code>4afa396</code> RED + <code>6d96912</code> GREEN</td>
+									<td>目标 4/4；全量 455/455；TypeScript / ESLint / 生产构建通过</td>
+									<td>
+										搜索 Ripple；未分配 → R；模式条实时显示 Ripple editing: Off (R)；占用的 S 被拒绝；导出后恢复默认且无验收配置残留
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>T08</strong></td>
 									<td><code>d99a90f</code> RED + <code>a4b7e9c</code> GREEN</td>

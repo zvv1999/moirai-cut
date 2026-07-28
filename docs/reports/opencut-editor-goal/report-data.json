@@ -6,8 +6,8 @@
 	"summary": {
 		"cataloguedCapabilities": 74,
 		"greenCapabilities": 27,
-		"automatedTestsPassing": 453,
-		"archivedScreenshots": 29
+		"automatedTestsPassing": 455,
+		"archivedScreenshots": 30
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -39,6 +39,25 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": [
+				"T07"
+			],
+			"redCommits": [
+				"4afa396"
+			],
+			"greenCommit": "6d96912",
+			"result": "The shortcut workbench now exposes all 30 bindable commands, including unassigned actions, with search across descriptions, categories, action IDs, and current keys. Users can record replacements, receive conflict validation, import strictly validated JSON, export the active map, reset defaults, and see default versus custom state. Context menus, toolbar controls, and persistent timeline modes render the current map rather than stale defaults.",
+			"tests": {
+				"targeted": "4/4 focused shortcut-management and persistent-mode tests",
+				"fullSuite": "455/455 from the repository root with the required WASM test preload",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
+			},
+			"browserVerification": "Searched Ripple, assigned the previously unbound command to R, and observed Ripple editing: Off (R) immediately in the persistent mode row. Reassigning to occupied S was rejected without leaving recording active. Export completed, reset returned the workbench to Default, and the final user environment retained no verification customization.",
+			"screenshots": [
+				"assets/screenshots/T07-shortcut-workbench.png"
+			]
+		},
 		{
 			"featureIds": [
 				"T08"
