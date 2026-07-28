@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 41,
-		"automatedTestsPassing": 475,
-		"archivedScreenshots": 45
+		"greenCapabilities": 45,
+		"automatedTestsPassing": 480,
+		"archivedScreenshots": 49
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -47,12 +47,34 @@
 		"C05",
 		"C06",
 		"C07",
+		"V01",
+		"V02",
+		"V03",
+		"V04",
 		"G01",
 		"G04",
 		"G06",
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["V01", "V02", "V03", "V04"],
+			"redCommits": ["675d089"],
+			"greenCommit": "19edeca",
+			"result": "Visual clips now share crop, mirror, corner, shadow, and stroke controls; Color & Tone provides a non-destructive correction chain and strict .cube LUT import; adjustment layers grade covered compatible layers below them; and masks form an ordered, editable boolean stack. The browser editor and export renderer resolve the same visual appearance and color treatments, while MCP effect and geometry contracts remain synchronized.",
+			"tests": {
+				"targeted": "25/25 focused visual-workbench and mask-geometry tests with 55 expectations; MCP document and drift regressions 40/40",
+				"fullSuite": "480/480 with 1056 expectations from the repository root and required WASM preload",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation for all 18 static pages at 19edeca in a clean worktree"
+			},
+			"browserVerification": "On the first real video, enabled horizontal mirror, 12% left and 8% top crop, 18% corner radius, and 6px stroke. Added a five-second Color-grade adjustment layer and set exposure +0.35, contrast +18, temperature +25, and saturation +15. Added Rectangle and Ellipse masks, set the second to Subtract, and observed the composed canvas handles and result. Compare-and-swap cleanup restored the exact revision-349 payload except timestamps/revision at revision 366, with four lanes, zero effect tracks, zero masks, and the original first-clip params and timeline view state.",
+			"screenshots": [
+				"assets/screenshots/V01-crop-geometry.png",
+				"assets/screenshots/V02-color-controls-lut.png",
+				"assets/screenshots/V03-adjustment-layer.png",
+				"assets/screenshots/V04-mask-stack.png"
+			]
+		},
 		{
 			"featureIds": [
 				"C01",

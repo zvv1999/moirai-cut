@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">41</strong>
+							<strong class="metric__value">45</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">475</strong>
+							<strong class="metric__value">480</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">45</strong>
+							<strong class="metric__value">49</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,94 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/V01-crop-geometry.png"
+								data-lightbox-label="V01 裁剪、镜像、圆角与描边"
+							>
+								<img
+									src="assets/screenshots/V01-crop-geometry.png"
+									alt="OpenCut 真实视频已水平镜像，并显示裁剪、圆角与描边参数"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">V01 · CROP & GEOMETRY</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>基础画面整形进入统一检查器</h3>
+								<p>视频、图片和图形共享裁剪、水平/垂直镜像、圆角、阴影和描边模型；数值型几何参数可继续使用现有关键帧工作流。</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/V02-color-controls-lut.png"
+								data-lightbox-label="V02 非破坏调色与 .cube LUT"
+							>
+								<img
+									src="assets/screenshots/V02-color-controls-lut.png"
+									alt="OpenCut Color and Tone 检查器显示 LUT 导入、曝光和对比度控制"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">V02 · COLOR & LUT</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>调色参数保持非破坏且可复现</h3>
+								<p>曝光、对比度、色温、饱和度、高光、阴影和曲线形成统一处理链；严格解析 .cube 文件并以可调强度三线性采样，预览与导出共用实现。</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/V03-adjustment-layer.png"
+								data-lightbox-label="V03 可编辑调节层"
+							>
+								<img
+									src="assets/screenshots/V03-adjustment-layer.png"
+									alt="OpenCut 时间线顶部显示五秒 Color-grade 调节层及其属性"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">V03 · ADJUSTMENT LAYER</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>一条调节层可统一覆盖下方画面</h3>
+								<p>效果轨上的调节层只处理时间覆盖内、位于其下方的兼容视觉层；上方内容和非视觉背景不被误处理，参数仍可随时回改。</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/V04-mask-stack.png"
+								data-lightbox-label="V04 多蒙版布尔组合"
+							>
+								<img
+									src="assets/screenshots/V04-mask-stack.png"
+									alt="OpenCut 画布显示 Rectangle 与 Ellipse 蒙版以 Subtract 模式组合"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">V04 · MASK STACK</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>蒙版从单个限制升级为可组合栈</h3>
+								<p>内置和自由蒙版可按顺序 Add、Intersect、Subtract 或 Exclude；每个蒙版保留反转、羽化、描边、关键帧与画布手柄。</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -1254,6 +1342,15 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>V01–V04</strong></td>
+									<td><code>675d089</code> RED + <code>19edeca</code> GREEN</td>
+									<td>目标 25/25、55 断言；MCP 40/40；全量 480/480、1056 断言；TypeScript / ESLint / 干净生产构建通过</td>
+									<td>
+										真实首段视频完成镜像、12%/8% 裁剪、18% 圆角和 6px 描边；五秒调节层完成曝光/对比度/色温/饱和度修改；Rectangle + Ellipse 以 Subtract 组合；最终 revision 366 精确恢复原工程内容
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>C01–C07</strong></td>
 									<td><code>7935b41</code> RED + <code>827d8b6</code> GREEN + <code>b3fe623</code> 样式 RED + <code>b9fa6ba</code> 样式 GREEN</td>
