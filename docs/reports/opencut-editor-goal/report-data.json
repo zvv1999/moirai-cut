@@ -14,6 +14,7 @@
     {
       "featureIds": ["W01"],
       "redCommits": ["c0f0a73", "157a7a5", "33e3206", "393bacc"],
+      "greenCommit": "29834f5",
       "result": "A real timeline image was moved offline, detected in the library, timeline, and canvas, then relinked through the browser with the same media id. The restored bytes matched the original SHA-256 and the clip retained transforms and four keyframes.",
       "tests": {
         "targeted": "12/12",
