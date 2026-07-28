@@ -178,10 +178,9 @@ export function TimelineModeStatus() {
 		if (!selectedElement || !hasMediaId(selectedElement.element)) {
 			return null;
 		}
+		const mediaId = selectedElement.element.mediaId;
 		return (
-			mediaAssets.find(
-				(asset) => asset.id === selectedElement.element.mediaId,
-			) ?? null
+			mediaAssets.find((asset) => asset.id === mediaId) ?? null
 		);
 	})();
 	const sourceAudio: SourceAudioStatus = (() => {
