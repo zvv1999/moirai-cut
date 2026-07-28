@@ -60,6 +60,14 @@ export interface ElementSummary {
   trimEndSeconds: number | null;
   mediaId?: string;
   hidden?: boolean;
+  transitionIn?: {
+    id: string;
+    type: string;
+    durationSeconds: number | null;
+    from: { trackId: string; elementId: string };
+    originalTrackId: string;
+    originalStartTimeSeconds: number | null;
+  };
   /** Only for effect elements. */
   effectType?: string;
   /** Built-in element params, e.g. text content. */
@@ -675,6 +683,27 @@ export class AgentManager {
       trimEndSeconds: toSeconds(element.trimEnd as number | undefined),
       ...(typeof element.mediaId === "string" ? { mediaId: element.mediaId } : {}),
       ...(typeof element.hidden === "boolean" ? { hidden: element.hidden } : {}),
+      ...(element.transitionIn && typeof element.transitionIn === "object"
+        ? {
+            transitionIn: (() => {
+              const transition = element.transitionIn as Record<string, unknown>;
+              const from = (transition.from ?? {}) as Record<string, unknown>;
+              return {
+                id: String(transition.id ?? ""),
+                type: String(transition.type ?? ""),
+                durationSeconds: toSeconds(transition.duration as number | undefined),
+                from: {
+                  trackId: String(from.trackId ?? ""),
+                  elementId: String(from.elementId ?? ""),
+                },
+                originalTrackId: String(transition.originalTrackId ?? ""),
+                originalStartTimeSeconds: toSeconds(
+                  transition.originalStartTime as number | undefined,
+                ),
+              };
+            })(),
+          }
+        : {}),
       ...(typeof element.effectType === "string" ? { effectType: element.effectType } : {}),
       ...(element.params && typeof element.params === "object"
         ? { params: element.params as Record<string, unknown> }

@@ -865,33 +865,59 @@ const COMMAND_FACTORIES: { [K in OperationType]: CommandFactory } = {
         ),
     );
     const createId = lane ? null : generateUUID();
+    const transitionId = generateUUID();
+    const targetTrackId = lane?.id ?? (createId as string);
     return new BatchCommand([
       new MoveElementCommand({
         moves: [
           {
             sourceTrackId: toTrackId,
             elementId: toElementId,
-            targetTrackId: lane?.id ?? (createId as string),
+            targetTrackId,
             newStartTime: newStart,
           },
         ],
         ...(createId ? { createTracks: [{ id: createId, type: wanted as "video", index: 0 }] } : {}),
       }),
       new UpsertKeyframeCommand({
-        trackId: lane?.id ?? (createId as string),
+        trackId: targetTrackId,
         elementId: toElementId,
         propertyPath: "opacity",
         time: 0 as MediaTime,
         value: 0,
         interpolation: "linear",
+        keyframeId: `transition:${transitionId}:in-0`,
       }),
       new UpsertKeyframeCommand({
-        trackId: lane?.id ?? (createId as string),
+        trackId: targetTrackId,
         elementId: toElementId,
         propertyPath: "opacity",
         time: overlap,
         value: 1,
         interpolation: "linear",
+        keyframeId: `transition:${transitionId}:in-end`,
+      }),
+      new UpdateElementsCommand({
+        updates: [
+          {
+            trackId: targetTrackId,
+            elementId: toElementId,
+            patch: {
+              transitionIn: {
+                id: transitionId,
+                type: "cross-dissolve",
+                duration: overlap,
+                from: {
+                  trackId: fromTrackId,
+                  elementId: fromElementId,
+                },
+                originalTrackId: toTrackId,
+                originalStartTime: to.el.startTime,
+                createdOverlayTrack: Boolean(createId),
+              },
+            },
+          },
+        ],
       }),
     ]);
   },

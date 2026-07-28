@@ -43,6 +43,7 @@ import { useMemo } from "react";
 import { useKeyboardShortcutsHelp } from "@/actions/use-keyboard-shortcuts-help";
 import { TimelineToolbarButton } from "./timeline-toolbar-button";
 import { KeyframeSelectionToolbar } from "./keyframe-selection-toolbar";
+import { TransitionManagerPopover } from "./transition-manager-popover";
 import { getElementKeyframes } from "@/animation";
 import { planElementRelationUpdate } from "@/timeline/element-groups";
 import { generateUUID } from "@/utils/id";
@@ -252,6 +253,7 @@ function ToolbarLeftSection() {
 				</Tooltip>
 
 				<MarkerManagerPopover />
+				<TransitionManagerPopover />
 
 				<GraphEditorPopover
 					open={graphEditor.open}

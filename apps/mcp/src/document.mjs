@@ -1236,7 +1236,11 @@ const OPERATIONS = {
     // track, because tracks refuse overlaps — and fade it in with two opacity
     // keyframes. Spelling the recipe here makes it one operation instead of
     // three that every caller would get subtly wrong.
-    const incoming = { ...clone(to.element), startTime: to.element.startTime - overlap };
+    const transitionId = randomUUID();
+    const incoming = {
+      ...clone(to.element),
+      startTime: to.element.startTime - overlap,
+    };
     incoming.animations = incoming.animations ?? {};
     // Upsert semantics, matching the page path exactly: a key already sitting
     // at 0 or at the overlap point is REPLACED, every other existing key is
@@ -1248,8 +1252,20 @@ const OPERATIONS = {
     incoming.animations.opacity = {
       ...(incoming.animations.opacity ?? {}),
       keys: [
-        { id: randomUUID(), time: 0, value: 0, segmentToNext: "linear", tangentMode: "flat" },
-        { id: randomUUID(), time: overlap, value: 1, segmentToNext: "linear", tangentMode: "flat" },
+        {
+          id: `transition:${transitionId}:in-0`,
+          time: 0,
+          value: 0,
+          segmentToNext: "linear",
+          tangentMode: "flat",
+        },
+        {
+          id: `transition:${transitionId}:in-end`,
+          time: overlap,
+          value: 1,
+          segmentToNext: "linear",
+          tangentMode: "flat",
+        },
         ...existingKeys,
       ].sort((a, b) => a.time - b.time),
     };
@@ -1260,6 +1276,18 @@ const OPERATIONS = {
       scene.tracks.overlay.find(
         (track) => track.type === TRACK_FOR_ELEMENT[incoming.type] && trackHasRoom(track, incoming),
       ) ?? null;
+    incoming.transitionIn = {
+      id: transitionId,
+      type: "cross-dissolve",
+      duration: overlap,
+      from: {
+        trackId: op.fromTrackId,
+        elementId: op.fromElementId,
+      },
+      originalTrackId: op.toTrackId,
+      originalStartTime: to.element.startTime,
+      createdOverlayTrack: !lane,
+    };
     if (lane) lane.elements.push(incoming);
     else {
       const created = newTrack(TRACK_FOR_ELEMENT[incoming.type]);
@@ -1771,6 +1799,20 @@ export function describeDocument({ document, detail = "full" }) {
       trimEndSeconds: toSeconds(element.trimEnd),
       ...(element.mediaId ? { mediaId: element.mediaId } : {}),
       ...(typeof element.hidden === "boolean" ? { hidden: element.hidden } : {}),
+      ...(element.transitionIn
+        ? {
+            transitionIn: {
+              id: element.transitionIn.id,
+              type: element.transitionIn.type,
+              durationSeconds: toSeconds(element.transitionIn.duration),
+              from: element.transitionIn.from,
+              originalTrackId: element.transitionIn.originalTrackId,
+              originalStartTimeSeconds: toSeconds(
+                element.transitionIn.originalStartTime,
+              ),
+            },
+          }
+        : {}),
       ...(element.effectType ? { effectType: element.effectType } : {}),
       // maskId is how every mask operation addresses its target.
       ...(Array.isArray(element.masks) && element.masks.length > 0

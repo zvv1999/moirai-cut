@@ -95,6 +95,21 @@ export interface RetimeConfig {
 	maintainPitch?: boolean;
 }
 
+export type TimelineTransitionType =
+	| "cross-dissolve"
+	| "fade-through-black";
+
+export interface TimelineTransition {
+	id: string;
+	type: TimelineTransitionType;
+	duration: MediaTime;
+	from: ElementRef;
+	originalTrackId: string;
+	originalStartTime: MediaTime;
+	/** Only auto-created empty lanes are removed with the transition. */
+	createdOverlayTrack?: boolean;
+}
+
 interface BaseAudioElement extends BaseTimelineElement {
 	type: "audio";
 	buffer?: AudioBuffer;
@@ -120,6 +135,8 @@ interface BaseTimelineElement {
 	groupId?: string;
 	/** Linked source relationship, primarily for paired visual and audio clips. */
 	linkGroupId?: string;
+	/** Addressable transition entering this clip from the preceding edit point. */
+	transitionIn?: TimelineTransition;
 	duration: MediaTime;
 	startTime: MediaTime;
 	trimStart: MediaTime;

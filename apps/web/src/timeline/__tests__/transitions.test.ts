@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { SceneTracks } from "@/timeline";
+import type { ScalarChannel } from "@/animation/types";
+import type { MediaTime } from "@/wasm";
 import {
 	applyTimelineTransition,
 	planTimelineTransition,
@@ -7,9 +9,10 @@ import {
 } from "@/timeline/transitions";
 
 const TICKS_PER_SECOND = 120_000;
+const mt = (value: number) => value as MediaTime;
 
 function makeTracks(): SceneTracks {
-	return {
+	const tracks = {
 		overlay: [],
 		main: {
 			id: "main",
@@ -57,6 +60,7 @@ function makeTracks(): SceneTracks {
 		},
 		audio: [],
 	};
+	return tracks as unknown as SceneTracks;
 }
 
 describe("timeline transitions", () => {
@@ -67,7 +71,7 @@ describe("timeline transitions", () => {
 				{ trackId: "main", elementId: "outgoing" },
 				{ trackId: "main", elementId: "incoming" },
 			],
-			duration: 60_000,
+			duration: mt(60_000),
 		});
 
 		expect(result).toMatchObject({
@@ -81,7 +85,7 @@ describe("timeline transitions", () => {
 
 	test("explains invalid gaps and oversized overlaps before mutation", () => {
 		const tracks = makeTracks();
-		tracks.main.elements[1].startTime = 5 * TICKS_PER_SECOND;
+		tracks.main.elements[1].startTime = mt(5 * TICKS_PER_SECOND);
 		expect(
 			planTimelineTransition({
 				tracks,
@@ -89,7 +93,7 @@ describe("timeline transitions", () => {
 					{ trackId: "main", elementId: "outgoing" },
 					{ trackId: "main", elementId: "incoming" },
 				],
-				duration: 60_000,
+				duration: mt(60_000),
 			}),
 		).toEqual({
 			available: false,
@@ -104,7 +108,7 @@ describe("timeline transitions", () => {
 					{ trackId: "main", elementId: "outgoing" },
 					{ trackId: "main", elementId: "incoming" },
 				],
-				duration: 600_000,
+				duration: mt(600_000),
 			}),
 		).toMatchObject({
 			available: false,
@@ -118,7 +122,7 @@ describe("timeline transitions", () => {
 			from: { trackId: "main", elementId: "outgoing" },
 			to: { trackId: "main", elementId: "incoming" },
 			type: "cross-dissolve",
-			duration: 60_000,
+			duration: mt(60_000),
 			transitionId: "transition-1",
 			overlayTrackId: "transition-lane",
 		});
@@ -159,7 +163,7 @@ describe("timeline transitions", () => {
 			from: { trackId: "main", elementId: "outgoing" },
 			to: { trackId: "main", elementId: "incoming" },
 			type: "cross-dissolve",
-			duration: 60_000,
+			duration: mt(60_000),
 			transitionId: "transition-1",
 			overlayTrackId: "transition-lane",
 		});
@@ -168,7 +172,7 @@ describe("timeline transitions", () => {
 			from: { trackId: "main", elementId: "outgoing" },
 			to: { trackId: "transition-lane", elementId: "incoming" },
 			type: "fade-through-black",
-			duration: 96_000,
+			duration: mt(96_000),
 			transitionId: "transition-1",
 			overlayTrackId: "transition-lane",
 		});
@@ -191,11 +195,8 @@ describe("timeline transitions", () => {
 			startTime: 480_000,
 			transitionIn: undefined,
 		});
-		expect(
-			restored.main.elements[0].animations?.opacity &&
-				"keys" in restored.main.elements[0].animations.opacity
-				? restored.main.elements[0].animations.opacity.keys.map((key) => key.id)
-				: [],
-		).toEqual(["user-opacity-key"]);
+		const opacity = restored.main.elements[0].animations
+			?.opacity as ScalarChannel | undefined;
+		expect(opacity?.keys.map((key) => key.id)).toEqual(["user-opacity-key"]);
 	});
 });

@@ -620,6 +620,21 @@ function ElementInner({
 							{element.linkGroupId ? "L" : ""}
 						</span>
 					)}
+					{element.transitionIn ? (
+						<span
+							className="bg-primary/90 text-primary-foreground pointer-events-none absolute top-1 left-1 rounded px-1.5 py-0.5 text-[9px] font-semibold shadow-sm"
+							data-transition-id={element.transitionIn.id}
+							aria-label={`${element.transitionIn.type === "cross-dissolve" ? "Cross dissolve" : "Fade through black"} transition, ${(
+								(element.transitionIn.duration as number) / TICKS_PER_SECOND
+							).toFixed(2)} seconds`}
+						>
+							{element.transitionIn.type === "cross-dissolve" ? "X" : "FB"}{" "}
+							{(
+								(element.transitionIn.duration as number) / TICKS_PER_SECOND
+							).toFixed(2)}
+							s
+						</span>
+					) : null}
 				</div>
 			</div>
 
