@@ -177,13 +177,11 @@ describe("semantic edit planning", () => {
 				"transform.positionY": 420,
 			},
 		});
-		expect(
-			(
-				plan.groups[0].operation as {
-					params: Record<string, unknown>;
-				}
-			).params.content,
-		).toBeUndefined();
+		const operation = plan.groups[0].operation;
+		if (operation.type !== "element.setParams") {
+			throw new Error(`Unexpected operation ${operation.type}`);
+		}
+		expect(operation.params.content).toBeUndefined();
 	});
 
 	test("ambiguous requests fail closed before mutation", () => {
@@ -196,19 +194,46 @@ describe("semantic edit planning", () => {
 		expect(plan.groups).toEqual([]);
 		expect(plan.errors[0]).toContain("Supported requests");
 	});
-});
 
-describe("change review", () => {
-	test("reports every requested target and detects partial/no-effect groups", () => {
-		const before = context({
+	test("tighten refuses to overlap an unselected clip inside the apparent gap", () => {
+		const withBlockingClip = context({
 			selected: [
 				{ trackId: "main", elementId: "clip-a" },
 				{ trackId: "main", elementId: "clip-b" },
 			],
-		}).state;
+		});
+		withBlockingClip.state.tracks[0].elements.splice(1, 0, {
+			id: "clip-unselected",
+			type: "video",
+			name: "Keep me",
+			startTimeSeconds: 4,
+			durationSeconds: 2,
+			endTimeSeconds: 6,
+			trimStartSeconds: 0,
+			trimEndSeconds: 0,
+			params: {},
+		});
+		withBlockingClip.state.tracks[0].elementCount = 3;
+
 		const plan = compileSemanticEdit({
 			request: "tighten this section",
-			context: { state: before, selectedElements: context().selectedElements },
+			context: withBlockingClip,
+		});
+		expect(plan.valid).toBe(false);
+		expect(plan.errors[0]).toContain("unselected clip Keep me");
+	});
+});
+
+describe("change review", () => {
+	test("reports every requested target and detects partial/no-effect groups", () => {
+		const selectedElements = [
+			{ trackId: "main", elementId: "clip-a" },
+			{ trackId: "main", elementId: "clip-b" },
+		];
+		const before = context({ selected: selectedElements }).state;
+		const plan = compileSemanticEdit({
+			request: "tighten this section",
+			context: { state: before, selectedElements },
 		});
 		const after = structuredClone(before);
 		const moved = after.tracks[0].elements.find(
@@ -270,9 +295,7 @@ describe("agent preflight and visual QC", () => {
 						tile: {
 							columns: 1,
 							rows: 1,
-							cells: [
-								{ cell: "r1c1", atSeconds: 0, renderedAtSeconds: 0 },
-							],
+							cells: [{ cell: "r1c1", atSeconds: 0, renderedAtSeconds: 0 }],
 						},
 					},
 					{ atSeconds: 6, error: "offline media" },

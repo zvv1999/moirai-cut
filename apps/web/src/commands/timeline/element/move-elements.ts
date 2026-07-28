@@ -107,12 +107,17 @@ export class MoveElementCommand extends Command {
 			tracks: tracksToUpdate,
 			update: (track) => ({
 				...track,
-				elements: [
+				// Moving used to append the clip to the backing array. Moving it
+				// back to its original time therefore restored the pixels but not
+				// the document, which made an agent group's inverse non-exact and
+				// could also alter tie-breaking/z-order. Canonical timeline order
+				// makes move + inverse byte-stable for non-overlapping tracks.
+				elements: sortTimelineElements([
 					...track.elements.filter(
 						(element) => !movedElementIds.has(element.id),
 					),
 					...(movedElementsByTargetTrackId.get(track.id) ?? []),
-				],
+				]),
 			}),
 		});
 
@@ -131,6 +136,14 @@ export class MoveElementCommand extends Command {
 			editor.timeline.updateTracks(this.savedState);
 		}
 	}
+}
+
+export function sortTimelineElements<TElement extends { startTime: number }>(
+	elements: TElement[],
+): TElement[] {
+	return [...elements].sort(
+		(first, second) => first.startTime - second.startTime,
+	);
 }
 
 function mapSceneTracks({

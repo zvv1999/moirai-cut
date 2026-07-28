@@ -1,4 +1,5 @@
 import type { EditorCore } from "@/core";
+import { BatchCommand } from "@/commands/batch-command";
 import {
   buildCommand,
   OperationConflictError,
@@ -214,6 +215,31 @@ export class AgentManager {
     idempotencyKey,
     expectedProjectId,
   }: OperationEnvelope): OperationResult {
+    return this.applyPlan({
+      operations: [operation],
+      baseRevision,
+      idempotencyKey,
+      expectedProjectId,
+    });
+  }
+
+  /**
+   * Execute a reviewed semantic plan as one command-history entry.
+   *
+   * Every operation is resolved and validated before any command runs. The
+   * batch then shares the exact same revision, idempotency, project guard, no-
+   * effect verification, undo, redo, and autosave semantics as a one-operation
+   * agent edit. This is the mutation boundary behind the visible plan preview:
+   * previewing is inert; Apply is one atomic, undoable decision.
+   */
+  applyPlan({
+    operations,
+    baseRevision,
+    idempotencyKey,
+    expectedProjectId,
+  }: Omit<OperationEnvelope, "operation"> & {
+    operations: Operation[];
+  }): OperationResult {
     // Checked before dedupe: if the caller is aimed at a different document,
     // even "you already did this" is the wrong answer.
     if (expectedProjectId !== undefined) {
@@ -233,15 +259,24 @@ export class AgentManager {
     if (baseRevision !== this.revisionValue) {
       throw new OperationConflictError(baseRevision, this.revisionValue);
     }
+    if (!Array.isArray(operations) || operations.length === 0) {
+      throw new InvalidOperationError("applyPlan needs at least one operation");
+    }
 
-    // Resolve references against the live document first. The element commands
+    // Resolve every reference against the live document first. The element commands
     // filter on (trackId, elementId) and silently skip anything that does not
     // match, so a stale or mispaired ref would surface only as `noEffect: true`
     // — truthful, but it tells the caller nothing about WHY. Checking here turns
     // that into "element X is on track Z, not track Y".
-    this.validateReferences(operation);
-    this.validateTiming(operation);
-    operation = this.withSourceDuration(operation);
+    const prepared = operations.map((operation) => {
+      this.validateReferences(operation);
+      this.validateTiming(operation);
+      return this.withSourceDuration(operation);
+    });
+    // Building can itself perform operation-specific validation. Do it for the
+    // entire plan before BatchCommand.execute() so malformed step N cannot leave
+    // steps 1…N-1 applied.
+    const commands = prepared.map((operation) => buildCommand({ operation }));
 
     // Executing a command is not proof that anything changed. The editor runs
     // reactors after every execute() — notably one that prunes element-less
@@ -254,7 +289,7 @@ export class AgentManager {
     // "the document is empty". If CommandManager ever returns before calling it,
     // this must not silently read as a no-op — or as a bogus success.
     let after: string | null = null;
-    const command = buildCommand({ operation });
+    const command = new BatchCommand(commands);
     // Passing the check to execute() rather than testing afterwards is what lets
     // the command manager keep a no-op out of the undo history entirely; doing it
     // here would leave a phantom entry that also wiped the redo stack.

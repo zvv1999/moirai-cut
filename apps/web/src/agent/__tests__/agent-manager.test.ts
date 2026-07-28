@@ -75,6 +75,34 @@ describe("AgentManager concurrency envelope", () => {
     expect(executed.length).toBe(2);
   });
 
+  test("applies a reviewed plan as one undoable revision and one idempotent unit", () => {
+    const { editor, executed, history } = makeEditorStub();
+    const agent = new AgentManager(editor);
+    const envelope = {
+      operations: [
+        { type: "scene.rename", sceneId: "scene-active", newName: "Opening" },
+        { type: "scene.rename", sceneId: "scene-other", newName: "Alternates" },
+      ] satisfies Operation[],
+      baseRevision: 0,
+      idempotencyKey: "plan-1",
+      expectedProjectId: "p1",
+    };
+
+    const result = agent.applyPlan(envelope);
+    expect(result).toEqual({
+      applied: true,
+      revision: 1,
+      deduplicated: false,
+      noEffect: false,
+    });
+    expect(executed).toHaveLength(1);
+    expect(history).toHaveLength(1);
+
+    const replay = agent.applyPlan(envelope);
+    expect(replay.deduplicated).toBe(true);
+    expect(executed).toHaveLength(1);
+  });
+
   test("rejects an operation built against a stale revision", () => {
     const { editor, executed } = makeEditorStub();
     const agent = new AgentManager(editor);

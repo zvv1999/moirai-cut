@@ -11,6 +11,7 @@ import {
 } from "@/services/storage/project-file-sync";
 import type { ProjectRevisionDiff } from "@/project/revision-diff";
 import { ReliabilityWorkbench } from "./reliability-workbench";
+import { AgentWorkbench } from "./agent-workbench";
 
 interface RevisionEntry {
 	revision: number;
@@ -287,10 +288,12 @@ export function AgentBadge() {
 	return (
 		<div className="fixed right-4 bottom-4 z-50 flex flex-col items-end gap-2">
 			{open && (
-				<div className="bg-popover text-popover-foreground border-border w-[28rem] rounded-lg border p-3 shadow-lg">
+				<div className="bg-popover text-popover-foreground border-border max-h-[82vh] w-[34rem] overflow-y-auto rounded-lg border p-3 shadow-xl">
 					<div className="mb-3 flex items-start justify-between gap-3">
 						<div>
-							<div className="text-sm font-semibold">Project snapshots</div>
+							<div className="text-sm font-semibold">
+								Agent Studio & project history
+							</div>
 							<div className="text-[11px] opacity-60">
 								Current revision {currentRevision ?? "…"} · compare before
 								restore
@@ -300,6 +303,8 @@ export function AgentBadge() {
 							{revisions.length} saved
 						</span>
 					</div>
+
+					<AgentWorkbench />
 
 					<ReliabilityWorkbench />
 
@@ -609,7 +614,7 @@ export function AgentBadge() {
 				) : (
 					<>
 						<span className="bg-primary h-2 w-2 rounded-full" />
-						History
+						Agent Studio
 					</>
 				)}
 			</button>
