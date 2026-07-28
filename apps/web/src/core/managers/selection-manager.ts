@@ -10,6 +10,7 @@ import type { ElementRef } from "@/timeline/types";
 
 export class SelectionManager {
 	private selectedElements: ElementRef[] = [];
+	private selectedElementAnchor: ElementRef | null = null;
 	private selectedKeyframes: SelectedKeyframeRef[] = [];
 	private keyframeSelectionAnchor: SelectedKeyframeRef | null = null;
 	private selectedMaskPoints: SelectedMaskPointSelection | null = null;
@@ -21,6 +22,10 @@ export class SelectionManager {
 
 	getSelectedElements(): ElementRef[] {
 		return this.selectedElements;
+	}
+
+	getSelectedElementAnchor(): ElementRef | null {
+		return this.selectedElementAnchor;
 	}
 
 	getSelectedKeyframes(): SelectedKeyframeRef[] {
@@ -62,8 +67,28 @@ export class SelectionManager {
 		};
 	}
 
-	setSelectedElements({ elements }: { elements: ElementRef[] }): void {
+	setSelectedElements({
+		elements,
+		anchorElement,
+	}: {
+		elements: ElementRef[];
+		anchorElement?: ElementRef | null;
+	}): void {
 		this.selectedElements = elements;
+		if (anchorElement !== undefined) {
+			this.selectedElementAnchor = anchorElement;
+		} else if (elements.length === 0) {
+			this.selectedElementAnchor = null;
+		} else if (
+			!this.selectedElementAnchor ||
+			!elements.some(
+				(element) =>
+					element.trackId === this.selectedElementAnchor?.trackId &&
+					element.elementId === this.selectedElementAnchor.elementId,
+			)
+		) {
+			this.selectedElementAnchor = elements.at(-1) ?? null;
+		}
 		this.selectedKeyframes = [];
 		this.keyframeSelectionAnchor = null;
 		this.selectedMaskPoints = null;
@@ -106,6 +131,7 @@ export class SelectionManager {
 
 	clearSelection(): void {
 		this.selectedElements = [];
+		this.selectedElementAnchor = null;
 		this.selectedKeyframes = [];
 		this.keyframeSelectionAnchor = null;
 		this.selectedMaskPoints = null;
@@ -150,6 +176,7 @@ export class SelectionManager {
 	}): EditorSelectionSnapshot {
 		if (patch.selectedElements !== undefined) {
 			this.selectedElements = [...patch.selectedElements];
+			this.selectedElementAnchor = this.selectedElements.at(-1) ?? null;
 		}
 		if (patch.selectedKeyframes !== undefined) {
 			this.selectedKeyframes = [...patch.selectedKeyframes];
@@ -171,6 +198,7 @@ export class SelectionManager {
 
 	restoreSnapshot({ snapshot }: { snapshot: EditorSelectionSnapshot }): void {
 		this.selectedElements = [...snapshot.selectedElements];
+		this.selectedElementAnchor = this.selectedElements.at(-1) ?? null;
 		this.selectedKeyframes = [...snapshot.selectedKeyframes];
 		this.keyframeSelectionAnchor = snapshot.keyframeSelectionAnchor;
 		this.selectedMaskPoints = snapshot.selectedMaskPoints

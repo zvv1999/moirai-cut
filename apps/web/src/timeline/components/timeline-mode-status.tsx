@@ -82,6 +82,7 @@ export function TimelineModeStatusView({
 	snappingShortcut,
 	rippleEditingEnabled,
 	sourceAudio,
+	selectionCount = 0,
 	onToggleSnapping,
 	onToggleRippleEditing,
 	onToggleSourceAudio,
@@ -90,6 +91,7 @@ export function TimelineModeStatusView({
 	snappingShortcut: string | null;
 	rippleEditingEnabled: boolean;
 	sourceAudio: SourceAudioStatus;
+	selectionCount?: number;
 	onToggleSnapping: () => void;
 	onToggleRippleEditing: () => void;
 	onToggleSourceAudio: () => void;
@@ -147,8 +149,15 @@ export function TimelineModeStatusView({
 				disabled={!sourceAudio.canToggle}
 				onClick={onToggleSourceAudio}
 			/>
+			<span
+				className="border-border bg-background text-muted-foreground shrink-0 rounded-md border px-2 py-1 text-[10px]"
+				aria-label={`${selectionCount} timeline clips selected`}
+			>
+				Selection <strong className="text-foreground">{selectionCount}</strong>
+				<span className="ml-1.5">· Shift range · ⌘ toggle · drag box</span>
+			</span>
 			<span className="text-muted-foreground ml-auto shrink-0 text-[10px]">
-				Hold Shift to bypass snapping
+				Drag + Shift bypasses snapping
 			</span>
 		</div>
 	);
@@ -218,6 +227,7 @@ export function TimelineModeStatus() {
 			snappingShortcut={snappingShortcut}
 			rippleEditingEnabled={rippleEditingEnabled}
 			sourceAudio={sourceAudio}
+			selectionCount={selectedElements.length}
 			onToggleSnapping={() => invokeAction("toggle-snapping")}
 			onToggleRippleEditing={() => invokeAction("toggle-ripple-editing")}
 			onToggleSourceAudio={() => invokeAction("toggle-source-audio")}

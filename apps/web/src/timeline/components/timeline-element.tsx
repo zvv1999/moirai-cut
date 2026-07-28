@@ -581,6 +581,10 @@ function ElementInner({
 				>
 					<TimelineElementInteractionShell
 						baseTrackHeight={baseTrackHeight}
+						elementId={element.id}
+						trackId={track.id}
+						label={`Select clip ${element.name}`}
+						isSelected={isSelected}
 						onClick={(event) => onElementClick({ event, element })}
 						onMouseDown={(event) => onElementMouseDown({ event, element })}
 						clipContent={

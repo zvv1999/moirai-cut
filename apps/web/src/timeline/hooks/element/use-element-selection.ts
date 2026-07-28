@@ -1,10 +1,17 @@
 import { useCallback } from "react";
 import { useEditor } from "@/editor/use-editor";
+import {
+	applyTimelineElementClickSelection,
+	type TimelineSelectionIntent,
+} from "@/timeline/element-selection";
 import type { ElementRef } from "@/timeline/types";
 
 export function useElementSelection() {
 	const editor = useEditor();
 	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
+	const selectedElementAnchor = useEditor((e) =>
+		e.selection.getSelectedElementAnchor(),
+	);
 
 	const isElementSelected = useCallback(
 		({ trackId, elementId }: ElementRef) =>
@@ -111,19 +118,31 @@ export function useElementSelection() {
 		({
 			trackId,
 			elementId,
-			isMultiKey,
-		}: ElementRef & { isMultiKey: boolean }) => {
-			if (isMultiKey) {
-				toggleElementSelection({ trackId, elementId });
-			} else {
-				selectElement({ trackId, elementId });
-			}
+			intent,
+		}: ElementRef & { intent: TimelineSelectionIntent }) => {
+			const sceneTracks = editor.scenes.getActiveScene().tracks;
+			const nextSelection = applyTimelineElementClickSelection({
+				tracks: [
+					...sceneTracks.overlay,
+					sceneTracks.main,
+					...sceneTracks.audio,
+				],
+				selected: selectedElements,
+				anchor: selectedElementAnchor,
+				target: { trackId, elementId },
+				intent,
+			});
+			editor.selection.setSelectedElements({
+				elements: nextSelection.elements,
+				anchorElement: nextSelection.anchor,
+			});
 		},
-		[toggleElementSelection, selectElement],
+		[editor, selectedElementAnchor, selectedElements],
 	);
 
 	return {
 		selectedElements,
+		selectedElementAnchor,
 		isElementSelected,
 		selectElement,
 		setElementSelection,
