@@ -11,6 +11,11 @@ import {
 	ContextMenu,
 	ContextMenuContent,
 	ContextMenuItem,
+	ContextMenuLabel,
+	ContextMenuSeparator,
+	ContextMenuSub,
+	ContextMenuSubContent,
+	ContextMenuSubTrigger,
 	ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import {
@@ -60,6 +65,7 @@ import {
 import { MissingMediaPlaceholder } from "@/media/missing-media-placeholder";
 import { getMediaTypeFromFile } from "@/media/media-utils";
 import { cn } from "@/utils/ui";
+import { generateUUID } from "@/utils/id";
 import {
 	FilterHorizontalIcon,
 	CloudUploadIcon,
@@ -76,6 +82,18 @@ import {
 	filterMediaLibraryAssets,
 	type MediaTypeFilter,
 } from "./media-library-filters";
+import {
+	assignAssetsToMediaBin,
+	createMediaBin,
+	deleteMediaBin,
+	getMediaBinTree,
+	mediaAssetMatchesBin,
+	moveMediaBin,
+	normalizeMediaOrganization,
+	renameMediaBin,
+	type MediaBinSelection,
+} from "@/media/organization";
+import { MediaBinBrowserView } from "./media-bin-browser";
 
 export function MediaView() {
 	const editor = useEditor();
@@ -98,8 +116,23 @@ export function MediaView() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [mediaTypeFilter, setMediaTypeFilter] =
 		useState<MediaTypeFilter>("all");
+	const [activeBinId, setActiveBinId] =
+		useState<MediaBinSelection>("all");
 	const relinkInputRef = useRef<HTMLInputElement>(null);
 	const relinkTargetIdsRef = useRef<string[]>([]);
+	const mediaOrganization = useMemo(
+		() =>
+			normalizeMediaOrganization({
+				organization: activeProject.mediaOrganization,
+			}),
+		[activeProject.mediaOrganization],
+	);
+	const effectiveActiveBinId =
+		activeBinId === "all" ||
+		activeBinId === "unfiled" ||
+		mediaOrganization.bins.some((bin) => bin.id === activeBinId)
+			? activeBinId
+			: "all";
 
 	const missingReferences = useMemo(
 		() =>
@@ -294,12 +327,157 @@ export function MediaView() {
 		}
 	};
 
+	const updateMediaOrganization = ({
+		organization,
+	}: {
+		organization: typeof mediaOrganization;
+	}) => {
+		editor.project.updateMediaOrganization({ organization });
+	};
+
+	const handleCreateBin = ({
+		name,
+		parentId,
+	}: {
+		name: string;
+		parentId: string | null;
+	}) => {
+		try {
+			const id = generateUUID();
+			updateMediaOrganization({
+				organization: createMediaBin({
+					organization: mediaOrganization,
+					bin: { id, name, parentId },
+				}),
+			});
+			setActiveBinId(id);
+		} catch (error) {
+			toast.error("Could not create bin", {
+				description: error instanceof Error ? error.message : undefined,
+			});
+		}
+	};
+
+	const handleRenameBin = ({
+		binId,
+		name,
+	}: {
+		binId: string;
+		name: string;
+	}) => {
+		try {
+			updateMediaOrganization({
+				organization: renameMediaBin({
+					organization: mediaOrganization,
+					binId,
+					name,
+				}),
+			});
+		} catch (error) {
+			toast.error("Could not rename bin", {
+				description: error instanceof Error ? error.message : undefined,
+			});
+		}
+	};
+
+	const handleMoveBin = ({
+		binId,
+		parentId,
+		index,
+	}: {
+		binId: string;
+		parentId: string | null;
+		index: number;
+	}) => {
+		try {
+			updateMediaOrganization({
+				organization: moveMediaBin({
+					organization: mediaOrganization,
+					binId,
+					parentId,
+					index,
+				}),
+			});
+		} catch (error) {
+			toast.error("Could not move bin", {
+				description: error instanceof Error ? error.message : undefined,
+			});
+		}
+	};
+
+	const handleDeleteBin = ({ binId }: { binId: string }) => {
+		try {
+			const parentId =
+				mediaOrganization.bins.find((candidate) => candidate.id === binId)
+					?.parentId ?? null;
+			const result = deleteMediaBin({
+				organization: mediaOrganization,
+				binId,
+			});
+			updateMediaOrganization({ organization: result.organization });
+			if (
+				result.deletedBinIds.includes(effectiveActiveBinId)
+			) {
+				setActiveBinId(
+					parentId !== null &&
+						result.organization.bins.some((bin) => bin.id === parentId)
+						? parentId
+						: "unfiled",
+				);
+			}
+			toast.success(
+				`Deleted ${result.deletedBinIds.length} ${
+					result.deletedBinIds.length === 1 ? "bin" : "bins"
+				}`,
+				{
+					description: `${result.rehomedAssetIds.length} assets kept and rehomed. Undo is available.`,
+				},
+			);
+		} catch (error) {
+			toast.error("Could not delete bin", {
+				description: error instanceof Error ? error.message : undefined,
+			});
+		}
+	};
+
+	const handleAssignAssetsToBin = ({
+		assetIds,
+		binId,
+	}: {
+		assetIds: string[];
+		binId: string | null;
+	}) => {
+		try {
+			updateMediaOrganization({
+				organization: assignAssetsToMediaBin({
+					organization: mediaOrganization,
+					assetIds,
+					binId,
+				}),
+			});
+			toast.success(
+				`Moved ${assetIds.length} ${assetIds.length === 1 ? "asset" : "assets"}`,
+				{ description: "Only organization changed. Source media was kept." },
+			);
+		} catch (error) {
+			toast.error("Could not organize media", {
+				description: error instanceof Error ? error.message : undefined,
+			});
+		}
+	};
+
 	const filteredMediaItems = useMemo(() => {
 		const filtered = filterMediaLibraryAssets({
 			assets: mediaFiles,
 			query: searchQuery,
 			type: mediaTypeFilter,
-		});
+		}).filter((asset) =>
+			mediaAssetMatchesBin({
+				organization: mediaOrganization,
+				assetId: asset.id,
+				binId: effectiveActiveBinId,
+			}),
+		);
 
 		filtered.sort((a, b) => {
 			let valueA: string | number;
@@ -332,8 +510,22 @@ export function MediaView() {
 		});
 
 		return filtered;
-	}, [mediaFiles, mediaSortBy, mediaSortOrder, mediaTypeFilter, searchQuery]);
+	}, [
+		effectiveActiveBinId,
+		mediaFiles,
+		mediaOrganization,
+		mediaSortBy,
+		mediaSortOrder,
+		mediaTypeFilter,
+		searchQuery,
+	]);
 	const filteredMissingReferences = useMemo(() => {
+		if (
+			effectiveActiveBinId !== "all" &&
+			effectiveActiveBinId !== "unfiled"
+		) {
+			return [];
+		}
 		const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
 		return missingReferences.filter(
 			(reference) =>
@@ -341,7 +533,12 @@ export function MediaView() {
 				(!normalizedQuery ||
 					reference.name.toLocaleLowerCase().includes(normalizedQuery)),
 		);
-	}, [mediaTypeFilter, missingReferences, searchQuery]);
+	}, [
+		effectiveActiveBinId,
+		mediaTypeFilter,
+		missingReferences,
+		searchQuery,
+	]);
 	const mediaLibraryItemCount = useMemo(
 		() =>
 			filterMediaLibraryAssets({
@@ -350,6 +547,26 @@ export function MediaView() {
 				type: "all",
 			}).length + missingReferences.length,
 		[mediaFiles, missingReferences.length],
+	);
+	const activeBinItemCount = useMemo(
+		() =>
+			mediaFiles.filter((asset) =>
+				mediaAssetMatchesBin({
+					organization: mediaOrganization,
+					assetId: asset.id,
+					binId: effectiveActiveBinId,
+				}),
+			).length +
+			(effectiveActiveBinId === "all" ||
+			effectiveActiveBinId === "unfiled"
+				? missingReferences.length
+				: 0),
+		[
+			effectiveActiveBinId,
+			mediaFiles,
+			mediaOrganization,
+			missingReferences.length,
+		],
 	);
 	const orderedMediaIds = useMemo(() => {
 		return filteredMediaItems.map((item) => item.id);
@@ -388,7 +605,7 @@ export function MediaView() {
 				contentClassName="h-full"
 				{...dragProps}
 			>
-				{isDragOver || mediaLibraryItemCount === 0 ? (
+				{isDragOver ? (
 					<MediaDragOverlay
 						isVisible={true}
 						isProcessing={isProcessing}
@@ -397,11 +614,25 @@ export function MediaView() {
 					/>
 				) : (
 					<div className="flex min-h-full flex-col">
+						<MediaBinBrowserView
+							bins={mediaOrganization.bins}
+							assetBinIds={mediaOrganization.assetBinIds}
+							assetIds={mediaFiles.map((asset) => asset.id)}
+							activeBinId={effectiveActiveBinId}
+							onSelect={setActiveBinId}
+							onCreate={handleCreateBin}
+							onRename={handleRenameBin}
+							onMove={handleMoveBin}
+							onDelete={handleDeleteBin}
+						/>
 						<MediaLibraryControls
 							query={searchQuery}
 							type={mediaTypeFilter}
-							resultCount={filteredMediaItems.length}
-							totalCount={mediaLibraryItemCount}
+							resultCount={
+								filteredMediaItems.length +
+								filteredMissingReferences.length
+							}
+							totalCount={activeBinItemCount}
 							onQueryChange={setSearchQuery}
 							onTypeChange={setMediaTypeFilter}
 						/>
@@ -417,14 +648,34 @@ export function MediaView() {
 								}
 							/>
 						) : null}
-						{filteredMediaItems.length === 0 &&
+						{mediaLibraryItemCount === 0 &&
+						!searchQuery &&
+						mediaTypeFilter === "all" ? (
+							<div className="flex flex-1 items-center p-2">
+								<MediaDragOverlay
+									isVisible={true}
+									isProcessing={isProcessing}
+									progress={progress}
+									onClick={openFilePicker}
+								/>
+							</div>
+						) : filteredMediaItems.length === 0 &&
 						filteredMissingReferences.length === 0 ? (
 							<MediaLibraryEmptySearch
 								query={searchQuery}
 								type={mediaTypeFilter}
+								binName={
+									mediaOrganization.bins.find(
+										(bin) => bin.id === effectiveActiveBinId,
+									)?.name ??
+									(effectiveActiveBinId === "unfiled"
+										? "Unfiled"
+										: null)
+								}
 								onClear={() => {
 									setSearchQuery("");
 									setMediaTypeFilter("all");
+									setActiveBinId("all");
 								}}
 							/>
 						) : filteredMediaItems.length > 0 ? (
@@ -438,6 +689,9 @@ export function MediaView() {
 								<MediaItemList
 									items={filteredMediaItems}
 									mode={mediaViewMode}
+									bins={mediaOrganization.bins}
+									organization={mediaOrganization}
+									onAssignToBin={handleAssignAssetsToBin}
 									onRemove={handleRemove}
 								/>
 							</SelectableSurface>
@@ -546,12 +800,15 @@ function MediaLibraryControls({
 function MediaLibraryEmptySearch({
 	query,
 	type,
+	binName,
 	onClear,
 }: {
 	query: string;
 	type: MediaTypeFilter;
+	binName: string | null;
 	onClear: () => void;
 }) {
+	const hasSearchFilter = Boolean(query.trim()) || type !== "all";
 	return (
 		<div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 px-4 pb-12 text-center">
 			<div className="bg-muted flex size-9 items-center justify-center rounded-full">
@@ -559,15 +816,18 @@ function MediaLibraryEmptySearch({
 			</div>
 			<div>
 				<p className="text-foreground text-sm font-medium">
-					No matching assets
+					{hasSearchFilter
+						? "No matching assets"
+						: `${binName ?? "This bin"} is empty`}
 				</p>
 				<p className="mt-0.5 text-xs">
-					Try another filename
-					{type !== "all" ? " or media type" : ""}.
+					{hasSearchFilter
+						? `Try another filename${type !== "all" ? " or media type" : ""}.`
+						: "Move media here from an asset context menu."}
 				</p>
 			</div>
 			<Button size="sm" variant="outline" onClick={onClear}>
-				Clear filters
+				{hasSearchFilter ? "Clear filters" : "View all assets"}
 			</Button>
 			<span className="sr-only">
 				No assets match {query || "the selected media type"}
@@ -701,11 +961,20 @@ function MediaAssetDraggable({
 
 function MediaItemWithContextMenu({
 	item,
+	bins,
+	organization,
 	children,
+	onAssignToBin,
 	onRemove,
 }: {
 	item: MediaAsset;
+	bins: ReturnType<typeof getMediaBinTree>[number]["bin"][];
+	organization: ReturnType<typeof normalizeMediaOrganization>;
 	children: React.ReactNode;
+	onAssignToBin: (args: {
+		assetIds: string[];
+		binId: string | null;
+	}) => void;
 	onRemove: ({
 		event,
 		ids,
@@ -718,12 +987,50 @@ function MediaItemWithContextMenu({
 	const idsToDelete = isSelected(item.id) ? selectedIds : [item.id];
 	const deleteLabel =
 		idsToDelete.length > 1 ? `Delete ${idsToDelete.length} items` : "Delete";
+	const binTree = getMediaBinTree({ organization });
+	const allAssignmentsMatch = ({ binId }: { binId: string | null }) =>
+		idsToDelete.every((assetId) =>
+			binId === null
+				? organization.assetBinIds[assetId] === undefined
+				: organization.assetBinIds[assetId] === binId,
+		);
 
 	return (
 		<ContextMenu>
 			<ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
 			<ContextMenuContent>
 				<ContextMenuItem>Export clips</ContextMenuItem>
+				<ContextMenuSub>
+					<ContextMenuSubTrigger>Move to bin</ContextMenuSubTrigger>
+					<ContextMenuSubContent>
+						<ContextMenuLabel>Keep source media</ContextMenuLabel>
+						<ContextMenuItem
+							disabled={allAssignmentsMatch({ binId: null })}
+							onSelect={() =>
+								onAssignToBin({ assetIds: idsToDelete, binId: null })
+							}
+						>
+							Unfiled
+						</ContextMenuItem>
+						{bins.length > 0 ? <ContextMenuSeparator /> : null}
+						{binTree.map(({ bin, depth }) => (
+							<ContextMenuItem
+								key={bin.id}
+								disabled={allAssignmentsMatch({ binId: bin.id })}
+								onSelect={() =>
+									onAssignToBin({
+										assetIds: idsToDelete,
+										binId: bin.id,
+									})
+								}
+							>
+								{"· ".repeat(depth)}
+								{bin.name}
+							</ContextMenuItem>
+						))}
+					</ContextMenuSubContent>
+				</ContextMenuSub>
+				<ContextMenuSeparator />
 				<ContextMenuItem
 					variant="destructive"
 					onClick={(event: React.MouseEvent<HTMLDivElement>) =>
@@ -740,10 +1047,19 @@ function MediaItemWithContextMenu({
 function MediaItemList({
 	items,
 	mode,
+	bins,
+	organization,
+	onAssignToBin,
 	onRemove,
 }: {
 	items: MediaAsset[];
 	mode: MediaViewMode;
+	bins: ReturnType<typeof getMediaBinTree>[number]["bin"][];
+	organization: ReturnType<typeof normalizeMediaOrganization>;
+	onAssignToBin: (args: {
+		assetIds: string[];
+		binId: string | null;
+	}) => void;
 	onRemove: ({
 		event,
 		ids,
@@ -762,7 +1078,14 @@ function MediaItemList({
 			}
 		>
 			{items.map((item) => (
-				<MediaItemWithContextMenu item={item} onRemove={onRemove} key={item.id}>
+				<MediaItemWithContextMenu
+					item={item}
+					bins={bins}
+					organization={organization}
+					onAssignToBin={onAssignToBin}
+					onRemove={onRemove}
+					key={item.id}
+				>
 					<SelectableItem className={cn(!isGrid && "w-full")} id={item.id}>
 						<MediaAssetDraggable
 							item={item}

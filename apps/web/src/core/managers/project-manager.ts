@@ -32,6 +32,8 @@ import { DEFAULTS } from "@/timeline/defaults";
 import { getElementFontFamilies } from "@/timeline/element-utils";
 import { getRaisedProjectFpsForImportedMedia } from "@/fps/utils";
 import type { MediaAsset } from "@/media/types";
+import type { MediaOrganization } from "@/media/organization";
+import { UpdateMediaOrganizationCommand } from "@/commands/project";
 
 export interface MigrationState {
 	isMigrating: boolean;
@@ -106,6 +108,7 @@ export class ProjectManager {
 				},
 			},
 			version: CURRENT_PROJECT_VERSION,
+			mediaOrganization: { bins: [], assetBinIds: {} },
 		};
 
 		this.active = newProject;
@@ -646,6 +649,17 @@ export class ProjectManager {
 		}
 
 		command.execute();
+	}
+
+	updateMediaOrganization({
+		organization,
+	}: {
+		organization: MediaOrganization;
+	}): void {
+		if (!this.active) return;
+		this.editor.command.execute({
+			command: new UpdateMediaOrganizationCommand(organization),
+		});
 	}
 
 	ratchetFpsForImportedMedia({

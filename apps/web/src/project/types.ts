@@ -1,6 +1,7 @@
 import type { FrameRate } from "opencut-wasm";
 import type { TScene } from "@/timeline/types";
 import type { MediaTime } from "@/wasm";
+import type { MediaOrganization } from "@/media/organization";
 
 export type TBackground =
 	| {
@@ -48,6 +49,7 @@ export interface TProject {
 	settings: TProjectSettings;
 	version: number;
 	timelineViewState?: TTimelineViewState;
+	mediaOrganization?: MediaOrganization;
 }
 
 export type TProjectSortKey = "createdAt" | "updatedAt" | "name" | "duration";
