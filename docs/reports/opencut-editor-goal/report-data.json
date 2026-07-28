@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 16,
-		"automatedTestsPassing": 411,
-		"archivedScreenshots": 16
+		"greenCapabilities": 17,
+		"automatedTestsPassing": 415,
+		"archivedScreenshots": 18
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -21,6 +21,7 @@
 		"M01",
 		"M02",
 		"M03",
+		"M04",
 		"T07",
 		"G01",
 		"G04",
@@ -28,6 +29,23 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["M04"],
+			"redCommits": ["d081554"],
+			"greenCommit": "d8a0af7",
+			"result": "Video assets now hover-scrub in the bin and open in a dedicated source monitor by double-click or context menu. The monitor plays source media, exposes timecode, seek, keyboard and button In/Out controls, and inserts or overwrites the chosen range at the playhead. Overwrite edits split clips at both boundaries, replace only the covered span, and undo or redo as one command.",
+			"tests": {
+				"targeted": "4/4",
+				"fullSuite": "415/415 from the repository root with the required WASM test preload",
+				"functionCoverage": "83.33% for the source-range core",
+				"lineCoverage": "98.58% for the source-range core",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
+			},
+			"screenshots": [
+				"assets/screenshots/M04-source-monitor-in-out.png",
+				"assets/screenshots/M04-source-overwrite-result.png"
+			]
+		},
 		{
 			"featureIds": ["M02", "M03"],
 			"redCommits": ["3a22d5c"],

@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">16</strong>
+							<strong class="metric__value">17</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">411</strong>
+							<strong class="metric__value">415</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">16</strong>
+							<strong class="metric__value">18</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,54 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/M04-source-monitor-in-out.png"
+								data-lightbox-label="M04 源监视器与 In/Out"
+							>
+								<img
+									src="assets/screenshots/M04-source-monitor-in-out.png"
+									alt="IMG_2133.MOV 源监视器显示画面、源时间码、播放滑杆、0.40 秒 In 点、1.80 秒 Out 点以及 1.40 秒选区"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">M04 · SOURCE MONITOR</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>先看源素材，再决定放哪一段</h3>
+								<p>
+									视频卡支持悬停擦洗，双击或快捷菜单进入源监视器；播放、定位、I/O 快捷键、数值 In/Out 与范围时长保持同步。图中真实素材选中 0.40–1.80 秒，共 1.40 秒。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/M04-source-overwrite-result.png"
+								data-lightbox-label="M04 主轨范围覆盖结果"
+							>
+								<img
+									src="assets/screenshots/M04-source-overwrite-result.png"
+									alt="OpenCut 主轨在播放头处选中 1.40 秒 IMG_2133.MOV 覆盖片段，检查器显示精确时长，右下角提示覆盖成功"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">M04 · INSERT / OVERWRITE</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>源范围可插入，也可帧边界覆盖</h3>
+								<p>
+									插入把选区放到播放头并自动选择可用轨道；覆盖会在目标轨两端切分、只替换交叠区间，并以一个命令撤销。真实工程两条路径均从 31→32 个片段，单次撤销恢复 31 个及原始名称序列。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -566,6 +614,17 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>M04</strong></td>
+									<td><code>d081554</code> RED + <code>d8a0af7</code> GREEN</td>
+									<td>
+										目标 4/4；全量 415/415；源范围核心 83.33% / 98.58%；生产构建通过
+									</td>
+									<td>
+										0.40–1.80s 播放与选区；插入 31→32→撤销 31；主轨覆盖边界切分 31→32→撤销 31，名称序列一致
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>M02 / M03</strong></td>
 									<td>
