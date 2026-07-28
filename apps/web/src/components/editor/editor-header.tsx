@@ -26,6 +26,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { ShortcutsDialog } from "@/actions/components/shortcuts-dialog";
 import Image from "next/image";
 import { cn } from "@/utils/ui";
+import { AlertCircle, Check, Cloud, Loader2 } from "lucide-react";
 
 export function EditorHeader() {
 	return (
@@ -35,11 +36,81 @@ export function EditorHeader() {
 				<EditableProjectName />
 			</div>
 			<nav className="flex items-center gap-2">
+				<SaveStatusIndicator />
 				<FeedbackPopover />
 				<ExportButton />
 				<ThemeToggle />
 			</nav>
 		</header>
+	);
+}
+
+function SaveStatusIndicator() {
+	const editor = useEditor();
+	const save = useEditor((instance) => instance.save.getState());
+	const projectConflict = useEditor((instance) =>
+		instance.project.getFileConflict(),
+	);
+	const conflictRevision =
+		save.conflictRevision ?? projectConflict?.revision ?? null;
+
+	const content = {
+		idle: {
+			label: "Autosave ready",
+			icon: <Cloud className="size-3.5" />,
+			className: "text-muted-foreground",
+		},
+		dirty: {
+			label: "Unsaved changes",
+			icon: <Cloud className="size-3.5" />,
+			className: "text-amber-600 dark:text-amber-400",
+		},
+		saving: {
+			label: "Saving…",
+			icon: <Loader2 className="size-3.5 animate-spin" />,
+			className: "text-blue-600 dark:text-blue-400",
+		},
+		saved: {
+			label:
+				save.revision === null ? "Saved" : `Saved · revision ${save.revision}`,
+			icon: <Check className="size-3.5" />,
+			className: "text-emerald-600 dark:text-emerald-400",
+		},
+		error: {
+			label:
+				conflictRevision !== null
+					? "Disk version changed · Review"
+					: "Save failed · Retry",
+			icon: <AlertCircle className="size-3.5" />,
+			className: "text-destructive",
+		},
+	}[save.status];
+
+	return (
+		<button
+			type="button"
+			aria-label={content.label}
+			title={save.error ?? content.label}
+			disabled={save.status !== "error"}
+			onClick={() => {
+				if (conflictRevision !== null) {
+					toast.error("Another editor changed this project", {
+						description:
+							"Open History to review and explicitly load the disk version.",
+					});
+					return;
+				}
+				void editor.save.retry();
+			}}
+			className={cn(
+				"flex h-8 items-center gap-1.5 rounded-md px-2 text-[11px] font-medium disabled:cursor-default",
+				content.className,
+				save.status === "error" && "hover:bg-destructive/10",
+			)}
+		>
+			{content.icon}
+			<span className="hidden xl:inline">{content.label}</span>
+		</button>
 	);
 }
 

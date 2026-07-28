@@ -3,21 +3,26 @@ import { SaveManager } from "../save-manager";
 
 function deferred() {
 	let resolve!: () => void;
-	let reject!: (error: Error) => void;
-	const promise = new Promise<void>((resolvePromise, rejectPromise) => {
+	const promise = new Promise<void>((resolvePromise) => {
 		resolve = resolvePromise;
-		reject = rejectPromise;
 	});
-	return { promise, resolve, reject };
+	return { promise, resolve };
 }
 
-function makeEditor(saveCurrentProject: () => Promise<void>) {
+function makeEditor({
+	saveCurrentProject,
+	getFileConflict = () => null,
+}: {
+	saveCurrentProject: () => Promise<void>;
+	getFileConflict?: () => { revision: number } | null;
+}) {
 	return {
 		project: {
 			getActive: () => ({ metadata: { id: "project-1" } }),
 			getIsLoading: () => false,
 			getMigrationState: () => ({ isMigrating: false }),
 			getKnownFileRevision: () => 12,
+			getFileConflict,
 			saveCurrentProject,
 		},
 		scenes: { subscribe: () => () => {} },
@@ -29,8 +34,9 @@ describe("SaveManager status model", () => {
 	test("publishes dirty, saving, and saved without blocking interaction", async () => {
 		const save = deferred();
 		const states: string[] = [];
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const manager = new SaveManager({ editor: makeEditor(() => save.promise) as any });
+		const manager = new SaveManager({
+			editor: makeEditor({ saveCurrentProject: () => save.promise }),
+		});
 		manager.subscribe(() => states.push(manager.getState().status));
 
 		manager.markDirty();
@@ -56,12 +62,13 @@ describe("SaveManager status model", () => {
 
 	test("retains failed work and exposes an explicit retry", async () => {
 		let attempts = 0;
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const manager = new SaveManager({
-			editor: makeEditor(async () => {
-				attempts += 1;
-				if (attempts === 1) throw new Error("disk full");
-			}) as any,
+			editor: makeEditor({
+				saveCurrentProject: async () => {
+					attempts += 1;
+					if (attempts === 1) throw new Error("disk full");
+				},
+			}),
 		});
 
 		manager.markDirty();
@@ -79,5 +86,27 @@ describe("SaveManager status model", () => {
 			pendingChanges: false,
 			error: null,
 		});
+	});
+
+	test("blocks blind retry when the project changed on disk", async () => {
+		let attempts = 0;
+		const manager = new SaveManager({
+			editor: makeEditor({
+				saveCurrentProject: async () => {
+					attempts += 1;
+				},
+				getFileConflict: () => ({ revision: 19 }),
+			}),
+		});
+
+		await manager.retry();
+
+		expect(attempts).toBe(0);
+		expect(manager.getState()).toMatchObject({
+			status: "error",
+			pendingChanges: true,
+			conflictRevision: 19,
+		});
+		expect(manager.getState().error).toContain("Review the disk version");
 	});
 });

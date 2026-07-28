@@ -10,11 +10,25 @@ interface CommandHistoryEntry {
 	selectionOverride?: EditorSelectionSnapshot;
 }
 
+export interface CommandHistoryState {
+	undoDepth: number;
+	redoDepth: number;
+	undoLabel: string | null;
+	redoLabel: string | null;
+}
+
 export class CommandManager {
 	public isRippleEnabled = false;
 	private history: CommandHistoryEntry[] = [];
 	private redoStack: CommandHistoryEntry[] = [];
 	private reactors: Array<() => void> = [];
+	private listeners = new Set<() => void>();
+	private historyState: CommandHistoryState = {
+		undoDepth: 0,
+		redoDepth: 0,
+		undoLabel: null,
+		redoLabel: null,
+	};
 
 	constructor(private editor: EditorCore) {}
 
@@ -63,6 +77,7 @@ export class CommandManager {
 			selectionOverride,
 		});
 		this.redoStack = [];
+		this.publishHistory();
 		return command;
 	}
 
@@ -72,6 +87,7 @@ export class CommandManager {
 			previousSelection: this.getSelectionSnapshot(),
 		});
 		this.redoStack = [];
+		this.publishHistory();
 	}
 
 	registerReactor(reactor: () => void): void {
@@ -94,6 +110,7 @@ export class CommandManager {
 				});
 			}
 			this.redoStack.push(entry);
+			this.publishHistory();
 		}
 	}
 
@@ -118,6 +135,7 @@ export class CommandManager {
 			previousSelection,
 			selectionOverride,
 		});
+		this.publishHistory();
 	}
 
 	canUndo(): boolean {
@@ -129,8 +147,19 @@ export class CommandManager {
 	}
 
 	clear(): void {
+		const changed = this.history.length > 0 || this.redoStack.length > 0;
 		this.history = [];
 		this.redoStack = [];
+		if (changed) this.publishHistory();
+	}
+
+	getHistoryState(): CommandHistoryState {
+		return this.historyState;
+	}
+
+	subscribe(listener: () => void): () => void {
+		this.listeners.add(listener);
+		return () => this.listeners.delete(listener);
 	}
 
 	/**
@@ -195,5 +224,17 @@ export class CommandManager {
 			adjustments,
 		});
 		this.editor.timeline.updateTracks(tracksWithRipple);
+	}
+
+	private publishHistory(): void {
+		const undo = this.history.at(-1)?.command ?? null;
+		const redo = this.redoStack.at(-1)?.command ?? null;
+		this.historyState = {
+			undoDepth: this.history.length,
+			redoDepth: this.redoStack.length,
+			undoLabel: undo?.getLabel() ?? null,
+			redoLabel: redo?.getLabel() ?? null,
+		};
+		for (const listener of this.listeners) listener();
 	}
 }

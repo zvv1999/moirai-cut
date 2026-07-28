@@ -26,7 +26,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function errorMessage(value: unknown, fallback: string): string {
+function errorMessage({
+	value,
+	fallback,
+}: {
+	value: unknown;
+	fallback: string;
+}): string {
 	return isRecord(value) && typeof value.error === "string"
 		? value.error
 		: fallback;
@@ -91,6 +97,13 @@ function isProjectRevisionDiff(value: unknown): value is ProjectRevisionDiff {
  */
 export function AgentBadge() {
 	const editor = useEditor();
+	const save = useEditor((instance) => instance.save.getState());
+	const commandHistory = useEditor((instance) =>
+		instance.command.getHistoryState(),
+	);
+	const projectFileConflict = useEditor((instance) =>
+		instance.project.getFileConflict(),
+	);
 	const projectId = editor.project.getActiveOrNull()?.metadata.id ?? null;
 	const [sync, setSync] = useState<ProjectFileSyncState>(
 		getProjectFileSyncState(),
@@ -102,6 +115,14 @@ export function AgentBadge() {
 	const [diff, setDiff] = useState<ProjectRevisionDiff | null>(null);
 	const [loadingRevision, setLoadingRevision] = useState<number | null>(null);
 	const [confirmRevision, setConfirmRevision] = useState<number | null>(null);
+	const [duplicatingRevision, setDuplicatingRevision] = useState<number | null>(
+		null,
+	);
+	const [confirmDiscardLocal, setConfirmDiscardLocal] = useState(false);
+	const fileConflictRevision =
+		save.conflictRevision ??
+		projectFileConflict?.revision ??
+		(sync.blockedByUnsavedChanges ? sync.externalRevision : null);
 
 	useEffect(() => subscribeToProjectFileSync(setSync), []);
 
@@ -122,6 +143,13 @@ export function AgentBadge() {
 		}
 	}, [projectId]);
 
+	useEffect(() => {
+		if (!open || save.status !== "saved" || save.revision === null) return;
+		queueMicrotask(() => {
+			void refreshHistory();
+		});
+	}, [open, refreshHistory, save.revision, save.status]);
+
 	const createSnapshot = async () => {
 		if (!projectId || !snapshotName.trim()) return;
 		const response = await fetch(
@@ -137,7 +165,7 @@ export function AgentBadge() {
 		);
 		const payload: unknown = await response.json().catch(() => ({}));
 		if (!response.ok) {
-			toast.error(errorMessage(payload, "Snapshot failed"));
+			toast.error(errorMessage({ value: payload, fallback: "Snapshot failed" }));
 			return;
 		}
 		toast(`Saved snapshot at revision ${revisionOf(payload) ?? "unknown"}`);
@@ -155,7 +183,9 @@ export function AgentBadge() {
 			);
 			const payload: unknown = await response.json().catch(() => ({}));
 			if (!response.ok || !isProjectRevisionDiff(payload)) {
-				toast.error(errorMessage(payload, "Comparison failed"));
+				toast.error(
+					errorMessage({ value: payload, fallback: "Comparison failed" }),
+				);
 				return;
 			}
 			setDiff(payload);
@@ -176,13 +206,71 @@ export function AgentBadge() {
 		);
 		const payload: unknown = await response.json().catch(() => ({}));
 		if (response.ok) {
-			toast(`Restored snapshot as revision ${revisionOf(payload) ?? "unknown"}`);
+			toast(
+				`Restored snapshot as revision ${revisionOf(payload) ?? "unknown"}`,
+			);
 			setDiff(null);
 			setConfirmRevision(null);
 			await refreshHistory();
 		} else {
-			toast.error(errorMessage(payload, "Restore failed"));
+			toast.error(errorMessage({ value: payload, fallback: "Restore failed" }));
 		}
+	};
+
+	const duplicate = async (entry: RevisionEntry) => {
+		if (!projectId) return;
+		setDuplicatingRevision(entry.revision);
+		try {
+			const response = await fetch(
+				`/api/projects/${encodeURIComponent(projectId)}/duplicate/${entry.revision}`,
+				{
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						name: `${entry.name ?? "Project version"} · copy`,
+					}),
+				},
+			);
+			const payload: unknown = await response.json().catch(() => ({}));
+			const duplicatedProjectId =
+				isRecord(payload) && typeof payload.projectId === "string"
+					? payload.projectId
+					: null;
+			if (!response.ok || !duplicatedProjectId) {
+				throw new Error(
+					isRecord(payload) && typeof payload.error === "string"
+						? payload.error
+						: "Version duplication failed",
+				);
+			}
+			const duplicatedName =
+				isRecord(payload) && typeof payload.name === "string"
+					? payload.name
+					: "version copy";
+			toast(`Created ${duplicatedName}`, {
+				description: `Independent project ${duplicatedProjectId.slice(0, 8)}…`,
+			});
+		} catch (error) {
+			toast.error("Could not duplicate this version", {
+				description:
+					error instanceof Error ? error.message : "Please try again",
+			});
+		} finally {
+			setDuplicatingRevision(null);
+		}
+	};
+
+	const loadDiskVersion = async () => {
+		const applied = await editor.project.applyExternalDocument();
+		if (!applied) {
+			toast.error("Could not load the disk version");
+			return;
+		}
+		setConfirmDiscardLocal(false);
+		toast("Loaded the latest disk version", {
+			description: "Local pending changes were discarded by explicit choice.",
+		});
+		await refreshHistory();
 	};
 
 	const { agent, blockedByUnsavedChanges } = sync;
@@ -195,12 +283,112 @@ export function AgentBadge() {
 						<div>
 							<div className="text-sm font-semibold">Project snapshots</div>
 							<div className="text-[11px] opacity-60">
-								Current revision {currentRevision ?? "…"} · compare before restore
+								Current revision {currentRevision ?? "…"} · compare before
+								restore
 							</div>
 						</div>
 						<span className="bg-muted rounded px-2 py-1 font-mono text-[10px]">
 							{revisions.length} saved
 						</span>
+					</div>
+
+					<div className="mb-3 grid grid-cols-2 gap-2">
+						<div className="border-border bg-muted/20 rounded-md border p-2">
+							<div className="text-[10px] font-semibold tracking-wide uppercase opacity-50">
+								Continuous autosave
+							</div>
+							<div className="mt-1 flex items-center gap-2 text-xs font-medium">
+								<span
+									className={`size-2 rounded-full ${
+										save.status === "error"
+											? "bg-red-500"
+											: save.pendingChanges
+												? "bg-amber-500"
+												: "bg-emerald-500"
+									}`}
+								/>
+								{save.status === "saving"
+									? "Saving…"
+									: save.status === "error"
+										? "Save failed"
+										: save.pendingChanges
+											? "Changes queued"
+											: save.revision === null
+												? "Autosave ready"
+												: `Saved at revision ${save.revision}`}
+							</div>
+							{fileConflictRevision !== null ? (
+								<div className="mt-1">
+									<div className="text-[10px] text-amber-600 dark:text-amber-400">
+										Disk is at revision {fileConflictRevision}; autosave is
+										paused.
+									</div>
+									{confirmDiscardLocal ? (
+										<div className="mt-1 flex gap-1">
+											<button
+												type="button"
+												className="rounded px-1.5 py-0.5 text-[10px]"
+												onClick={() => setConfirmDiscardLocal(false)}
+											>
+												Cancel
+											</button>
+											<button
+												type="button"
+												className="bg-destructive text-destructive-foreground rounded px-1.5 py-0.5 text-[10px]"
+												onClick={() => void loadDiskVersion()}
+											>
+												Confirm discard local
+											</button>
+										</div>
+									) : (
+										<button
+											type="button"
+											className="text-destructive mt-1 text-[10px] hover:underline"
+											onClick={() => setConfirmDiscardLocal(true)}
+										>
+											Load disk version…
+										</button>
+									)}
+								</div>
+							) : save.status === "error" ? (
+								<button
+									type="button"
+									className="text-destructive mt-1 text-[10px] hover:underline"
+									onClick={() => void editor.save.retry()}
+								>
+									Retry · {save.error}
+								</button>
+							) : null}
+						</div>
+						<div className="border-border bg-muted/20 rounded-md border p-2">
+							<div className="text-[10px] font-semibold tracking-wide uppercase opacity-50">
+								Shared command history
+							</div>
+							<div className="mt-1 flex gap-1">
+								<button
+									type="button"
+									disabled={commandHistory.undoDepth === 0}
+									className="border-input flex-1 truncate rounded border px-2 py-1 text-[10px] disabled:opacity-35"
+									title={commandHistory.undoLabel ?? "Nothing to undo"}
+									onClick={() => editor.command.undo()}
+								>
+									Undo {commandHistory.undoLabel ?? ""}
+								</button>
+								<button
+									type="button"
+									disabled={commandHistory.redoDepth === 0}
+									className="border-input flex-1 truncate rounded border px-2 py-1 text-[10px] disabled:opacity-35"
+									title={commandHistory.redoLabel ?? "Nothing to redo"}
+									onClick={() => editor.command.redo()}
+								>
+									Redo {commandHistory.redoLabel ?? ""}
+								</button>
+							</div>
+							<div className="mt-1 font-mono text-[9px] opacity-45">
+								{commandHistory.undoDepth} undo · {commandHistory.redoDepth}{" "}
+								redo · human + agent
+							</div>
+						</div>
 					</div>
 
 					<div className="mb-3 flex gap-2">
@@ -221,14 +409,16 @@ export function AgentBadge() {
 						</button>
 					</div>
 
-					<div className="mb-1 text-xs font-medium opacity-70">Timeline history</div>
+					<div className="mb-1 text-xs font-medium opacity-70">
+						Timeline history
+					</div>
 					{revisions.length === 0 ? (
 						<div className="border-border rounded-md border border-dashed p-4 text-center text-xs opacity-50">
 							No snapshots yet
 						</div>
 					) : (
-						<ul className="flex max-h-48 flex-col gap-1 overflow-y-auto">
-							{revisions.slice(0, 20).map((entry) => (
+						<ul className="flex max-h-56 flex-col gap-1 overflow-y-auto">
+							{revisions.slice(0, 50).map((entry) => (
 								<li
 									key={entry.revision}
 									className="border-border flex items-center gap-2 rounded-md border p-2 text-xs"
@@ -250,14 +440,28 @@ export function AgentBadge() {
 												: "unknown time"}
 										</div>
 									</div>
-									<button
-										type="button"
-										className="text-primary rounded px-2 py-1 hover:underline"
-										disabled={loadingRevision === entry.revision}
-										onClick={() => void compare(entry.revision)}
-									>
-										{loadingRevision === entry.revision ? "Comparing…" : "Compare"}
-									</button>
+									<div className="flex items-center">
+										<button
+											type="button"
+											className="text-primary rounded px-2 py-1 hover:underline"
+											disabled={loadingRevision === entry.revision}
+											onClick={() => void compare(entry.revision)}
+										>
+											{loadingRevision === entry.revision
+												? "Comparing…"
+												: "Compare"}
+										</button>
+										<button
+											type="button"
+											className="rounded px-2 py-1 opacity-60 hover:opacity-100"
+											disabled={duplicatingRevision === entry.revision}
+											onClick={() => void duplicate(entry)}
+										>
+											{duplicatingRevision === entry.revision
+												? "Copying…"
+												: "Duplicate"}
+										</button>
+									</div>
 								</li>
 							))}
 						</ul>

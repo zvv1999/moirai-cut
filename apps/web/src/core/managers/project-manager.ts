@@ -128,6 +128,7 @@ export class ProjectManager {
 		try {
 			await storageService.saveProject({ project: newProject });
 			this.updateMetadata(newProject);
+			this.editor.save.acceptExternalState();
 
 			return newProject.metadata.id;
 		} catch (error) {
@@ -189,6 +190,7 @@ export class ProjectManager {
 					console.error("Failed to generate project thumbnail:", error);
 				}
 			}
+			this.editor.save.acceptExternalState();
 		} catch (error) {
 			console.error("Failed to load project:", error);
 			throw error;
@@ -230,6 +232,7 @@ export class ProjectManager {
 				return;
 			}
 			console.error("Failed to save project:", error);
+			throw error;
 		}
 	}
 
@@ -312,6 +315,7 @@ export class ProjectManager {
 			});
 
 			this.fileConflict = null;
+			this.editor.save.acceptExternalState();
 			this.updateMetadata(this.active);
 			this.notify();
 			return true;
@@ -711,7 +715,7 @@ export class ProjectManager {
 
 		try {
 			const didUpdateThumbnail = await this.updateThumbnailFromTimeline();
-			if (didUpdateThumbnail) {
+			if (didUpdateThumbnail || this.editor.save.getIsDirty()) {
 				await this.editor.save.flush();
 			}
 		} catch (error) {

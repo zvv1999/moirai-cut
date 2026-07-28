@@ -17,10 +17,21 @@ import {
 	initializeGpuRenderer,
 	isGpuAvailable,
 } from "@/services/renderer/gpu-renderer";
+import {
+	beginRecoverySession,
+	markRecoverySessionClean,
+	markRecoverySessionSaved,
+	type RecoveryCandidate,
+} from "@/project/recovery-session";
+import { toast } from "sonner";
 
 interface EditorProviderProps {
 	projectId: string;
 	children: React.ReactNode;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 export function EditorProvider({ projectId, children }: EditorProviderProps) {
@@ -167,5 +178,167 @@ function EditorRuntimeBindings() {
 	useEditorActions();
 	useKeybindingsListener();
 	// Fixed-position, so where it mounts in the tree is irrelevant.
-	return <AgentBadge />;
+	return (
+		<>
+			<AgentBadge />
+			<RecoverySessionGuard />
+		</>
+	);
+}
+
+function RecoverySessionGuard() {
+	const editor = useEditor();
+	const projectId = useEditor(
+		(instance) => instance.project.getActiveOrNull()?.metadata.id ?? null,
+	);
+	const save = useEditor((instance) => instance.save.getState());
+	const [candidate, setCandidate] = useState<RecoveryCandidate | null>(null);
+	const [restoring, setRestoring] = useState(false);
+	const sessionId = useState(() => crypto.randomUUID())[0];
+
+	useEffect(() => {
+		if (!projectId) return;
+		const currentRevision =
+			editor.project.getKnownFileRevision(projectId) ??
+			editor.save.getState().revision;
+		if (currentRevision === null) return;
+		const recovery = beginRecoverySession({
+			storage: window.localStorage,
+			projectId,
+			currentRevision,
+			sessionId,
+			now: new Date().toISOString(),
+		});
+		if (recovery) {
+			queueMicrotask(() => setCandidate(recovery));
+		}
+
+		const handlePageHide = () => {
+			if (editor.save.getIsDirty()) return;
+			markRecoverySessionClean({
+				storage: window.localStorage,
+				projectId,
+				sessionId,
+			});
+		};
+		window.addEventListener("pagehide", handlePageHide);
+		return () => window.removeEventListener("pagehide", handlePageHide);
+	}, [editor, projectId, sessionId]);
+
+	useEffect(() => {
+		if (!projectId || save.status !== "saved" || save.revision === null) {
+			return;
+		}
+		markRecoverySessionSaved({
+			storage: window.localStorage,
+			projectId,
+			sessionId,
+			revision: save.revision,
+		});
+	}, [projectId, save.revision, save.status, sessionId]);
+
+	if (!candidate) return null;
+
+	const restoreOpeningRevision = async () => {
+		setRestoring(true);
+		try {
+			const currentResponse = await fetch(
+				`/api/projects/${encodeURIComponent(candidate.projectId)}`,
+			);
+			const current: unknown = await currentResponse.json();
+			if (
+				!currentResponse.ok ||
+				!isRecord(current) ||
+				typeof current.revision !== "number"
+			) {
+				throw new Error("Could not read the current project revision");
+			}
+			const response = await fetch(
+				`/api/projects/${encodeURIComponent(candidate.projectId)}/restore/${candidate.openingRevision}`,
+				{
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ expectedRevision: current.revision }),
+				},
+			);
+			const payload: unknown = await response.json().catch(() => ({}));
+			if (!response.ok) {
+				throw new Error(
+					isRecord(payload) && typeof payload.error === "string"
+						? payload.error
+						: "Recovery restore failed",
+				);
+			}
+			const applied = await editor.project.applyExternalDocument();
+			if (!applied) {
+				throw new Error("The restored revision could not be loaded into the editor");
+			}
+			setCandidate(null);
+			toast(
+				`Restored the pre-session version as revision ${
+					isRecord(payload) && typeof payload.revision === "number"
+						? payload.revision
+						: "new"
+				}`,
+			);
+		} catch (error) {
+			toast.error("Recovery failed", {
+				description:
+					error instanceof Error ? error.message : "Please try again",
+			});
+		} finally {
+			setRestoring(false);
+		}
+	};
+
+	return (
+		<div
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="recovery-title"
+			className="fixed inset-0 z-[120] grid place-items-center bg-black/55 p-6 backdrop-blur-sm"
+		>
+			<div className="border-border bg-popover text-popover-foreground w-full max-w-lg rounded-xl border p-5 shadow-2xl">
+				<div className="mb-1 text-[11px] font-semibold tracking-[0.16em] text-amber-600 uppercase dark:text-amber-400">
+					Crash recovery
+				</div>
+				<h2 id="recovery-title" className="text-lg font-semibold">
+					Recovered work is available
+				</h2>
+				<p className="text-muted-foreground mt-2 text-sm leading-6">
+					The previous editing session did not close cleanly. Continuous
+					autosave advanced this project from revision{" "}
+					<strong>{candidate.openingRevision}</strong> to{" "}
+					<strong>{candidate.recoveryRevision}</strong>.
+				</p>
+				<div className="border-border bg-muted/30 mt-4 rounded-lg border p-3 text-xs">
+					<div className="font-medium">Choose what to open</div>
+					<div className="text-muted-foreground mt-1">
+						Keep the latest recovered edits, or restore the exact version from
+						before the interrupted session. Restoring creates another revision,
+						so neither choice destroys history.
+					</div>
+				</div>
+				<div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+					<button
+						type="button"
+						disabled={restoring}
+						className="border-input hover:bg-accent rounded-md border px-3 py-2 text-sm disabled:opacity-50"
+						onClick={() => void restoreOpeningRevision()}
+					>
+						{restoring
+							? "Restoring…"
+							: `Restore revision ${candidate.openingRevision}`}
+					</button>
+					<button
+						type="button"
+						className="bg-foreground text-background rounded-md px-3 py-2 text-sm font-medium"
+						onClick={() => setCandidate(null)}
+					>
+						Keep recovered revision {candidate.recoveryRevision}
+					</button>
+				</div>
+			</div>
+		</div>
+	);
 }
