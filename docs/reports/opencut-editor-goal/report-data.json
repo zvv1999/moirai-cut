@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 64,
-		"automatedTestsPassing": 513,
-		"archivedScreenshots": 68
+		"greenCapabilities": 68,
+		"automatedTestsPassing": 522,
+		"archivedScreenshots": 76
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -71,11 +71,38 @@
 		"E06",
 		"E07",
 		"G01",
+		"G02",
+		"G03",
 		"G04",
+		"G05",
 		"G06",
-		"G07"
+		"G07",
+		"G08"
 	],
 	"evidence": [
+		{
+			"featureIds": ["G01", "G02", "G03", "G04", "G05", "G06", "G07", "G08"],
+			"redCommits": ["d4e0a3d"],
+			"greenCommit": "1485239",
+			"supportingCommits": ["8e77c05"],
+			"result": "Agent Studio compiles deterministic natural-language requests into an inert ordered preview with assumptions, expected output, target clips, property-level changes, affected ranges, forward operations, and exact inverses. Applying reviewed groups uses one BatchCommand, one revision, one idempotency key, and one shared undo entry. Post-run review classifies every declared target and property, with accept, reject-plus-reverse, and revert routed through the same validated operation gate. Semantic inspection exposes the project's media, tracks, clips, captions, keyframes, markers, issues, and concurrency state. QC combines structural lint, representative rendered frames, audio checks, and export preflight into addressable corrections.",
+			"tests": {
+				"targeted": "27/27 focused semantic-workflow, agent-manager, atomic-batch, and canonical-move regressions with 129 expectations",
+				"fullSuite": "Web 439/439 with 1182 expectations, MCP 58/58, and ESLint custom rules 25/25 for 522 repository-relevant tests",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation for all 18 static pages at 8e77c05 in a clean worktree using Node 24"
+			},
+			"browserVerification": "On the real project, Agent Studio planned a four-caption tighten pass that removed 4.40 seconds, applied the verified 12.4 to 8 second change, then rejected and reversed the group while retaining both shared undo entries. Semantic state reported 44 media assets, 4 tracks, 31 clips, 7 text elements, and 88 keyframes. An unsupported make it cinematic request failed closed without mutation. QC passed structure, three representative frame renders, and seven audio-bearing clips, while honestly reporting the in-app browser's missing VideoEncoder as one blocking export issue. A browser-discovered inverse-order mismatch was fixed and regression-tested. Exact cleanup left no project content-field difference from the baseline except revision and timestamps, at revision 440.",
+			"screenshots": [
+				"assets/screenshots/G01-shared-atomic-commands.png",
+				"assets/screenshots/G02-agent-plan-preview.png",
+				"assets/screenshots/G03-change-review.png",
+				"assets/screenshots/G04-semantic-project-inspection.png",
+				"assets/screenshots/G05-semantic-editing.png",
+				"assets/screenshots/G06-concurrency-guard.png",
+				"assets/screenshots/G07-agent-guardrails.png",
+				"assets/screenshots/G08-agent-visual-qc.png"
+			]
+		},
 		{
 			"featureIds": ["E01", "E02", "E03", "E04", "E05", "E06", "E07"],
 			"redCommits": ["449b9e1"],

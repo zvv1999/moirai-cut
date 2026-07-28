@@ -38,7 +38,7 @@
 						再用共享原子命令、计划预览和可审查变更形成 Agent 原生优势。
 					</p>
 					<div class="hero__meta">
-						<span class="status status--building">ACTIVE · M6</span>
+						<span class="status status--building">ACTIVE · M7</span>
 						<span class="pill">分支 feat/agent-drivable</span>
 						<span class="pill">目标 019fa427…914f</span>
 						<span class="pill">证据随每批实现持续更新</span>
@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">64</strong>
+							<strong class="metric__value">68</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">513</strong>
+							<strong class="metric__value">522</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">68</strong>
+							<strong class="metric__value">76</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -150,7 +150,7 @@
 								<h3>Agent 原生剪辑</h3>
 								<p>计划预览、变更审查、语义编辑、共享撤销与视觉质检。</p>
 							</div>
-							<span class="status status--building">ACTIVE</span>
+							<span class="status status--green">DONE</span>
 						</article>
 						<article class="milestone">
 							<span class="milestone__id">M7</span>
@@ -158,7 +158,7 @@
 								<h3>最终资格验证</h3>
 								<p>回归、浏览器、性能、迁移、截图目录和交付报告。</p>
 							</div>
-							<span class="status status--todo">TODO</span>
+							<span class="status status--building">ACTIVE</span>
 						</article>
 					</div>
 				</div>
@@ -177,6 +177,206 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/G01-shared-atomic-commands.png"
+								data-lightbox-label="G01 人与 Agent 共享原子命令"
+							>
+								<img
+									src="assets/screenshots/G01-shared-atomic-commands.png"
+									alt="Agent Studio 显示计划应用与拒绝反向操作都进入同一共享撤销历史"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">G01 · SHARED COMMANDS</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>人与 Agent 共用一套撤销语义</h3>
+								<p>
+									整个审查计划只生成一个共享撤销项；拒绝或回退分组同样经过
+									operation gate，不存在隐藏的第二套写入路径。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/G02-agent-plan-preview.png"
+								data-lightbox-label="G02 Agent 计划预览"
+							>
+								<img
+									src="assets/screenshots/G02-agent-plan-preview.png"
+									alt="Agent Studio 在写入前列出假设、预期结果、目标片段、属性、范围与原子操作"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">G02 · PLAN PREVIEW</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>自然语言先编译成可检查计划</h3>
+								<p>
+									真实四字幕紧凑计划在变更前明确给出减少 4.40 秒、受影响
+									8.00s–15.40s、目标片段、假设、正向操作和精确逆操作。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/G03-change-review.png"
+								data-lightbox-label="G03 属性级变更审查"
+							>
+								<img
+									src="assets/screenshots/G03-change-review.png"
+									alt="Agent 变更审查显示片段从 12.4 秒移动到 8 秒并完成拒绝反向恢复"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">G03 · CHANGE REVIEW</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>每个目标属性都可接受、拒绝或回退</h3>
+								<p>
+									本次执行把一个目标从 12.4 移到 8 秒并标记
+									VERIFIED；随后 Reject + reverse 恢复原值，两个动作均保留在人类撤销历史。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/G04-semantic-project-inspection.png"
+								data-lightbox-label="G04 工程语义地址空间"
+							>
+								<img
+									src="assets/screenshots/G04-semantic-project-inspection.png"
+									alt="Agent Studio 显示 44 个素材、4 条轨道、31 个片段、7 个文本和 88 个关键帧"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">G04 · SEMANTIC INSPECTION</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>工程元素拥有可寻址语义</h3>
+								<p>
+									Agent 可读取 44 个素材、4 条轨道、31 个片段、7
+									个文本、88 个关键帧以及标记、问题和修订状态，而不是依赖坐标点击。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/G05-semantic-editing.png"
+								data-lightbox-label="G05 可审查语义剪辑"
+							>
+								<img
+									src="assets/screenshots/G05-semantic-editing.png"
+									alt="tighten this section 已编译、执行并生成可审查的属性级结果"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">G05 · SEMANTIC EDITING</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>语义意图落到可验证的原子编辑</h3>
+								<p>
+									“tighten this section”和“unify captions”只会生成有限、
+									确定、可逆的操作；字幕统一只复制视觉样式，不改文案或时间。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/G06-concurrency-guard.png"
+								data-lightbox-label="G06 修订与并发保护"
+							>
+								<img
+									src="assets/screenshots/G06-concurrency-guard.png"
+									alt="Agent 计划显示基础修订、工程 ID、CAS 与幂等保护"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">G06 · CONCURRENCY</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>过期计划失败关闭</h3>
+								<p>
+									计划绑定工程、基础 revision 和幂等键；应用前任何并发变化都会让
+									CAS 拒绝写入，成功计划则只推进一次修订并可正常人类撤销。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/G07-agent-guardrails.png"
+								data-lightbox-label="G07 Agent 安全边界"
+							>
+								<img
+									src="assets/screenshots/G07-agent-guardrails.png"
+									alt="不支持的 make it cinematic 请求被阻止且明确显示没有编辑"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">G07 · GUARDRAILS</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>含糊请求不会偷偷猜测并写入</h3>
+								<p>
+									“make it cinematic”被明确标记为 BLOCKED，界面列出支持的请求并提示
+									“No edit was made”；校验、工程边界和历史均不可绕过。
+								</p>
+							</div>
+						</article>
+
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/G08-agent-visual-qc.png"
+								data-lightbox-label="G08 Agent 视觉与导出质检"
+							>
+								<img
+									src="assets/screenshots/G08-agent-visual-qc.png"
+									alt="Agent QC 同时显示结构、三帧联系表、七个音频片段与导出能力检查"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">G08 · VISUAL QC</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>质检证据覆盖结构、画面、声音与交付</h3>
+								<p>
+									真实工程结构、3/3 代表帧和 7 个含音频片段通过；当前浏览器缺少
+									VideoEncoder 被保留为一个可定位阻断，而不是伪造导出成功。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -1894,6 +2094,25 @@
 							</thead>
 							<tbody>
 								<tr>
+									<td><strong>G01–G08</strong></td>
+									<td>
+										<code>d4e0a3d</code> RED + <code>1485239</code> GREEN +
+										<code>8e77c05</code> 类型收口
+									</td>
+									<td>
+										目标 27/27、129 断言；Web 439/439、1182 断言；MCP
+										58/58；规则 25/25；共 522 项；TypeScript、新代码 ESLint 与
+										Node 24 干净生产构建、18 个静态页面通过
+									</td>
+									<td>
+										真实工程预览并执行四字幕紧凑计划，验证 12.4→8 秒后拒绝并反向恢复；
+										语义地址空间读取 44 素材、4 轨、31 片段、7 文本、88
+										关键帧；含糊请求零写入；QC 结构、3/3 代表帧和 7 个音频片段通过，
+										仅准确报告浏览器缺少 VideoEncoder
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
+								<tr>
 									<td><strong>E01–E07</strong></td>
 									<td><code>449b9e1</code> RED + <code>f0ddb4b</code> GREEN</td>
 									<td>
@@ -2303,13 +2522,6 @@
 									<td><code>8086fad</code></td>
 									<td>针对性测试 + 全量 357/357</td>
 									<td>搜索 1/44；视频 6/44；快捷键标签可见</td>
-									<td><span class="status status--green">GREEN</span></td>
-								</tr>
-								<tr>
-									<td><strong>G01 / G04 / G06 / G07</strong></td>
-									<td>既有 Agent manager 与 operation registry</td>
-									<td>revision、idempotency、schema drift</td>
-									<td>最终 Agent 审查流阶段补充</td>
 									<td><span class="status status--green">GREEN</span></td>
 								</tr>
 								<tr>
