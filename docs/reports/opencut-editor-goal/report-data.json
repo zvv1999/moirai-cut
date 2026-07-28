@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 23,
-		"automatedTestsPassing": 437,
-		"archivedScreenshots": 24
+		"greenCapabilities": 24,
+		"automatedTestsPassing": 441,
+		"archivedScreenshots": 25
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -28,6 +28,7 @@
 		"T01",
 		"T02",
 		"T03",
+		"T04",
 		"T07",
 		"G01",
 		"G04",
@@ -35,6 +36,19 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["T04"],
+			"redCommits": ["e370c11"],
+			"greenCommit": "bd1d192",
+			"result": "Adjacent visual clips now form a stable, addressable transition object backed by real opacity animation. The transition manager adds or replaces Cross dissolve and Fade through black, exposes a drag duration handle and fine steps, removes transitions without deleting user keyframes, restores the original cut, and explains invalid selections. Page and MCP Agent crossfade paths emit compatible metadata so a human can continue an Agent edit.",
+			"tests": {
+				"targeted": "4/4 new transition tests plus MCP document, schema-drift, agent-manager, and toolbar regressions",
+				"fullSuite": "441/441 from the repository root with the required WASM test preload",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
+			},
+			"browserVerification": "The real project received a 0.50s Cross dissolve, replaced it with a 0.55s Fade through black, and retained it after refresh. Removal, global undo, and redo produced 0, 1, and 0 transition badges. A non-adjacent pair was blocked with explicit edit-point feedback, and the persisted project ended with zero verification transitions.",
+			"screenshots": ["assets/screenshots/T04-edit-point-transitions.png"]
+		},
 		{
 			"featureIds": ["T03"],
 			"redCommits": ["8f40359"],
