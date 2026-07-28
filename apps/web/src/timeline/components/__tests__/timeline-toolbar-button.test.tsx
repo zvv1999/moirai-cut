@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { TimelineToolbarButton } from "../timeline-toolbar";
+import { TimelineToolbarButton } from "../timeline-toolbar-button";
 
 describe("TimelineToolbarButton", () => {
 	test("gives icon-only controls an accessible name with their shortcut", () => {

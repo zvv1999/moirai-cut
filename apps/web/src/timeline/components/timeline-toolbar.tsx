@@ -1,11 +1,6 @@
 import { useEditor } from "@/editor/use-editor";
 import { useElementSelection } from "@/timeline/hooks/element/use-element-selection";
-import {
-	TooltipProvider,
-	Tooltip,
-	TooltipTrigger,
-	TooltipContent,
-} from "@/components/ui/tooltip";
+import { TooltipProvider, Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import {
 	SplitButton,
@@ -25,7 +20,6 @@ import {
 	isSourceAudioSeparated,
 } from "@/timeline/audio-separation";
 import { hasMediaId } from "@/timeline";
-import { cn } from "@/utils/ui";
 import { useTimelineStore } from "@/timeline/timeline-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -49,6 +43,11 @@ import { OcRippleIcon } from "@/components/icons";
 import { GraphEditorPopover } from "./graph-editor/popover";
 import { PopoverTrigger } from "@/components/ui/popover";
 import { useGraphEditorController } from "./graph-editor/use-controller";
+import { useMemo } from "react";
+import { useKeyboardShortcutsHelp } from "@/actions/use-keyboard-shortcuts-help";
+import { TimelineToolbarButton } from "./timeline-toolbar-button";
+
+export { TimelineToolbarButton } from "./timeline-toolbar-button";
 
 export function TimelineToolbar({
 	zoomLevel,
@@ -87,6 +86,7 @@ export function TimelineToolbar({
 
 function ToolbarLeftSection() {
 	const editor = useEditor();
+	const shortcutByAction = useTimelineToolbarShortcuts();
 	const mediaAssets = useEditor((currentEditor) =>
 		currentEditor.media.getAssets(),
 	);
@@ -142,27 +142,30 @@ function ToolbarLeftSection() {
 	return (
 		<div className="flex items-center gap-1">
 			<TooltipProvider delayDuration={500}>
-				<ToolbarButton
+				<TimelineToolbarButton
 					icon={<HugeiconsIcon icon={ScissorIcon} />}
 					tooltip="Split element"
+					shortcut={shortcutByAction.get("split")}
 					onClick={({ event }) => handleAction({ action: "split", event })}
 				/>
 
-				<ToolbarButton
+				<TimelineToolbarButton
 					icon={<HugeiconsIcon icon={AlignLeftIcon} />}
 					tooltip="Split left"
+					shortcut={shortcutByAction.get("split-left")}
 					onClick={({ event }) => handleAction({ action: "split-left", event })}
 				/>
 
-				<ToolbarButton
+				<TimelineToolbarButton
 					icon={<HugeiconsIcon icon={AlignRightIcon} />}
 					tooltip="Split right"
+					shortcut={shortcutByAction.get("split-right")}
 					onClick={({ event }) =>
 						handleAction({ action: "split-right", event })
 					}
 				/>
 
-				<ToolbarButton
+				<TimelineToolbarButton
 					icon={
 						<HugeiconsIcon
 							icon={isSelectedSourceAudioSeparated ? Unlink02Icon : Link02Icon}
@@ -175,24 +178,26 @@ function ToolbarLeftSection() {
 					}
 				/>
 
-				<ToolbarButton
+				<TimelineToolbarButton
 					icon={<HugeiconsIcon icon={Copy01Icon} />}
 					tooltip="Duplicate element"
+					shortcut={shortcutByAction.get("duplicate-selected")}
 					onClick={({ event }) =>
 						handleAction({ action: "duplicate-selected", event })
 					}
 				/>
 
-				<ToolbarButton
+				<TimelineToolbarButton
 					icon={<HugeiconsIcon icon={SnowIcon} />}
 					tooltip="Freeze frame (coming soon)"
 					disabled={true}
 					onClick={({ event: _event }) => {}}
 				/>
 
-				<ToolbarButton
+				<TimelineToolbarButton
 					icon={<HugeiconsIcon icon={Delete02Icon} />}
 					tooltip="Delete element"
+					shortcut={shortcutByAction.get("delete-selected")}
 					onClick={({ event }) =>
 						handleAction({ action: "delete-selected", event })
 					}
@@ -201,7 +206,7 @@ function ToolbarLeftSection() {
 				<div className="bg-border mx-1 h-6 w-px" />
 
 				<Tooltip>
-					<ToolbarButton
+					<TimelineToolbarButton
 						icon={<HugeiconsIcon icon={Bookmark02Icon} />}
 						isActive={isCurrentlyBookmarked}
 						tooltip={isCurrentlyBookmarked ? "Remove bookmark" : "Add bookmark"}
@@ -227,7 +232,7 @@ function ToolbarLeftSection() {
 					onCommitValue={graphEditor.onCommitValue}
 					onCancelPreview={graphEditor.onCancelPreview}
 				>
-					<ToolbarButton
+					<TimelineToolbarButton
 						icon={<HugeiconsIcon icon={Chart03Icon} />}
 						tooltip={graphEditor.tooltip}
 						disabled={!graphEditor.canOpen}
@@ -279,18 +284,20 @@ function ToolbarRightSection({
 	const rippleEditingEnabled = useTimelineStore((s) => s.rippleEditingEnabled);
 	const toggleSnapping = useTimelineStore((s) => s.toggleSnapping);
 	const toggleRippleEditing = useTimelineStore((s) => s.toggleRippleEditing);
+	const shortcutByAction = useTimelineToolbarShortcuts();
 
 	return (
 		<div className="flex items-center gap-1">
 			<TooltipProvider delayDuration={500}>
-				<ToolbarButton
+				<TimelineToolbarButton
 					icon={<HugeiconsIcon icon={MagnetIcon} />}
 					isActive={snappingEnabled}
 					tooltip="Auto snapping"
+					shortcut={shortcutByAction.get("toggle-snapping")}
 					onClick={() => toggleSnapping()}
 				/>
 
-				<ToolbarButton
+				<TimelineToolbarButton
 					icon={<OcRippleIcon size={24} className="scale-110" />}
 					isActive={rippleEditingEnabled}
 					tooltip="Ripple editing"
@@ -302,6 +309,8 @@ function ToolbarRightSection({
 
 			<div className="flex items-center gap-1">
 				<Button
+					aria-label="Zoom out timeline"
+					title="Zoom out timeline"
 					variant="text"
 					size="icon"
 					onClick={() => onZoom({ direction: "out" })}
@@ -319,6 +328,8 @@ function ToolbarRightSection({
 					step={0.005}
 				/>
 				<Button
+					aria-label="Zoom in timeline"
+					title="Zoom in timeline"
 					variant="text"
 					size="icon"
 					onClick={() => onZoom({ direction: "in" })}
@@ -330,47 +341,16 @@ function ToolbarRightSection({
 	);
 }
 
-function ToolbarButton({
-	icon,
-	tooltip,
-	onClick,
-	disabled,
-	isActive,
-	buttonWrapper,
-}: {
-	icon: React.ReactNode;
-	tooltip: string;
-	onClick?: ({ event }: { event: React.MouseEvent }) => void;
-	disabled?: boolean;
-	isActive?: boolean;
-	buttonWrapper?: (button: React.ReactElement) => React.ReactElement;
-}) {
-	const button = (
-		<Button
-			variant={isActive ? "secondary" : "text"}
-			size="icon"
-			disabled={disabled}
-			onClick={onClick ? (event) => onClick({ event }) : undefined}
-			className={cn(
-				"rounded-sm",
-				disabled ? "cursor-not-allowed opacity-50" : "",
-			)}
-		>
-			{icon}
-		</Button>
-	);
-	const trigger = disabled ? (
-		<span className="inline-flex">{button}</span>
-	) : buttonWrapper ? (
-		buttonWrapper(button)
-	) : (
-		button
-	);
+function useTimelineToolbarShortcuts() {
+	const { shortcuts } = useKeyboardShortcutsHelp();
 
-	return (
-		<Tooltip delayDuration={200}>
-			<TooltipTrigger asChild>{trigger}</TooltipTrigger>
-			<TooltipContent>{tooltip}</TooltipContent>
-		</Tooltip>
+	return useMemo(
+		() =>
+			new Map(
+				shortcuts.map(
+					(shortcut) => [shortcut.action, shortcut.keys.join(" / ")] as const,
+				),
+			),
+		[shortcuts],
 	);
 }

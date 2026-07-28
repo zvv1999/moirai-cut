@@ -17,8 +17,13 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import {
 	Tooltip,
 	TooltipContent,
@@ -49,15 +54,21 @@ import { MASKABLE_ELEMENT_TYPES } from "@/timeline";
 import type { MediaAsset } from "@/media/types";
 import { cn } from "@/utils/ui";
 import {
+	FilterHorizontalIcon,
 	CloudUploadIcon,
 	GridViewIcon,
 	LeftToRightListDashIcon,
 	SortingOneNineIcon,
 	Image02Icon,
 	MusicNote03Icon,
+	Search01Icon,
 	Video01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
+import {
+	filterMediaLibraryAssets,
+	type MediaTypeFilter,
+} from "./media-library-filters";
 
 export function MediaView() {
 	const editor = useEditor();
@@ -76,6 +87,9 @@ export function MediaView() {
 
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [progress, setProgress] = useState(0);
+	const [searchQuery, setSearchQuery] = useState("");
+	const [mediaTypeFilter, setMediaTypeFilter] =
+		useState<MediaTypeFilter>("all");
 
 	const processFiles = async ({ files }: { files: File[] }) => {
 		if (!files || files.length === 0) return;
@@ -149,7 +163,11 @@ export function MediaView() {
 	};
 
 	const filteredMediaItems = useMemo(() => {
-		const filtered = mediaFiles.filter((item) => !item.ephemeral);
+		const filtered = filterMediaLibraryAssets({
+			assets: mediaFiles,
+			query: searchQuery,
+			type: mediaTypeFilter,
+		});
 
 		filtered.sort((a, b) => {
 			let valueA: string | number;
@@ -182,7 +200,16 @@ export function MediaView() {
 		});
 
 		return filtered;
-	}, [mediaFiles, mediaSortBy, mediaSortOrder]);
+	}, [mediaFiles, mediaSortBy, mediaSortOrder, mediaTypeFilter, searchQuery]);
+	const mediaLibraryItemCount = useMemo(
+		() =>
+			filterMediaLibraryAssets({
+				assets: mediaFiles,
+				query: "",
+				type: "all",
+			}).length,
+		[mediaFiles],
+	);
 	const orderedMediaIds = useMemo(() => {
 		return filteredMediaItems.map((item) => item.id);
 	}, [filteredMediaItems]);
@@ -208,7 +235,7 @@ export function MediaView() {
 				contentClassName="h-full"
 				{...dragProps}
 			>
-				{isDragOver || filteredMediaItems.length === 0 ? (
+				{isDragOver || mediaLibraryItemCount === 0 ? (
 					<MediaDragOverlay
 						isVisible={true}
 						isProcessing={isProcessing}
@@ -216,22 +243,170 @@ export function MediaView() {
 						onClick={openFilePicker}
 					/>
 				) : (
-					<SelectableSurface
-						ariaLabel="Assets"
-						orderedIds={orderedMediaIds}
-						revealId={highlightMediaId}
-						onRevealComplete={clearHighlight}
-					>
-						<MediaScopeRegistrar />
-						<MediaItemList
-							items={filteredMediaItems}
-							mode={mediaViewMode}
-							onRemove={handleRemove}
+					<div className="flex min-h-full flex-col">
+						<MediaLibraryControls
+							query={searchQuery}
+							type={mediaTypeFilter}
+							resultCount={filteredMediaItems.length}
+							totalCount={mediaLibraryItemCount}
+							onQueryChange={setSearchQuery}
+							onTypeChange={setMediaTypeFilter}
 						/>
-					</SelectableSurface>
+						{filteredMediaItems.length === 0 ? (
+							<MediaLibraryEmptySearch
+								query={searchQuery}
+								type={mediaTypeFilter}
+								onClear={() => {
+									setSearchQuery("");
+									setMediaTypeFilter("all");
+								}}
+							/>
+						) : (
+							<SelectableSurface
+								ariaLabel="Assets"
+								orderedIds={orderedMediaIds}
+								revealId={highlightMediaId}
+								onRevealComplete={clearHighlight}
+							>
+								<MediaScopeRegistrar />
+								<MediaItemList
+									items={filteredMediaItems}
+									mode={mediaViewMode}
+									onRemove={handleRemove}
+								/>
+							</SelectableSurface>
+						)}
+					</div>
 				)}
 			</PanelView>
 		</>
+	);
+}
+
+const MEDIA_TYPE_OPTIONS: Array<{
+	value: MediaTypeFilter;
+	label: string;
+}> = [
+	{ value: "all", label: "All media" },
+	{ value: "video", label: "Videos" },
+	{ value: "image", label: "Images" },
+	{ value: "audio", label: "Audio" },
+];
+
+function MediaLibraryControls({
+	query,
+	type,
+	resultCount,
+	totalCount,
+	onQueryChange,
+	onTypeChange,
+}: {
+	query: string;
+	type: MediaTypeFilter;
+	resultCount: number;
+	totalCount: number;
+	onQueryChange: (query: string) => void;
+	onTypeChange: (type: MediaTypeFilter) => void;
+}) {
+	const activeTypeLabel =
+		MEDIA_TYPE_OPTIONS.find((option) => option.value === type)?.label ??
+		"All media";
+
+	return (
+		<div className="bg-background sticky -top-2 z-10 pb-2">
+			<div className="flex items-center gap-1.5">
+				<div className="relative min-w-0 flex-1">
+					<HugeiconsIcon
+						icon={Search01Icon}
+						className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2"
+						aria-hidden="true"
+					/>
+					<Input
+						aria-label="Search assets by filename"
+						placeholder="Search"
+						value={query}
+						onChange={(event) => onQueryChange(event.currentTarget.value)}
+						onClear={() => onQueryChange("")}
+						showClearIcon
+						size="xs"
+						className="pl-8"
+					/>
+				</div>
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button
+							aria-label={`Filter assets by type: ${activeTypeLabel}`}
+							title={`Filter assets by type: ${activeTypeLabel}`}
+							size="icon"
+							variant={type === "all" ? "outline" : "secondary"}
+							className="size-7 shrink-0"
+						>
+							<HugeiconsIcon icon={FilterHorizontalIcon} />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						<DropdownMenuLabel>Media type</DropdownMenuLabel>
+						<DropdownMenuSeparator />
+						<DropdownMenuRadioGroup
+							value={type}
+							onValueChange={(value) => {
+								const option = MEDIA_TYPE_OPTIONS.find(
+									(candidate) => candidate.value === value,
+								);
+								if (option) onTypeChange(option.value);
+							}}
+						>
+							{MEDIA_TYPE_OPTIONS.map((option) => (
+								<DropdownMenuRadioItem key={option.value} value={option.value}>
+									{option.label}
+								</DropdownMenuRadioItem>
+							))}
+						</DropdownMenuRadioGroup>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</div>
+			<p
+				className="text-muted-foreground mt-1 px-0.5 text-[11px]"
+				aria-live="polite"
+			>
+				{resultCount === totalCount
+					? `${totalCount} assets`
+					: `${resultCount} of ${totalCount} assets`}
+			</p>
+		</div>
+	);
+}
+
+function MediaLibraryEmptySearch({
+	query,
+	type,
+	onClear,
+}: {
+	query: string;
+	type: MediaTypeFilter;
+	onClear: () => void;
+}) {
+	return (
+		<div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 px-4 pb-12 text-center">
+			<div className="bg-muted flex size-9 items-center justify-center rounded-full">
+				<HugeiconsIcon icon={Search01Icon} className="size-4" />
+			</div>
+			<div>
+				<p className="text-foreground text-sm font-medium">
+					No matching assets
+				</p>
+				<p className="mt-0.5 text-xs">
+					Try another filename
+					{type !== "all" ? " or media type" : ""}.
+				</p>
+			</div>
+			<Button size="sm" variant="outline" onClick={onClear}>
+				Clear filters
+			</Button>
+			<span className="sr-only">
+				No assets match {query || "the selected media type"}
+			</span>
+		</div>
 	);
 }
 
@@ -528,6 +703,11 @@ function MediaActions({
 				<Tooltip>
 					<TooltipTrigger asChild>
 						<Button
+							aria-label={
+								mediaViewMode === "grid"
+									? "Switch assets to list view"
+									: "Switch assets to grid view"
+							}
 							size="icon"
 							variant="ghost"
 							onClick={() =>
@@ -556,6 +736,9 @@ function MediaActions({
 						<TooltipTrigger asChild>
 							<DropdownMenuTrigger asChild>
 								<Button
+									aria-label={`Sort assets by ${sortBy}, ${
+										sortOrder === "asc" ? "ascending" : "descending"
+									}`}
 									size="icon"
 									variant="ghost"
 									disabled={isProcessing}

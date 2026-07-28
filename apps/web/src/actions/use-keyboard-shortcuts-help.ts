@@ -17,22 +17,29 @@ export interface KeyboardShortcut {
 	icon?: React.ReactNode;
 }
 
-function formatKey({ key }: { key: string }): string {
+export function formatShortcutKey({ key }: { key: string }): string {
+	const labels: Record<string, string> = {
+		ctrl: getPlatformSpecialKey(),
+		alt: getPlatformAlternateKey(),
+		shift: "Shift",
+		left: "←",
+		right: "→",
+		up: "↑",
+		down: "↓",
+		space: "Space",
+		home: "Home",
+		enter: "Enter",
+		end: "End",
+		delete: "Delete",
+		backspace: "Backspace",
+	};
+
 	return key
-		.replace("ctrl", getPlatformSpecialKey())
-		.replace("alt", getPlatformAlternateKey())
-		.replace("shift", "Shift")
-		.replace("left", "←")
-		.replace("right", "→")
-		.replace("up", "↑")
-		.replace("down", "↓")
-		.replace("space", "Space")
-		.replace("home", "Home")
-		.replace("enter", "Enter")
-		.replace("end", "End")
-		.replace("delete", "Delete")
-		.replace("backspace", "Backspace")
-		.replace("-", "+");
+		.split("+")
+		.map(
+			(part) => labels[part] ?? (part.length === 1 ? part.toUpperCase() : part),
+		)
+		.join("+");
 }
 
 export function useKeyboardShortcutsHelp() {
@@ -44,9 +51,9 @@ export function useKeyboardShortcutsHelp() {
 		for (const [key, action] of keybindings) {
 			const existing = actionToKeys.get(action);
 			if (existing) {
-				existing.push(formatKey({ key }));
+				existing.push(formatShortcutKey({ key }));
 			} else {
-				actionToKeys.set(action, [formatKey({ key })]);
+				actionToKeys.set(action, [formatShortcutKey({ key })]);
 			}
 		}
 
