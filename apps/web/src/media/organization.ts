@@ -8,6 +8,24 @@ export interface MediaBin {
 export interface MediaOrganization {
 	bins: MediaBin[];
 	assetBinIds: Record<string, string>;
+	assetMetadata?: Record<string, MediaAssetMetadata>;
+}
+
+export const MEDIA_COLOR_LABELS = [
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"purple",
+] as const;
+
+export type MediaColorLabel = (typeof MEDIA_COLOR_LABELS)[number];
+
+export interface MediaAssetMetadata {
+	tags: string[];
+	favorite: boolean;
+	colorLabel: MediaColorLabel | null;
 }
 
 export type MediaBinSelection = "all" | "unfiled" | string;
@@ -21,7 +39,7 @@ export interface MediaBinTreeItem {
 const MAX_BIN_NAME_LENGTH = 80;
 
 export function emptyMediaOrganization(): MediaOrganization {
-	return { bins: [], assetBinIds: {} };
+	return { bins: [], assetBinIds: {}, assetMetadata: {} };
 }
 
 export function normalizeMediaOrganization({
@@ -52,10 +70,19 @@ export function normalizeMediaOrganization({
 					: null,
 		})),
 		assetBinIds: { ...organization.assetBinIds },
+		assetMetadata: Object.fromEntries(
+			Object.entries(organization.assetMetadata ?? {}).map(
+				([assetId, metadata]) => [
+					assetId,
+					normalizeMediaAssetMetadata({ metadata }),
+				],
+			),
+		),
 	};
 	const cyclicIds = findCyclicBinIds({ bins: candidate.bins });
 	return normalizeSiblingOrders({
 		organization: {
+			...candidate,
 			bins: candidate.bins.map((bin) =>
 				cyclicIds.has(bin.id) ? { ...bin, parentId: null } : bin,
 			),
@@ -213,6 +240,7 @@ export function deleteMediaBin({
 	return {
 		organization: normalizeSiblingOrders({
 			organization: {
+				...normalized,
 				bins: normalized.bins.filter((bin) => !deletedIds.has(bin.id)),
 				assetBinIds,
 			},
@@ -244,6 +272,69 @@ export function assignAssetsToMediaBin({
 		}
 	}
 	return { ...normalized, assetBinIds };
+}
+
+export function getMediaAssetMetadata({
+	organization,
+	assetId,
+}: {
+	organization: MediaOrganization;
+	assetId: string;
+}): MediaAssetMetadata {
+	return normalizeMediaAssetMetadata({
+		metadata: organization.assetMetadata?.[assetId],
+	});
+}
+
+export function updateMediaAssetMetadata({
+	organization,
+	assetIds,
+	patch,
+}: {
+	organization: MediaOrganization;
+	assetIds: string[];
+	patch: {
+		addTags?: string[];
+		removeTags?: string[];
+		favorite?: boolean;
+		colorLabel?: MediaColorLabel | null;
+	};
+}): MediaOrganization {
+	const normalized = normalizeMediaOrganization({ organization });
+	const assetMetadata = { ...(normalized.assetMetadata ?? {}) };
+	const addTags = normalizeTags({ tags: patch.addTags ?? [] });
+	const removeTagKeys = new Set(
+		normalizeTags({ tags: patch.removeTags ?? [] }).map((tag) =>
+			tag.toLocaleLowerCase(),
+		),
+	);
+
+	for (const assetId of new Set(assetIds)) {
+		const current = getMediaAssetMetadata({
+			organization: normalized,
+			assetId,
+		});
+		const tags = current.tags.filter(
+			(tag) => !removeTagKeys.has(tag.toLocaleLowerCase()),
+		);
+		const tagKeys = new Set(tags.map((tag) => tag.toLocaleLowerCase()));
+		for (const tag of addTags) {
+			const key = tag.toLocaleLowerCase();
+			if (tagKeys.has(key)) continue;
+			tags.push(tag);
+			tagKeys.add(key);
+		}
+		assetMetadata[assetId] = {
+			tags,
+			favorite: patch.favorite ?? current.favorite,
+			colorLabel:
+				patch.colorLabel === undefined
+					? current.colorLabel
+					: patch.colorLabel,
+		};
+	}
+
+	return { ...normalized, assetMetadata };
 }
 
 export function getMediaBinTree({
@@ -313,6 +404,34 @@ function normalizeBinName({ name }: { name: string }): string {
 	const normalized = name.trim().replace(/\s+/g, " ");
 	if (!normalized) return "Untitled bin";
 	return normalized.slice(0, MAX_BIN_NAME_LENGTH);
+}
+
+function normalizeMediaAssetMetadata({
+	metadata,
+}: {
+	metadata: Partial<MediaAssetMetadata> | null | undefined;
+}): MediaAssetMetadata {
+	const colorLabel =
+		MEDIA_COLOR_LABELS.find((label) => label === metadata?.colorLabel) ?? null;
+	return {
+		tags: normalizeTags({ tags: metadata?.tags ?? [] }),
+		favorite: metadata?.favorite === true,
+		colorLabel,
+	};
+}
+
+function normalizeTags({ tags }: { tags: string[] }): string[] {
+	const normalized: string[] = [];
+	const keys = new Set<string>();
+	for (const rawTag of tags) {
+		const tag = rawTag.trim().replace(/\s+/g, " ").slice(0, 40);
+		const key = tag.toLocaleLowerCase();
+		if (!tag || keys.has(key)) continue;
+		normalized.push(tag);
+		keys.add(key);
+		if (normalized.length === 32) break;
+	}
+	return normalized;
 }
 
 function assertBinExists({

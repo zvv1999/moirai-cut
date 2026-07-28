@@ -78,7 +78,13 @@ export const tabs = {
 >;
 
 export type MediaViewMode = "grid" | "list";
-export type MediaSortKey = "name" | "type" | "duration" | "size";
+export type MediaSortKey =
+	| "name"
+	| "type"
+	| "duration"
+	| "size"
+	| "favorite"
+	| "colorLabel";
 export type MediaSortOrder = "asc" | "desc";
 
 interface AssetsPanelStore {

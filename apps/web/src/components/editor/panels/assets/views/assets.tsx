@@ -22,13 +22,8 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuRadioGroup,
-	DropdownMenuRadioItem,
-	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import {
 	Tooltip,
 	TooltipContent,
@@ -55,7 +50,7 @@ import {
 	type MediaViewMode,
 	useAssetsPanelStore,
 } from "@/components/editor/panels/assets/assets-panel-store";
-import { MASKABLE_ELEMENT_TYPES } from "@/timeline";
+import { hasMediaId, MASKABLE_ELEMENT_TYPES } from "@/timeline";
 import type { MediaAsset } from "@/media/types";
 import {
 	findMissingMediaReferences,
@@ -67,33 +62,40 @@ import { getMediaTypeFromFile } from "@/media/media-utils";
 import { cn } from "@/utils/ui";
 import { generateUUID } from "@/utils/id";
 import {
-	FilterHorizontalIcon,
 	CloudUploadIcon,
 	GridViewIcon,
 	LeftToRightListDashIcon,
 	SortingOneNineIcon,
 	Image02Icon,
 	MusicNote03Icon,
-	Search01Icon,
 	Video01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
+	countActiveMediaLibraryFilters,
 	filterMediaLibraryAssets,
+	DEFAULT_MEDIA_LIBRARY_FILTERS,
+	type MediaLibraryFilters,
 	type MediaTypeFilter,
 } from "./media-library-filters";
+import { MediaLibraryControlsView } from "./media-library-controls";
 import {
 	assignAssetsToMediaBin,
 	createMediaBin,
 	deleteMediaBin,
+	getMediaAssetMetadata,
 	getMediaBinTree,
 	mediaAssetMatchesBin,
 	moveMediaBin,
 	normalizeMediaOrganization,
 	renameMediaBin,
+	updateMediaAssetMetadata,
+	type MediaAssetMetadata,
 	type MediaBinSelection,
+	type MediaColorLabel,
 } from "@/media/organization";
 import { MediaBinBrowserView } from "./media-bin-browser";
+import { MediaMetadataEditorDialog } from "./media-metadata-editor";
 
 export function MediaView() {
 	const editor = useEditor();
@@ -116,8 +118,14 @@ export function MediaView() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [mediaTypeFilter, setMediaTypeFilter] =
 		useState<MediaTypeFilter>("all");
+	const [libraryFilters, setLibraryFilters] = useState<MediaLibraryFilters>(
+		DEFAULT_MEDIA_LIBRARY_FILTERS,
+	);
 	const [activeBinId, setActiveBinId] =
 		useState<MediaBinSelection>("all");
+	const [metadataEditorAssetIds, setMetadataEditorAssetIds] = useState<
+		string[]
+	>([]);
 	const relinkInputRef = useRef<HTMLInputElement>(null);
 	const relinkTargetIdsRef = useRef<string[]>([]);
 	const mediaOrganization = useMemo(
@@ -133,6 +141,31 @@ export function MediaView() {
 		mediaOrganization.bins.some((bin) => bin.id === activeBinId)
 			? activeBinId
 			: "all";
+	const mediaUsageCounts = useMemo(() => {
+		const counts: Record<string, number> = {};
+		for (const track of [
+			...activeTracks.overlay,
+			activeTracks.main,
+			...activeTracks.audio,
+		]) {
+			for (const element of track.elements) {
+				if (!hasMediaId(element)) continue;
+				counts[element.mediaId] = (counts[element.mediaId] ?? 0) + 1;
+			}
+		}
+		return counts;
+	}, [activeTracks]);
+	const availableTags = useMemo(
+		() =>
+			[
+				...new Set(
+					Object.values(mediaOrganization.assetMetadata ?? {}).flatMap(
+						(metadata) => metadata.tags,
+					),
+				),
+			].sort((a, b) => a.localeCompare(b)),
+		[mediaOrganization.assetMetadata],
+	);
 
 	const missingReferences = useMemo(
 		() =>
@@ -466,11 +499,41 @@ export function MediaView() {
 		}
 	};
 
+	const handleApplyAssetMetadata = ({
+		addTags,
+		removeTags,
+		favorite,
+		colorLabel,
+	}: {
+		addTags: string[];
+		removeTags: string[];
+		favorite?: boolean;
+		colorLabel?: MediaColorLabel | null;
+	}) => {
+		if (metadataEditorAssetIds.length === 0) return;
+		updateMediaOrganization({
+			organization: updateMediaAssetMetadata({
+				organization: mediaOrganization,
+				assetIds: metadataEditorAssetIds,
+				patch: { addTags, removeTags, favorite, colorLabel },
+			}),
+		});
+		toast.success(
+			`Updated ${metadataEditorAssetIds.length} ${
+				metadataEditorAssetIds.length === 1 ? "asset" : "assets"
+			}`,
+			{ description: "Tags, favorite, and color labels are undoable." },
+		);
+	};
+
 	const filteredMediaItems = useMemo(() => {
 		const filtered = filterMediaLibraryAssets({
 			assets: mediaFiles,
 			query: searchQuery,
 			type: mediaTypeFilter,
+			filters: libraryFilters,
+			usageCounts: mediaUsageCounts,
+			metadata: mediaOrganization.assetMetadata,
 		}).filter((asset) =>
 			mediaAssetMatchesBin({
 				organization: mediaOrganization,
@@ -500,6 +563,32 @@ export function MediaView() {
 					valueA = a.file.size;
 					valueB = b.file.size;
 					break;
+				case "favorite":
+					valueA = getMediaAssetMetadata({
+						organization: mediaOrganization,
+						assetId: a.id,
+					}).favorite
+						? 1
+						: 0;
+					valueB = getMediaAssetMetadata({
+						organization: mediaOrganization,
+						assetId: b.id,
+					}).favorite
+						? 1
+						: 0;
+					break;
+				case "colorLabel":
+					valueA =
+						getMediaAssetMetadata({
+							organization: mediaOrganization,
+							assetId: a.id,
+						}).colorLabel ?? "";
+					valueB =
+						getMediaAssetMetadata({
+							organization: mediaOrganization,
+							assetId: b.id,
+						}).colorLabel ?? "";
+					break;
 				default:
 					return 0;
 			}
@@ -512,8 +601,10 @@ export function MediaView() {
 		return filtered;
 	}, [
 		effectiveActiveBinId,
+		libraryFilters,
 		mediaFiles,
 		mediaOrganization,
+		mediaUsageCounts,
 		mediaSortBy,
 		mediaSortOrder,
 		mediaTypeFilter,
@@ -526,6 +617,16 @@ export function MediaView() {
 		) {
 			return [];
 		}
+		if (libraryFilters.availability === "available") return [];
+		if (
+			libraryFilters.duration !== "all" ||
+			libraryFilters.resolution !== "all" ||
+			libraryFilters.tag !== null ||
+			libraryFilters.favorite !== "all" ||
+			libraryFilters.usage === "unused"
+		) {
+			return [];
+		}
 		const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
 		return missingReferences.filter(
 			(reference) =>
@@ -535,6 +636,7 @@ export function MediaView() {
 		);
 	}, [
 		effectiveActiveBinId,
+		libraryFilters,
 		mediaTypeFilter,
 		missingReferences,
 		searchQuery,
@@ -571,9 +673,23 @@ export function MediaView() {
 	const orderedMediaIds = useMemo(() => {
 		return filteredMediaItems.map((item) => item.id);
 	}, [filteredMediaItems]);
+	const hasActiveLibraryFilters =
+		Boolean(searchQuery.trim()) ||
+		countActiveMediaLibraryFilters({
+			type: mediaTypeFilter,
+			filters: libraryFilters,
+		}) > 0;
 
 	return (
 		<>
+			<MediaMetadataEditorDialog
+				open={metadataEditorAssetIds.length > 0}
+				assetCount={metadataEditorAssetIds.length}
+				onOpenChange={(open) => {
+					if (!open) setMetadataEditorAssetIds([]);
+				}}
+				onApply={handleApplyAssetMetadata}
+			/>
 			<input {...fileInputProps} />
 			<input
 				ref={relinkInputRef}
@@ -625,9 +741,11 @@ export function MediaView() {
 							onMove={handleMoveBin}
 							onDelete={handleDeleteBin}
 						/>
-						<MediaLibraryControls
+						<MediaLibraryControlsView
 							query={searchQuery}
 							type={mediaTypeFilter}
+							filters={libraryFilters}
+							availableTags={availableTags}
 							resultCount={
 								filteredMediaItems.length +
 								filteredMissingReferences.length
@@ -635,6 +753,12 @@ export function MediaView() {
 							totalCount={activeBinItemCount}
 							onQueryChange={setSearchQuery}
 							onTypeChange={setMediaTypeFilter}
+							onFiltersChange={setLibraryFilters}
+							onClearAll={() => {
+								setSearchQuery("");
+								setMediaTypeFilter("all");
+								setLibraryFilters(DEFAULT_MEDIA_LIBRARY_FILTERS);
+							}}
 						/>
 						{filteredMissingReferences.length > 0 ? (
 							<MissingMediaSection
@@ -664,6 +788,7 @@ export function MediaView() {
 							<MediaLibraryEmptySearch
 								query={searchQuery}
 								type={mediaTypeFilter}
+								hasActiveFilters={hasActiveLibraryFilters}
 								binName={
 									mediaOrganization.bins.find(
 										(bin) => bin.id === effectiveActiveBinId,
@@ -675,6 +800,7 @@ export function MediaView() {
 								onClear={() => {
 									setSearchQuery("");
 									setMediaTypeFilter("all");
+									setLibraryFilters(DEFAULT_MEDIA_LIBRARY_FILTERS);
 									setActiveBinId("all");
 								}}
 							/>
@@ -691,6 +817,9 @@ export function MediaView() {
 									mode={mediaViewMode}
 									bins={mediaOrganization.bins}
 									organization={mediaOrganization}
+									onEditMetadata={({ assetIds }) =>
+										setMetadataEditorAssetIds(assetIds)
+									}
 									onAssignToBin={handleAssignAssetsToBin}
 									onRemove={handleRemove}
 								/>
@@ -703,112 +832,19 @@ export function MediaView() {
 	);
 }
 
-const MEDIA_TYPE_OPTIONS: Array<{
-	value: MediaTypeFilter;
-	label: string;
-}> = [
-	{ value: "all", label: "All media" },
-	{ value: "video", label: "Videos" },
-	{ value: "image", label: "Images" },
-	{ value: "audio", label: "Audio" },
-];
-
-function MediaLibraryControls({
-	query,
-	type,
-	resultCount,
-	totalCount,
-	onQueryChange,
-	onTypeChange,
-}: {
-	query: string;
-	type: MediaTypeFilter;
-	resultCount: number;
-	totalCount: number;
-	onQueryChange: (query: string) => void;
-	onTypeChange: (type: MediaTypeFilter) => void;
-}) {
-	const activeTypeLabel =
-		MEDIA_TYPE_OPTIONS.find((option) => option.value === type)?.label ??
-		"All media";
-
-	return (
-		<div className="bg-background sticky -top-2 z-10 pb-2">
-			<div className="flex items-center gap-1.5">
-				<div className="relative min-w-0 flex-1">
-					<HugeiconsIcon
-						icon={Search01Icon}
-						className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2"
-						aria-hidden="true"
-					/>
-					<Input
-						aria-label="Search assets by filename"
-						placeholder="Search"
-						value={query}
-						onChange={(event) => onQueryChange(event.currentTarget.value)}
-						onClear={() => onQueryChange("")}
-						showClearIcon
-						size="xs"
-						className="pl-8"
-					/>
-				</div>
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button
-							aria-label={`Filter assets by type: ${activeTypeLabel}`}
-							title={`Filter assets by type: ${activeTypeLabel}`}
-							size="icon"
-							variant={type === "all" ? "outline" : "secondary"}
-							className="size-7 shrink-0"
-						>
-							<HugeiconsIcon icon={FilterHorizontalIcon} />
-						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end">
-						<DropdownMenuLabel>Media type</DropdownMenuLabel>
-						<DropdownMenuSeparator />
-						<DropdownMenuRadioGroup
-							value={type}
-							onValueChange={(value) => {
-								const option = MEDIA_TYPE_OPTIONS.find(
-									(candidate) => candidate.value === value,
-								);
-								if (option) onTypeChange(option.value);
-							}}
-						>
-							{MEDIA_TYPE_OPTIONS.map((option) => (
-								<DropdownMenuRadioItem key={option.value} value={option.value}>
-									{option.label}
-								</DropdownMenuRadioItem>
-							))}
-						</DropdownMenuRadioGroup>
-					</DropdownMenuContent>
-				</DropdownMenu>
-			</div>
-			<p
-				className="text-muted-foreground mt-1 px-0.5 text-[11px]"
-				aria-live="polite"
-			>
-				{resultCount === totalCount
-					? `${totalCount} assets`
-					: `${resultCount} of ${totalCount} assets`}
-			</p>
-		</div>
-	);
-}
-
 function MediaLibraryEmptySearch({
 	query,
 	type,
+	hasActiveFilters,
 	binName,
 	onClear,
 }: {
 	query: string;
 	type: MediaTypeFilter;
+	hasActiveFilters: boolean;
 	binName: string | null;
 	onClear: () => void;
 }) {
-	const hasSearchFilter = Boolean(query.trim()) || type !== "all";
 	return (
 		<div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 px-4 pb-12 text-center">
 			<div className="bg-muted flex size-9 items-center justify-center rounded-full">
@@ -816,18 +852,18 @@ function MediaLibraryEmptySearch({
 			</div>
 			<div>
 				<p className="text-foreground text-sm font-medium">
-					{hasSearchFilter
+					{hasActiveFilters
 						? "No matching assets"
 						: `${binName ?? "This bin"} is empty`}
 				</p>
 				<p className="mt-0.5 text-xs">
-					{hasSearchFilter
+					{hasActiveFilters
 						? `Try another filename${type !== "all" ? " or media type" : ""}.`
 						: "Move media here from an asset context menu."}
 				</p>
 			</div>
 			<Button size="sm" variant="outline" onClick={onClear}>
-				{hasSearchFilter ? "Clear filters" : "View all assets"}
+				{hasActiveFilters ? "Clear filters" : "View all assets"}
 			</Button>
 			<span className="sr-only">
 				No assets match {query || "the selected media type"}
@@ -964,6 +1000,7 @@ function MediaItemWithContextMenu({
 	bins,
 	organization,
 	children,
+	onEditMetadata,
 	onAssignToBin,
 	onRemove,
 }: {
@@ -971,6 +1008,7 @@ function MediaItemWithContextMenu({
 	bins: ReturnType<typeof getMediaBinTree>[number]["bin"][];
 	organization: ReturnType<typeof normalizeMediaOrganization>;
 	children: React.ReactNode;
+	onEditMetadata: (args: { assetIds: string[] }) => void;
 	onAssignToBin: (args: {
 		assetIds: string[];
 		binId: string | null;
@@ -1000,6 +1038,11 @@ function MediaItemWithContextMenu({
 			<ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
 			<ContextMenuContent>
 				<ContextMenuItem>Export clips</ContextMenuItem>
+				<ContextMenuItem
+					onSelect={() => onEditMetadata({ assetIds: idsToDelete })}
+				>
+					Edit tags, favorite &amp; color…
+				</ContextMenuItem>
 				<ContextMenuSub>
 					<ContextMenuSubTrigger>Move to bin</ContextMenuSubTrigger>
 					<ContextMenuSubContent>
@@ -1049,6 +1092,7 @@ function MediaItemList({
 	mode,
 	bins,
 	organization,
+	onEditMetadata,
 	onAssignToBin,
 	onRemove,
 }: {
@@ -1056,6 +1100,7 @@ function MediaItemList({
 	mode: MediaViewMode;
 	bins: ReturnType<typeof getMediaBinTree>[number]["bin"][];
 	organization: ReturnType<typeof normalizeMediaOrganization>;
+	onEditMetadata: (args: { assetIds: string[] }) => void;
 	onAssignToBin: (args: {
 		assetIds: string[];
 		binId: string | null;
@@ -1082,6 +1127,7 @@ function MediaItemList({
 					item={item}
 					bins={bins}
 					organization={organization}
+					onEditMetadata={onEditMetadata}
 					onAssignToBin={onAssignToBin}
 					onRemove={onRemove}
 					key={item.id}
@@ -1093,6 +1139,10 @@ function MediaItemList({
 								<MediaPreview
 									item={item}
 									variant={isGrid ? "grid" : "compact"}
+									metadata={getMediaAssetMetadata({
+										organization,
+										assetId: item.id,
+									})}
 								/>
 							}
 							variant={isGrid ? "card" : "compact"}
@@ -1159,9 +1209,11 @@ function MediaTypePlaceholder({
 function MediaPreview({
 	item,
 	variant = "grid",
+	metadata,
 }: {
 	item: MediaAsset;
 	variant?: "grid" | "compact";
+	metadata: MediaAssetMetadata;
 }) {
 	const shouldShowDurationBadge = variant === "grid";
 
@@ -1177,6 +1229,7 @@ function MediaPreview({
 					loading="lazy"
 					unoptimized
 				/>
+				<MediaMetadataBadges metadata={metadata} />
 			</div>
 		);
 	}
@@ -1197,33 +1250,83 @@ function MediaPreview({
 					{shouldShowDurationBadge ? (
 						<MediaDurationBadge duration={item.duration} />
 					) : null}
+					<MediaMetadataBadges metadata={metadata} />
 				</div>
 			);
 		}
 
 		return (
-			<MediaTypePlaceholder
-				icon={Video01Icon}
-				label="Video"
-				duration={item.duration}
-				variant="muted"
-			/>
+			<div className="relative size-full">
+				<MediaTypePlaceholder
+					icon={Video01Icon}
+					label="Video"
+					duration={item.duration}
+					variant="muted"
+				/>
+				<MediaMetadataBadges metadata={metadata} />
+			</div>
 		);
 	}
 
 	if (item.type === "audio") {
 		return (
-			<MediaTypePlaceholder
-				icon={MusicNote03Icon}
-				label="Audio"
-				duration={item.duration}
-				variant="bordered"
-			/>
+			<div className="relative size-full">
+				<MediaTypePlaceholder
+					icon={MusicNote03Icon}
+					label="Audio"
+					duration={item.duration}
+					variant="bordered"
+				/>
+				<MediaMetadataBadges metadata={metadata} />
+			</div>
 		);
 	}
 
 	return (
-		<MediaTypePlaceholder icon={Image02Icon} label="Unknown" variant="muted" />
+		<div className="relative size-full">
+			<MediaTypePlaceholder icon={Image02Icon} label="Unknown" variant="muted" />
+			<MediaMetadataBadges metadata={metadata} />
+		</div>
+	);
+}
+
+const MEDIA_LABEL_CLASSES: Record<MediaColorLabel, string> = {
+	red: "bg-red-500",
+	orange: "bg-orange-500",
+	yellow: "bg-yellow-400",
+	green: "bg-emerald-500",
+	blue: "bg-blue-500",
+	purple: "bg-violet-500",
+};
+
+function MediaMetadataBadges({
+	metadata,
+}: {
+	metadata: MediaAssetMetadata;
+}) {
+	if (!metadata.favorite && metadata.colorLabel === null) return null;
+	return (
+		<div className="absolute left-1 top-1 flex items-center gap-1">
+			{metadata.favorite ? (
+				<span
+					className="flex size-4 items-center justify-center rounded bg-black/70 text-[10px] text-amber-300"
+					aria-label="Favorite asset"
+					title="Favorite"
+				>
+					★
+				</span>
+			) : null}
+			{metadata.colorLabel ? (
+				<span
+					className={cn(
+						"size-3 rounded-full border border-white/70",
+						MEDIA_LABEL_CLASSES[metadata.colorLabel],
+					)}
+					aria-label={`${metadata.colorLabel} color label`}
+					title={`${metadata.colorLabel} color label`}
+				/>
+			) : null}
+		</div>
 	);
 }
 
@@ -1320,6 +1423,20 @@ function MediaActions({
 							<SortMenuItem
 								label="File size"
 								sortKey="size"
+								currentSortBy={sortBy}
+								currentSortOrder={sortOrder}
+								onSort={onSort}
+							/>
+							<SortMenuItem
+								label="Favorite"
+								sortKey="favorite"
+								currentSortBy={sortBy}
+								currentSortOrder={sortOrder}
+								onSort={onSort}
+							/>
+							<SortMenuItem
+								label="Color label"
+								sortKey="colorLabel"
 								currentSortBy={sortBy}
 								currentSortOrder={sortOrder}
 								onSort={onSort}
