@@ -5,9 +5,9 @@
 	"status": "ACTIVE",
 	"summary": {
 		"cataloguedCapabilities": 74,
-		"greenCapabilities": 20,
-		"automatedTestsPassing": 425,
-		"archivedScreenshots": 21
+		"greenCapabilities": 21,
+		"automatedTestsPassing": 429,
+		"archivedScreenshots": 22
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -25,6 +25,7 @@
 		"M05",
 		"M06",
 		"M07",
+		"T01",
 		"T07",
 		"G01",
 		"G04",
@@ -32,6 +33,19 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["T01"],
+			"redCommits": ["af30d41"],
+			"greenCommit": "cf4b5de",
+			"result": "Timeline selection now has an explicit range anchor and one deterministic interaction model: click replaces, Command or Control toggles one clip, Shift selects a chronological range across tracks, and drag-box selection supports replacement or additive selection. Every clip exposes its accessible identity and pressed state, while the mode row keeps selection count and shortcuts visible.",
+			"tests": {
+				"targeted": "4/4 new planner tests plus retained interaction-shell and mode-status regressions",
+				"fullSuite": "429/429 from the repository root with the required WASM test preload",
+				"productionBuild": "Passed compilation, TypeScript, page data, and static generation"
+			},
+			"browserVerification": "A real timeline Shift range selected six clips across text, main video, and audio. Command toggled one selected main-track clip out without disturbing the remaining range, and a drag box then selected six clips across the same three track types. The persistent selection count and aria-pressed states matched each result.",
+			"screenshots": ["assets/screenshots/T01-selection-system.png"]
+		},
 		{
 			"featureIds": ["M07"],
 			"redCommits": ["ffbf427"],

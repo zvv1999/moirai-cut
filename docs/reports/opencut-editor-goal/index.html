@@ -64,15 +64,15 @@
 							<span class="metric__label">已登记能力点</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">20</strong>
+							<strong class="metric__value">21</strong>
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">425</strong>
+							<strong class="metric__value">429</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">21</strong>
+							<strong class="metric__value">22</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,31 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/T01-selection-system.png"
+								data-lightbox-label="T01 跨轨统一选择系统"
+							>
+								<img
+									src="assets/screenshots/T01-selection-system.png"
+									alt="OpenCut 时间线框选了文本、主视频和音频轨上的六个片段，模式栏同步显示 Selection 6 及 Shift、Command 和拖框提示"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">T01 · SELECTION SYSTEM</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>点击、范围、切换和框选遵循同一套选择语义</h3>
+								<p>
+									真实工程中 Shift 按时间顺序跨文本、主视频和音频轨选出六个片段；Command
+									只切换目标片段；拖框再次跨三类轨道得到六项。状态条持续显示选择数量和操作提示，每个片段同时暴露可访问的选中状态。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -688,6 +713,15 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>T01</strong></td>
+									<td><code>af30d41</code> RED + <code>cf4b5de</code> GREEN</td>
+									<td>目标 4/4 + 既有交互回归；全量 429/429；TypeScript / ESLint / 生产构建通过</td>
+									<td>
+										Shift 跨文本、视频、音频选 6 项；Command 单项切换后 5 项；拖框跨轨再选 6 项；计数与 aria-pressed 全程一致
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>M07</strong></td>
 									<td><code>ffbf427</code> RED + <code>08a5743</code> GREEN</td>
