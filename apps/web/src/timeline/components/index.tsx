@@ -22,15 +22,9 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTimelineZoom } from "@/timeline/hooks/use-timeline-zoom";
-import {
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useContainerSize } from "@/hooks/use-container-size";
-import type { MediaTime } from "@/wasm";
+import { TICKS_PER_SECOND, type MediaTime } from "@/wasm";
 import type { ElementDragView, DropTarget } from "@/timeline";
 import { TimelineTrackContent } from "./timeline-track";
 import { TimelinePlayhead } from "./timeline-playhead";
@@ -53,7 +47,10 @@ import {
 	getTimelineZoomMin,
 	getTimelinePaddingPx,
 } from "@/timeline";
-import { timelineTimeToPixels } from "@/timeline/pixel-utils";
+import {
+	getTimelinePixelsPerSecond,
+	timelineTimeToPixels,
+} from "@/timeline/pixel-utils";
 import {
 	getTrackHeight,
 	getCumulativeHeightBefore,
@@ -169,14 +166,14 @@ export function Timeline() {
 		setZoomLevelAtViewportOffset,
 		saveScrollPosition,
 	} = useTimelineZoom({
-			containerRef: timelineRef,
-			minZoom: minZoomLevel,
-			initialZoom: savedViewState?.zoomLevel,
-			initialScrollLeft: savedViewState?.scrollLeft,
-			initialPlayheadTime: savedViewState?.playheadTime,
-			tracksScrollRef,
-			rulerScrollRef,
-		});
+		containerRef: timelineRef,
+		minZoom: minZoomLevel,
+		initialZoom: savedViewState?.zoomLevel,
+		initialScrollLeft: savedViewState?.scrollLeft,
+		initialPlayheadTime: savedViewState?.playheadTime,
+		tracksScrollRef,
+		rulerScrollRef,
+	});
 	const { isResizing, resizeView, handleResizeStart } = useTimelineResize({
 		zoomLevel,
 		onSnapPointChange: handleSnapPointChange,
@@ -199,9 +196,7 @@ export function Timeline() {
 		setZoomLevelRef.current = setZoomLevel;
 	}, [setZoomLevel]);
 
-	const setZoomLevelAtViewportOffsetRef = useRef(
-		setZoomLevelAtViewportOffset,
-	);
+	const setZoomLevelAtViewportOffsetRef = useRef(setZoomLevelAtViewportOffset);
 	useEffect(() => {
 		setZoomLevelAtViewportOffsetRef.current = setZoomLevelAtViewportOffset;
 	}, [setZoomLevelAtViewportOffset]);
@@ -334,12 +329,12 @@ export function Timeline() {
 
 	const { dragView, handleElementMouseDown, handleElementClick } =
 		useElementInteraction({
-		zoomLevel,
-		tracksContainerRef,
-		tracksScrollRef,
-		snappingEnabled,
-		onSnapPointChange: handleSnapPointChange,
-	});
+			zoomLevel,
+			tracksContainerRef,
+			tracksScrollRef,
+			snappingEnabled,
+			onSnapPointChange: handleSnapPointChange,
+		});
 	const isElementDragging = dragView.kind === "dragging";
 	const directManipulationFeedback =
 		dragView.kind === "dragging"
@@ -513,6 +508,17 @@ export function Timeline() {
 
 	const timelineHeaderHeight =
 		timelineHeaderHeightValue + TIMELINE_CONTENT_TOP_PADDING_PX;
+	const pixelsPerSecond = getTimelinePixelsPerSecond({ zoomLevel });
+	const viewportStartTime =
+		(overviewScrollLeft / pixelsPerSecond) * TICKS_PER_SECOND;
+	const viewportEndTime =
+		((overviewScrollLeft + (tracksViewportWidth || containerWidth)) /
+			pixelsPerSecond) *
+		TICKS_PER_SECOND;
+	const viewportOverscan = Math.max(
+		TICKS_PER_SECOND,
+		viewportEndTime - viewportStartTime,
+	);
 
 	return (
 		<section
@@ -543,9 +549,7 @@ export function Timeline() {
 					className="relative isolate flex flex-1 flex-col overflow-hidden"
 					ref={tracksContainerRef}
 				>
-					<SelectionBox
-						bounds={selectionBox?.bounds ?? null}
-					/>
+					<SelectionBox bounds={selectionBox?.bounds ?? null} />
 					<DragLine
 						dropTarget={dropTarget}
 						tracks={tracks}
@@ -645,6 +649,11 @@ export function Timeline() {
 										shouldIgnoreClick={shouldIgnoreClick}
 										isDragOver={isDragOver}
 										dropTarget={dropTarget}
+										renderWindow={{
+											startTime: viewportStartTime,
+											endTime: viewportEndTime,
+											overscan: viewportOverscan,
+										}}
 									/>
 								)}
 							</div>
@@ -800,7 +809,10 @@ function TrackLabelsPanel({
 											height: `${baseHeight + getTrackExpansionHeight(index)}px`,
 										}}
 									>
-										<div className="shrink-0" style={{ height: `${baseHeight}px` }}>
+										<div
+											className="shrink-0"
+											style={{ height: `${baseHeight}px` }}
+										>
 											<TrackControlRowView
 												track={track}
 												isMainTrack={track.id === scene?.tracks.main.id}
@@ -875,6 +887,7 @@ function TimelineTrackRows({
 	shouldIgnoreClick,
 	isDragOver,
 	dropTarget,
+	renderWindow,
 }: {
 	mainTrackId: string | null;
 	zoomLevel: number;
@@ -893,6 +906,11 @@ function TimelineTrackRows({
 	shouldIgnoreClick: () => boolean;
 	isDragOver: boolean;
 	dropTarget: DropTarget | null;
+	renderWindow: {
+		startTime: number;
+		endTime: number;
+		overscan: number;
+	};
 }) {
 	const timeline = useEditor((e) => e.timeline);
 	const scene = useEditor((e) => e.scenes.getActiveSceneOrNull());
@@ -923,8 +941,8 @@ function TimelineTrackRows({
 	const draggingElementIds = useMemo(
 		() =>
 			dragView.kind === "dragging"
-			? dragView.memberTimeOffsets
-			: (null as ReadonlyMap<string, MediaTime> | null),
+				? dragView.memberTimeOffsets
+				: (null as ReadonlyMap<string, MediaTime> | null),
 		[dragView],
 	);
 	const sortedTracks = useMemo(() => {
@@ -975,6 +993,7 @@ function TimelineTrackRows({
 										? (dropTarget?.targetElement?.elementId ?? null)
 										: null
 								}
+								renderWindow={renderWindow}
 							/>
 						</div>
 					</ContextMenuTrigger>

@@ -34,6 +34,7 @@ import {
 } from "@/components/section";
 import { useEditor } from "@/editor/use-editor";
 import { DEFAULT_EXPORT_OPTIONS } from "@/export/defaults";
+import { backgroundJobs } from "@/project/background-jobs";
 
 function isExportFormat(value: string): value is ExportFormat {
 	return EXPORT_FORMAT_VALUES.some((formatValue) => formatValue === value);
@@ -45,15 +46,10 @@ function isExportQuality(value: string): value is ExportQuality {
 
 export function ExportButton() {
 	const [isExportPopoverOpen, setIsExportPopoverOpen] = useState(false);
-	const editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActiveOrNull());
 	const hasProject = !!activeProject;
 
 	const handlePopoverOpenChange = ({ open }: { open: boolean }) => {
-		if (!open) {
-			editor.project.cancelExport();
-			editor.project.clearExportState();
-		}
 		setIsExportPopoverOpen(open);
 	};
 
@@ -110,37 +106,68 @@ function ExportPopover({
 	const [shouldIncludeAudio, setShouldIncludeAudio] = useState<boolean>(
 		DEFAULT_EXPORT_OPTIONS.includeAudio ?? true,
 	);
+	const [backgroundJobId, setBackgroundJobId] = useState<string | null>(null);
 
 	const handleExport = async () => {
-		if (!activeProject) return;
+		if (!activeProject || isExporting) return;
 
-		const result = await editor.project.export({
-			options: {
-				format,
-				quality,
-				fps: activeProject.settings.fps,
-				includeAudio: shouldIncludeAudio,
+		const handle = backgroundJobs.start({
+			kind: "export",
+			label: `Export ${activeProject.metadata.name}`,
+			run: async ({ signal, update }) => {
+				const cancelExport = () => editor.project.cancelExport();
+				signal.addEventListener("abort", cancelExport, { once: true });
+				const unsubscribe = editor.project.subscribe(() => {
+					const state = editor.project.getExportState();
+					update({
+						progress: state.progress,
+						step: `Encoding ${Math.round(state.progress * 100)}%`,
+					});
+				});
+				try {
+					update({ progress: 0.01, step: "Preparing renderer" });
+					const result = await editor.project.export({
+						options: {
+							format,
+							quality,
+							fps: activeProject.settings.fps,
+							includeAudio: shouldIncludeAudio,
+						},
+					});
+
+					if (result.cancelled || signal.aborted) return;
+					if (!result.success || !result.buffer) {
+						throw new Error(result.error || "Export did not produce a file");
+					}
+
+					update({ progress: 0.99, step: "Preparing download" });
+					downloadBuffer({
+						buffer: result.buffer,
+						filename: `${activeProject.metadata.name}${getExportFileExtension({ format })}`,
+						mimeType: getExportMimeType({ format }),
+					});
+				} finally {
+					unsubscribe();
+					signal.removeEventListener("abort", cancelExport);
+				}
 			},
 		});
+		setBackgroundJobId(handle.job.jobId);
+		await handle.done;
 
-		if (result.cancelled) {
-			editor.project.clearExportState();
-			return;
-		}
-
-		if (result.success && result.buffer) {
-			downloadBuffer({
-				buffer: result.buffer,
-				filename: `${activeProject.metadata.name}${getExportFileExtension({ format })}`,
-				mimeType: getExportMimeType({ format }),
-			});
-
+		const completedJob = backgroundJobs.get({ jobId: handle.job.jobId });
+		if (completedJob?.status === "completed") {
 			editor.project.clearExportState();
 			onOpenChange(false);
+		} else if (completedJob?.status === "cancelled") {
+			editor.project.clearExportState();
 		}
 	};
 
 	const handleCancel = () => {
+		if (backgroundJobId) {
+			backgroundJobs.cancel({ jobId: backgroundJobId });
+		}
 		editor.project.cancelExport();
 	};
 

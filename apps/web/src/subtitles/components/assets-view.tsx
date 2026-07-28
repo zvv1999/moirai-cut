@@ -63,10 +63,7 @@ import {
 } from "@/subtitles/styles";
 import type { CaptionStyle } from "@/subtitles/styles";
 import { serializeSubtitles } from "@/subtitles/interchange";
-import type {
-	SubtitleCue,
-	SubtitleStyleOverrides,
-} from "@/subtitles/types";
+import type { SubtitleCue, SubtitleStyleOverrides } from "@/subtitles/types";
 import { downloadBlob } from "@/utils/browser";
 import {
 	findTrackInSceneTracks,
@@ -74,6 +71,7 @@ import {
 	type SceneTracks,
 } from "@/timeline";
 import { mediaTimeToSeconds } from "@/wasm";
+import { backgroundJobs } from "@/project/background-jobs";
 
 const DIAGNOSTIC_BUTTON_VARIANT: Record<
 	DiagnosticSeverity,
@@ -435,7 +433,9 @@ export function Captions() {
 	const [transcriptionScope, setTranscriptionScope] =
 		useState<TranscriptionScope>("timeline");
 	const [processing, dispatch] = useReducer(processingReducer, IDLE_STATE);
-	const [selectedCueIds, setSelectedCueIds] = useState<Set<string> | null>(null);
+	const [selectedCueIds, setSelectedCueIds] = useState<Set<string> | null>(
+		null,
+	);
 	const [search, setSearch] = useState("");
 	const [replace, setReplace] = useState("");
 	const [timingOffset, setTimingOffset] = useState("0");
@@ -448,9 +448,10 @@ export function Captions() {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const operationTokenRef = useRef(0);
+	const backgroundJobIdRef = useRef<string | null>(null);
 	const editor = useEditor();
-	const tracks = useEditor((currentEditor) =>
-		currentEditor.scenes.getActiveScene().tracks,
+	const tracks = useEditor(
+		(currentEditor) => currentEditor.scenes.getActiveScene().tracks,
 	);
 	const selectedElements = useEditor((currentEditor) =>
 		currentEditor.selection.getSelectedElements(),
@@ -464,9 +465,7 @@ export function Captions() {
 		[settings.captionStyles],
 	);
 	const activeSelectedCueIds = useMemo(
-		() =>
-			selectedCueIds ??
-			new Set(cues.map((cue) => cue.id)),
+		() => selectedCueIds ?? new Set(cues.map((cue) => cue.id)),
 		[cues, selectedCueIds],
 	);
 	const timelineDurationSeconds = mediaTimeToSeconds({
@@ -520,96 +519,143 @@ export function Captions() {
 		const operationToken = operationTokenRef.current + 1;
 		operationTokenRef.current = operationToken;
 		dispatch({ type: "start", step: "Extracting timeline audio…" });
-		try {
-			const selectedRange =
+		const handle = backgroundJobs.start({
+			kind: "transcription",
+			label:
 				transcriptionScope === "selection"
-					? getSelectionRange({ tracks, selection: selectedElements })
-					: null;
-			if (transcriptionScope === "selection" && !selectedRange) {
-				throw new Error("Select one or more timeline clips first");
-			}
-			const audioBlob = await extractTimelineAudio({
-				tracks,
-				mediaAssets: editor.media.getAssets(),
-				totalDuration: editor.timeline.getTotalDuration(),
-				onProgress: (progress) => {
+					? "Transcribe selection"
+					: "Transcribe timeline",
+			run: async ({ signal, update }) => {
+				const cancelTranscription = () => transcriptionService.cancel();
+				signal.addEventListener("abort", cancelTranscription, { once: true });
+				try {
+					const selectedRange =
+						transcriptionScope === "selection"
+							? getSelectionRange({ tracks, selection: selectedElements })
+							: null;
+					if (transcriptionScope === "selection" && !selectedRange) {
+						throw new Error("Select one or more timeline clips first");
+					}
+					update({ progress: 0.01, step: "Extracting timeline audio" });
+					const audioBlob = await extractTimelineAudio({
+						tracks,
+						mediaAssets: editor.media.getAssets(),
+						totalDuration: editor.timeline.getTotalDuration(),
+						onProgress: (progress) => {
+							const normalized = Math.max(0, Math.min(20, progress * 0.2));
+							dispatch({
+								type: "update_step",
+								step: "Mixing audible timeline audio…",
+								progress: normalized,
+							});
+							update({
+								progress: normalized / 100,
+								step: "Mixing audible timeline audio",
+							});
+						},
+					});
+					if (signal.aborted || operationTokenRef.current !== operationToken) {
+						return;
+					}
+
 					dispatch({
 						type: "update_step",
-						step: "Mixing audible timeline audio…",
-						progress: progress * 0.2,
+						step: "Preparing speech samples…",
+						progress: 22,
 					});
-				},
-			});
-			if (operationTokenRef.current !== operationToken) return;
+					update({ progress: 0.22, step: "Preparing speech samples" });
+					const decoded = await decodeAudioToFloat32({
+						audioBlob,
+						sampleRate: DEFAULT_TRANSCRIPTION_SAMPLE_RATE,
+					});
+					if (signal.aborted || operationTokenRef.current !== operationToken) {
+						return;
+					}
 
-			dispatch({
-				type: "update_step",
-				step: "Preparing speech samples…",
-				progress: 22,
-			});
-			const decoded = await decodeAudioToFloat32({
-				audioBlob,
-				sampleRate: DEFAULT_TRANSCRIPTION_SAMPLE_RATE,
-			});
-			if (operationTokenRef.current !== operationToken) return;
+					const rangeStart = selectedRange?.start ?? 0;
+					const rangeEnd =
+						selectedRange?.end ?? decoded.samples.length / decoded.sampleRate;
+					const startSample = Math.max(
+						0,
+						Math.floor(rangeStart * decoded.sampleRate),
+					);
+					const endSample = Math.min(
+						decoded.samples.length,
+						Math.ceil(rangeEnd * decoded.sampleRate),
+					);
+					const samples = selectedRange
+						? decoded.samples.slice(startSample, endSample)
+						: decoded.samples;
+					if (samples.length === 0) {
+						throw new Error("The selected range contains no audio samples");
+					}
 
-			const rangeStart = selectedRange?.start ?? 0;
-			const rangeEnd =
-				selectedRange?.end ??
-				decoded.samples.length / decoded.sampleRate;
-			const startSample = Math.max(
-				0,
-				Math.floor(rangeStart * decoded.sampleRate),
-			);
-			const endSample = Math.min(
-				decoded.samples.length,
-				Math.ceil(rangeEnd * decoded.sampleRate),
-			);
-			const samples = selectedRange
-				? decoded.samples.slice(startSample, endSample)
-				: decoded.samples;
-			if (samples.length === 0) {
-				throw new Error("The selected range contains no audio samples");
-			}
+					const result = await transcriptionService.transcribe({
+						audioData: samples,
+						language:
+							selectedLanguage === "auto" ? undefined : selectedLanguage,
+						onProgress: (progress) => {
+							handleProgress(progress);
+							const value = Math.max(0, Math.min(100, progress.progress));
+							update({
+								progress: value / 100,
+								step:
+									progress.status === "loading-model"
+										? "Loading speech model"
+										: "Transcribing speech",
+							});
+						},
+					});
+					if (signal.aborted || operationTokenRef.current !== operationToken) {
+						return;
+					}
 
-			const result = await transcriptionService.transcribe({
-				audioData: samples,
-				language: selectedLanguage === "auto" ? undefined : selectedLanguage,
-				onProgress: handleProgress,
-			});
-			if (operationTokenRef.current !== operationToken) return;
-
-			dispatch({
-				type: "update_step",
-				step: "Building editable caption cues…",
-				progress: 96,
-			});
-			const captionChunks = buildCaptionChunks({
-				segments: offsetSegments({
-					segments: result.segments,
-					offset: rangeStart,
-				}),
-			});
-			if (!insertCaptions({ captions: captionChunks })) {
-				throw new Error("No captions were generated");
-			}
-			dispatch({ type: "succeed", warnings: [] });
-			toast.success(`Generated ${captionChunks.length} editable caption cues`);
-		} catch (error) {
-			if (operationTokenRef.current !== operationToken) return;
-			console.error("Transcription failed:", error);
-			dispatch({
-				type: "fail",
-				error:
-					error instanceof Error
-						? error.message
-						: "An unexpected error occurred",
-			});
-		}
+					dispatch({
+						type: "update_step",
+						step: "Building editable caption cues…",
+						progress: 96,
+					});
+					update({ progress: 0.96, step: "Building editable caption cues" });
+					const captionChunks = buildCaptionChunks({
+						segments: offsetSegments({
+							segments: result.segments,
+							offset: rangeStart,
+						}),
+					});
+					if (!insertCaptions({ captions: captionChunks })) {
+						throw new Error("No captions were generated");
+					}
+					dispatch({ type: "succeed", warnings: [] });
+					toast.success(
+						`Generated ${captionChunks.length} editable caption cues`,
+					);
+				} catch (error) {
+					if (signal.aborted || operationTokenRef.current !== operationToken) {
+						return;
+					}
+					console.error("Transcription failed:", error);
+					dispatch({
+						type: "fail",
+						error:
+							error instanceof Error
+								? error.message
+								: "An unexpected error occurred",
+					});
+					throw error;
+				} finally {
+					signal.removeEventListener("abort", cancelTranscription);
+				}
+			},
+		});
+		backgroundJobIdRef.current = handle.job.jobId;
+		await handle.done;
 	};
 
 	const handleCancel = () => {
 		operationTokenRef.current += 1;
+		if (backgroundJobIdRef.current) {
+			backgroundJobs.cancel({ jobId: backgroundJobIdRef.current });
+		}
 		transcriptionService.cancel();
 		dispatch({
 			type: "fail",
@@ -676,7 +722,11 @@ export function Captions() {
 		if (file) await handleImportFile({ file });
 	};
 
-	const applyCueUpdates = ({ nextCues }: { nextCues: EditableCaptionCue[] }) => {
+	const applyCueUpdates = ({
+		nextCues,
+	}: {
+		nextCues: EditableCaptionCue[];
+	}) => {
 		if (nextCues.length === 0) return;
 		editor.timeline.updateElements({
 			updates: nextCues.map((cue) => ({
@@ -715,9 +765,7 @@ export function Captions() {
 			return;
 		}
 		applyCueUpdates({
-			nextCues: result.cues.filter((cue) =>
-				activeSelectedCueIds.has(cue.id),
-			),
+			nextCues: result.cues.filter((cue) => activeSelectedCueIds.has(cue.id)),
 		});
 		toast.success(`Updated ${result.changedCueCount} caption cues`);
 	};
@@ -732,9 +780,7 @@ export function Captions() {
 			return;
 		}
 		applyCueUpdates({
-			nextCues: result.cues.filter((cue) =>
-				activeSelectedCueIds.has(cue.id),
-			),
+			nextCues: result.cues.filter((cue) => activeSelectedCueIds.has(cue.id)),
 		});
 		toast.success(`Cleaned ${result.changedCueCount} caption cues`);
 	};
@@ -881,8 +927,7 @@ export function Captions() {
 
 	const error = processing.status === "idle" ? processing.error : null;
 	const warnings = processing.status === "idle" ? processing.warnings : [];
-	const canRetry =
-		processing.status === "idle" ? processing.canRetry : false;
+	const canRetry = processing.status === "idle" ? processing.canRetry : false;
 	const allSelected =
 		cues.length > 0 && activeSelectedCueIds.size === cues.length;
 
@@ -935,7 +980,9 @@ export function Captions() {
 				<div className="border-b bg-gradient-to-b from-primary/8 to-transparent px-4 pb-4 pt-3">
 					<div className="mb-3 flex items-center justify-between">
 						<div>
-							<p className="text-xs font-semibold">Speech to editable captions</p>
+							<p className="text-xs font-semibold">
+								Speech to editable captions
+							</p>
 							<p className="text-[10px] text-muted-foreground">
 								Word timing · speakers · retry-safe
 							</p>
@@ -958,7 +1005,10 @@ export function Captions() {
 								if (language) setSelectedLanguage(language.code);
 							}}
 						>
-							<SelectTrigger aria-label="Transcription language" className="h-8">
+							<SelectTrigger
+								aria-label="Transcription language"
+								className="h-8"
+							>
 								<SelectValue placeholder="Language" />
 							</SelectTrigger>
 							<SelectContent>
@@ -1093,11 +1143,7 @@ export function Captions() {
 								variant="ghost"
 								className="flex-1"
 								onClick={() =>
-									setSelectedCueIds(
-										allSelected
-											? new Set()
-											: null,
-									)
+									setSelectedCueIds(allSelected ? new Set() : null)
 								}
 							>
 								{allSelected ? "Clear selection" : "Select all"}
@@ -1195,11 +1241,7 @@ export function Captions() {
 							<Button size="sm" onClick={handleApplyStyle}>
 								Apply
 							</Button>
-							<Button
-								size="sm"
-								variant="ghost"
-								onClick={handleDetachStyle}
-							>
+							<Button size="sm" variant="ghost" onClick={handleDetachStyle}>
 								Detach selected
 							</Button>
 						</div>
@@ -1276,9 +1318,7 @@ export function Captions() {
 									selected={activeSelectedCueIds.has(cue.id)}
 									onSelectedChange={(selected) => {
 										setSelectedCueIds((current) => {
-											const next = new Set(
-												current ?? activeSelectedCueIds,
-											);
+											const next = new Set(current ?? activeSelectedCueIds);
 											if (selected) next.add(cue.id);
 											else next.delete(cue.id);
 											return next;
@@ -1301,11 +1341,7 @@ export function Captions() {
 								<Select
 									value={pasteFormat}
 									onValueChange={(value) => {
-										if (
-											value === "srt" ||
-											value === "vtt" ||
-											value === "ass"
-										) {
+										if (value === "srt" || value === "vtt" || value === "ass") {
 											setPasteFormat(value);
 										}
 									}}

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { MediaDragOverlay } from "@/components/editor/panels/assets/drag-overlay";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
@@ -108,6 +108,7 @@ import {
 import { useElementSelection } from "@/timeline/hooks/element/use-element-selection";
 import { generateMediaProxy } from "@/media/proxy";
 import { downloadBlob } from "@/utils/browser";
+import { backgroundJobs } from "@/project/background-jobs";
 
 export function MediaView() {
 	const editor = useEditor();
@@ -133,17 +134,16 @@ export function MediaView() {
 	const [libraryFilters, setLibraryFilters] = useState<MediaLibraryFilters>(
 		DEFAULT_MEDIA_LIBRARY_FILTERS,
 	);
-	const [activeBinId, setActiveBinId] =
-		useState<MediaBinSelection>("all");
+	const [activeBinId, setActiveBinId] = useState<MediaBinSelection>("all");
 	const [metadataEditorAssetIds, setMetadataEditorAssetIds] = useState<
 		string[]
 	>([]);
 	const [sourceMonitorAssetId, setSourceMonitorAssetId] = useState<
 		string | null
 	>(null);
-	const [batchOperationAssetIds, setBatchOperationAssetIds] = useState<string[]>(
-		[],
-	);
+	const [batchOperationAssetIds, setBatchOperationAssetIds] = useState<
+		string[]
+	>([]);
 	const [batchStatus, setBatchStatus] = useState<string | null>(null);
 	const [batchProgress, setBatchProgress] = useState(0);
 	const [duplicateReviewOpen, setDuplicateReviewOpen] = useState(false);
@@ -521,58 +521,71 @@ export function MediaView() {
 		setIsProcessing(true);
 		setBatchProgress(0);
 		setBatchStatus(`Generating proxy 1 of ${candidates.length}…`);
-		const updates: Array<{
-			assetId: string;
-			update: (asset: MediaAsset) => MediaAsset;
-		}> = [];
-		const failures: string[] = [];
 		try {
-			for (let index = 0; index < candidates.length; index++) {
-				const asset = candidates[index];
-				setBatchStatus(
-					`Generating proxy ${index + 1} of ${candidates.length}: ${asset.name}`,
-				);
-				try {
-					const proxy = await generateMediaProxy({
-						asset,
-						onProgress: (itemProgress) =>
-							setBatchProgress(
-								((index + itemProgress) / candidates.length) * 100,
-							),
+			const handle = backgroundJobs.start({
+				kind: "proxy",
+				label: `Generate ${candidates.length} ${candidates.length === 1 ? "proxy" : "proxies"}`,
+				run: async ({ signal, update }) => {
+					const updates: Array<{
+						assetId: string;
+						update: (asset: MediaAsset) => MediaAsset;
+					}> = [];
+					const failures: string[] = [];
+					for (let index = 0; index < candidates.length; index++) {
+						if (signal.aborted) return;
+						const asset = candidates[index];
+						const step = `Generating proxy ${index + 1} of ${candidates.length}: ${asset.name}`;
+						setBatchStatus(step);
+						update({ step, progress: index / candidates.length });
+						try {
+							const proxy = await generateMediaProxy({
+								asset,
+								onProgress: (itemProgress) => {
+									const progress = (index + itemProgress) / candidates.length;
+									setBatchProgress(progress * 100);
+									update({ progress });
+								},
+							});
+							updates.push({
+								assetId: asset.id,
+								update: (current) => ({
+									...current,
+									proxy: proxy.metadata,
+									proxyFile: proxy.file,
+									proxyUrl: proxy.url,
+								}),
+							});
+						} catch (error) {
+							console.error(
+								`Proxy generation failed for ${asset.name}:`,
+								error,
+							);
+							failures.push(asset.name);
+						}
+					}
+					if (signal.aborted) return;
+					editor.media.updateMediaAssets({
+						projectId: activeProject.metadata.id,
+						updates,
 					});
-					updates.push({
-						assetId: asset.id,
-						update: (current) => ({
-							...current,
-							proxy: proxy.metadata,
-							proxyFile: proxy.file,
-							proxyUrl: proxy.url,
-						}),
-					});
-				} catch (error) {
-					console.error(`Proxy generation failed for ${asset.name}:`, error);
-					failures.push(asset.name);
-				}
-			}
-			editor.media.updateMediaAssets({
-				projectId: activeProject.metadata.id,
-				updates,
+					setBatchProgress(100);
+					setBatchStatus(
+						`${updates.length} proxies ready${failures.length > 0 ? ` · ${failures.length} failed` : ""}`,
+					);
+					if (updates.length > 0) {
+						toast.success(`Generated ${updates.length} proxies`, {
+							description:
+								"Preview uses proxies; final export remains original quality.",
+						});
+					}
+					if (failures.length > 0) {
+						toast.warning(`${failures.length} proxies could not be generated`, {
+							description: failures.slice(0, 3).join(", "),
+						});
+					}
+				},
 			});
-			setBatchProgress(100);
-			setBatchStatus(
-				`${updates.length} proxies ready${failures.length > 0 ? ` · ${failures.length} failed` : ""}`,
-			);
-			if (updates.length > 0) {
-				toast.success(`Generated ${updates.length} proxies`, {
-					description:
-						"Preview uses proxies; final export remains original quality.",
-				});
-			}
-			if (failures.length > 0) {
-				toast.warning(`${failures.length} proxies could not be generated`, {
-					description: failures.slice(0, 3).join(", "),
-				});
-			}
+			await handle.done;
 		} finally {
 			setIsProcessing(false);
 		}
@@ -725,9 +738,7 @@ export function MediaView() {
 				binId,
 			});
 			updateMediaOrganization({ organization: result.organization });
-			if (
-				result.deletedBinIds.includes(effectiveActiveBinId)
-			) {
+			if (result.deletedBinIds.includes(effectiveActiveBinId)) {
 				setActiveBinId(
 					parentId !== null &&
 						result.organization.bins.some((bin) => bin.id === parentId)
@@ -926,10 +937,7 @@ export function MediaView() {
 		searchQuery,
 	]);
 	const filteredMissingReferences = useMemo(() => {
-		if (
-			effectiveActiveBinId !== "all" &&
-			effectiveActiveBinId !== "unfiled"
-		) {
+		if (effectiveActiveBinId !== "all" && effectiveActiveBinId !== "unfiled") {
 			return [];
 		}
 		if (libraryFilters.availability === "available") return [];
@@ -974,8 +982,7 @@ export function MediaView() {
 					binId: effectiveActiveBinId,
 				}),
 			).length +
-			(effectiveActiveBinId === "all" ||
-			effectiveActiveBinId === "unfiled"
+			(effectiveActiveBinId === "all" || effectiveActiveBinId === "unfiled"
 				? missingReferences.length
 				: 0),
 		[
@@ -1118,8 +1125,7 @@ export function MediaView() {
 							filters={libraryFilters}
 							availableTags={availableTags}
 							resultCount={
-								filteredMediaItems.length +
-								filteredMissingReferences.length
+								filteredMediaItems.length + filteredMissingReferences.length
 							}
 							totalCount={activeBinItemCount}
 							onQueryChange={setSearchQuery}
@@ -1155,7 +1161,7 @@ export function MediaView() {
 								/>
 							</div>
 						) : filteredMediaItems.length === 0 &&
-						filteredMissingReferences.length === 0 ? (
+						  filteredMissingReferences.length === 0 ? (
 							<MediaLibraryEmptySearch
 								query={searchQuery}
 								type={mediaTypeFilter}
@@ -1164,9 +1170,7 @@ export function MediaView() {
 									mediaOrganization.bins.find(
 										(bin) => bin.id === effectiveActiveBinId,
 									)?.name ??
-									(effectiveActiveBinId === "unfiled"
-										? "Unfiled"
-										: null)
+									(effectiveActiveBinId === "unfiled" ? "Unfiled" : null)
 								}
 								onClear={() => {
 									setSearchQuery("");
@@ -1392,10 +1396,7 @@ function MediaItemWithContextMenu({
 	onOpenSource: (args: { assetId: string }) => void;
 	onEditMetadata: (args: { assetIds: string[] }) => void;
 	onBatchOperations: (args: { assetIds: string[] }) => void;
-	onAssignToBin: (args: {
-		assetIds: string[];
-		binId: string | null;
-	}) => void;
+	onAssignToBin: (args: { assetIds: string[]; binId: string | null }) => void;
 	onRemove: ({
 		event,
 		ids,
@@ -1420,9 +1421,7 @@ function MediaItemWithContextMenu({
 		<ContextMenu>
 			<ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
 			<ContextMenuContent>
-				<ContextMenuItem
-					onSelect={() => onOpenSource({ assetId: item.id })}
-				>
+				<ContextMenuItem onSelect={() => onOpenSource({ assetId: item.id })}>
 					Open in source monitor
 				</ContextMenuItem>
 				<ContextMenuItem
@@ -1502,10 +1501,7 @@ function MediaItemList({
 	onOpenSource: (args: { assetId: string }) => void;
 	onEditMetadata: (args: { assetIds: string[] }) => void;
 	onBatchOperations: (args: { assetIds: string[] }) => void;
-	onAssignToBin: (args: {
-		assetIds: string[];
-		binId: string | null;
-	}) => void;
+	onAssignToBin: (args: { assetIds: string[]; binId: string | null }) => void;
 	onRemove: ({
 		event,
 		ids,
@@ -1543,7 +1539,8 @@ function MediaItemList({
 						<MediaAssetDraggable
 							item={item}
 							preview={
-								<MediaPreview
+								<VirtualizedMediaPreview
+									enabled={items.length > 100}
 									item={item}
 									variant={isGrid ? "grid" : "compact"}
 									metadata={getMediaAssetMetadata({
@@ -1558,6 +1555,60 @@ function MediaItemList({
 					</SelectableItem>
 				</MediaItemWithContextMenu>
 			))}
+		</div>
+	);
+}
+
+function VirtualizedMediaPreview({
+	enabled,
+	item,
+	variant,
+	metadata,
+}: {
+	enabled: boolean;
+	item: MediaAsset;
+	variant: "grid" | "compact";
+	metadata: MediaAssetMetadata;
+}) {
+	const containerRef = useRef<HTMLDivElement>(null);
+	const [visible, setVisible] = useState(!enabled);
+
+	useEffect(() => {
+		if (!enabled) return;
+		const element = containerRef.current;
+		if (!element || typeof IntersectionObserver === "undefined") {
+			queueMicrotask(() => setVisible(true));
+			return;
+		}
+		const observer = new IntersectionObserver(
+			(entries) => {
+				const entry = entries[0];
+				setVisible(Boolean(entry?.isIntersecting));
+			},
+			{ rootMargin: "480px 0px" },
+		);
+		observer.observe(element);
+		return () => observer.disconnect();
+	}, [enabled]);
+
+	return (
+		<div
+			ref={containerRef}
+			className="size-full"
+			style={{
+				contentVisibility: enabled ? "auto" : "visible",
+				containIntrinsicSize: variant === "grid" ? "112px 80px" : "48px 48px",
+			}}
+			data-media-preview-virtualized={enabled ? "true" : "false"}
+		>
+			{!enabled || visible ? (
+				<MediaPreview item={item} variant={variant} metadata={metadata} />
+			) : (
+				<div
+					className="bg-muted/30 size-full animate-pulse rounded"
+					aria-label={`Deferred preview for ${item.name}`}
+				/>
+			)}
 		</div>
 	);
 }
@@ -1669,7 +1720,11 @@ function MediaPreview({
 
 	return (
 		<div className="relative size-full">
-			<MediaTypePlaceholder icon={Image02Icon} label="Unknown" variant="muted" />
+			<MediaTypePlaceholder
+				icon={Image02Icon}
+				label="Unknown"
+				variant="muted"
+			/>
 			<MediaMetadataBadges metadata={metadata} />
 			<MediaProxyBadge item={item} />
 		</div>
@@ -1781,11 +1836,7 @@ const MEDIA_LABEL_CLASSES: Record<MediaColorLabel, string> = {
 	purple: "bg-violet-500",
 };
 
-function MediaMetadataBadges({
-	metadata,
-}: {
-	metadata: MediaAssetMetadata;
-}) {
+function MediaMetadataBadges({ metadata }: { metadata: MediaAssetMetadata }) {
 	if (!metadata.favorite && metadata.colorLabel === null) return null;
 	return (
 		<div className="absolute left-1 top-1 flex items-center gap-1">

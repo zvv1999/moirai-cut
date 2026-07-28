@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { runProjectHealthCheck } from "@/project/project-health";
+import { TICKS_PER_SECOND } from "@/wasm";
 
-const S = 48_000;
+const S = TICKS_PER_SECOND;
 
 describe("project health checks", () => {
 	test("finds structural, media, audio, caption, and export hazards with addresses", () => {

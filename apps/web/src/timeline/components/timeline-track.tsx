@@ -6,6 +6,8 @@ import type { TimelineTrack } from "@/timeline";
 import type { TimelineElement as TimelineElementType } from "@/timeline";
 import { TIMELINE_LAYERS } from "./layers";
 import type { ElementDragView } from "@/timeline";
+import { useTimelineStore } from "@/timeline/timeline-store";
+import { selectTimelineRenderElements } from "@/project/large-project-performance";
 
 interface TimelineTrackContentProps {
 	track: TimelineTrack;
@@ -31,6 +33,11 @@ interface TimelineTrackContentProps {
 	onTrackMouseUp?: (event: React.MouseEvent) => void;
 	shouldIgnoreClick?: () => boolean;
 	targetElementId?: string | null;
+	renderWindow?: {
+		startTime: number;
+		endTime: number;
+		overscan: number;
+	};
 }
 
 export function TimelineTrackContent({
@@ -44,8 +51,35 @@ export function TimelineTrackContent({
 	onTrackMouseUp,
 	shouldIgnoreClick,
 	targetElementId = null,
+	renderWindow,
 }: TimelineTrackContentProps) {
-	const { isElementSelected } = useElementSelection();
+	const { isElementSelected, selectedElements } = useElementSelection();
+	const expandedElementIds = useTimelineStore(
+		(state) => state.expandedElementIds,
+	);
+	const pinnedIds = new Set(
+		selectedElements
+			.filter((selection) => selection.trackId === track.id)
+			.map((selection) => selection.elementId),
+	);
+	for (const elementId of expandedElementIds) pinnedIds.add(elementId);
+	if (targetElementId) pinnedIds.add(targetElementId);
+	if (dragView.kind === "dragging") {
+		for (const elementId of dragView.memberTimeOffsets.keys()) {
+			pinnedIds.add(elementId);
+		}
+	}
+	const allElements: TimelineElementType[] = [];
+	for (const element of track.elements) allElements.push(element);
+	const renderedElements = renderWindow
+		? selectTimelineRenderElements({
+				elements: allElements,
+				viewportStart: renderWindow.startTime,
+				viewportEnd: renderWindow.endTime,
+				overscan: renderWindow.overscan,
+				pinnedIds,
+			}).elements
+		: allElements;
 
 	return (
 		<div
@@ -83,7 +117,7 @@ export function TimelineTrackContent({
 				{track.elements.length === 0 ? (
 					<div className="text-muted-foreground border-muted/30 pointer-events-none flex size-full items-center justify-center rounded-sm border-2 border-dashed text-xs" />
 				) : (
-					track.elements.map((element) => {
+					renderedElements.map((element) => {
 						const isSelected = isElementSelected({
 							trackId: track.id,
 							elementId: element.id,
@@ -101,8 +135,7 @@ export function TimelineTrackContent({
 									onResizeStart({ event, element, track, side })
 								}
 								onElementMouseDown={({ event, element }) =>
-									!track.locked &&
-									onElementMouseDown({ event, element, track })
+									!track.locked && onElementMouseDown({ event, element, track })
 								}
 								onElementClick={({ event, element }) =>
 									onElementClick({ event, element, track })

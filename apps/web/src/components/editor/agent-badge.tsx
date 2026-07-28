@@ -5,10 +5,12 @@ import { toast } from "sonner";
 import { useEditor } from "@/editor/use-editor";
 import {
 	getProjectFileSyncState,
+	acknowledgeProjectFileSync,
 	subscribeToProjectFileSync,
 	type ProjectFileSyncState,
 } from "@/services/storage/project-file-sync";
 import type { ProjectRevisionDiff } from "@/project/revision-diff";
+import { ReliabilityWorkbench } from "./reliability-workbench";
 
 interface RevisionEntry {
 	revision: number;
@@ -165,7 +167,9 @@ export function AgentBadge() {
 		);
 		const payload: unknown = await response.json().catch(() => ({}));
 		if (!response.ok) {
-			toast.error(errorMessage({ value: payload, fallback: "Snapshot failed" }));
+			toast.error(
+				errorMessage({ value: payload, fallback: "Snapshot failed" }),
+			);
 			return;
 		}
 		toast(`Saved snapshot at revision ${revisionOf(payload) ?? "unknown"}`);
@@ -261,12 +265,17 @@ export function AgentBadge() {
 	};
 
 	const loadDiskVersion = async () => {
+		if (!projectId) return;
 		const applied = await editor.project.applyExternalDocument();
 		if (!applied) {
 			toast.error("Could not load the disk version");
 			return;
 		}
 		setConfirmDiscardLocal(false);
+		const revision = editor.project.getKnownFileRevision(projectId);
+		if (revision !== null) {
+			acknowledgeProjectFileSync({ revision });
+		}
 		toast("Loaded the latest disk version", {
 			description: "Local pending changes were discarded by explicit choice.",
 		});
@@ -291,6 +300,8 @@ export function AgentBadge() {
 							{revisions.length} saved
 						</span>
 					</div>
+
+					<ReliabilityWorkbench />
 
 					<div className="mb-3 grid grid-cols-2 gap-2">
 						<div className="border-border bg-muted/20 rounded-md border p-2">

@@ -30,6 +30,78 @@ export interface ProjectFileSyncState {
   agent: AgentPresenceState;
 }
 
+interface ProjectFileEventPayload {
+  type?: string;
+  revision?: number;
+  mediaChanged?: boolean;
+  agent?: AgentPresenceState & { seq: number };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function parseAgentPresence(
+  value: unknown,
+): (AgentPresenceState & { seq: number }) | undefined {
+  if (
+    !isRecord(value) ||
+    typeof value.active !== "boolean" ||
+    (value.actor !== null && typeof value.actor !== "string") ||
+    typeof value.seq !== "number" ||
+    !Array.isArray(value.events)
+  ) {
+    return undefined;
+  }
+  const events: AgentPresenceState["events"] = [];
+  for (const event of value.events) {
+    if (
+      !isRecord(event) ||
+      typeof event.seq !== "number" ||
+      typeof event.at !== "number" ||
+      typeof event.summary !== "string" ||
+      (event.revision !== undefined && typeof event.revision !== "number")
+    ) {
+      return undefined;
+    }
+    events.push({
+      seq: event.seq,
+      at: event.at,
+      summary: event.summary,
+      ...(typeof event.revision === "number" ? { revision: event.revision } : {}),
+    });
+  }
+  return {
+    active: value.active,
+    actor: value.actor,
+    seq: value.seq,
+    events,
+  };
+}
+
+function parseProjectFileEvent({
+  input,
+}: {
+  input: string;
+}): ProjectFileEventPayload | null {
+  let value: unknown;
+  try {
+    value = JSON.parse(input);
+  } catch {
+    return null;
+  }
+  if (!isRecord(value)) return null;
+  const agent = parseAgentPresence(value.agent);
+  return {
+    ...(typeof value.type === "string" ? { type: value.type } : {}),
+    ...(typeof value.revision === "number" ? { revision: value.revision } : {}),
+    ...(typeof value.mediaChanged === "boolean"
+      ? { mediaChanged: value.mediaChanged }
+      : {}),
+    ...(agent ? { agent } : {}),
+  };
+}
+
 const listeners = new Set<(state: ProjectFileSyncState) => void>();
 let state: ProjectFileSyncState = {
   externalRevision: null,
@@ -56,6 +128,14 @@ export function getProjectFileSyncState(): ProjectFileSyncState {
   return state;
 }
 
+export function acknowledgeProjectFileSync({
+  revision,
+}: {
+  revision: number | null;
+}): void {
+  publish({ externalRevision: revision, blockedByUnsavedChanges: false });
+}
+
 /**
  * Watch one project file. Returns an unsubscribe function.
  * A no-op unless the project store is file-backed.
@@ -74,17 +154,9 @@ export function watchProjectFile({ projectId }: { projectId: string }): () => vo
 
   source.onmessage = (event) => {
     if (disposed) return;
-    let payload: {
-      type?: string;
-      revision?: number;
-      mediaChanged?: boolean;
-      agent?: AgentPresenceState & { seq: number };
-    };
-    try {
-      payload = JSON.parse(event.data) as typeof payload;
-    } catch {
-      return;
-    }
+    if (typeof event.data !== "string") return;
+    const payload = parseProjectFileEvent({ input: event.data });
+    if (!payload) return;
     if (payload.type === "agent" && payload.agent) {
       const incoming = payload.agent;
       publish({ agent: { active: incoming.active, actor: incoming.actor, events: incoming.events } });
@@ -138,7 +210,13 @@ export function watchProjectFile({ projectId }: { projectId: string }): () => vo
         // In-place swap: playhead, zoom and selection survive. The page-reload
         // fallback remains only for the case where the swap itself fails.
         const applied = await editor.project.applyExternalDocument();
-        if (!applied) window.location.reload();
+        if (!applied) {
+          window.location.reload();
+        } else {
+          acknowledgeProjectFileSync({
+            revision: editor.project.getKnownFileRevision?.(projectId) ?? null,
+          });
+        }
       } catch {
         window.location.reload();
       } finally {
