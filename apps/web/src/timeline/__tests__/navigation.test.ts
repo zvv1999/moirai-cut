@@ -5,6 +5,9 @@ import {
 	getOverviewViewport,
 	getRevealPlayheadScrollLeft,
 } from "@/timeline/navigation";
+import { timelineTimeToPixels } from "@/timeline/pixel-utils";
+import { getTimelineZoomMin } from "@/timeline/zoom-utils";
+import { mediaTimeFromSeconds } from "@/wasm";
 
 describe("timeline navigation", () => {
 	test("keeps the time below the mouse stationary while zooming", () => {
@@ -83,5 +86,18 @@ describe("timeline navigation", () => {
 				viewportWidth: 1_000,
 			}),
 		).toBe(24_500);
+	});
+
+	test("fit-to-timeline uses most of the viewport instead of treating blank padding as content", () => {
+		const duration = mediaTimeFromSeconds({ seconds: 600 });
+		const viewportWidth = 1_200;
+		const zoomLevel = getTimelineZoomMin({
+			duration,
+			containerWidth: viewportWidth,
+		});
+		const contentWidth = timelineTimeToPixels({ time: duration, zoomLevel });
+
+		expect(contentWidth / viewportWidth).toBeGreaterThanOrEqual(0.88);
+		expect(contentWidth / viewportWidth).toBeLessThanOrEqual(0.94);
 	});
 });
