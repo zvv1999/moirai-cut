@@ -6,8 +6,8 @@
 	"summary": {
 		"cataloguedCapabilities": 74,
 		"greenCapabilities": 12,
-		"automatedTestsPassing": 384,
-		"archivedScreenshots": 10
+		"automatedTestsPassing": 386,
+		"archivedScreenshots": 11
 	},
 	"greenFeatureIds": [
 		"W01",
@@ -24,6 +24,21 @@
 		"G07"
 	],
 	"evidence": [
+		{
+			"featureIds": ["W06"],
+			"redCommits": ["08da1db"],
+			"greenCommit": "8ea67f7",
+			"followupCommit": "d41be99",
+			"result": "Snapping, ripple editing, and source-audio association now live in a persistent labelled mode strip instead of relying on icon colour and hover state. The current shortcut and temporary snapping bypass hint stay visible, and source audio can be separated and recovered from the same status control.",
+			"tests": {
+				"targeted": "4/4 including retained toolbar accessibility",
+				"fullSuite": "386/386",
+				"productionBuild": "Passed compilation, TypeScript, page data, and 18 static pages"
+			},
+			"screenshots": [
+				"assets/screenshots/W06-persistent-edit-mode-status.png"
+			]
+		},
 		{
 			"featureIds": ["W05"],
 			"redCommits": ["51b006c", "0ce61e5"],

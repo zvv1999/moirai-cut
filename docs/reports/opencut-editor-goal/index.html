@@ -68,11 +68,11 @@
 							<span class="metric__label">当前 GREEN 能力</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">384</strong>
+							<strong class="metric__value">386</strong>
 							<span class="metric__label">既有自动化测试通过</span>
 						</article>
 						<article class="metric">
-							<strong class="metric__value">10</strong>
+							<strong class="metric__value">11</strong>
 							<span class="metric__label">已归档界面截图</span>
 						</article>
 					</div>
@@ -177,6 +177,30 @@
 						</p>
 					</div>
 					<div class="evidence-grid">
+						<article class="evidence-card">
+							<button
+								class="evidence-card__image"
+								type="button"
+								data-lightbox-src="assets/screenshots/W06-persistent-edit-mode-status.png"
+								data-lightbox-label="W06 常驻编辑模式状态"
+							>
+								<img
+									src="assets/screenshots/W06-persistent-edit-mode-status.png"
+									alt="时间线顶部常驻显示 Snap Off、Ripple On、Audio Linked 和快捷键 N"
+								/>
+							</button>
+							<div class="evidence-card__body">
+								<div class="evidence-card__topline">
+									<span class="feature-id">W06 · MODE STATUS</span>
+									<span class="status status--green">DONE</span>
+								</div>
+								<h3>编辑模式不再依赖猜图标和悬停</h3>
+								<p>
+									磁吸、波纹和源音频关联状态以文字常驻显示；选中真实视频后可直接分离并恢复源音频，快捷键与 Shift 临时绕过提示也始终可见。
+								</p>
+							</div>
+						</article>
+
 						<article class="evidence-card">
 							<button
 								class="evidence-card__image"
@@ -422,6 +446,18 @@
 								</tr>
 							</thead>
 							<tbody>
+								<tr>
+									<td><strong>W06</strong></td>
+									<td>
+										<code>08da1db</code> RED + <code>8ea67f7</code> GREEN +
+										<code>d41be99</code> 类型修复
+									</td>
+									<td>目标 4/4；全量 386/386；生产构建通过</td>
+									<td>
+										Snap / Ripple 状态切换；Audio Linked→Separated→Linked；默认值已恢复
+									</td>
+									<td><span class="status status--green">DONE</span></td>
+								</tr>
 								<tr>
 									<td><strong>W05</strong></td>
 									<td>
