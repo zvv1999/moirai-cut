@@ -215,14 +215,19 @@ export function AgentWorkbench() {
 		groupId: string;
 		decision: "rejected" | "reverted";
 	}) => {
-		const group = plan?.groups.find((candidate) => candidate.id === groupId);
-		if (!group) return;
+		const activePlan = plan;
+		const group = activePlan?.groups.find(
+			(candidate) => candidate.id === groupId,
+		);
+		if (!activePlan || !group) return;
 		try {
 			const result = editor.agent.applyOperation({
 				operation: group.inverseOperation,
 				baseRevision: editor.agent.revision,
-				idempotencyKey: `${plan.id}:${groupId}:${decision}`,
-				...(plan.projectId ? { expectedProjectId: plan.projectId } : {}),
+				idempotencyKey: `${activePlan.id}:${groupId}:${decision}`,
+				...(activePlan.projectId
+					? { expectedProjectId: activePlan.projectId }
+					: {}),
 			});
 			if (!result.applied) {
 				toast.error("The inverse operation had no effect");
