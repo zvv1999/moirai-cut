@@ -171,10 +171,26 @@ describe("caption data model", () => {
 				}),
 			]),
 		});
-		const patch = buildCaptionElementPatch({ cue });
+		const patch = buildCaptionElementPatch({
+			cue: {
+				...cue,
+				secondaryStyle: {
+					color: "#ffd27d",
+					fontSize: 30,
+					fontWeight: "normal",
+				},
+			},
+		});
 
 		expect(patch.params?.content).toBe("Follow the light\n循光而行");
 		expect(patch.params?.["caption.secondaryText"]).toBe("循光而行");
+		expect(patch.params?.["caption.secondaryStyle"]).toBe(
+			JSON.stringify({
+				color: "#ffd27d",
+				fontSize: 30,
+				fontWeight: "normal",
+			}),
+		);
 		expect(patch.duration).toBe(mediaTimeFromSeconds({ seconds: 1.2 }));
 	});
 
