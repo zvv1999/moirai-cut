@@ -28,4 +28,24 @@ describe("TimelineElementInteractionShell", () => {
 		expect(clipButtonEnd).toBeGreaterThan(clipButtonStart);
 		expect(keyframeButtonStart).toBeGreaterThan(clipButtonEnd);
 	});
+
+	test("keeps expanded keyframe controls above resize handles and adjacent clips", () => {
+		const html = renderToStaticMarkup(
+			<TimelineElementInteractionShell
+				baseTrackHeight={48}
+				clipContent={<span>Clip</span>}
+				expandedContent={
+					<button type="button" aria-label="Select keyframe">
+						Keyframe
+					</button>
+				}
+				onClick={() => undefined}
+				onMouseDown={() => undefined}
+			/>,
+		);
+
+		expect(html).toContain(
+			'class="absolute inset-x-0 bottom-0 z-20"',
+		);
+	});
 });
