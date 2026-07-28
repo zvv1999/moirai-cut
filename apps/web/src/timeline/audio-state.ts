@@ -1,6 +1,7 @@
 import { hasKeyframesForPath } from "@/animation/keyframe-query";
 import { resolveNumberAtTime } from "@/animation/values";
 import { VOLUME_DB_MAX, VOLUME_DB_MIN } from "./audio-constants";
+import { getAudioFadeDurations, resolveAudioFadeGain } from "./audio-envelope";
 import type { TimelineElement } from "./types";
 const DEFAULT_STEP_SECONDS = 1 / 60;
 
@@ -71,7 +72,16 @@ export function resolveEffectiveAudioGain({
 		localTime: Math.round(localTime * TICKS_PER_SECOND),
 	});
 
-	return dBToLinear(resolvedDb);
+	const { fadeInSeconds, fadeOutSeconds } = getAudioFadeDurations({ element });
+	return (
+		dBToLinear(resolvedDb) *
+		resolveAudioFadeGain({
+			durationSeconds: element.duration / TICKS_PER_SECOND,
+			localTimeSeconds: localTime,
+			fadeInSeconds,
+			fadeOutSeconds,
+		})
+	);
 }
 
 export function buildWaveformGainSamples({

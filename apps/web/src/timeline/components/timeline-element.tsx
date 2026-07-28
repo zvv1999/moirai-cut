@@ -5,6 +5,7 @@ import { useEditor } from "@/editor/use-editor";
 import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
 import { AudioWaveform, WAVEFORM_GAIN_SAMPLE_COUNT } from "./audio-waveform";
 import { AudioVolumeLine } from "./audio-volume-line";
+import { AudioFadeHandles } from "./audio-fade-handles";
 import { useElementPreview } from "@/timeline/hooks/use-element-preview";
 import {
 	useKeyframeDrag,
@@ -55,10 +56,7 @@ import {
 import { getTimelinePixelsPerSecond } from "@/timeline";
 import { buildWaveformSourceKey } from "@/media/waveform-summary";
 import { addMediaTime, type MediaTime, TICKS_PER_SECOND } from "@/wasm";
-import {
-	type TActionWithOptionalArgs,
-	invokeAction,
-} from "@/actions";
+import { type TActionWithOptionalArgs, invokeAction } from "@/actions";
 import { useKeybindingsStore } from "@/actions/keybindings-store";
 import { getDisplayShortcutForAction } from "@/actions/shortcut-management";
 import { useElementSelection } from "@/timeline/hooks/element/use-element-selection";
@@ -600,6 +598,24 @@ function ElementInner({
 						}
 						expandedContent={expandedContent}
 					/>
+					{visibleElement.type === "audio" && (
+						<div
+							className="group/audio pointer-events-none absolute inset-x-0 top-5 bottom-0 z-10 overflow-hidden"
+							data-audio-envelope-layer={visibleElement.id}
+						>
+							<AudioVolumeLine
+								element={visibleElement}
+								trackId={track.id}
+							/>
+						</div>
+					)}
+					{isSelected && canElementHaveAudio(visibleElement) && (
+						<AudioFadeHandles
+							element={visibleElement}
+							trackId={track.id}
+							height={baseTrackHeight}
+						/>
+					)}
 					{(element.groupId || element.linkGroupId) && (
 						<span
 							className="bg-background/85 text-foreground pointer-events-none absolute top-1 right-1 rounded px-1 text-[9px] font-semibold shadow-sm"
@@ -1018,13 +1034,7 @@ function GraphicElementContent({
 	);
 }
 
-function AudioElementContent({
-	element,
-	trackId,
-}: {
-	element: AudioElement;
-	trackId: string;
-}) {
+function AudioElementContent({ element }: { element: AudioElement }) {
 	const pixelsPerSecond = useContext(PixelsPerSecondContext);
 	if (pixelsPerSecond === null) {
 		throw new Error(
@@ -1084,7 +1094,6 @@ function AudioElementContent({
 						sourceStartSec={element.trimStart / TICKS_PER_SECOND}
 						color={TIMELINE_TRACK_THEME.audio.waveformColor}
 					/>
-					<AudioVolumeLine element={element} trackId={trackId} />
 				</div>
 			</div>
 		);
@@ -1097,7 +1106,6 @@ function AudioElementContent({
 					{element.name}
 				</span>
 			</div>
-			<AudioVolumeLine element={element} trackId={trackId} />
 		</div>
 	);
 }
@@ -1238,7 +1246,7 @@ function ElementContent({ element, track }: ElementContentProps) {
 		case "graphic":
 			return <GraphicElementContent element={element} />;
 		case "audio":
-			return <AudioElementContent element={element} trackId={track.id} />;
+			return <AudioElementContent element={element} />;
 		case "video":
 		case "image":
 			return <TiledMediaContent element={element} track={track} />;

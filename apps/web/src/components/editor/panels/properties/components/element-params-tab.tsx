@@ -13,6 +13,7 @@ import {
 	type ElementParamDefinition,
 } from "@/params/registry";
 import type { TimelineElement } from "@/timeline";
+import { useElementPreview } from "@/timeline/hooks/use-element-preview";
 import type { MediaTime } from "@/wasm";
 
 export function ElementParamsTab({
@@ -26,17 +27,22 @@ export function ElementParamsTab({
 	paramKeys?: readonly string[];
 	sectionKey: string;
 }) {
-	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
-		startTime: element.startTime,
-		duration: element.duration,
+	const { renderElement } = useElementPreview({
+		trackId,
+		elementId: element.id,
+		fallback: element,
 	});
-	const params = getElementParams({ element }).filter(
+	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
+		startTime: renderElement.startTime,
+		duration: renderElement.duration,
+	});
+	const params = getElementParams({ element: renderElement }).filter(
 		(param) => !paramKeys || paramKeys.includes(param.key),
 	);
-	const baseValues = buildValues({ element, params });
+	const baseValues = buildValues({ element: renderElement, params });
 
 	return (
-		<Section sectionKey={`${element.id}:${sectionKey}`}>
+		<Section sectionKey={`${renderElement.id}:${sectionKey}`}>
 			<SectionContent className="pt-4">
 				<SectionFields>
 					{params
@@ -44,7 +50,7 @@ export function ElementParamsTab({
 						.map((param) => (
 							<ElementParamField
 								key={param.key}
-								element={element}
+								element={renderElement}
 								trackId={trackId}
 								param={param}
 								baseValue={baseValues[param.key] ?? param.default}

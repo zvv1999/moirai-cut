@@ -12,6 +12,12 @@ import type {
 import { DEFAULTS } from "@/timeline/defaults";
 import { VOLUME_DB_MAX, VOLUME_DB_MIN } from "@/timeline/audio-constants";
 import {
+	AUDIO_FADE_IN_PARAM,
+	AUDIO_FADE_OUT_PARAM,
+	getAudioFadeDurations,
+	setAudioFadeDuration,
+} from "@/timeline/audio-envelope";
+import {
 	CORNER_RADIUS_MAX,
 	CORNER_RADIUS_MIN,
 } from "@/text/background";
@@ -163,6 +169,44 @@ const audioElementParams: ElementParamDefinition[] = [
 		min: VOLUME_DB_MIN,
 		max: VOLUME_DB_MAX,
 		step: 0.01,
+	},
+	{
+		key: AUDIO_FADE_IN_PARAM,
+		label: "Fade In (s)",
+		type: "number",
+		default: 0,
+		min: 0,
+		max: 60,
+		step: 0.01,
+		keyframable: false,
+		read: ({ element }) =>
+			element.type === "audio" || element.type === "video"
+				? getAudioFadeDurations({ element }).fadeInSeconds
+				: 0,
+		write: ({ element, value }) =>
+			(element.type === "audio" || element.type === "video") &&
+			typeof value === "number"
+				? setAudioFadeDuration({ element, side: "in", seconds: value })
+				: element,
+	},
+	{
+		key: AUDIO_FADE_OUT_PARAM,
+		label: "Fade Out (s)",
+		type: "number",
+		default: 0,
+		min: 0,
+		max: 60,
+		step: 0.01,
+		keyframable: false,
+		read: ({ element }) =>
+			element.type === "audio" || element.type === "video"
+				? getAudioFadeDurations({ element }).fadeOutSeconds
+				: 0,
+		write: ({ element, value }) =>
+			(element.type === "audio" || element.type === "video") &&
+			typeof value === "number"
+				? setAudioFadeDuration({ element, side: "out", seconds: value })
+				: element,
 	},
 	{
 		key: "muted",
@@ -435,4 +479,3 @@ export function buildElementParamValues({
 	}
 	return values;
 }
-

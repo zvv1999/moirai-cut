@@ -7,7 +7,8 @@ import {
 } from "@/timeline/audio-envelope";
 import { resolveEffectiveAudioGain } from "@/timeline/audio-state";
 import type { AudioElement } from "@/timeline";
-import { TICKS_PER_SECOND } from "@/wasm";
+import type { ScalarAnimationChannel } from "@/animation/types";
+import { mediaTime, TICKS_PER_SECOND, ZERO_MEDIA_TIME } from "@/wasm";
 
 function audioElement({
 	params = {},
@@ -20,10 +21,10 @@ function audioElement({
 		sourceType: "upload",
 		mediaId: "media-1",
 		name: "Voice",
-		startTime: 0,
-		duration: 10 * TICKS_PER_SECOND,
-		trimStart: 0,
-		trimEnd: 0,
+		startTime: ZERO_MEDIA_TIME,
+		duration: mediaTime({ ticks: 10 * TICKS_PER_SECOND }),
+		trimStart: ZERO_MEDIA_TIME,
+		trimEnd: ZERO_MEDIA_TIME,
 		params: { volume: 0, muted: false, ...params },
 	};
 }
@@ -37,20 +38,20 @@ describe("audio volume envelope", () => {
 					keys: [
 						{
 							id: "quiet",
-							time: 2 * TICKS_PER_SECOND,
+							time: mediaTime({ ticks: 2 * TICKS_PER_SECOND }),
 							value: -12,
 							segmentToNext: "linear",
 							tangentMode: "auto",
 						},
 						{
 							id: "unity",
-							time: 8 * TICKS_PER_SECOND,
+							time: mediaTime({ ticks: 8 * TICKS_PER_SECOND }),
 							value: 0,
 							segmentToNext: "linear",
 							tangentMode: "auto",
 						},
 					],
-				},
+				} satisfies ScalarAnimationChannel,
 			},
 		};
 
