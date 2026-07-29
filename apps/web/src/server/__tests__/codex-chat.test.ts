@@ -168,7 +168,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(args.slice(0, 2)).toEqual(["app-server", "--stdio"]);
 		expect(args).toContain('approval_policy="never"');
 		expect(args).toContain('sandbox_mode="read-only"');
-		expect(args).toContain('mcp_servers.opencut.command="node"');
+		expect(args).toContain('mcp_servers.opencut.command="bun"');
 		expect(args).toContain(
 			'mcp_servers.opencut.args=["/workspace/opencut-classic/apps/mcp/src/server.mjs"]',
 		);

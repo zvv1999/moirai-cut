@@ -8,6 +8,7 @@ test("the repository exposes OpenCut MCP to Codex App without LocalCut", async (
     "utf8",
   );
   assert.match(config, /\[mcp_servers\.opencut\]/);
+  assert.match(config, /command\s*=\s*"bun"/);
   assert.match(config, /apps\/mcp\/src\/server\.mjs/);
   assert.match(config, /OPENCUT_BASE_URL/);
   assert.match(config, /OPENCUT_PROJECTS_DIR/);
