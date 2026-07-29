@@ -112,22 +112,22 @@ lowering the global budget.
 
 | ID | Capability | Acceptance conditions | Status |
 | --- | --- | --- | --- |
-| C01 | FFprobe metadata | Container, streams, codec/profile, pixel format, bit depth, dimensions, SAR/DAR, rotation, rate mode, duration, audio layout, and colour tags are normalized | `GREEN` |
-| C02 | Capability decision | Each asset reports `direct`, `proxy-recommended`, `proxy-required`, `audio-only`, or `unsupported` with stable reason codes | `GREEN` |
-| C03 | Cache and invalidation | Probe results key on source size/mtime/hash and invalidate after relink or replacement | `GREEN` |
+| C01 | FFprobe metadata | Container, streams, codec/profile, pixel format, bit depth, dimensions, SAR/DAR, rotation, rate mode, duration, audio layout, and colour tags are normalized | `DONE` |
+| C02 | Capability decision | Each asset reports `direct`, `proxy-recommended`, `proxy-required`, `audio-only`, or `unsupported` with stable reason codes | `DONE` |
+| C03 | Cache and invalidation | Probe results key on source size/mtime/hash and invalidate after relink or replacement | `DONE` |
 | C04 | Human diagnostics | Media details show source facts, browser decode result, active playback source, and actionable errors in Chinese | `TODO` |
 
 ## Native jobs and proxy workflow
 
 | ID | Capability | Acceptance conditions | Status |
 | --- | --- | --- | --- |
-| P01 | Safe FFmpeg runner | Uses argument arrays, scoped project paths, bounded logs, timeout, cancellation, atomic rename, and temporary cleanup | `TODO` |
-| P02 | Persistent job model | Probe/transcode/proxy jobs expose queued/running/succeeded/failed/cancelled, progress, retry, history, and restart recovery | `TODO` |
-| P03 | Automatic proxy | Unsupported or expensive sources generate H.264/AAC MP4 proxies without browser decoding the original | `TODO` |
-| P04 | Proxy profiles | Draft, standard, and high profiles are explicit; default is 960-long-edge, source FPS capped at 30, fast-start MP4 | `TODO` |
-| P05 | Proxy lifecycle | Enable, disable, refresh, cancel, retry, remove, and batch rebuild preserve the original and timeline references | `TODO` |
-| P06 | Proxy cache | Identical source/profile pairs reuse a verified proxy and never duplicate work | `TODO` |
-| P07 | Background experience | Editing remains usable; progress survives panel navigation and failures explain the next action | `TODO` |
+| P01 | Safe FFmpeg runner | Uses argument arrays, scoped project paths, bounded logs, timeout, cancellation, atomic rename, and temporary cleanup | `DONE` |
+| P02 | Persistent job model | Probe/transcode/proxy jobs expose queued/running/succeeded/failed/cancelled, progress, retry, history, and restart recovery | `GREEN` |
+| P03 | Automatic proxy | Unsupported or expensive sources generate H.264/AAC MP4 proxies without browser decoding the original | `GREEN` |
+| P04 | Proxy profiles | Draft, standard, and high profiles are explicit; default is 960-long-edge, source FPS capped at 30, fast-start MP4 | `DONE` |
+| P05 | Proxy lifecycle | Enable, disable, refresh, cancel, retry, remove, and batch rebuild preserve the original and timeline references | `GREEN` |
+| P06 | Proxy cache | Identical source/profile pairs reuse a verified proxy and never duplicate work | `DONE` |
+| P07 | Background experience | Editing remains usable; progress survives panel navigation and failures explain the next action | `GREEN` |
 
 ## Preview, seeking, and timing
 
@@ -144,34 +144,34 @@ lowering the global budget.
 
 | ID | Capability | Acceptance conditions | Status |
 | --- | --- | --- | --- |
-| E01 | H.264 MP4 | H.264/AAC MP4 exports through native FFmpeg and browser fallback with verified metadata | `TODO` |
-| E02 | HEVC MP4/MOV | 8-bit and 10-bit HEVC delivery is available when the selected encoder supports it | `TODO` |
-| E03 | MOV delivery | H.264/HEVC with AAC or PCM uses correct QuickTime tags and fast-start policy where applicable | `TODO` |
-| E04 | WebM delivery | VP9/AV1 with Opus remains available and is decoded after export | `TODO` |
-| E05 | Audio-only delivery | WAV/PCM, M4A/AAC, MP3, FLAC, and Ogg/Opus outputs are selectable and verified | `TODO` |
-| E06 | Hardware strategy | The UI reports chosen encoder, hardware/software fallback, incompatibility, and actual completion path | `TODO` |
-| E07 | Export validation | Every output is FFprobed, duration-checked, decoded, and retained in export history with reproducible settings | `TODO` |
+| E01 | H.264 MP4 | H.264/AAC MP4 exports through native FFmpeg and browser fallback with verified metadata | `DONE` |
+| E02 | HEVC MP4/MOV | 8-bit and 10-bit HEVC delivery is available when the selected encoder supports it | `DONE` |
+| E03 | MOV delivery | H.264/HEVC with AAC or PCM uses correct QuickTime tags and fast-start policy where applicable | `DONE` |
+| E04 | WebM delivery | VP9/AV1 with Opus remains available and is decoded after export | `DONE` |
+| E05 | Audio-only delivery | WAV/PCM, M4A/AAC, MP3, FLAC, and Ogg/Opus outputs are selectable and verified | `DONE` |
+| E06 | Hardware strategy | The UI reports chosen encoder, hardware/software fallback, incompatibility, and actual completion path | `GREEN` |
+| E07 | Export validation | Every output is FFprobed, duration-checked, decoded, and retained in export history with reproducible settings | `DONE` |
 
 ## Colour and bit depth
 
 | ID | Capability | Acceptance conditions | Status |
 | --- | --- | --- | --- |
-| H01 | Colour inspection | Primaries, transfer, matrix, range, chroma location, bit depth, and HDR metadata are visible | `TODO` |
+| H01 | Colour inspection | Primaries, transfer, matrix, range, chroma location, bit depth, and HDR metadata are visible | `GREEN` |
 | H02 | Working-space policy | SDR rendering explicitly uses a documented linear/sRGB or Rec.709 path rather than accidental browser defaults | `TODO` |
-| H03 | HDR-to-SDR preview | HLG/PQ input receives deterministic tone mapping for the SDR canvas | `TODO` |
-| H04 | 10-bit delivery | HEVC Main 10 export retains a 10-bit pixel format and correct colour metadata | `TODO` |
+| H03 | HDR-to-SDR preview | HLG/PQ input receives deterministic tone mapping for the SDR canvas | `GREEN` |
+| H04 | 10-bit delivery | HEVC Main 10 export retains a 10-bit pixel format and correct colour metadata | `DONE` |
 | H05 | Visual qualification | SDR, P3, HLG, and PQ fixtures have reference frames and measured/visual comparisons | `TODO` |
 
 ## Agent-native codec operations
 
 | ID | Capability | Acceptance conditions | Status |
 | --- | --- | --- | --- |
-| G01 | `media.probe` | Returns normalized metadata and compatibility without changing project state | `GREEN` |
-| G02 | `media.ensureProxy` | Idempotently starts or reuses a proxy job for one asset/profile | `TODO` |
-| G03 | `media.rebuildProxies` | Plans and starts bounded batch work with per-asset results | `TODO` |
-| G04 | `media.setProxyEnabled` | Uses the same media update command/storage path as the human UI | `TODO` |
-| G05 | `media.transcode` | Accepts a validated preset, returns a job, and cannot escape the project | `TODO` |
-| G06 | Job/export inspection | Agent can list, inspect, cancel, retry, validate, and report jobs and outputs | `TODO` |
+| G01 | `media.probe` | Returns normalized metadata and compatibility without changing project state | `DONE` |
+| G02 | `media.ensureProxy` | Idempotently starts or reuses a proxy job for one asset/profile | `DONE` |
+| G03 | `media.rebuildProxies` | Plans and starts bounded batch work with per-asset results | `DONE` |
+| G04 | `media.setProxyEnabled` | Uses the same media update command/storage path as the human UI | `DONE` |
+| G05 | `media.transcode` | Accepts a validated preset, returns a job, and cannot escape the project | `DONE` |
+| G06 | Job/export inspection | Agent can list, inspect, cancel, retry, validate, and report jobs and outputs | `DONE` |
 
 ## Final qualification
 
@@ -203,4 +203,6 @@ After every GREEN checkpoint:
 | C01-C02 | `5b1477c` | `aa6c61f` | 6 tests; capability module 93.6% line coverage |
 | C03 | `541b08d` | `20d03ac` | 6 tests; probe module 93.1% line coverage; cache hit performs zero FFprobe calls |
 | G01 API | `bc0d6c2` | `f19432d` | 2 route tests; route 98.6% line coverage |
-| G01 Agent bridge | `c341fd4`, `a7839bb` | pending | Client validation and in-page bridge verification pending |
+| G01 Agent bridge | `c341fd4`, `a7839bb` | `130b1fa` | In-page `media.probe` plus browser decode inspection |
+| P01-P07, G02-G04, G06 | `23cc298`, `3edf425`, `f4cba3f`, `4bf1c4b`, `81d827c` | `f5a9144`, `9f27b88`, `3b9dc4e`, `4282ffe`, `844c3f2` | Real Main10 proxy: H.264/AAC, 3.699× realtime, SSIM 0.987271, PSNR 41.416 dB; cancellation cleanup and two-worker bound verified |
+| E01-E07, H04, G05 | `4986a74`, `c976430`, `9b1a9e2`, `f40d2da` | `c4d9410`, `b676c27`, `02e83b1`, pending | Real matrix: 15/15 presets decode; H.264/HEVC/MOV/WebM SSIM 0.994689–0.996542 and PSNR 47.472–48.570 dB; Main10 retained |
