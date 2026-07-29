@@ -114,8 +114,9 @@ describe("native delivery presets", () => {
 			probe,
 			decode: async ({ filePath }) => {
 				decoded = true;
-				expect(filePath).toBe(
-					path.join(exportDirectory, "source.hevc10.mp4"),
+				expect(path.dirname(filePath)).toBe(exportDirectory);
+				expect(path.basename(filePath)).toMatch(
+					/^\.source\.hevc10\..+\.tmp\.mp4$/,
 				);
 			},
 		});
