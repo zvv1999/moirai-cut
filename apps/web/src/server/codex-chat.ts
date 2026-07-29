@@ -1,7 +1,4 @@
-import {
-	spawn,
-	type ChildProcessWithoutNullStreams,
-} from "node:child_process";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline";
@@ -34,7 +31,7 @@ export type CodexChatEvent =
 			itemId: string;
 			label: string;
 			status: "started" | "completed";
-		}
+	  }
 	| { type: "done"; sessionId: string; message: string };
 
 export interface CodexAppServerSubscription extends AsyncIterable<unknown> {
@@ -93,9 +90,7 @@ function commonCodexConfigArgs(runtime: CodexRuntimeConfig): string[] {
 	];
 }
 
-export function buildCodexAppServerArgs(
-	runtime: CodexRuntimeConfig,
-): string[] {
+export function buildCodexAppServerArgs(runtime: CodexRuntimeConfig): string[] {
 	return ["app-server", "--stdio", ...commonCodexConfigArgs(runtime)];
 }
 
@@ -113,6 +108,8 @@ export function buildCodexPrompt({
 		"- 任何工程读取和改动都必须使用 opencut MCP；不要修改 OpenCut 源码仓库。",
 		"- 当前运行在内置浏览器，使用 read_project 和 edit_project 这组文件工具读取及修改工程。",
 		"- 不要调用 status、get_context、open_editor、reveal_context 等依赖 Chrome 9222 的标签页工具；引用上下文已随本消息提供。",
+		"- 若上下文包含时间段且任务需要理解画面，调用 inspect_timeline_range；若要先理解某个完整源视频，调用 inspect_media_scenes。",
+		"- 你能直接看上述工具返回的联系表图片并做多模态判断。可复用的素材理解结果用 save_media_analysis 写入素材 JSON 目录。",
 		"- 不要运行 lint_cut、render_frames、导出质检、字幕数量校验或其他额外检查，除非用户明确要求。",
 		"- 不要套用本地模板或最低素材数量规则。信息足够时自主判断并完成。",
 		"- 只处理下面这条用户消息。完成后用简洁中文说明实际做了什么；若未改动，明确说明原因。",
@@ -125,7 +122,9 @@ export function buildCodexPrompt({
 	].join("\n");
 }
 
-function passthroughEnvironment(runtime: CodexRuntimeConfig): NodeJS.ProcessEnv {
+function passthroughEnvironment(
+	runtime: CodexRuntimeConfig,
+): NodeJS.ProcessEnv {
 	const keys = [
 		"PATH",
 		"HOME",
@@ -405,10 +404,12 @@ async function createAppServerConnection(
 
 const connectSharedAppServer: CodexAppServerConnector = async (runtime) => {
 	if (!sharedConnectionPromise) {
-		sharedConnectionPromise = createAppServerConnection(runtime).catch((error) => {
-			sharedConnectionPromise = null;
-			throw error;
-		});
+		sharedConnectionPromise = createAppServerConnection(runtime).catch(
+			(error) => {
+				sharedConnectionPromise = null;
+				throw error;
+			},
+		);
 	}
 	const connection = await sharedConnectionPromise;
 	if (connection.isOpen) return connection;
@@ -483,7 +484,9 @@ function finalMessageFromTurn(turn: Record<string, unknown>): string | null {
 	return typeof text === "string" && text.trim() ? text.trim() : null;
 }
 
-function notificationTurnId(notification: Record<string, unknown>): string | null {
+function notificationTurnId(
+	notification: Record<string, unknown>,
+): string | null {
 	if (!isRecord(notification.params)) return null;
 	if (typeof notification.params.turnId === "string") {
 		return notification.params.turnId;

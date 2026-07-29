@@ -243,6 +243,9 @@ export function AgentWorkbench() {
 	const [referencePickerTab, setReferencePickerTab] = useState<
 		"timeline" | "library"
 	>("timeline");
+	const [referenceSearch, setReferenceSearch] = useState("");
+	const [rangeStartInput, setRangeStartInput] = useState("");
+	const [rangeEndInput, setRangeEndInput] = useState("");
 
 	const refreshCodexConnection = useCallback(async () => {
 		setCodexChecking(true);
@@ -308,6 +311,39 @@ export function AgentWorkbench() {
 			),
 		0,
 	);
+	const normalizedReferenceSearch = referenceSearch.trim().toLocaleLowerCase();
+	const filteredTimelineTracks = semanticState.tracks
+		.map((track) => ({
+			...track,
+			elements: track.elements.filter((element) => {
+				if (!normalizedReferenceSearch) return true;
+				return [
+					element.name,
+					element.type,
+					element.id,
+					element.mediaId ?? "",
+					track.name ?? "",
+					track.type,
+				]
+					.join(" ")
+					.toLocaleLowerCase()
+					.includes(normalizedReferenceSearch);
+			}),
+		}))
+		.filter((track) => track.elements.length > 0);
+	const filteredTimelineElements = filteredTimelineTracks.flatMap((track) =>
+		track.elements.map((element) => ({
+			trackId: track.id,
+			elementId: element.id,
+		})),
+	);
+	const filteredMedia = semanticState.media.filter((asset) => {
+		if (!normalizedReferenceSearch) return true;
+		return [asset.name, asset.type, asset.id]
+			.join(" ")
+			.toLocaleLowerCase()
+			.includes(normalizedReferenceSearch);
+	});
 
 	const selectedLabel =
 		selectedElements.length === 0
@@ -483,7 +519,59 @@ export function AgentWorkbench() {
 			endSeconds,
 		});
 		addReferences([reference]);
+		setRangeStartInput(startSeconds.toFixed(3));
+		setRangeEndInput(endSeconds.toFixed(3));
 		toast.success("已引用时间片段给 Codex");
+	};
+
+	const pinExactTimelineRange = () => {
+		if (!rangeStartInput.trim() || !rangeEndInput.trim()) {
+			toast.error("请输入开始和结束时间");
+			return;
+		}
+		const startSeconds = Number(rangeStartInput);
+		const endSeconds = Number(rangeEndInput);
+		if (
+			!Number.isFinite(startSeconds) ||
+			!Number.isFinite(endSeconds) ||
+			startSeconds < 0 ||
+			endSeconds <= startSeconds ||
+			endSeconds > timelineDurationSeconds
+		) {
+			toast.error("时间段无效", {
+				description: `请输入 0–${timelineDurationSeconds.toFixed(3)} 秒内的有效范围。`,
+			});
+			return;
+		}
+		addReferences([
+			buildTimelineRangeReference({
+				state: editor.agent.getState(),
+				startSeconds,
+				endSeconds,
+			}),
+		]);
+		toast.success(
+			`已引用 ${startSeconds.toFixed(2)}–${endSeconds.toFixed(2)} 秒`,
+		);
+	};
+
+	const pinFilteredResults = () => {
+		const references =
+			referencePickerTab === "timeline"
+				? buildElementContextReferences({
+						state: editor.agent.getState(),
+						selectedElements: filteredTimelineElements,
+					})
+				: buildMediaContextReferences({
+						state: editor.agent.getState(),
+						mediaIds: filteredMedia.map((asset) => asset.id),
+					});
+		if (references.length === 0) {
+			toast.error("当前筛选没有可引用内容");
+			return;
+		}
+		addReferences(references);
+		toast.success(`已引用 ${references.length} 项筛选结果`);
 	};
 
 	const revealReference = (uri: string) => {
@@ -516,6 +604,15 @@ export function AgentWorkbench() {
 		try {
 			await navigator.clipboard.writeText(contextSnapshot.promptContext);
 			toast.success("Codex 上下文已复制");
+		} catch {
+			toast.error("复制失败，请检查浏览器剪贴板权限");
+		}
+	};
+
+	const copyContextJson = async () => {
+		try {
+			await navigator.clipboard.writeText(contextSnapshot.contextJson);
+			toast.success("Agent JSON 已复制");
 		} catch {
 			toast.error("复制失败，请检查浏览器剪贴板权限");
 		}
@@ -647,7 +744,9 @@ export function AgentWorkbench() {
 						AI
 					</span>
 					<div className="rounded-2xl rounded-tl-sm border border-white/8 bg-white/[0.045] px-3.5 py-3 text-xs leading-relaxed text-slate-200">
-						<p>本会话由 Codex 直接处理。告诉我你想怎么剪，我会直接操作当前工程。</p>
+						<p>
+							本会话由 Codex 直接处理。告诉我你想怎么剪，我会直接操作当前工程。
+						</p>
 						<p className="mt-1 text-[10px] text-slate-500">
 							可用“＋”从时间线或素材库精确引用上下文。
 						</p>
@@ -682,7 +781,14 @@ export function AgentWorkbench() {
 									className="text-[9px] text-slate-400 hover:text-slate-100"
 									onClick={() => void copyContext()}
 								>
-									复制 Path
+									复制上下文
+								</button>
+								<button
+									type="button"
+									className="text-[9px] text-slate-400 hover:text-slate-100"
+									onClick={() => void copyContextJson()}
+								>
+									复制 JSON
 								</button>
 								<button
 									type="button"
@@ -846,6 +952,13 @@ export function AgentWorkbench() {
 						<div className="ml-auto flex items-start gap-1 pb-1">
 							<button
 								type="button"
+								className="rounded border border-cyan-400/20 bg-cyan-400/[0.05] px-2 py-1 text-[9px] text-cyan-200 hover:bg-cyan-400/10"
+								onClick={pinFilteredResults}
+							>
+								引用筛选结果
+							</button>
+							<button
+								type="button"
 								className="rounded border border-white/8 px-2 py-1 text-[9px] text-slate-400 hover:text-slate-100"
 								onClick={pinSelectedElements}
 							>
@@ -860,10 +973,49 @@ export function AgentWorkbench() {
 							</button>
 						</div>
 					</div>
+					<div className="grid grid-cols-[minmax(0,1fr)_64px_12px_64px_auto] items-center gap-1.5 border-b border-white/8 px-3 py-2">
+						<input
+							type="search"
+							aria-label="搜索可引用内容"
+							value={referenceSearch}
+							onChange={(event) => setReferenceSearch(event.target.value)}
+							placeholder="搜索名称、类型或 ID"
+							className="h-7 min-w-0 rounded-md border border-white/8 bg-black/20 px-2 text-[9px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-cyan-400/35"
+						/>
+						<input
+							type="number"
+							min="0"
+							step="0.001"
+							aria-label="引用开始时间（秒）"
+							value={rangeStartInput}
+							onChange={(event) => setRangeStartInput(event.target.value)}
+							placeholder="开始"
+							className="h-7 rounded-md border border-white/8 bg-black/20 px-2 font-mono text-[9px] text-slate-200 outline-none focus:border-cyan-400/35"
+						/>
+						<span className="text-center text-[9px] text-slate-600">–</span>
+						<input
+							type="number"
+							min="0"
+							max={timelineDurationSeconds}
+							step="0.001"
+							aria-label="引用结束时间（秒）"
+							value={rangeEndInput}
+							onChange={(event) => setRangeEndInput(event.target.value)}
+							placeholder="结束"
+							className="h-7 rounded-md border border-white/8 bg-black/20 px-2 font-mono text-[9px] text-slate-200 outline-none focus:border-cyan-400/35"
+						/>
+						<button
+							type="button"
+							onClick={pinExactTimelineRange}
+							className="h-7 rounded-md border border-white/10 px-2 text-[9px] text-slate-300 hover:border-cyan-400/35 hover:text-cyan-200"
+						>
+							引用精确时间段
+						</button>
+					</div>
 					<div className="max-h-48 overflow-y-auto p-2">
 						{referencePickerTab === "timeline" ? (
 							<div className="space-y-2">
-								{semanticState.tracks.map((track) =>
+								{filteredTimelineTracks.map((track) =>
 									track.elements.length > 0 ? (
 										<div key={track.id}>
 											<div className="px-1 pb-1 text-[8px] font-semibold tracking-[0.12em] text-slate-600 uppercase">
@@ -923,7 +1075,7 @@ export function AgentWorkbench() {
 							</div>
 						) : (
 							<div className="grid grid-cols-2 gap-1">
-								{semanticState.media.map((asset) => {
+								{filteredMedia.map((asset) => {
 									const selected = visibleReferences.some(
 										(reference) =>
 											reference.kind === "media" &&
@@ -987,7 +1139,8 @@ export function AgentWorkbench() {
 								onClick={() => removeReference(reference.uri)}
 								title={`移除 ${reference.label}`}
 							>
-								@{reference.kind === "media"
+								@
+								{reference.kind === "media"
 									? "素材库"
 									: reference.kind === "range"
 										? "片段"
