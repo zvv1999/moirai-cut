@@ -57,36 +57,22 @@ export function InspectorSelectionHeader({
 }) {
 	return (
 		<section
-			className="border-b bg-background/72 px-4 py-2.5"
+			className="sr-only"
 			aria-label={`Selected ${type}: ${name}`}
 			data-inspector-context="selected-clip"
 		>
-			<div className="flex items-center justify-between gap-4">
-				<div className="min-w-0">
-					<p className="text-muted-foreground flex items-center gap-1.5 text-[10px] leading-none">
-						<span>基础信息</span>
-						<span aria-hidden="true">·</span>
-						<span className="text-primary/90">{ELEMENT_TYPE_LABELS[type]}</span>
-					</p>
-					<p className="mt-1.5 truncate text-xs font-medium" title={name}>
-						{name}
-					</p>
+			<span>{ELEMENT_TYPE_LABELS[type]}</span>
+			<span>{name}</span>
+			<dl>
+				<div>
+					<dt>时长</dt>
+					<dd>{formatInspectorDuration({ duration })}</dd>
 				</div>
-				<dl className="grid shrink-0 grid-cols-2 gap-x-4 text-[10px]">
-					<div>
-						<dt className="text-muted-foreground">时长</dt>
-						<dd className="text-foreground mt-1 font-mono tabular-nums">
-							{formatInspectorDuration({ duration })}
-						</dd>
-					</div>
-					<div className="max-w-24">
-						<dt className="text-muted-foreground">轨道</dt>
-						<dd className="text-foreground mt-1 truncate" title={trackName}>
-							{trackName}
-						</dd>
-					</div>
-				</dl>
-			</div>
+				<div>
+					<dt>轨道</dt>
+					<dd>{trackName}</dd>
+				</div>
+			</dl>
 		</section>
 	);
 }
@@ -105,7 +91,7 @@ export function InspectorTabNavigation({
 			role="tablist"
 			aria-label="属性分类"
 			data-inspector-tabs="clip-properties"
-			className="scrollbar-hidden flex h-12 shrink-0 items-stretch gap-5 overflow-x-auto border-b px-4"
+			className="scrollbar-hidden border-border/70 flex h-[54px] shrink-0 items-stretch justify-between gap-1 overflow-x-auto border-b px-4"
 		>
 			{tabs.map((tab) => {
 				const isActive = tab.id === activeTabId;
@@ -122,7 +108,7 @@ export function InspectorTabNavigation({
 						title={tab.label}
 						onClick={() => onSelect(tab.id)}
 						className={cn(
-							"relative h-auto shrink-0 rounded-none border-0 px-0 text-[13px] font-medium hover:bg-transparent",
+							"relative h-auto min-w-0 shrink-0 rounded-none border-0 px-1 text-[13px] font-medium hover:bg-transparent",
 							"after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:origin-center after:scale-x-0 after:rounded-full after:bg-primary after:transition-transform",
 							isActive
 								? "text-primary after:scale-x-100"

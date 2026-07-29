@@ -3,7 +3,6 @@ import type {
 	EffectElement,
 	GraphicElement,
 	ImageElement,
-	MaskableElement,
 	RetimableElement,
 	StickerElement,
 	TextElement,
@@ -23,88 +22,22 @@ import {
 } from "@hugeicons/core-free-icons";
 import { ElementParamsTab } from "./components/element-params-tab";
 import {
+	VisualWorkbenchTab,
+	VISUAL_PARAM_SECTIONS,
+	VISUAL_SUBTABS,
+} from "./components/visual-workbench-tab";
+import {
 	ClipEffectsTab,
 	StandaloneEffectTab,
 } from "@/effects/components/effects-tab";
-import { MasksTab } from "@/masks/components/masks-tab";
 import { SpeedTab } from "@/speed/components/speed-tab";
 import { GraphicTab } from "@/graphics/components/graphic-tab";
 import { OcShapesIcon } from "@/components/icons";
 import { AudioWorkbenchTab } from "./components/audio-workbench-tab";
 import { MotionTrackingTab } from "@/motion-tracking/components/motion-tracking-tab";
 
-const POSITION_SIZE_PARAM_KEYS = [
-	"transform.scaleX",
-	"transform.scaleY",
-	"transform.positionX",
-	"transform.positionY",
-	"transform.rotate",
-	"geometry.mirrorX",
-	"geometry.mirrorY",
-] as const;
+export { VISUAL_PARAM_SECTIONS, VISUAL_SUBTABS };
 
-const CROP_PARAM_KEYS = [
-	"crop.left",
-	"crop.right",
-	"crop.top",
-	"crop.bottom",
-] as const;
-
-const APPEARANCE_PARAM_KEYS = [
-	"geometry.cornerRadius",
-	"geometry.shadow.enabled",
-	"geometry.shadow.color",
-	"geometry.shadow.blur",
-	"geometry.shadow.offsetX",
-	"geometry.shadow.offsetY",
-] as const;
-
-const STROKE_PARAM_KEYS = [
-	"geometry.stroke.width",
-	"geometry.stroke.color",
-] as const;
-
-const BLENDING_PARAM_KEYS = ["opacity", "blendMode"] as const;
-const VISUAL_PARAM_KEYS = [
-	...POSITION_SIZE_PARAM_KEYS,
-	...BLENDING_PARAM_KEYS,
-	...CROP_PARAM_KEYS,
-	...APPEARANCE_PARAM_KEYS,
-	...STROKE_PARAM_KEYS,
-] as const;
-
-export const VISUAL_PARAM_SECTIONS = [
-	{
-		id: "position-size",
-		label: "位置大小",
-		paramKeys: POSITION_SIZE_PARAM_KEYS,
-		defaultOpen: true,
-	},
-	{
-		id: "blending",
-		label: "混合",
-		paramKeys: BLENDING_PARAM_KEYS,
-		defaultOpen: true,
-	},
-	{
-		id: "crop",
-		label: "裁剪",
-		paramKeys: CROP_PARAM_KEYS,
-		defaultOpen: false,
-	},
-	{
-		id: "appearance",
-		label: "圆角与阴影",
-		paramKeys: APPEARANCE_PARAM_KEYS,
-		defaultOpen: false,
-	},
-	{
-		id: "stroke",
-		label: "描边",
-		paramKeys: STROKE_PARAM_KEYS,
-		defaultOpen: false,
-	},
-] as const;
 const TEXT_PARAM_KEYS = [
 	"content",
 	"fontFamily",
@@ -151,13 +84,7 @@ function buildVisualTab({
 		label: "画面",
 		icon: <HugeiconsIcon icon={ArrowExpandIcon} size={16} />,
 		content: ({ trackId }) => (
-			<ElementParamsTab
-				element={element}
-				trackId={trackId}
-				paramKeys={VISUAL_PARAM_KEYS}
-				sections={VISUAL_PARAM_SECTIONS}
-				sectionKey="visual"
-			/>
+			<VisualWorkbenchTab element={element} trackId={trackId} />
 		),
 	};
 }
@@ -190,46 +117,77 @@ function buildSpeedTab({
 	};
 }
 
-function buildMotionTab({
+function InspectorFeatureSummary({
+	title,
+	description,
+}: {
+	title: string;
+	description: string;
+}) {
+	return (
+		<div className="flex min-h-64 flex-col items-center justify-center px-8 text-center">
+			<div className="border-border bg-accent/60 mb-3 flex size-10 items-center justify-center rounded-xl border text-lg">
+				◇
+			</div>
+			<p className="text-[13px] font-medium">{title}</p>
+			<p className="text-muted-foreground mt-1.5 max-w-60 text-[11px] leading-5">
+				{description}
+			</p>
+		</div>
+	);
+}
+
+function buildAnimationTab({
 	element,
 }: {
-	element: VideoElement;
+	element: VisualElement;
 }): PropertiesTabDef {
 	return {
-		id: "motion",
-		label: "跟踪",
+		id: "animation",
+		label: "动画",
 		icon: <HugeiconsIcon icon={MagicWand05Icon} size={16} />,
-		content: ({ trackId }) => (
-			<MotionTrackingTab element={element} trackId={trackId} />
+		content: () => (
+			<InspectorFeatureSummary
+				title="关键帧动画"
+				description={`${element.name} 的位置、缩放、旋转等关键帧已在“画面 · 基础”每个属性右侧开放；入场、出场和组合动画预设尚未接入。`}
+			/>
 		),
 	};
 }
 
-function buildMasksTab({
+function buildAdjustmentsTab({
 	element,
 }: {
-	element: MaskableElement;
+	element: VisualElement;
 }): PropertiesTabDef {
 	return {
-		id: "masks",
-		label: "蒙版",
-		icon: <OcShapesIcon size={16} />,
-		content: ({ trackId }) => <MasksTab element={element} trackId={trackId} />,
+		id: "adjustments",
+		label: "调整",
+		icon: <HugeiconsIcon icon={MagicWand05Icon} size={16} />,
+		content: ({ trackId }) => (
+			<ClipEffectsTab element={element} trackId={trackId} />
+		),
 	};
 }
 
-function buildClipEffectsTab({
+function buildAiEffectsTab({
 	element,
 }: {
 	element: VisualElement;
 }): PropertiesTabDef {
 	return {
 		id: "effects",
-		label: "特效",
+		label: "AI效果",
 		icon: <HugeiconsIcon icon={MagicWand05Icon} size={16} />,
-		content: ({ trackId }) => (
-			<ClipEffectsTab element={element} trackId={trackId} />
-		),
+		content: ({ trackId }) =>
+			element.type === "video" ? (
+				<MotionTrackingTab element={element} trackId={trackId} />
+			) : (
+				<InspectorFeatureSummary
+					title="AI效果尚未接入"
+					description="当前素材类型没有可用的 AI 处理能力；不会用静态样式伪造处理结果。"
+				/>
+			),
 	};
 }
 
@@ -304,9 +262,9 @@ function getVideoConfig({
 			buildVisualTab({ element }),
 			...(showAudioTab ? [buildAudioTab({ element })] : []),
 			buildSpeedTab({ element }),
-			buildMotionTab({ element }),
-			buildMasksTab({ element }),
-			buildClipEffectsTab({ element }),
+			buildAnimationTab({ element }),
+			buildAdjustmentsTab({ element }),
+			buildAiEffectsTab({ element }),
 		],
 	};
 }
@@ -320,8 +278,9 @@ function getImageConfig({
 		defaultTab: "visual",
 		tabs: [
 			buildVisualTab({ element }),
-			buildMasksTab({ element }),
-			buildClipEffectsTab({ element }),
+			buildAnimationTab({ element }),
+			buildAdjustmentsTab({ element }),
+			buildAiEffectsTab({ element }),
 		],
 	};
 }
@@ -333,7 +292,12 @@ function getStickerConfig({
 }): ElementPropertiesConfig {
 	return {
 		defaultTab: "visual",
-		tabs: [buildVisualTab({ element }), buildClipEffectsTab({ element })],
+		tabs: [
+			buildVisualTab({ element }),
+			buildAnimationTab({ element }),
+			buildAdjustmentsTab({ element }),
+			buildAiEffectsTab({ element }),
+		],
 	};
 }
 
@@ -347,8 +311,9 @@ function getGraphicConfig({
 		tabs: [
 			buildGraphicTab({ element }),
 			buildVisualTab({ element }),
-			buildMasksTab({ element }),
-			buildClipEffectsTab({ element }),
+			buildAnimationTab({ element }),
+			buildAdjustmentsTab({ element }),
+			buildAiEffectsTab({ element }),
 		],
 	};
 }
