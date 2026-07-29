@@ -46,8 +46,27 @@ import {
 } from "@/export/component-outputs";
 import { collectCaptionCues } from "@/subtitles/caption-model";
 import { serializeSubtitles } from "@/subtitles/interchange";
+import {
+	cancelNativeDeliveryJob,
+	startNativeDeliveryJob,
+	waitForNativeDeliveryJob,
+} from "@/agent/native-delivery-jobs";
+import {
+	DELIVERY_PRESET_NAMES,
+	type DeliveryPresetName,
+} from "@/server/native-delivery";
 
 type ExportTab = "setup" | "preflight" | "components" | "queue" | "history";
+type DeliverySelection = "browser" | DeliveryPresetName;
+
+function isDeliverySelection(
+	value: string,
+): value is DeliverySelection {
+	return (
+		value === "browser" ||
+		DELIVERY_PRESET_NAMES.some((preset) => preset === value)
+	);
+}
 
 function formatBytes(bytes: number): string {
 	if (bytes < 1024) return `${bytes} B`;
@@ -149,6 +168,8 @@ export function AdvancedExportPopover({
 		historyStore.list(),
 	);
 	const [runningQueue, setRunningQueue] = useState(false);
+	const [deliverySelection, setDeliverySelection] =
+		useState<DeliverySelection>("browser");
 	const [elapsedSeconds, setElapsedSeconds] = useState(0);
 	const currentJobIdRef = useRef<string | null>(null);
 	const exportStartedAtRef = useRef<number | null>(null);
@@ -408,13 +429,20 @@ export function AdvancedExportPopover({
 			draft: requestDraft,
 		});
 		let completedBytes: number | null = null;
+		let completedDestinationName = destinationName;
 		let completedError: string | null = null;
 		let cancelled = false;
 		const handle = backgroundJobs.start({
 			kind: "export",
 			label,
 			run: async ({ signal, update }) => {
-				const cancel = () => editor.project.cancelExport();
+				let nativeJobId: string | null = null;
+				const cancel = () => {
+					editor.project.cancelExport();
+					if (nativeJobId) {
+						cancelNativeDeliveryJob({ jobId: nativeJobId });
+					}
+				};
 				signal.addEventListener("abort", cancel, { once: true });
 				const unsubscribe = editor.project.subscribe(() => {
 					const state = editor.project.getExportState();
@@ -443,18 +471,77 @@ export function AdvancedExportPopover({
 					if (!result.success || !result.buffer) {
 						throw new Error(result.error || "Export did not produce a file");
 					}
-					update({ progress: 0.99, step: "Preparing download" });
-					downloadBuffer({
-						buffer: result.buffer,
-						filename: destinationName,
-						mimeType: getExportMimeType({ format: requestDraft.format }),
-					});
-					completedBytes = result.buffer.byteLength;
+					if (deliverySelection === "browser") {
+						update({ progress: 0.99, step: "Preparing download" });
+						downloadBuffer({
+							buffer: result.buffer,
+							filename: destinationName,
+							mimeType: getExportMimeType({
+								format: requestDraft.format,
+							}),
+						});
+						completedBytes = result.buffer.byteLength;
+					} else {
+						update({
+							progress: 0.9,
+							step: "保存高质量中间文件",
+						});
+						const saveResponse = await fetch(
+							`/api/exports/${encodeURIComponent(project.metadata.id)}/${encodeURIComponent(destinationName)}`,
+							{
+								method: "PUT",
+								headers: {
+									"content-type": getExportMimeType({
+										format: requestDraft.format,
+									}),
+								},
+								body: result.buffer,
+							},
+						);
+						if (!saveResponse.ok) {
+							throw new Error("无法保存原生转码中间文件");
+						}
+						const nativeJob = startNativeDeliveryJob({
+							projectId: project.metadata.id,
+							sourceName: destinationName,
+							preset: deliverySelection,
+						});
+						nativeJobId = nativeJob.id;
+						update({
+							progress: 0.94,
+							step: `原生编码 ${deliverySelection}`,
+						});
+						const delivered = await waitForNativeDeliveryJob({
+							jobId: nativeJob.id,
+						});
+						if (
+							delivered.status !== "succeeded" ||
+							!delivered.result
+						) {
+							throw new Error(
+								delivered.error ??
+									`原生编码状态：${delivered.status}`,
+							);
+						}
+						completedDestinationName =
+							delivered.result.outputName;
+						completedBytes = delivered.result.sizeBytes;
+						const outputResponse = await fetch(
+							`/api/exports/${encodeURIComponent(project.metadata.id)}/${encodeURIComponent(delivered.result.outputName)}`,
+						);
+						if (!outputResponse.ok) {
+							throw new Error("原生交付文件读取失败");
+						}
+						downloadBlob({
+							blob: await outputResponse.blob(),
+							filename: delivered.result.outputName,
+						});
+					}
 					if (queueId) {
 						exportQueue.complete({
 							id: queueId,
-							outputName: destinationName,
-							sizeBytes: result.buffer.byteLength,
+							outputName: completedDestinationName,
+							sizeBytes: completedBytes,
 						});
 					}
 				} catch (error) {
@@ -478,15 +565,15 @@ export function AdvancedExportPopover({
 				requestDraft,
 				label,
 				status: "completed",
-				destinationName,
+				destinationName: completedDestinationName,
 				sizeBytes: completedBytes,
 				error: null,
 			});
-			toast.success(`Exported ${destinationName}`, {
+			toast.success(`已导出 ${completedDestinationName}`, {
 				description: `${formatBytes(completedBytes ?? 0)} · browser download + project exports`,
 			});
 			await refreshAvailability({
-				expectedName: destinationName,
+				expectedName: completedDestinationName,
 				attempts: 24,
 			});
 			return true;
@@ -849,6 +936,49 @@ export function AdvancedExportPopover({
 									>
 										<option value="mp4">MP4</option>
 										<option value="webm">WebM</option>
+									</select>
+								</label>
+								<label className="text-[10px]">
+									<span className="mb-1 block opacity-60">
+										交付编码
+									</span>
+									<select
+										aria-label="原生交付编码"
+										className="bg-background border-input h-8 w-full rounded border px-2"
+										value={deliverySelection}
+										onChange={(event) => {
+											const value = event.target.value;
+											setDeliverySelection(
+												isDeliverySelection(value)
+													? value
+													: "browser",
+											);
+										}}
+									>
+										<option value="browser">浏览器直接导出</option>
+										<option value="h264-mp4">H.264 MP4</option>
+										<option value="hevc-mp4">HEVC MP4</option>
+										<option value="hevc10-mp4">
+											HEVC 10-bit MP4
+										</option>
+										<option value="h264-mov">H.264 MOV</option>
+										<option value="hevc-mov">HEVC MOV</option>
+										<option value="hevc10-mov">
+											HEVC 10-bit MOV
+										</option>
+										<option value="h264-mov-pcm">
+											H.264 MOV + PCM
+										</option>
+										<option value="hevc10-mov-pcm">
+											HEVC 10-bit MOV + PCM
+										</option>
+										<option value="vp9-webm">VP9 WebM</option>
+										<option value="av1-webm">AV1 WebM</option>
+										<option value="wav-pcm">WAV PCM</option>
+										<option value="m4a-aac">M4A AAC</option>
+										<option value="mp3">MP3</option>
+										<option value="flac">FLAC</option>
+										<option value="ogg-opus">Ogg Opus</option>
 									</select>
 								</label>
 								<label className="text-[10px]">

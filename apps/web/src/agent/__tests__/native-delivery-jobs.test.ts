@@ -61,6 +61,7 @@ describe("Agent native delivery jobs", () => {
 	});
 
 	test("aborts a running request and records cancellation", async () => {
+		// eslint-disable-next-line opencut/prefer-object-params -- fetch-compatible test double follows the platform signature.
 		const fetcher = async (
 			_input: RequestInfo | URL,
 			init?: RequestInit,
@@ -86,5 +87,31 @@ describe("Agent native delivery jobs", () => {
 		expect(getNativeDeliveryJob({ jobId: started.id })?.status).toBe(
 			"cancelled",
 		);
+	});
+
+	test("preserves structured failures and handles unknown job ids", async () => {
+		const started = startNativeDeliveryJob({
+			projectId: "project",
+			sourceName: "cut.mp4",
+			preset: "av1-webm",
+			fetcher: async () =>
+				Response.json(
+					{
+						error: {
+							message: "AV1 encoder is unavailable",
+						},
+					},
+					{ status: 400 },
+				),
+			randomUUID: () => "delivery-job-failed",
+		});
+		await Bun.sleep(1);
+
+		expect(getNativeDeliveryJob({ jobId: started.id })).toMatchObject({
+			status: "failed",
+			error: "AV1 encoder is unavailable",
+		});
+		expect(getNativeDeliveryJob({ jobId: "missing" })).toBeNull();
+		expect(cancelNativeDeliveryJob({ jobId: "missing" })).toBeNull();
 	});
 });

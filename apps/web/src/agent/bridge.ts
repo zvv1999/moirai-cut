@@ -35,6 +35,14 @@ import type {
   NativeMediaJob,
   ProxyProfileName,
 } from "@/server/media-jobs";
+import {
+  cancelNativeDeliveryJob,
+  getNativeDeliveryJob,
+  listNativeDeliveryJobs,
+  startNativeDeliveryJob,
+  type NativeDeliveryJobState,
+} from "./native-delivery-jobs";
+import type { DeliveryPresetName } from "@/server/native-delivery";
 
 /**
  * The out-of-page entry point.
@@ -116,6 +124,18 @@ export interface AgentBridge {
     retryJob(request: {
       jobId: string;
     }): Promise<BridgeResult<NativeMediaJob>>;
+    transcode(request: {
+      sourceName: string;
+      preset: DeliveryPresetName;
+      outputName?: string;
+    }): BridgeResult<NativeDeliveryJobState>;
+    listDeliveryJobs(): BridgeResult<NativeDeliveryJobState[]>;
+    getDeliveryJob(request: {
+      jobId: string;
+    }): BridgeResult<NativeDeliveryJobState | null>;
+    cancelDeliveryJob(request: {
+      jobId: string;
+    }): BridgeResult<NativeDeliveryJobState | null>;
   };
 }
 
@@ -328,6 +348,20 @@ export function installAgentBridge(): () => void {
             jobId,
           }),
         ),
+      transcode: ({ sourceName, preset, outputName }) =>
+        guard(() =>
+          startNativeDeliveryJob({
+            projectId: activeProjectId(),
+            sourceName,
+            preset,
+            outputName,
+          }),
+        ),
+      listDeliveryJobs: () => guard(() => listNativeDeliveryJobs()),
+      getDeliveryJob: ({ jobId }) =>
+        guard(() => getNativeDeliveryJob({ jobId })),
+      cancelDeliveryJob: ({ jobId }) =>
+        guard(() => cancelNativeDeliveryJob({ jobId })),
     },
   };
 
