@@ -1,11 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import {
-	buildCodexExecArgs,
+	buildCodexAppServerArgs,
 	buildCodexPrompt,
 	createCodexChatService,
-	parseCodexJsonl,
-	runCodexProcess,
-	type CodexChatProcessRunner,
+	type CodexAppServerConnection,
+	type CodexAppServerSubscription,
 	type CodexRuntimeConfig,
 } from "@/server/codex-chat";
 
@@ -17,31 +16,31 @@ const runtime: CodexRuntimeConfig = {
 	baseUrl: "http://127.0.0.1:3000",
 };
 
-describe("Codex direct Smart Edit chat", () => {
-	test("starts a desktop Codex exec with only the OpenCut MCP and no interactive approval", () => {
-		const args = buildCodexExecArgs({ runtime });
+function subscriptionOf(
+	notifications: unknown[],
+	onClose: () => void = () => {},
+): CodexAppServerSubscription {
+	return {
+		async *[Symbol.asyncIterator]() {
+			for (const notification of notifications) yield notification;
+		},
+		close: onClose,
+	};
+}
 
-		expect(args.slice(0, 2)).toEqual(["exec", "--json"]);
-		expect(args).toContain("--ignore-user-config");
-		expect(args).toContain("--sandbox");
-		expect(args).toContain("read-only");
+describe("Codex direct Smart Edit streaming chat", () => {
+	test("starts Codex app-server so agent message deltas are available", () => {
+		const args = buildCodexAppServerArgs(runtime);
+
+		expect(args.slice(0, 2)).toEqual(["app-server", "--stdio"]);
 		expect(args).toContain('approval_policy="never"');
+		expect(args).toContain('sandbox_mode="read-only"');
 		expect(args).toContain('mcp_servers.opencut.command="node"');
 		expect(args).toContain(
 			'mcp_servers.opencut.args=["/workspace/opencut-classic/apps/mcp/src/server.mjs"]',
 		);
-		expect(args.at(-1)).toBe("-");
-	});
-
-	test("resumes the same Codex session instead of invoking the local plan compiler", () => {
-		const args = buildCodexExecArgs({
-			runtime,
-			sessionId: "019faeb6-a98b-7b53-be37-a7621c715f3d",
-		});
-
-		expect(args.slice(0, 3)).toEqual(["exec", "resume", "--json"]);
-		expect(args).toContain("019faeb6-a98b-7b53-be37-a7621c715f3d");
-		expect(args.at(-1)).toBe("-");
+		expect(args).not.toContain("exec");
+		expect(args).not.toContain("--json");
 	});
 
 	test("prompts Codex to execute through OpenCut without automatic lint or quality checks", () => {
@@ -66,98 +65,195 @@ describe("Codex direct Smart Edit chat", () => {
 		expect(prompt).not.toContain("至少需要两个字幕素材");
 	});
 
-	test("extracts the persisted thread and final assistant message from Codex JSONL", () => {
-		const result = parseCodexJsonl(
-			[
-				'{"type":"thread.started","thread_id":"thread-1"}',
-				'{"type":"item.completed","item":{"type":"error","message":"non-fatal warning"}}',
-				'{"type":"item.completed","item":{"type":"agent_message","text":"已完成字幕统一。"}}',
-				'{"type":"turn.completed","usage":{"input_tokens":10,"output_tokens":5}}',
-			].join("\n"),
-		);
-
-		expect(result).toEqual({
-			sessionId: "thread-1",
-			message: "已完成字幕统一。",
-		});
-	});
-
-	test("keeps one Codex conversation per project and sends context over stdin", async () => {
-		const calls: Parameters<CodexChatProcessRunner>[0][] = [];
-		const run: CodexChatProcessRunner = async (input) => {
-			calls.push(input);
-			const turn = calls.length;
-			return {
-				stdout: [
-					'{"type":"thread.started","thread_id":"thread-project-1"}',
-					`{"type":"item.completed","item":{"type":"agent_message","text":"回复 ${turn}"}}`,
-				].join("\n"),
-				stderr: "",
-			};
+	test("streams each Codex token delta before the authoritative completed message", async () => {
+		const calls: Array<{ method: string; params: unknown }> = [];
+		let closed = false;
+		const connection: CodexAppServerConnection = {
+			request: async (method, params) => {
+				calls.push({ method, params });
+				if (method === "thread/start") {
+					return { thread: { id: "thread-project-1" } };
+				}
+				if (method === "turn/start") {
+					return { turn: { id: "turn-1" } };
+				}
+				throw new Error(`unexpected method ${method}`);
+			},
+			subscribe: (threadId) => {
+				expect(threadId).toBe("thread-project-1");
+				return subscriptionOf(
+					[
+						{
+							method: "item/agentMessage/delta",
+							params: {
+								threadId,
+								turnId: "turn-1",
+								itemId: "message-1",
+								delta: "已",
+							},
+						},
+						{
+							method: "item/agentMessage/delta",
+							params: {
+								threadId,
+								turnId: "turn-1",
+								itemId: "message-1",
+								delta: "完成",
+							},
+						},
+						{
+							method: "turn/completed",
+							params: {
+								threadId,
+								turn: {
+									id: "turn-1",
+									status: "completed",
+									error: null,
+									items: [
+										{
+											type: "agentMessage",
+											id: "message-1",
+											text: "已完成",
+										},
+									],
+								},
+							},
+						},
+					],
+					() => {
+						closed = true;
+					},
+				);
+			},
 		};
-		const service = createCodexChatService({ runtime, run });
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+		});
 
-		const first = await service.send({
+		const events = [];
+		for await (const event of service.stream({
 			projectId: "project-1",
 			message: "统一字幕样式",
 			context: "引用 A",
+		})) {
+			events.push(event);
+		}
+
+		expect(events).toEqual([
+			{ type: "session", sessionId: "thread-project-1" },
+			{ type: "delta", delta: "已" },
+			{ type: "delta", delta: "完成" },
+			{
+				type: "done",
+				sessionId: "thread-project-1",
+				message: "已完成",
+			},
+		]);
+		expect(calls.map((call) => call.method)).toEqual([
+			"thread/start",
+			"turn/start",
+		]);
+		expect(JSON.stringify(calls[1]?.params)).toContain("统一字幕样式");
+		expect(JSON.stringify(calls[1]?.params)).toContain("引用 A");
+		expect(closed).toBe(true);
+	});
+
+	test("resumes the exact browser-held Codex session instead of relying on server memory", async () => {
+		const calls: Array<{ method: string; params: unknown }> = [];
+		const connection: CodexAppServerConnection = {
+			request: async (method, params) => {
+				calls.push({ method, params });
+				if (method === "thread/resume") {
+					return { thread: { id: "thread-existing" } };
+				}
+				return { turn: { id: "turn-2" } };
+			},
+			subscribe: (threadId) =>
+				subscriptionOf([
+					{
+						method: "turn/completed",
+						params: {
+							threadId,
+							turn: {
+								id: "turn-2",
+								status: "completed",
+								error: null,
+								items: [
+									{
+										type: "agentMessage",
+										id: "message-2",
+										text: "继续完成",
+									},
+								],
+							},
+						},
+					},
+				]),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
 		});
-		const second = await service.send({
+
+		const events = [];
+		for await (const event of service.stream({
 			projectId: "project-1",
-			message: "字号再大一点",
-			context: "引用 B",
-		});
+			message: "继续",
+			context: "",
+			sessionId: "thread-existing",
+		})) {
+			events.push(event);
+		}
 
-		expect(first).toEqual({
-			sessionId: "thread-project-1",
-			message: "回复 1",
+		expect(calls[0]).toEqual({
+			method: "thread/resume",
+			params: expect.objectContaining({ threadId: "thread-existing" }),
 		});
-		expect(second.message).toBe("回复 2");
-		expect(calls[0]?.stdin).toContain("统一字幕样式");
-		expect(calls[0]?.stdin).toContain("引用 A");
-		expect(calls[1]?.args.slice(0, 3)).toEqual(["exec", "resume", "--json"]);
-		expect(calls[1]?.args).toContain("thread-project-1");
-	});
-
-	test("writes the prompt to stdin and returns process output", async () => {
-		const result = await runCodexProcess({
-			binary: "/bin/sh",
-			args: ["-c", "cat"],
-			cwd: process.cwd(),
-			stdin: "直接交给 Codex",
-			env: { PATH: process.env.PATH },
-			timeoutMs: 1_000,
-		});
-
-		expect(result).toEqual({
-			stdout: "直接交给 Codex",
-			stderr: "",
+		expect(events.at(-1)).toEqual({
+			type: "done",
+			sessionId: "thread-existing",
+			message: "继续完成",
 		});
 	});
 
-	test("surfaces the Codex process error instead of falling back to local validation", async () => {
-		expect(
-			runCodexProcess({
-				binary: "/bin/sh",
-				args: ["-c", "echo 'Codex 调用失败' >&2; exit 7"],
-				cwd: process.cwd(),
-				stdin: "",
-				env: { PATH: process.env.PATH },
-				timeoutMs: 1_000,
-			}),
-		).rejects.toThrow("Codex 调用失败");
-	});
+	test("surfaces a failed Codex turn without replacing it with local validation", async () => {
+		const connection: CodexAppServerConnection = {
+			request: async (method) =>
+				method === "thread/start"
+					? { thread: { id: "thread-1" } }
+					: { turn: { id: "turn-1" } },
+			subscribe: (threadId) =>
+				subscriptionOf([
+					{
+						method: "turn/completed",
+						params: {
+							threadId,
+							turn: {
+								id: "turn-1",
+								status: "failed",
+								error: { message: "Codex 上游不可用" },
+								items: [],
+							},
+						},
+					},
+				]),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+		});
 
-	test("terminates a stalled Codex process with a retryable timeout", async () => {
-		expect(
-			runCodexProcess({
-				binary: "/bin/sh",
-				args: ["-c", "sleep 1"],
-				cwd: process.cwd(),
-				stdin: "",
-				env: { PATH: process.env.PATH },
-				timeoutMs: 10,
-			}),
-		).rejects.toThrow("Codex 响应超时，请重试。");
+		const consume = async () => {
+			for await (const _event of service.stream({
+				projectId: "project-1",
+				message: "继续",
+				context: "",
+			})) {
+				// Consume the stream so the failed completion is observed.
+			}
+		};
+
+		expect(consume()).rejects.toThrow("Codex 上游不可用");
 	});
 });
