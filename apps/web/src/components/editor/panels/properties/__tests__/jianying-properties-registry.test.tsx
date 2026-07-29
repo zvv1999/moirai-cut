@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { getPropertiesConfig } from "../registry";
+import {
+	getPropertiesConfig,
+	VISUAL_PARAM_SECTIONS,
+	VISUAL_SUBTABS,
+} from "../registry";
 import { getElementParams } from "@/params/registry";
 import type { VideoElement } from "@/timeline";
 import { mediaTime, ZERO_MEDIA_TIME } from "@/wasm";
@@ -19,7 +23,7 @@ function buildVideo(): VideoElement {
 }
 
 describe("Jianying-style properties registry", () => {
-	test("uses concise Chinese top-level categories and keeps blending inside visual", () => {
+	test("matches Jianying's video inspector category order", () => {
 		const config = getPropertiesConfig({
 			element: buildVideo(),
 			mediaAssets: [],
@@ -29,11 +33,30 @@ describe("Jianying-style properties registry", () => {
 			{ id: "visual", label: "画面" },
 			{ id: "audio", label: "音频" },
 			{ id: "speed", label: "变速" },
-			{ id: "motion", label: "跟踪" },
-			{ id: "masks", label: "蒙版" },
-			{ id: "effects", label: "特效" },
+			{ id: "animation", label: "动画" },
+			{ id: "adjustments", label: "调整" },
+			{ id: "effects", label: "AI效果" },
 		]);
 		expect(config.defaultTab).toBe("visual");
+	});
+
+	test("matches Jianying's visual subtabs and basic-section order", () => {
+		expect(VISUAL_SUBTABS).toEqual([
+			{ id: "basic", label: "基础" },
+			{ id: "cutout", label: "抠像" },
+			{ id: "masks", label: "蒙版" },
+			{ id: "beauty", label: "美颜美体" },
+		]);
+		expect(
+			VISUAL_PARAM_SECTIONS.map(({ id, label, defaultOpen }) => ({
+				id,
+				label,
+				defaultOpen,
+			})),
+		).toEqual([
+			{ id: "blending", label: "混合", defaultOpen: false },
+			{ id: "deformation", label: "变形", defaultOpen: false },
+		]);
 	});
 
 	test("presents visual values in editor-friendly Chinese display units", () => {
