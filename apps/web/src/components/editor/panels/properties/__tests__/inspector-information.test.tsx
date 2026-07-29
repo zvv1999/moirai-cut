@@ -19,11 +19,14 @@ describe("InspectorSelectionHeader", () => {
 		);
 
 		expect(html).toContain('aria-label="Selected video: Interview.mov"');
-		expect(html).toContain("Basic");
+		expect(html).toContain("基础信息");
 		expect(html).toContain("Interview.mov");
-		expect(html).toContain("Video clip");
+		expect(html).toContain("视频");
 		expect(html).toContain("00:05.25");
 		expect(html).toContain("Main Video");
+		expect(html).toContain("时长");
+		expect(html).toContain("轨道");
+		expect(html).toContain('data-inspector-context="selected-clip"');
 	});
 
 	test("formats long durations without dropping the hour", () => {
@@ -40,22 +43,25 @@ describe("InspectorTabNavigation", () => {
 		const html = renderToStaticMarkup(
 			<InspectorTabNavigation
 				tabs={[
-					{ id: "transform", label: "Transform", icon: <span>T</span> },
-					{ id: "blending", label: "Blend", icon: <span>B</span> },
-					{ id: "masks", label: "Mask", icon: <span>M</span> },
-					{ id: "effects", label: "Effect", icon: <span>E</span> },
+					{ id: "visual", label: "画面", icon: <span>V</span> },
+					{ id: "audio", label: "音频", icon: <span>A</span> },
+					{ id: "speed", label: "变速", icon: <span>S</span> },
+					{ id: "effects", label: "特效", icon: <span>E</span> },
 				]}
-				activeTabId="blending"
+				activeTabId="audio"
 				onSelect={() => undefined}
 			/>,
 		);
 
 		expect(html).toContain('role="tablist"');
-		expect(html).toContain(">Transform<");
-		expect(html).toContain(">Blend<");
-		expect(html).toContain(">Mask<");
-		expect(html).toContain(">Effect<");
+		expect(html).toContain('aria-label="属性分类"');
+		expect(html).toContain('data-inspector-tabs="clip-properties"');
+		expect(html).toContain(">画面<");
+		expect(html).toContain(">音频<");
+		expect(html).toContain(">变速<");
+		expect(html).toContain(">特效<");
 		expect(html).toContain('aria-selected="true"');
-		expect(html).toContain('aria-controls="inspector-panel-blending"');
+		expect(html).toContain('data-active="true"');
+		expect(html).toContain('aria-controls="inspector-panel-audio"');
 	});
 });
