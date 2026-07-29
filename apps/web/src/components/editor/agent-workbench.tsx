@@ -10,6 +10,7 @@ import {
 	resolveAgentContextTarget,
 } from "@/agent/context-references";
 import { useAgentContextStore } from "@/agent/context-store";
+import { CodexSseDecoder } from "@/agent/codex-sse";
 import { toMediaTime, toSeconds } from "@/agent/time";
 import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
 import { useEditor } from "@/editor/use-editor";
@@ -34,6 +35,7 @@ interface ChatMessage {
 	role: "user" | "assistant" | "error";
 	content: string;
 	referenceCount?: number;
+	streaming?: boolean;
 }
 
 const AGENT_REQUEST_PRESETS = [
@@ -70,19 +72,6 @@ function isCodexConnection(value: unknown): value is CodexConnection {
 		(typeof value.version === "string" || value.version === null) &&
 		"message" in value &&
 		typeof value.message === "string"
-	);
-}
-
-function isCodexChatResult(value: unknown): value is CodexChatResult {
-	return (
-		typeof value === "object" &&
-		value !== null &&
-		"sessionId" in value &&
-		typeof value.sessionId === "string" &&
-		Boolean(value.sessionId) &&
-		"message" in value &&
-		typeof value.message === "string" &&
-		Boolean(value.message)
 	);
 }
 
@@ -129,29 +118,89 @@ async function sendCodexTurn({
 	projectId,
 	message,
 	context,
+	sessionId,
+	onSession,
+	onDelta,
 }: {
 	projectId: string;
 	message: string;
 	context: string;
+	sessionId: string | null;
+	onSession(sessionId: string): void;
+	onDelta(delta: string): void;
 }): Promise<CodexChatResult> {
 	const response = await fetch("/api/codex/chat", {
 		method: "POST",
 		headers: { "content-type": "application/json" },
-		body: JSON.stringify({ projectId, message, context }),
+		body: JSON.stringify({ projectId, message, context, sessionId }),
 	});
-	const value: unknown = await response.json();
 	if (!response.ok) {
+		const value: unknown = await response.json();
 		throw new Error(apiErrorMessage(value) ?? "Codex 会话请求失败。");
 	}
-	if (
-		!value ||
-		typeof value !== "object" ||
-		!("data" in value) ||
-		!isCodexChatResult(value.data)
-	) {
-		throw new Error("Codex 返回了无法识别的回复。");
+	if (!response.body) {
+		throw new Error("浏览器没有返回 Codex 流式响应。");
 	}
-	return value.data;
+	const reader = response.body.getReader();
+	const textDecoder = new TextDecoder();
+	const sseDecoder = new CodexSseDecoder();
+	let completed: CodexChatResult | null = null;
+
+	for (;;) {
+		const chunk = await reader.read();
+		if (chunk.done) break;
+		for (const event of sseDecoder.push(
+			textDecoder.decode(chunk.value, { stream: true }),
+		)) {
+			let value: unknown;
+			try {
+				value = JSON.parse(event.data);
+			} catch {
+				continue;
+			}
+			if (!value || typeof value !== "object") continue;
+			if (
+				event.event === "session" &&
+				"sessionId" in value &&
+				typeof value.sessionId === "string"
+			) {
+				onSession(value.sessionId);
+				continue;
+			}
+			if (
+				event.event === "delta" &&
+				"delta" in value &&
+				typeof value.delta === "string"
+			) {
+				onDelta(value.delta);
+				continue;
+			}
+			if (
+				event.event === "done" &&
+				"sessionId" in value &&
+				typeof value.sessionId === "string" &&
+				"message" in value &&
+				typeof value.message === "string"
+			) {
+				completed = {
+					sessionId: value.sessionId,
+					message: value.message,
+				};
+				continue;
+			}
+			if (
+				event.event === "error" &&
+				"message" in value &&
+				typeof value.message === "string"
+			) {
+				throw new Error(value.message);
+			}
+		}
+	}
+	if (!completed) {
+		throw new Error("Codex 流式响应在完成前中断。");
+	}
+	return completed;
 }
 
 export function AgentWorkbench() {
@@ -283,6 +332,7 @@ export function AgentWorkbench() {
 			return;
 		}
 		const referenceCount = contextSnapshot.references.length;
+		const assistantMessageId = nextMessageId();
 		setMessages((current) => [
 			...current,
 			{
@@ -290,6 +340,12 @@ export function AgentWorkbench() {
 				role: "user",
 				content: normalizedRequest,
 				...(referenceCount > 0 ? { referenceCount } : {}),
+			},
+			{
+				id: assistantMessageId,
+				role: "assistant",
+				content: "",
+				streaming: true,
 			},
 		]);
 		setRequest("");
@@ -299,23 +355,45 @@ export function AgentWorkbench() {
 				projectId: semanticState.projectId,
 				message: normalizedRequest,
 				context: contextSnapshot.promptContext,
+				sessionId,
+				onSession: setSessionId,
+				onDelta: (delta) => {
+					setMessages((current) =>
+						current.map((message) =>
+							message.id === assistantMessageId
+								? { ...message, content: `${message.content}${delta}` }
+								: message,
+						),
+					);
+				},
 			});
 			setSessionId(result.sessionId);
-			setMessages((current) => [
-				...current,
-				{
-					id: nextMessageId(),
-					role: "assistant",
-					content: result.message,
-				},
-			]);
+			setMessages((current) =>
+				current.map((message) =>
+					message.id === assistantMessageId
+						? {
+								...message,
+								content: result.message,
+								streaming: false,
+							}
+						: message,
+				),
+			);
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : "Codex 会话请求失败。";
-			setMessages((current) => [
-				...current,
-				{ id: nextMessageId(), role: "error", content: message },
-			]);
+			setMessages((current) =>
+				current.map((item) =>
+					item.id === assistantMessageId
+						? {
+								...item,
+								role: "error",
+								content: message,
+								streaming: false,
+							}
+						: item,
+				),
+			);
 			toast.error("Codex 会话失败", { description: message });
 		} finally {
 			setSending(false);
@@ -686,32 +764,30 @@ export function AgentWorkbench() {
 										: "border-white/8 bg-white/[0.045] text-slate-200"
 								}`}
 							>
-								{message.content}
+								{message.streaming && !message.content ? (
+									<span className="flex items-center gap-2 text-cyan-200">
+										<span className="flex gap-1">
+											<span className="size-1 animate-bounce rounded-full bg-cyan-300" />
+											<span className="size-1 animate-bounce rounded-full bg-cyan-300 [animation-delay:120ms]" />
+											<span className="size-1 animate-bounce rounded-full bg-cyan-300 [animation-delay:240ms]" />
+										</span>
+										Codex 正在处理
+									</span>
+								) : (
+									<>
+										{message.content}
+										{message.streaming ? (
+											<span
+												className="ml-0.5 inline-block h-3 w-0.5 animate-pulse bg-cyan-300 align-middle"
+												aria-label="Codex 正在流式回复"
+											/>
+										) : null}
+									</>
+								)}
 							</div>
 						</div>
 					),
 				)}
-
-				{sending ? (
-					<div className="flex max-w-[86%] items-start gap-2.5">
-						<span className="mt-0.5 flex size-6 shrink-0 animate-pulse items-center justify-center rounded-md bg-cyan-400 text-[9px] font-black text-slate-950">
-							AI
-						</span>
-						<div className="rounded-2xl rounded-tl-sm border border-cyan-400/15 bg-cyan-400/[0.04] px-3.5 py-3 text-xs text-cyan-200">
-							<div className="flex items-center gap-2">
-								<span className="flex gap-1">
-									<span className="size-1 animate-bounce rounded-full bg-cyan-300" />
-									<span className="size-1 animate-bounce rounded-full bg-cyan-300 [animation-delay:120ms]" />
-									<span className="size-1 animate-bounce rounded-full bg-cyan-300 [animation-delay:240ms]" />
-								</span>
-								Codex 正在处理
-							</div>
-							<p className="mt-1 text-[9px] text-slate-500">
-								正在理解上下文并调用 OpenCut 原子剪辑工具…
-							</p>
-						</div>
-					</div>
-				) : null}
 			</div>
 
 			{referencePickerOpen ? (
