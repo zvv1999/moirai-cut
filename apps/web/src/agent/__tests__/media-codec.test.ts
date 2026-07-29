@@ -8,7 +8,10 @@ describe("agent media codec client", () => {
 			requestedUrl = String(input);
 			return Response.json({
 				data: {
-					source: { assetId: "asset / one" },
+					source: {
+						assetId: "asset / one",
+						sha256: "a".repeat(64),
+					},
 					probe: { videoStreams: [], audioStreams: [] },
 					compatibility: {
 						kind: "proxy-required",
