@@ -143,6 +143,71 @@ describe("proxy command construction", () => {
 		expect(args.join(" ")).toContain("tonemap");
 	});
 
+	test("normalizes low-rate VFR sources to an explicit CFR proxy", () => {
+		const probe = {
+			source: {
+				assetId: "asset",
+				fileName: "vfr.mp4",
+				extension: "mp4",
+				mimeType: "video/mp4",
+				sizeBytes: 12,
+				mtimeMs: 0,
+				ctimeMs: 0,
+				inode: 1,
+				sha256: "b".repeat(64),
+			},
+			probe: {
+				container: {
+					formatNames: ["mov", "mp4"],
+					durationSeconds: 10,
+					sizeBytes: 12,
+					bitrate: null,
+					startTimeSeconds: null,
+				},
+				videoStreams: [
+					{
+						index: 0,
+						codec: "h264",
+						codecLongName: null,
+						profile: "High",
+						level: null,
+						pixelFormat: "yuv420p",
+						bitDepth: 8,
+						width: 1280,
+						height: 720,
+						sampleAspectRatio: "1:1",
+						displayAspectRatio: "16:9",
+						rotationDegrees: 0,
+						averageFrameRate: 24,
+						nominalFrameRate: 30,
+						frameRateMode: "variable" as const,
+						durationSeconds: 10,
+						bitrate: null,
+						color: {
+							range: "tv",
+							space: "bt709",
+							transfer: "bt709",
+							primaries: "bt709",
+							chromaLocation: "left",
+						},
+						hdr: false,
+					},
+				],
+				audioStreams: [],
+				subtitleStreamCount: 0,
+			},
+			probedAt: "2026-07-29T00:00:00.000Z",
+			cacheHit: false,
+		} satisfies ProjectMediaProbeResult;
+		const args = buildProxyFfmpegArgs({
+			inputPath: "/tmp/vfr.mp4",
+			outputPath: "/tmp/vfr.proxy.mp4",
+			profile: "standard",
+			probe,
+		});
+		expect(args.join(" ")).toContain("fps=24");
+	});
+
 	test("native runner parses FFmpeg progress and reports bounded failures", async () => {
 		const directory = await mkdtemp(
 			path.join(tmpdir(), "opencut-fake-transcoder-"),
