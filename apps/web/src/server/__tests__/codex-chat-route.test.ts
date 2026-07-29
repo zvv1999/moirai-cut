@@ -99,6 +99,43 @@ describe("Codex Smart Edit SSE API", () => {
 		);
 	});
 
+	test("treats the browser's null session as a new Codex conversation", async () => {
+		const calls: unknown[] = [];
+		const service: CodexChatApiService = {
+			stream: async function* ({ input }) {
+				calls.push(input);
+				yield {
+					type: "done",
+					sessionId: "thread-new",
+					message: "新会话",
+				};
+			},
+		};
+		const { POST } = createCodexChatRouteHandlers({ service });
+		const response = await POST(
+			new Request("http://localhost/api/codex/chat", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					projectId: "project-1",
+					message: "第一条消息",
+					context: "",
+					sessionId: null,
+				}),
+			}),
+		);
+
+		expect(response.status).toBe(200);
+		await response.text();
+		expect(calls).toEqual([
+			{
+				projectId: "project-1",
+				message: "第一条消息",
+				context: "",
+			},
+		]);
+	});
+
 	test("rejects malformed or incomplete requests before starting Codex", async () => {
 		let calls = 0;
 		const service: CodexChatApiService = {

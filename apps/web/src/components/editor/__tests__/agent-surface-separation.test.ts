@@ -74,7 +74,9 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain("本会话由 Codex 直接处理");
 		expect(workbenchSource).toContain("response.body.getReader()");
 		expect(workbenchSource).toContain('event.event === "delta"');
-		expect(workbenchSource).toContain("sessionId,");
+		expect(workbenchSource).toContain(
+			"...(sessionId ? { sessionId } : {})",
+		);
 		expect(workbenchSource).not.toContain("compileSemanticEdit");
 		expect(workbenchSource).not.toContain("计划需要处理");
 		expect(workbenchSource).not.toContain("运行质检");
