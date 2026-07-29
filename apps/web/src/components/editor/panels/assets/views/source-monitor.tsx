@@ -35,6 +35,13 @@ import {
 import { useEditor } from "@/editor/use-editor";
 import { getMediaAssetPlaybackSource } from "@/media/proxy";
 
+function localizeOverwriteReason(reason: string | null): string | undefined {
+	if (!reason) return undefined;
+	const match = reason.match(/^Unlock a (video|audio) track before overwriting$/);
+	if (!match) return reason;
+	return `请先解锁一条${match[1] === "video" ? "视频" : "音频"}轨道再执行覆盖`;
+}
+
 export function SourceMonitorDialog({
 	open,
 	asset,
@@ -60,7 +67,7 @@ export function SourceMonitorDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent
 				className="max-w-3xl overflow-hidden"
-				aria-label="Source monitor"
+				aria-label="源监视器"
 			>
 				<SourceMonitorView
 					key={asset.id}
@@ -204,7 +211,7 @@ export function SourceMonitorView({
 	return (
 		<div
 			role="toolbar"
-			aria-label="Source monitor"
+			aria-label="源监视器"
 			tabIndex={0}
 			onKeyDown={handleKeyDown}
 		>
@@ -285,7 +292,7 @@ export function SourceMonitorView({
 					<div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-3 rounded bg-black/70 px-3 py-2 text-xs text-white">
 						<span>{formatSourceTime({ seconds: currentTime })}</span>
 						<span>
-							IN {formatSourceTime({ seconds: range.inPoint })} · OUT{" "}
+							入点 {formatSourceTime({ seconds: range.inPoint })} · 出点{" "}
 							{formatSourceTime({ seconds: range.outPoint })}
 						</span>
 						<span>{formatSourceTime({ seconds: duration })}</span>
@@ -307,14 +314,14 @@ export function SourceMonitorView({
 							size="icon"
 							variant="outline"
 							disabled={!canPlay}
-							aria-label={isPlaying ? "Pause source" : "Play source"}
-							title={canPlay ? "Play or pause source (Space)" : "Still image"}
+							aria-label={isPlaying ? "暂停源素材" : "播放源素材"}
+							title={canPlay ? "播放或暂停源素材（空格）" : "静态图片"}
 							onClick={() => void togglePlayback()}
 						>
 							{isPlaying ? <Pause /> : <Play />}
 						</Button>
 						<Slider
-							aria-label="Source playhead"
+							aria-label="源素材播放头"
 							min={0}
 							max={duration}
 							step={0.01}
@@ -325,8 +332,8 @@ export function SourceMonitorView({
 							type="button"
 							size="icon"
 							variant="ghost"
-							aria-label="Reset source range"
-							title="Reset source range"
+							aria-label="重置源素材范围"
+							title="重置源素材范围"
 							onClick={() => {
 								setRange(getDefaultSourceRange({ asset }));
 								seek({ time: 0 });
@@ -338,7 +345,7 @@ export function SourceMonitorView({
 
 					<div className="grid gap-2 sm:grid-cols-2">
 						<SourcePointControl
-							label="In"
+							label="入点"
 							shortcut="I"
 							value={range.inPoint}
 							max={Math.max(0, range.outPoint)}
@@ -349,7 +356,7 @@ export function SourceMonitorView({
 							onGo={() => seek({ time: range.inPoint })}
 						/>
 						<SourcePointControl
-							label="Out"
+							label="出点"
 							shortcut="O"
 							value={range.outPoint}
 							max={duration}
@@ -361,7 +368,7 @@ export function SourceMonitorView({
 						/>
 					</div>
 					<div className="text-muted-foreground flex items-center justify-between text-xs">
-						<span>Selected source range</span>
+						<span>已选源素材范围</span>
 						<strong className="text-foreground">
 							{formatSourceTime({ seconds: rangeDuration })}
 						</strong>
@@ -370,7 +377,7 @@ export function SourceMonitorView({
 			</DialogBody>
 			<DialogFooter className="items-center sm:justify-between">
 				<Button type="button" variant="ghost" onClick={onClose}>
-					Close
+					关闭
 				</Button>
 				<div className="flex flex-wrap justify-end gap-2">
 					<Button
@@ -378,15 +385,15 @@ export function SourceMonitorView({
 						variant="outline"
 						onClick={() => onInsert({ range })}
 					>
-						Insert range
+						插入范围
 					</Button>
 					<Button
 						type="button"
 						disabled={overwriteTargetLabel === null}
-						title={overwriteDisabledReason ?? undefined}
+						title={localizeOverwriteReason(overwriteDisabledReason)}
 						onClick={() => onOverwrite({ range })}
 					>
-						Overwrite {overwriteTargetLabel ?? "timeline"}
+						覆盖到 {overwriteTargetLabel ?? "时间线"}
 					</Button>
 				</div>
 			</DialogFooter>
@@ -537,7 +544,7 @@ function SourcePointControl({
 	onSet,
 	onGo,
 }: {
-	label: "In" | "Out";
+	label: "入点" | "出点";
 	shortcut: "I" | "O";
 	value: number;
 	max: number;
@@ -548,14 +555,14 @@ function SourcePointControl({
 	return (
 		<div className="bg-muted/40 grid gap-2 rounded p-2">
 			<div className="flex items-center justify-between">
-				<span className="text-xs font-semibold">Source {label}</span>
+				<span className="text-xs font-semibold">源素材{label}</span>
 				<kbd className="text-muted-foreground rounded border px-1.5 text-[10px]">
 					{shortcut}
 				</kbd>
 			</div>
 			<Input
 				type="number"
-				aria-label={`Source ${label.toLocaleLowerCase()} time`}
+				aria-label={`源素材${label}时间`}
 				min={0}
 				max={max}
 				step={0.01}
@@ -566,10 +573,10 @@ function SourcePointControl({
 			/>
 			<div className="grid grid-cols-2 gap-1.5">
 				<Button type="button" size="sm" variant="secondary" onClick={onSet}>
-					Set {label}
+					设置{label}
 				</Button>
 				<Button type="button" size="sm" variant="outline" onClick={onGo}>
-					Go to {label}
+					前往{label}
 				</Button>
 			</div>
 		</div>

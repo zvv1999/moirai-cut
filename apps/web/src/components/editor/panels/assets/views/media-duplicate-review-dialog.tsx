@@ -20,6 +20,14 @@ import {
 import type { MediaAsset } from "@/media/types";
 import { cn } from "@/utils/ui";
 
+const DUPLICATE_REASON_LABELS: Record<string, string> = {
+	"Matching normalized filename": "标准化文件名相同",
+	"Matching dimensions and similar file size": "画面尺寸相同且文件大小接近",
+	"Matching dimensions and duration": "画面尺寸和时长相同",
+	"Identical SHA-256 content": "SHA-256 内容完全相同",
+	"Identical byte size": "字节大小完全相同",
+};
+
 export function MediaDuplicateReviewDialog({
 	open,
 	assets,
@@ -93,33 +101,31 @@ export function MediaDuplicateReviewDialog({
 		>
 			<DialogContent
 				className="max-h-[90vh] max-w-2xl overflow-hidden"
-				aria-label="Review duplicate media"
+				aria-label="检查重复素材"
 			>
 				<DialogHeader>
-					<DialogTitle>Review duplicate media</DialogTitle>
+					<DialogTitle>检查重复素材</DialogTitle>
 					<DialogDescription>
-						Exact matches use SHA-256. Probable matches only suggest similar
-						files. Nothing is hidden or selected automatically.
+						精确匹配使用 SHA-256；可能重复仅提示相似文件，不会自动隐藏或选择任何素材。
 					</DialogDescription>
 				</DialogHeader>
 				<DialogBody className="max-h-[65vh] gap-4 overflow-y-auto">
 					{isScanning ? (
 						<div className="space-y-2 rounded-lg border bg-muted/30 p-4">
 							<div className="flex items-center justify-between text-xs">
-								<span className="font-medium">Scanning source media…</span>
+								<span className="font-medium">正在扫描源素材…</span>
 								<span className="tabular-nums">{Math.round(progress)}%</span>
 							</div>
 							<Progress value={progress} />
 							<p className="text-muted-foreground text-xs">
-								Only equal-size candidates are hashed to avoid reading every large
-								file.
+								仅对大小相同的候选文件计算哈希，避免读取所有大型文件。
 							</p>
 						</div>
 					) : groups.length === 0 ? (
 						<div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-6 text-center">
-							<p className="font-semibold">No duplicates found</p>
+							<p className="font-semibold">未发现重复素材</p>
 							<p className="text-muted-foreground mt-1 text-xs">
-								All {assets.length} source assets remain visible and unchanged.
+								全部 {assets.length} 个源素材仍保持可见且未被修改。
 							</p>
 						</div>
 					) : (
@@ -127,17 +133,19 @@ export function MediaDuplicateReviewDialog({
 							<section
 								key={group.id}
 								className="overflow-hidden rounded-xl border"
-								aria-label={`${group.kind} duplicate group ${groupIndex + 1}`}
+								aria-label={`${group.kind === "exact" ? "精确" : "可能"}重复组 ${groupIndex + 1}`}
 							>
 								<div className="flex items-start justify-between gap-4 border-b bg-muted/30 px-4 py-3">
 									<div>
 										<p className="text-sm font-semibold">
 											{group.kind === "exact"
-												? "Exact duplicate"
-												: "Probable duplicate"}
+												? "精确重复"
+												: "可能重复"}
 										</p>
 										<p className="text-muted-foreground text-[11px]">
-											{group.reasons.join(" · ")}
+											{group.reasons
+												.map((reason) => DUPLICATE_REASON_LABELS[reason] ?? reason)
+												.join(" · ")}
 										</p>
 									</div>
 									<span
@@ -148,7 +156,7 @@ export function MediaDuplicateReviewDialog({
 												: "bg-amber-500/10 text-amber-600 dark:text-amber-300",
 										)}
 									>
-										{group.kind.toUpperCase()}
+										{group.kind === "exact" ? "精确" : "可能"}
 									</span>
 								</div>
 								<div>
@@ -167,20 +175,19 @@ export function MediaDuplicateReviewDialog({
 												<Checkbox
 													checked={selected}
 													onCheckedChange={() => toggleAsset({ assetId })}
-													aria-label={`Select ${asset.name} for removal`}
+													aria-label={`选择移除 ${asset.name}`}
 												/>
 												<span className="min-w-0 flex-1">
 													<span className="block truncate text-sm font-medium">
 														{asset.name}
 													</span>
 													<span className="text-muted-foreground block text-[11px]">
-														{asset.file.size.toLocaleString()} bytes ·{" "}
-														{usageCounts[asset.id] ?? 0} timeline{" "}
-														{(usageCounts[asset.id] ?? 0) === 1 ? "use" : "uses"}
+														{asset.file.size.toLocaleString()} 字节 · 时间线使用{" "}
+														{usageCounts[asset.id] ?? 0} 次
 													</span>
 												</span>
 												<span className="text-muted-foreground text-[10px]">
-													{selected ? "REMOVE" : "KEEP"}
+													{selected ? "移除" : "保留"}
 												</span>
 											</label>
 										);
@@ -194,16 +201,14 @@ export function MediaDuplicateReviewDialog({
 					{confirmRemove ? (
 						<div className="flex w-full items-center justify-between gap-3">
 							<p className="text-xs text-red-500">
-								Remove {selectedIds.length} selected source{" "}
-								{selectedIds.length === 1 ? "asset" : "assets"} and timeline
-								uses?
+								要移除选中的 {selectedIds.length} 个源素材及其时间线用法吗？
 							</p>
 							<div className="flex gap-2">
 								<Button
 									variant="outline"
 									onClick={() => setConfirmRemove(false)}
 								>
-									Cancel
+									取消
 								</Button>
 								<Button
 									variant="destructive"
@@ -212,7 +217,7 @@ export function MediaDuplicateReviewDialog({
 										onOpenChange(false);
 									}}
 								>
-									Confirm removal
+									确认移除
 								</Button>
 							</div>
 						</div>
@@ -223,7 +228,7 @@ export function MediaDuplicateReviewDialog({
 								disabled={isScanning || selectedIds.length === 0}
 								onClick={() => setConfirmRemove(true)}
 							>
-								Remove selected{selectedIds.length > 0
+								移除所选素材{selectedIds.length > 0
 									? ` (${selectedIds.length})`
 									: ""}
 							</Button>
@@ -232,7 +237,7 @@ export function MediaDuplicateReviewDialog({
 								disabled={isScanning}
 								onClick={() => onOpenChange(false)}
 							>
-								Keep all &amp; close
+								全部保留并关闭
 							</Button>
 						</>
 					)}

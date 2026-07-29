@@ -24,8 +24,8 @@ test("media bins remain visible, nested, counted, and directly manageable", () =
 	expect(markup).toContain('aria-label="新建素材文件夹"');
 	expect(markup).toContain('aria-label="查看全部素材"');
 	expect(markup).toContain('aria-label="查看未分类素材"');
-	expect(markup).toContain('aria-label="View bin Story"');
-	expect(markup).toContain('aria-label="Manage bin Story"');
+	expect(markup).toContain('aria-label="查看素材文件夹 Story"');
+	expect(markup).toContain('aria-label="管理素材文件夹 Story"');
 	expect(markup).toContain('aria-level="2"');
 	expect(markup).toContain('aria-current="page"');
 	expect(markup).toContain(">3<");

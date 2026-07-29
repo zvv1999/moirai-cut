@@ -54,7 +54,7 @@ export function MediaBatchOperationsDialog({
 	onRemoveProxies,
 	onRemoveAssets,
 }: MediaBatchOperationsDialogProps) {
-	const [prefix, setPrefix] = useState("Clip");
+	const [prefix, setPrefix] = useState("素材");
 	const [startIndex, setStartIndex] = useState(1);
 	const [confirmRemove, setConfirmRemove] = useState(false);
 	const replaceInputRef = useRef<HTMLInputElement>(null);
@@ -80,13 +80,12 @@ export function MediaBatchOperationsDialog({
 		>
 			<DialogContent
 				className="max-h-[90vh] max-w-2xl overflow-hidden"
-				aria-label="Batch media operations"
+				aria-label="批量素材操作"
 			>
 				<DialogHeader>
-					<DialogTitle>Batch media operations</DialogTitle>
+					<DialogTitle>批量素材操作</DialogTitle>
 					<DialogDescription>
-						{assets.length} selected {assets.length === 1 ? "asset" : "assets"}.
-						Renames, replacements, proxies, and removal stay undoable.
+						已选择 {assets.length} 个素材。重命名、替换、代理和移除操作均可撤销。
 					</DialogDescription>
 				</DialogHeader>
 				<DialogBody className="max-h-[65vh] gap-5 overflow-y-auto">
@@ -96,7 +95,7 @@ export function MediaBatchOperationsDialog({
 						accept="image/*,video/*,audio/*"
 						multiple
 						className="hidden"
-						aria-label="Choose replacement media in selection order"
+						aria-label="按选择顺序选取替换素材"
 						onChange={(event) => {
 							const files = Array.from(event.currentTarget.files ?? []);
 							event.currentTarget.value = "";
@@ -109,7 +108,7 @@ export function MediaBatchOperationsDialog({
 						accept="image/*,video/*,audio/*"
 						multiple
 						className="hidden"
-						aria-label="Choose media to relink by filename"
+						aria-label="选择按文件名重新链接的素材"
 						onChange={(event) => {
 							const files = Array.from(event.currentTarget.files ?? []);
 							event.currentTarget.value = "";
@@ -124,7 +123,7 @@ export function MediaBatchOperationsDialog({
 						>
 							<div className="mb-2 flex items-center justify-between gap-3 text-xs">
 								<span className="truncate font-medium">
-									{status ?? "Working…"}
+									{status ?? "处理中…"}
 								</span>
 								<span className="tabular-nums">{Math.round(progress)}%</span>
 							</div>
@@ -135,15 +134,15 @@ export function MediaBatchOperationsDialog({
 					<section className="space-y-3" aria-labelledby="batch-rename-title">
 						<div>
 							<h3 id="batch-rename-title" className="text-sm font-semibold">
-								Sequential rename
+								连续重命名
 							</h3>
 							<p className="text-muted-foreground text-xs">
-								Preserves each file extension and timeline identity.
+								保留每个文件的扩展名和时间线标识。
 							</p>
 						</div>
 						<div className="grid grid-cols-[1fr_7rem_auto] items-end gap-2">
 							<div className="space-y-1.5">
-								<Label htmlFor="batch-media-prefix">Prefix</Label>
+								<Label htmlFor="batch-media-prefix">前缀</Label>
 								<Input
 									id="batch-media-prefix"
 									value={prefix}
@@ -152,7 +151,7 @@ export function MediaBatchOperationsDialog({
 								/>
 							</div>
 							<div className="space-y-1.5">
-								<Label htmlFor="batch-media-start">Start</Label>
+								<Label htmlFor="batch-media-start">起始序号</Label>
 								<Input
 									id="batch-media-start"
 									type="number"
@@ -169,7 +168,7 @@ export function MediaBatchOperationsDialog({
 								disabled={busy || !prefix.trim()}
 								onClick={() => onRename({ prefix, startIndex })}
 							>
-								Rename
+								重命名
 							</Button>
 						</div>
 					</section>
@@ -177,10 +176,10 @@ export function MediaBatchOperationsDialog({
 					<section className="space-y-3" aria-labelledby="batch-source-title">
 						<div>
 							<h3 id="batch-source-title" className="text-sm font-semibold">
-								Source files
+								源文件
 							</h3>
 							<p className="text-muted-foreground text-xs">
-								Replacement keeps edits; export downloads untouched originals.
+								替换会保留编辑，导出会下载未经修改的原始文件。
 							</p>
 						</div>
 						<div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -189,17 +188,17 @@ export function MediaBatchOperationsDialog({
 								disabled={busy}
 								onClick={() => replaceInputRef.current?.click()}
 							>
-								Replace by order…
+								按顺序替换…
 							</Button>
 							<Button
 								variant="outline"
 								disabled={busy}
 								onClick={() => relinkInputRef.current?.click()}
 							>
-								Relink by filename…
+								按文件名重新链接…
 							</Button>
 							<Button variant="outline" disabled={busy} onClick={onExport}>
-								Export originals
+								导出原始文件
 							</Button>
 						</div>
 					</section>
@@ -211,15 +210,14 @@ export function MediaBatchOperationsDialog({
 						<div className="flex items-start justify-between gap-4">
 							<div>
 								<h3 id="proxy-workflow-title" className="text-sm font-semibold">
-									Proxy workflow
+									代理工作流
 								</h3>
 								<p className="text-muted-foreground text-xs">
-									960px lightweight preview media. Final export always reads the
-									original.
+									使用 960 像素轻量代理预览，最终导出始终读取原始素材。
 								</p>
 							</div>
 							<div className="shrink-0 rounded-full bg-sky-500/10 px-2 py-1 text-[11px] font-medium text-sky-600 dark:text-sky-300">
-								{proxyAssets.length}/{assets.length} ready
+								{proxyAssets.length}/{assets.length} 已就绪
 								{proxySize > 0 ? ` · ${formatBytes(proxySize)}` : ""}
 							</div>
 						</div>
@@ -228,21 +226,21 @@ export function MediaBatchOperationsDialog({
 								disabled={busy || assets.every((asset) => asset.type === "audio")}
 								onClick={onGenerateProxies}
 							>
-								{proxyAssets.length > 0 ? "Generate / refresh" : "Generate proxies"}
+								{proxyAssets.length > 0 ? "生成 / 刷新" : "生成代理"}
 							</Button>
 							<Button
 								variant="outline"
 								disabled={busy || proxyAssets.length === 0}
 								onClick={onToggleProxies}
 							>
-								{allProxiesEnabled ? "Disable proxies" : "Enable proxies"}
+								{allProxiesEnabled ? "停用代理" : "启用代理"}
 							</Button>
 							<Button
 								variant="outline"
 								disabled={busy || proxyAssets.length === 0}
 								onClick={onRemoveProxies}
 							>
-								Remove proxies
+								移除代理
 							</Button>
 						</div>
 					</section>
@@ -256,10 +254,10 @@ export function MediaBatchOperationsDialog({
 								<span className="min-w-0 truncate font-medium">{asset.name}</span>
 								<span className="text-muted-foreground shrink-0">
 									{asset.proxy
-										? `${asset.proxy.enabled ? "Proxy on" : "Proxy off"} · ${asset.proxy.width}×${asset.proxy.height}`
+										? `${asset.proxy.enabled ? "代理已启用" : "代理已停用"} · ${asset.proxy.width}×${asset.proxy.height}`
 										: asset.type === "audio"
-											? "Original audio"
-											: "Original preview"}
+											? "原始音频"
+											: "原始预览"}
 								</span>
 							</div>
 						))}
@@ -269,14 +267,14 @@ export function MediaBatchOperationsDialog({
 					{confirmRemove ? (
 						<div className="flex w-full items-center justify-between gap-3">
 							<p className="text-xs text-red-500">
-								Remove source media and every timeline use?
+								要移除源素材及其在时间线中的所有用法吗？
 							</p>
 							<div className="flex gap-2">
 								<Button
 									variant="outline"
 									onClick={() => setConfirmRemove(false)}
 								>
-									Cancel
+									取消
 								</Button>
 								<Button
 									variant="destructive"
@@ -285,7 +283,7 @@ export function MediaBatchOperationsDialog({
 										onRemoveAssets();
 									}}
 								>
-									Confirm removal
+									确认移除
 								</Button>
 							</div>
 						</div>
@@ -296,14 +294,14 @@ export function MediaBatchOperationsDialog({
 								disabled={busy}
 								onClick={() => setConfirmRemove(true)}
 							>
-								Remove selected…
+								移除所选素材…
 							</Button>
 							<Button
 								variant="outline"
 								disabled={busy}
 								onClick={() => onOpenChange(false)}
 							>
-								Done
+								完成
 							</Button>
 						</>
 					)}

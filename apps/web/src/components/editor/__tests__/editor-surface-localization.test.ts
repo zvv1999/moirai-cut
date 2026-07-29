@@ -50,6 +50,13 @@ describe("editor surface localization", () => {
 			readSource("../../../timeline/components/audio-fade-handles.tsx"),
 			readSource("../../../timeline/components/timeline-track.tsx"),
 			readSource("../panels/assets/views/assets.tsx"),
+			readSource("../panels/assets/views/media-batch-operations-dialog.tsx"),
+			readSource("../panels/assets/views/media-bin-browser.tsx"),
+			readSource("../panels/assets/views/media-duplicate-review-dialog.tsx"),
+			readSource("../panels/assets/views/media-metadata-editor.tsx"),
+			readSource("../panels/assets/views/source-monitor.tsx"),
+			readSource("../../../media/missing-media-placeholder.tsx"),
+			readSource("../../../media/upload-toast.ts"),
 		].join("\n");
 
 		for (const translatedLabel of [
@@ -60,6 +67,13 @@ describe("editor surface localization", () => {
 			'"淡入" : "淡出"}手柄',
 			"选择轨道",
 			"代理预览已启用",
+			"在源监视器中打开",
+			"批量素材操作",
+			"检查重复素材",
+			"编辑素材信息",
+			"已选源素材范围",
+			"素材已离线",
+			"正在上传",
 		]) {
 			expect(sources).toContain(translatedLabel);
 		}
@@ -72,6 +86,15 @@ describe("editor surface localization", () => {
 			"Fade in handle",
 			"Select ${track.name} track",
 			"Proxy preview enabled",
+			"素材排序：${sortBy}",
+			"按 {sortBy} 排序",
+			"Open in source monitor",
+			"Batch media operations",
+			"Review duplicate media",
+			"Edit asset metadata",
+			"Selected source range",
+			"MEDIA OFFLINE",
+			"Uploading ${getAssetLabel",
 		]) {
 			expect(sources).not.toContain(englishLabel);
 		}
@@ -100,6 +123,42 @@ describe("editor surface localization", () => {
 			">Portable project package<",
 			">Addressable correction pass<",
 			"Renders the opening",
+		]) {
+			expect(sources).not.toContain(englishLabel);
+		}
+	});
+
+	test("localizes export, project settings, scenes, and onboarding", () => {
+		const sources = [
+			readSource("../advanced-export-popover.tsx"),
+			readSource("../scenes-view.tsx"),
+			readSource("../onboarding.tsx"),
+			readSource("../mobile-gate.tsx"),
+			readSource("../panels/assets/views/settings/index.tsx"),
+			readSource("../panels/assets/views/settings/background.tsx"),
+		].join("\n");
+
+		for (const translatedLabel of [
+			"导出工作台",
+			"平台预设",
+			"编码设置",
+			"导出预检",
+			"工程信息",
+			"画布背景",
+			"删除场景",
+			"欢迎使用 OpenCut",
+		]) {
+			expect(sources).toContain(translatedLabel);
+		}
+
+		for (const englishLabel of [
+			">Export workspace<",
+			">Platform presets<",
+			">Export preflight<",
+			">Project info<",
+			">Background<",
+			">Delete Scenes<",
+			"Welcome to OpenCut",
 		]) {
 			expect(sources).not.toContain(englishLabel);
 		}

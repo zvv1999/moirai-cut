@@ -27,6 +27,15 @@ const COLOR_CLASSES: Record<MediaColorLabel, string> = {
 	purple: "bg-violet-500",
 };
 
+const COLOR_LABELS: Record<MediaColorLabel, string> = {
+	red: "红色",
+	orange: "橙色",
+	yellow: "黄色",
+	green: "绿色",
+	blue: "蓝色",
+	purple: "紫色",
+};
+
 type FavoriteChoice = "keep" | "favorite" | "not-favorite";
 type ColorChoice = "keep" | "none" | MediaColorLabel;
 
@@ -75,15 +84,11 @@ export function MediaMetadataEditorDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-md" aria-label="Edit asset metadata">
+			<DialogContent className="max-w-md" aria-label="编辑素材信息">
 				<DialogHeader>
-					<DialogTitle>
-						Edit metadata · {assetCount}{" "}
-						{assetCount === 1 ? "asset" : "assets"}
-					</DialogTitle>
+					<DialogTitle>编辑素材信息 · {assetCount} 个素材</DialogTitle>
 					<DialogDescription>
-						Apply shared organization metadata without changing source files or
-						timeline edits.
+						应用共享整理信息，不会修改源文件或时间线编辑。
 					</DialogDescription>
 				</DialogHeader>
 				<DialogBody className="gap-5">
@@ -92,17 +97,17 @@ export function MediaMetadataEditorDialog({
 							htmlFor="media-add-tags"
 							className="text-xs font-semibold"
 						>
-							Add tags
+							添加标签
 						</label>
 						<Input
 							id="media-add-tags"
-							aria-label="Add asset tags"
-							placeholder="interview, select, night"
+							aria-label="添加素材标签"
+							placeholder="访谈、精选、夜景"
 							value={addTags}
 							onChange={(event) => setAddTags(event.currentTarget.value)}
 						/>
 						<p className="text-muted-foreground text-[11px]">
-							Separate multiple tags with commas.
+							多个标签请用逗号分隔。
 						</p>
 					</div>
 					<div className="grid gap-2">
@@ -110,24 +115,24 @@ export function MediaMetadataEditorDialog({
 							htmlFor="media-remove-tags"
 							className="text-xs font-semibold"
 						>
-							Remove tags
+							移除标签
 						</label>
 						<Input
 							id="media-remove-tags"
-							aria-label="Remove asset tags"
-							placeholder="rough, rejected"
+							aria-label="移除素材标签"
+							placeholder="粗剪、弃用"
 							value={removeTags}
 							onChange={(event) => setRemoveTags(event.currentTarget.value)}
 						/>
 					</div>
 					<fieldset className="grid gap-2">
-						<legend className="text-xs font-semibold">Favorite</legend>
+						<legend className="text-xs font-semibold">收藏</legend>
 						<div className="grid grid-cols-3 gap-1.5">
 							{(
 								[
-									["keep", "Keep"],
-									["favorite", "Favorite"],
-									["not-favorite", "Not favorite"],
+									["keep", "保持不变"],
+									["favorite", "收藏"],
+									["not-favorite", "取消收藏"],
 								] as const
 							).map(([value, label]) => (
 								<Button
@@ -144,7 +149,7 @@ export function MediaMetadataEditorDialog({
 						</div>
 					</fieldset>
 					<fieldset className="grid gap-2">
-						<legend className="text-xs font-semibold">Color label</legend>
+						<legend className="text-xs font-semibold">颜色标签</legend>
 						<div className="flex flex-wrap gap-1.5">
 							<Button
 								type="button"
@@ -153,7 +158,7 @@ export function MediaMetadataEditorDialog({
 								aria-pressed={color === "keep"}
 								onClick={() => setColor("keep")}
 							>
-								Keep
+								保持不变
 							</Button>
 							<Button
 								type="button"
@@ -162,15 +167,15 @@ export function MediaMetadataEditorDialog({
 								aria-pressed={color === "none"}
 								onClick={() => setColor("none")}
 							>
-								None
+								无
 							</Button>
 							{MEDIA_COLOR_LABELS.map((label) => (
 								<button
 									key={label}
 									type="button"
-									aria-label={`${label} color label`}
+									aria-label={`${COLOR_LABELS[label]}颜色标签`}
 									aria-pressed={color === label}
-									title={`${label} color label`}
+									title={`${COLOR_LABELS[label]}颜色标签`}
 									className={cn(
 										"size-8 rounded-full border-2 border-transparent p-1 transition-transform hover:scale-105",
 										color === label && "border-primary",
@@ -194,10 +199,10 @@ export function MediaMetadataEditorDialog({
 						variant="outline"
 						onClick={() => onOpenChange(false)}
 					>
-						Cancel
+						取消
 					</Button>
 					<Button type="button" onClick={apply}>
-						Apply metadata
+						应用
 					</Button>
 				</DialogFooter>
 			</DialogContent>

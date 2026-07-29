@@ -120,7 +120,7 @@ export function MediaBinBrowserView({
 							<BinNameEditor
 								depth={depth}
 								initialValue={editing.value}
-								ariaLabel={`Rename bin ${bin.name}`}
+								ariaLabel={`重命名素材文件夹 ${bin.name}`}
 								onCancel={() => setEditing(null)}
 								onCommit={({ name }) => {
 									onRename({ binId: bin.id, name });
@@ -255,7 +255,7 @@ function MediaBinRow({
 				type="button"
 				role="treeitem"
 				aria-level={depth + 1}
-				aria-label={`View bin ${bin.name}`}
+				aria-label={`查看素材文件夹 ${bin.name}`}
 				aria-current={active ? "page" : undefined}
 				className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs"
 				onClick={onSelect}
@@ -271,8 +271,8 @@ function MediaBinRow({
 						variant="ghost"
 						size="icon"
 						className="size-6 shrink-0 opacity-70 hover:opacity-100"
-						aria-label={`Manage bin ${bin.name}`}
-						title={`Manage bin ${bin.name}`}
+						aria-label={`管理素材文件夹 ${bin.name}`}
+						title={`管理素材文件夹 ${bin.name}`}
 					>
 						<HugeiconsIcon icon={MoreHorizontalIcon} className="size-3.5" />
 					</Button>
@@ -280,9 +280,9 @@ function MediaBinRow({
 				<DropdownMenuContent align="start">
 					<DropdownMenuLabel>{bin.name}</DropdownMenuLabel>
 					<DropdownMenuItem onSelect={onCreateChild}>
-						New nested bin
+						新建子文件夹
 					</DropdownMenuItem>
-					<DropdownMenuItem onSelect={onRename}>Rename</DropdownMenuItem>
+					<DropdownMenuItem onSelect={onRename}>重命名</DropdownMenuItem>
 					<DropdownMenuSeparator />
 					<DropdownMenuItem
 						disabled={siblingIndex <= 0}
@@ -294,7 +294,7 @@ function MediaBinRow({
 							})
 						}
 					>
-						Move up
+						上移
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						disabled={siblingIndex === siblings.length - 1}
@@ -306,10 +306,10 @@ function MediaBinRow({
 							})
 						}
 					>
-						Move down
+						下移
 					</DropdownMenuItem>
 					<DropdownMenuSub>
-						<DropdownMenuSubTrigger>Move into</DropdownMenuSubTrigger>
+						<DropdownMenuSubTrigger>移动到</DropdownMenuSubTrigger>
 						<DropdownMenuSubContent>
 							<DropdownMenuItem
 								disabled={bin.parentId === null}
@@ -321,7 +321,7 @@ function MediaBinRow({
 									})
 								}
 							>
-								Root
+								根目录
 							</DropdownMenuItem>
 							{parentCandidates.map((candidate) => (
 								<DropdownMenuItem
@@ -342,7 +342,7 @@ function MediaBinRow({
 					</DropdownMenuSub>
 					<DropdownMenuSeparator />
 					<DropdownMenuItem variant="destructive" onSelect={onDelete}>
-						Delete bin · keep media
+						删除文件夹 · 保留素材
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>

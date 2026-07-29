@@ -29,6 +29,12 @@ const BLUR_PREVIEW_UNIFORM_DIMENSIONS = {
 const CUSTOM_COLOR_SWATCH_BACKGROUND =
 	"conic-gradient(from 180deg at 50% 50%, #ff5e5e 0deg, #ffb35e 55deg, #fff26b 110deg, #6bff8f 165deg, #5ee7ff 220deg, #6f7cff 275deg, #d76bff 330deg, #ff5e9b 360deg)";
 
+const BLUR_LABELS: Record<string, string> = {
+	Light: "轻度",
+	Medium: "中度",
+	Heavy: "重度",
+};
+
 const BlurPreview = memo(
 	({
 		blur,
@@ -67,7 +73,7 @@ const BlurPreview = memo(
 				)}
 				onClick={onSelect}
 				type="button"
-				aria-label={`Select ${blur.label} blur`}
+				aria-label={`选择${BLUR_LABELS[blur.label] ?? blur.label}模糊`}
 			>
 				<canvas
 					ref={canvasRef}
@@ -75,7 +81,7 @@ const BlurPreview = memo(
 				/>
 				<div className="absolute right-1 bottom-1 left-1 text-center">
 					<span className="rounded bg-black/50 px-1 text-xs text-white">
-						{blur.label}
+						{BLUR_LABELS[blur.label] ?? blur.label}
 					</span>
 				</div>
 			</button>
@@ -122,7 +128,7 @@ const BackgroundPreviews = memo(
 						}
 						onClick={() => onSelect(bg)}
 						type="button"
-						aria-label={`Select background ${bg}`}
+						aria-label={`选择背景 ${bg}`}
 					/>
 				)),
 			[
@@ -158,7 +164,7 @@ function CustomColorPreview({
 						isSelected && "border-primary border-2",
 					)}
 					type="button"
-					aria-label="Pick a custom background color"
+					aria-label="选择自定义背景颜色"
 				>
 					<span
 						className="absolute inset-0"
@@ -180,9 +186,9 @@ function CustomColorPreview({
 }
 
 const COLOR_SECTIONS = [
-	{ id: "colors", title: "Colors", backgrounds: colors, useBackgroundColor: true, showCustomPicker: true },
-	{ id: "pattern-craft", title: "Pattern craft", backgrounds: patternCraftGradients, showCustomPicker: false },
-	{ id: "syntax-ui", title: "Syntax UI", backgrounds: syntaxUIGradients, showCustomPicker: false },
+	{ id: "colors", title: "纯色", backgrounds: colors, useBackgroundColor: true, showCustomPicker: true },
+	{ id: "pattern-craft", title: "图案渐变", backgrounds: patternCraftGradients, showCustomPicker: false },
+	{ id: "syntax-ui", title: "界面渐变", backgrounds: syntaxUIGradients, showCustomPicker: false },
 ] as const;
 
 export function BackgroundContent() {
@@ -263,7 +269,7 @@ export function BackgroundContent() {
 				showTopBorder={false}
 			>
 				<SectionHeader>
-					<SectionTitle>Blur</SectionTitle>
+					<SectionTitle>背景模糊</SectionTitle>
 				</SectionHeader>
 				<SectionContent>
 					<div className="flex flex-wrap gap-2">{blurPreviews}</div>

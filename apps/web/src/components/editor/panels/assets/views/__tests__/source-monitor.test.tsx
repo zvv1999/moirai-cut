@@ -24,11 +24,11 @@ test("source monitor exposes playback, in/out, insert, and overwrite controls", 
 		</Dialog>,
 	);
 
-	expect(markup).toContain('aria-label="Source monitor"');
-	expect(markup).toContain('aria-label="Source playhead"');
-	expect(markup).toContain("Set In");
-	expect(markup).toContain("Set Out");
-	expect(markup).toContain("Insert range");
-	expect(markup).toContain("Overwrite Main Track");
+	expect(markup).toContain('aria-label="源监视器"');
+	expect(markup).toContain('aria-label="源素材播放头"');
+	expect(markup).toContain("设置入点");
+	expect(markup).toContain("设置出点");
+	expect(markup).toContain("插入范围");
+	expect(markup).toContain("覆盖到 Main Track");
 	expect(markup).toContain("原始素材不会被修改");
 });

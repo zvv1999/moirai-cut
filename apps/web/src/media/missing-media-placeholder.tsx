@@ -17,7 +17,12 @@ type MissingMediaPlaceholderProps = {
 };
 
 function formatMediaType({ type }: { type: MediaType }): string {
-	return `${type.charAt(0).toLocaleUpperCase()}${type.slice(1)}`;
+	const labels: Record<MediaType, string> = {
+		video: "视频",
+		image: "图片",
+		audio: "音频",
+	};
+	return labels[type];
 }
 
 export function MissingMediaPlaceholder({
@@ -44,7 +49,7 @@ export function MissingMediaPlaceholder({
 				}}
 			>
 				<HugeiconsIcon icon={AlertCircleIcon} className="size-3 shrink-0" />
-				<span className="truncate text-xs font-semibold">Missing · {name}</span>
+				<span className="truncate text-xs font-semibold">素材丢失 · {name}</span>
 			</div>
 		);
 	}
@@ -70,11 +75,11 @@ export function MissingMediaPlaceholder({
 						className="mx-auto mb-3 size-8 text-red-300"
 					/>
 					<p className="text-xs font-black tracking-[0.18em] text-red-200">
-						MEDIA OFFLINE
+						素材已离线
 					</p>
 					<p className="mt-2 truncate text-base font-semibold">{name}</p>
 					<p className="mt-1 text-xs text-red-100/75">
-						Relink this file from the Assets panel
+						请在素材面板中重新链接此文件
 					</p>
 				</div>
 			</div>
@@ -85,9 +90,7 @@ export function MissingMediaPlaceholder({
 	const usageLabel =
 		usageCount === undefined
 			? formattedType
-			: `${formattedType} · ${usageCount} timeline ${
-					usageCount === 1 ? "use" : "uses"
-				}`;
+			: `${formattedType} · 时间线使用 ${usageCount} 次`;
 
 	return (
 		<div
@@ -111,7 +114,7 @@ export function MissingMediaPlaceholder({
 			</div>
 			<div className="space-y-3 p-3">
 				<div className="min-w-0">
-					<p className="text-xs font-bold text-red-300">Media missing</p>
+					<p className="text-xs font-bold text-red-300">素材丢失</p>
 					<p
 						className="truncate text-sm font-semibold text-red-50"
 						title={name}
@@ -126,11 +129,11 @@ export function MissingMediaPlaceholder({
 						size="sm"
 						variant="outline"
 						className="w-full border-red-400/35 bg-red-950/55 text-red-100 hover:bg-red-900/60 hover:text-white"
-						aria-label={`Relink ${name}`}
+						aria-label={`重新链接 ${name}`}
 						onClick={onRelink}
 					>
 						<HugeiconsIcon icon={Link04Icon} />
-						Relink
+						重新链接
 					</Button>
 				) : null}
 			</div>

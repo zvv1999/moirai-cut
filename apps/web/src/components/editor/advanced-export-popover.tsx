@@ -60,6 +60,152 @@ import {
 type ExportTab = "setup" | "preflight" | "components" | "queue" | "history";
 type DeliverySelection = "browser" | DeliveryPresetName;
 
+const EXPORT_PRESET_COPY: Record<
+	ExportPresetId,
+	{ name: string; description: string }
+> = {
+	source: { name: "匹配工程", description: "沿用工程画布和帧率" },
+	"landscape-hd": { name: "横屏高清", description: "1920×1080 · H.264" },
+	"vertical-social": {
+		name: "竖屏社交媒体",
+		description: "1080×1920 · Reels / TikTok / Shorts",
+	},
+	"square-social": { name: "方形社交媒体", description: "1080×1080 · 信息流" },
+	"youtube-4k": {
+		name: "YouTube 4K",
+		description: "3840×2160 · 高码率",
+	},
+	"transparent-webm": {
+		name: "透明 WebM",
+		description: "VP9 Alpha · 叠加层交付",
+	},
+};
+
+const EXPORT_STATUS_LABELS: Record<ExportHistoryStatus, string> = {
+	completed: "已完成",
+	failed: "失败",
+	cancelled: "已取消",
+};
+
+const QUEUE_STATUS_LABELS: Record<ExportQueueItem["status"], string> = {
+	pending: "等待中",
+	running: "运行中",
+	completed: "已完成",
+	failed: "失败",
+	cancelled: "已取消",
+};
+
+const PREFLIGHT_SOURCE_LABELS = {
+	health: "工程健康",
+	render: "画面渲染",
+	encoding: "编码设置",
+} as const;
+
+const VALIDATION_MESSAGE_LABELS: Record<string, string> = {
+	invalid_resolution: "分辨率必须是 16 到 8192 之间的整数像素。",
+	invalid_frame_rate: "帧率必须大于 0。",
+	invalid_video_bitrate: "视频码率必须在 0.25 到 200 Mbps 之间。",
+	invalid_audio_bitrate: "音频码率必须在 32 到 512 Kbps 之间。",
+	invalid_range: "导出范围无效或超出时间线。",
+	container_video_codec: "当前封装格式不支持所选视频编码器。",
+	container_audio_codec: "当前封装格式不支持所选音频编码器。",
+	alpha_container: "透明视频需要使用 WebM。",
+	video_codec_unavailable: "当前浏览器不支持所选视频编码器。",
+	audio_codec_unavailable: "当前浏览器不支持所选音频编码器。",
+	hardware_unavailable: "未确认硬件编码能力，可能回退到软件编码。",
+};
+
+function getPresetCopy(presetId: ExportPresetId) {
+	return EXPORT_PRESET_COPY[presetId];
+}
+
+function componentLabel(item: ComponentExportPlanItem): string {
+	switch (item.kind) {
+		case "audio-mix":
+			return "完整音频混音（WAV）";
+		case "audio-stem":
+			return `${item.label.replace(/ stem \\(WAV\\)$/, "")} 分轨（WAV）`;
+		case "captions":
+			return "字幕（WebVTT）";
+		case "still":
+			return "播放头静帧（PNG）";
+		case "alpha-video":
+			return "透明视频（WebM）";
+		case "range-video":
+			return "所选范围视频";
+	}
+}
+
+function componentReason(item: ComponentExportPlanItem): string {
+	if (item.available) {
+		const kindLabels: Record<ComponentExportPlanItem["kind"], string> = {
+			"audio-mix": "音频混音",
+			"audio-stem": "独立分轨",
+			captions: "字幕文件",
+			still: "静帧图片",
+			"alpha-video": "透明视频",
+			"range-video": "范围视频",
+		};
+		return kindLabels[item.kind];
+	}
+	switch (item.kind) {
+		case "audio-mix":
+			return "没有可听轨道";
+		case "captions":
+			return "没有字幕片段";
+		case "alpha-video":
+			return "VP9 Alpha 不可用";
+		case "range-video":
+			return "请设置有效的入点和出点";
+		default:
+			return item.reason ?? "当前组件不可用";
+	}
+}
+
+function localizePreflightMessage(
+	finding: ExportPreflightResult["findings"][number],
+): string {
+	if (finding.source === "encoding") {
+		return (
+			VALIDATION_MESSAGE_LABELS[finding.id.replace(/^encoding:/, "")] ??
+			finding.message
+		);
+	}
+	if (
+		finding.source === "render" &&
+		finding.message === "Representative frame did not render."
+	) {
+		return "代表性画面渲染失败。";
+	}
+	if (finding.message === "The project has no visual content to export.") {
+		return "工程中没有可导出的画面内容。";
+	}
+	const overlap = finding.message.match(/^(.+) overlaps (.+) on (.+)\.$/);
+	if (overlap) {
+		return `${overlap[1]} 与 ${overlap[2]} 在 ${overlap[3]} 上发生重叠。`;
+	}
+	const emptyRange = finding.message.match(
+		/^Nothing exists from (.+)s to (.+)s\.$/,
+	);
+	if (emptyRange) {
+		return `${emptyRange[1]} 秒到 ${emptyRange[2]} 秒之间没有内容。`;
+	}
+	return finding.message
+		.replace(" is hidden but contains ", " 已隐藏，但仍包含 ")
+		.replace(" is muted but contains ", " 已静音，但仍包含 ")
+		.replace(" clip(s).", " 个素材。")
+		.replace(" and may read as a flash frame.", "，可能会呈现为闪帧。")
+		.replace(" references media that is not in the library.", " 引用了素材库中不存在的媒体。")
+		.replace(" extends past its source and may freeze or render black.", " 超出源素材范围，可能冻结或渲染黑屏。")
+		.replace(" gain and should be checked for clipping.", " 增益，请检查是否削波。")
+		.replace(" characters on one line.", " 个字符集中在一行。")
+		.replace(" is outside the title-safe vertical area.", " 超出了标题安全区的垂直范围。")
+		.replace(
+			" hole on the main track will export as black.",
+			" 秒的主轨空隙会导出为黑屏。",
+		);
+}
+
 function isDeliverySelection(
 	value: string,
 ): value is DeliverySelection {
@@ -80,9 +226,9 @@ function formatBytes(bytes: number): string {
 
 function formatDuration(seconds: number): string {
 	if (!Number.isFinite(seconds)) return "—";
-	if (seconds < 60) return `${Math.ceil(seconds)}s`;
+	if (seconds < 60) return `${Math.ceil(seconds)} 秒`;
 	const minutes = Math.floor(seconds / 60);
-	return `${minutes}m ${Math.ceil(seconds % 60)}s`;
+	return `${minutes} 分 ${Math.ceil(seconds % 60)} 秒`;
 }
 
 function safeDestinationName({
@@ -408,8 +554,9 @@ export function AdvancedExportPopover({
 		});
 		const blocking = issues.find((issue) => issue.severity === "error");
 		if (blocking) {
-			toast.error("Export settings need attention", {
-				description: blocking.message,
+			toast.error("请检查导出设置", {
+				description:
+					VALIDATION_MESSAGE_LABELS[blocking.code] ?? blocking.message,
 			});
 			if (queueId) {
 				exportQueue.fail({ id: queueId, error: blocking.message });
@@ -450,7 +597,7 @@ export function AdvancedExportPopover({
 					const state = editor.project.getExportState();
 					update({
 						progress: state.progress,
-						step: `Encoding ${Math.round(state.progress * 100)}%`,
+						step: `正在编码 ${Math.round(state.progress * 100)}%`,
 					});
 					if (queueId) {
 						exportQueue.update({
@@ -470,11 +617,11 @@ export function AdvancedExportPopover({
 						cancelled = true;
 						return;
 					}
-					if (!result.success || !result.buffer) {
-						throw new Error(result.error || "Export did not produce a file");
-					}
-					if (deliverySelection === "browser") {
-						update({ progress: 0.99, step: "Preparing download" });
+				if (!result.success || !result.buffer) {
+					throw new Error(result.error || "导出未生成文件");
+				}
+				if (deliverySelection === "browser") {
+					update({ progress: 0.99, step: "正在准备下载" });
 						downloadBuffer({
 							buffer: result.buffer,
 							filename: destinationName,
@@ -589,7 +736,7 @@ export function AdvancedExportPopover({
 		const error =
 			completedError ??
 			finalJob?.error ??
-			(status === "cancelled" ? "Export cancelled" : "Export failed");
+			(status === "cancelled" ? "导出已取消" : "导出失败");
 		if (queueId) {
 			if (status === "cancelled") exportQueue.cancel({ id: queueId });
 			else exportQueue.fail({ id: queueId, error });
@@ -612,9 +759,9 @@ export function AdvancedExportPopover({
 		setCapabilities(checkedCapabilities);
 		const handle = backgroundJobs.start({
 			kind: "analysis",
-			label: "Export preflight",
+			label: "导出预检",
 			run: async ({ update }) => {
-				update({ progress: 0.1, step: "Checking project structure" });
+				update({ progress: 0.1, step: "正在检查工程结构" });
 				const health: ProjectHealthResult = runProjectHealthCheck(healthInput);
 				const lastFrame = Math.max(
 					0,
@@ -631,7 +778,7 @@ export function AdvancedExportPopover({
 					const atSeconds = sampleTimes[index];
 					update({
 						progress: 0.2 + (index / Math.max(1, sampleTimes.length)) * 0.7,
-						step: `Rendering sample ${index + 1} of ${sampleTimes.length}`,
+						step: `正在渲染样本 ${index + 1} / ${sampleTimes.length}`,
 					});
 					const result = await editor.renderer.renderFrame({
 						time: mediaTimeFromSeconds({ seconds: atSeconds }),
@@ -666,12 +813,9 @@ export function AdvancedExportPopover({
 	};
 
 	const addToQueue = () => {
-		const preset =
-			EXPORT_PLATFORM_PRESETS.find(
-				(candidate) => candidate.id === draft.presetId,
-			)?.name ?? "Custom export";
+		const preset = getPresetCopy(draft.presetId).name;
 		exportQueue.enqueue({
-			label: draft.range ? `${preset} · selected range` : preset,
+			label: draft.range ? `${preset} · 所选范围` : preset,
 			options: draft,
 			projectRevision: revision,
 		});
@@ -691,7 +835,7 @@ export function AdvancedExportPopover({
 					exportQueue.start({ id: next.id });
 					exportQueue.fail({
 						id: next.id,
-						error: `Queued revision ${next.projectRevision}; current revision is ${currentRevision}`,
+						error: `队列版本为 ${next.projectRevision}，当前版本为 ${currentRevision}`,
 					});
 				} else {
 					exportQueue.start({ id: next.id });
@@ -728,7 +872,7 @@ export function AdvancedExportPopover({
 					onProgress: (progress) =>
 						update({
 							progress: progress / 100,
-							step: "Mixing timeline audio",
+							step: "正在混合时间线音频",
 						}),
 				});
 				downloadBlob({ blob, filename: fileName });
@@ -743,14 +887,14 @@ export function AdvancedExportPopover({
 		item: ComponentExportPlanItem;
 	}) => {
 		if (!item.available) {
-			toast.error(item.reason ?? "This component is unavailable");
+			toast.error(componentReason(item));
 			return;
 		}
 		const safeProject =
 			project.metadata.name.replace(/[<>:"/\\|?*]/g, "-").trim() || "opencut";
 		if (item.kind === "still") {
 			const result = await editor.renderer.saveSnapshot();
-			if (!result.success) toast.error(result.error ?? "Snapshot failed");
+			if (!result.success) toast.error(result.error ?? "保存快照失败");
 			return;
 		}
 		if (item.kind === "captions") {
@@ -766,13 +910,13 @@ export function AdvancedExportPopover({
 				blob: new Blob([serialized.content], { type: serialized.mimeType }),
 				filename: `${safeProject}-captions.${serialized.fileExtension}`,
 			});
-			toast.success(`Exported ${captionCues.length} caption cues`);
+			toast.success(`已导出 ${captionCues.length} 条字幕`);
 			return;
 		}
 		if (item.kind === "audio-mix") {
 			await exportAudio({
 				tracks: scene.tracks,
-				label: "Export full audio mix",
+				label: "导出完整音频混音",
 				fileName: `${safeProject}-mix.wav`,
 			});
 			return;
@@ -798,14 +942,14 @@ export function AdvancedExportPopover({
 					...alphaDraft,
 					...(draft.range ? { range: { ...draft.range } } : {}),
 				},
-				label: "Transparent WebM",
+				label: "透明 WebM",
 			});
 			return;
 		}
 		if (item.kind === "range-video" && draft.range) {
 			await performVideoExport({
 				requestDraft: { ...draft, range: { ...draft.range } },
-				label: "Selected range",
+				label: "所选范围",
 			});
 		}
 	};
@@ -817,7 +961,7 @@ export function AdvancedExportPopover({
 		setTab("history");
 		await performVideoExport({
 			requestDraft: request.options,
-			label: `${request.label} rerun`,
+			label: `${request.label} · 重新运行`,
 		});
 	};
 
@@ -829,20 +973,20 @@ export function AdvancedExportPopover({
 	};
 
 	const tabs: Array<{ id: ExportTab; label: string }> = [
-		{ id: "setup", label: "Setup" },
-		{ id: "preflight", label: "Preflight" },
-		{ id: "components", label: "Components" },
-		{ id: "queue", label: "Queue" },
-		{ id: "history", label: "History" },
+		{ id: "setup", label: "设置" },
+		{ id: "preflight", label: "预检" },
+		{ id: "components", label: "分项导出" },
+		{ id: "queue", label: "队列" },
+		{ id: "history", label: "历史" },
 	];
 
 	return (
 		<div className="bg-background text-foreground flex max-h-[82vh] w-[42rem] flex-col overflow-hidden rounded-xl border shadow-2xl">
 			<div className="border-border flex items-start justify-between border-b p-4">
 				<div>
-					<div className="text-sm font-semibold">Export workspace</div>
+					<div className="text-sm font-semibold">导出工作台</div>
 					<div className="text-muted-foreground text-[11px]">
-						Editable presets · preflight · components · queue · history
+						可编辑预设 · 预检 · 分项导出 · 队列 · 历史
 					</div>
 				</div>
 				<button
@@ -850,7 +994,7 @@ export function AdvancedExportPopover({
 					className="text-muted-foreground hover:text-foreground text-xs"
 					onClick={() => onOpenChange(false)}
 				>
-					Close
+					关闭
 				</button>
 			</div>
 
@@ -875,7 +1019,7 @@ export function AdvancedExportPopover({
 				{tab === "setup" ? (
 					<div className="space-y-4">
 						<section>
-							<div className="mb-2 text-xs font-semibold">Platform presets</div>
+							<div className="mb-2 text-xs font-semibold">平台预设</div>
 							<div className="grid grid-cols-3 gap-2">
 								{EXPORT_PLATFORM_PRESETS.map((preset) => (
 									<button
@@ -889,26 +1033,25 @@ export function AdvancedExportPopover({
 										onClick={() => applyPreset({ presetId: preset.id })}
 									>
 										<div className="text-[11px] font-semibold">
-											{preset.name}
+											{getPresetCopy(preset.id).name}
 										</div>
 										<div className="text-muted-foreground mt-0.5 text-[9px]">
-											{preset.description}
+											{getPresetCopy(preset.id).description}
 										</div>
 									</button>
 								))}
 							</div>
 							<p className="text-muted-foreground mt-1.5 text-[9px]">
-								Presets are editable starting points. Every actual encoder value
-								remains visible below.
+								预设只是可编辑的起点，所有实际编码参数都显示在下方。
 							</p>
 						</section>
 
 						<section className="border-border rounded-lg border p-3">
 							<div className="mb-3 flex items-center justify-between">
 								<div>
-									<div className="text-xs font-semibold">Encoding</div>
+									<div className="text-xs font-semibold">编码设置</div>
 									<div className="text-muted-foreground text-[9px]">
-										Container · resolution · FPS · codec · bitrate · hardware
+										封装 · 分辨率 · 帧率 · 编码器 · 码率 · 硬件
 									</div>
 								</div>
 								<Button
@@ -917,14 +1060,14 @@ export function AdvancedExportPopover({
 									onClick={() => void checkCapabilities()}
 									disabled={checkingCapabilities}
 								>
-									{checkingCapabilities ? "Checking…" : "Check support"}
+									{checkingCapabilities ? "检查中…" : "检查支持情况"}
 								</Button>
 							</div>
 							<div className="grid grid-cols-4 gap-2">
 								<label className="text-[10px]">
-									<span className="mb-1 block opacity-60">Format</span>
+									<span className="mb-1 block opacity-60">格式</span>
 									<select
-										aria-label="Export format"
+										aria-label="导出格式"
 										className="bg-background border-input h-8 w-full rounded border px-2"
 										value={draft.format}
 										onChange={(event) => {
@@ -988,9 +1131,9 @@ export function AdvancedExportPopover({
 									</select>
 								</label>
 								<label className="text-[10px]">
-									<span className="mb-1 block opacity-60">Width</span>
+									<span className="mb-1 block opacity-60">宽度</span>
 									<input
-										aria-label="Export width"
+										aria-label="导出宽度"
 										className="bg-background border-input h-8 w-full rounded border px-2"
 										type="number"
 										min={16}
@@ -1009,9 +1152,9 @@ export function AdvancedExportPopover({
 									/>
 								</label>
 								<label className="text-[10px]">
-									<span className="mb-1 block opacity-60">Height</span>
+									<span className="mb-1 block opacity-60">高度</span>
 									<input
-										aria-label="Export height"
+										aria-label="导出高度"
 										className="bg-background border-input h-8 w-full rounded border px-2"
 										type="number"
 										min={16}
@@ -1030,9 +1173,9 @@ export function AdvancedExportPopover({
 									/>
 								</label>
 								<label className="text-[10px]">
-									<span className="mb-1 block opacity-60">Frame rate</span>
+									<span className="mb-1 block opacity-60">帧率</span>
 									<select
-										aria-label="Export frame rate"
+										aria-label="导出帧率"
 										className="bg-background border-input h-8 w-full rounded border px-2"
 										value={draft.fps.numerator / draft.fps.denominator}
 										onChange={(event) =>
@@ -1054,9 +1197,9 @@ export function AdvancedExportPopover({
 									</select>
 								</label>
 								<label className="text-[10px]">
-									<span className="mb-1 block opacity-60">Video codec</span>
+									<span className="mb-1 block opacity-60">视频编码器</span>
 									<select
-										aria-label="Video codec"
+										aria-label="视频编码器"
 										className="bg-background border-input h-8 w-full rounded border px-2"
 										value={draft.videoCodec}
 										onChange={(event) =>
@@ -1083,10 +1226,10 @@ export function AdvancedExportPopover({
 									</select>
 								</label>
 								<label className="text-[10px]">
-									<span className="mb-1 block opacity-60">Video bitrate</span>
+									<span className="mb-1 block opacity-60">视频码率</span>
 									<div className="relative">
 										<input
-											aria-label="Video bitrate Mbps"
+											aria-label="视频码率 Mbps"
 											className="bg-background border-input h-8 w-full rounded border px-2 pr-10"
 											type="number"
 											min={0.25}
@@ -1111,9 +1254,9 @@ export function AdvancedExportPopover({
 									</div>
 								</label>
 								<label className="text-[10px]">
-									<span className="mb-1 block opacity-60">Audio codec</span>
+									<span className="mb-1 block opacity-60">音频编码器</span>
 									<select
-										aria-label="Audio codec"
+										aria-label="音频编码器"
 										className="bg-background border-input h-8 w-full rounded border px-2"
 										value={draft.audioCodec}
 										disabled={!draft.includeAudio}
@@ -1132,10 +1275,10 @@ export function AdvancedExportPopover({
 									</select>
 								</label>
 								<label className="text-[10px]">
-									<span className="mb-1 block opacity-60">Audio bitrate</span>
+									<span className="mb-1 block opacity-60">音频码率</span>
 									<div className="relative">
 										<input
-											aria-label="Audio bitrate Kbps"
+											aria-label="音频码率 Kbps"
 											className="bg-background border-input h-8 w-full rounded border px-2 pr-10"
 											type="number"
 											min={32}
@@ -1173,7 +1316,7 @@ export function AdvancedExportPopover({
 											patchDraft({ update: { includeAudio: checked === true } })
 										}
 									/>
-									Include audio
+									包含音频
 								</label>
 								<label
 									className="flex items-center gap-2"
@@ -1187,11 +1330,11 @@ export function AdvancedExportPopover({
 											patchDraft({ update: { includeAlpha: checked === true } })
 										}
 									/>
-									Keep alpha
+									保留 Alpha 通道
 								</label>
 								<label>
 									<select
-										aria-label="Hardware acceleration"
+										aria-label="硬件加速"
 										className="bg-background border-input h-8 w-full rounded border px-2"
 										value={draft.hardwareAcceleration}
 										onChange={(event) =>
@@ -1207,27 +1350,27 @@ export function AdvancedExportPopover({
 											})
 										}
 									>
-										<option value="prefer-hardware">Prefer hardware</option>
-										<option value="no-preference">Auto</option>
-										<option value="prefer-software">Prefer software</option>
+										<option value="prefer-hardware">优先硬件</option>
+										<option value="no-preference">自动</option>
+										<option value="prefer-software">优先软件</option>
 									</select>
 								</label>
 							</div>
 							{capabilities ? (
 								<div className="mt-2 flex gap-2 text-[9px]">
 									<span className="rounded bg-emerald-500/10 px-2 py-1">
-										Video{" "}
-										{capabilities.videoCodecSupported ? "supported" : "blocked"}
+										视频{" "}
+										{capabilities.videoCodecSupported ? "受支持" : "不可用"}
 									</span>
 									<span className="rounded bg-emerald-500/10 px-2 py-1">
-										Audio{" "}
-										{capabilities.audioCodecSupported ? "supported" : "blocked"}
+										音频{" "}
+										{capabilities.audioCodecSupported ? "受支持" : "不可用"}
 									</span>
 									<span className="rounded bg-sky-500/10 px-2 py-1">
-										Hardware preference{" "}
+										硬件偏好{" "}
 										{capabilities.hardwareAccelerationAvailable
-											? "accepted"
-											: "not confirmed"}
+											? "可用"
+											: "未确认"}
 									</span>
 								</div>
 							) : null}
@@ -1236,10 +1379,9 @@ export function AdvancedExportPopover({
 						<section className="border-border rounded-lg border p-3">
 							<div className="mb-2 flex items-center justify-between">
 								<div>
-									<div className="text-xs font-semibold">Range</div>
+									<div className="text-xs font-semibold">导出范围</div>
 									<div className="text-muted-foreground text-[9px]">
-										Leave empty for the full {durationSeconds.toFixed(2)}s
-										timeline
+										留空将导出完整的 {durationSeconds.toFixed(2)} 秒时间线
 									</div>
 								</div>
 								{draft.range ? (
@@ -1248,15 +1390,15 @@ export function AdvancedExportPopover({
 										className="text-primary text-[10px]"
 										onClick={() => patchDraft({ update: { range: undefined } })}
 									>
-										Clear range
+										清除范围
 									</button>
 								) : null}
 							</div>
 							<div className="grid grid-cols-2 gap-2">
 								<label className="text-[10px]">
-									<span className="mb-1 block opacity-60">In seconds</span>
+									<span className="mb-1 block opacity-60">入点（秒）</span>
 									<input
-										aria-label="Export range start"
+										aria-label="导出范围起点"
 										className="bg-background border-input h-8 w-full rounded border px-2"
 										type="number"
 										min={0}
@@ -1281,9 +1423,9 @@ export function AdvancedExportPopover({
 									/>
 								</label>
 								<label className="text-[10px]">
-									<span className="mb-1 block opacity-60">Out seconds</span>
+									<span className="mb-1 block opacity-60">出点（秒）</span>
 									<input
-										aria-label="Export range end"
+										aria-label="导出范围终点"
 										className="bg-background border-input h-8 w-full rounded border px-2"
 										type="number"
 										min={0}
@@ -1312,7 +1454,7 @@ export function AdvancedExportPopover({
 						<div className="grid grid-cols-3 gap-2">
 							<div className="bg-muted/40 rounded-lg p-2">
 								<div className="text-muted-foreground text-[9px]">
-									Duration estimate
+									时长估算
 								</div>
 								<div className="text-xs font-semibold">
 									{formatDuration(estimate.durationSeconds)}
@@ -1320,7 +1462,7 @@ export function AdvancedExportPopover({
 							</div>
 							<div className="bg-muted/40 rounded-lg p-2">
 								<div className="text-muted-foreground text-[9px]">
-									Size estimate
+									文件大小估算
 								</div>
 								<div className="text-xs font-semibold">
 									≈ {formatBytes(estimate.estimatedBytes)}
@@ -1328,7 +1470,7 @@ export function AdvancedExportPopover({
 							</div>
 							<div className="bg-muted/40 rounded-lg p-2">
 								<div className="text-muted-foreground text-[9px]">
-									Render estimate
+									渲染耗时估算
 								</div>
 								<div className="text-xs font-semibold">
 									≈ {formatDuration(estimate.estimatedRenderSeconds)}
@@ -1336,7 +1478,7 @@ export function AdvancedExportPopover({
 							</div>
 						</div>
 						<p className="text-muted-foreground text-[9px]">
-							{estimate.label}.
+							根据已配置码率和像素吞吐量进行规划估算。
 						</p>
 
 						{validationIssues.length > 0 ? (
@@ -1350,7 +1492,7 @@ export function AdvancedExportPopover({
 												: "bg-amber-500/10 text-amber-700"
 										}`}
 									>
-										{issue.message}
+										{VALIDATION_MESSAGE_LABELS[issue.code] ?? issue.message}
 									</li>
 								))}
 							</ul>
@@ -1362,10 +1504,9 @@ export function AdvancedExportPopover({
 					<div className="space-y-3">
 						<div className="flex items-center justify-between">
 							<div>
-								<div className="text-xs font-semibold">Export preflight</div>
+								<div className="text-xs font-semibold">导出预检</div>
 								<div className="text-muted-foreground text-[9px]">
-									Project health + representative render samples + encoder
-									support
+									工程健康 + 代表性渲染样本 + 编码器支持
 								</div>
 							</div>
 							<Button
@@ -1373,7 +1514,7 @@ export function AdvancedExportPopover({
 								onClick={() => void runPreflight()}
 								disabled={runningPreflight}
 							>
-								{runningPreflight ? "Checking…" : "Run preflight"}
+								{runningPreflight ? "检查中…" : "运行预检"}
 							</Button>
 						</div>
 						{preflight ? (
@@ -1387,12 +1528,12 @@ export function AdvancedExportPopover({
 								>
 									<div className="text-xs font-semibold">
 										{preflight.ready
-											? "Ready to export"
-											: "Resolve blocking findings"}
+											? "可以导出"
+											: "请先解决阻塞问题"}
 									</div>
 									<div className="text-[9px] opacity-65">
-										{preflight.checkedSamples} representative frames rendered ·{" "}
-										{preflight.findings.length} findings
+										已渲染 {preflight.checkedSamples} 个代表性画面 ·{" "}
+										{preflight.findings.length} 个问题
 									</div>
 								</div>
 								<ul className="space-y-1.5">
@@ -1413,9 +1554,9 @@ export function AdvancedExportPopover({
 												●
 											</span>
 											<div className="min-w-0 flex-1">
-												<div>{finding.message}</div>
+												<div>{localizePreflightMessage(finding)}</div>
 												<div className="mt-0.5 text-[8px] uppercase opacity-50">
-													{finding.source}
+													{PREFLIGHT_SOURCE_LABELS[finding.source]}
 												</div>
 											</div>
 											{finding.atSeconds !== undefined ? (
@@ -1430,7 +1571,7 @@ export function AdvancedExportPopover({
 														})
 													}
 												>
-													Go {finding.atSeconds.toFixed(2)}s
+													前往 {finding.atSeconds.toFixed(2)} 秒
 												</button>
 											) : null}
 										</li>
@@ -1439,8 +1580,7 @@ export function AdvancedExportPopover({
 							</>
 						) : (
 							<div className="border-border rounded-lg border border-dashed p-8 text-center text-[11px] opacity-55">
-								Run preflight before a final export. Render samples use the same
-								scene builder as the encoder.
+								最终导出前请运行预检。渲染样本与编码器使用同一场景构建器。
 							</div>
 						)}
 					</div>
@@ -1449,9 +1589,9 @@ export function AdvancedExportPopover({
 				{tab === "components" ? (
 					<div className="space-y-3">
 						<div>
-							<div className="text-xs font-semibold">Component exports</div>
+							<div className="text-xs font-semibold">分项导出</div>
 							<div className="text-muted-foreground text-[9px]">
-								Deliver a mix, isolated stems, captions, still, alpha, or range
+								交付混音、独立分轨、字幕、静帧、透明视频或所选范围
 							</div>
 						</div>
 						<ul className="grid grid-cols-2 gap-2">
@@ -1462,10 +1602,10 @@ export function AdvancedExportPopover({
 								>
 									<div className="min-w-0">
 										<div className="truncate text-[10px] font-medium">
-											{item.label}
+											{componentLabel(item)}
 										</div>
 										<div className="text-muted-foreground text-[8px]">
-											{item.available ? item.kind : item.reason}
+											{componentReason(item)}
 										</div>
 									</div>
 									<Button
@@ -1474,7 +1614,7 @@ export function AdvancedExportPopover({
 										disabled={!item.available}
 										onClick={() => void exportComponent({ item })}
 									>
-										Export
+										导出
 									</Button>
 								</li>
 							))}
@@ -1486,14 +1626,14 @@ export function AdvancedExportPopover({
 					<div className="space-y-3">
 						<div className="flex items-center justify-between">
 							<div>
-								<div className="text-xs font-semibold">Batch export queue</div>
+								<div className="text-xs font-semibold">批量导出队列</div>
 								<div className="text-muted-foreground text-[9px]">
-									Each preset, range, and revision keeps independent state
+									每个预设、范围和版本都保留独立状态
 								</div>
 							</div>
 							<div className="flex gap-2">
 								<Button size="sm" variant="outline" onClick={addToQueue}>
-									Add current
+									添加当前设置
 								</Button>
 								<Button
 									size="sm"
@@ -1503,14 +1643,13 @@ export function AdvancedExportPopover({
 										!queueItems.some((item) => item.status === "pending")
 									}
 								>
-									{runningQueue ? "Running…" : "Run queue"}
+									{runningQueue ? "运行中…" : "运行队列"}
 								</Button>
 							</div>
 						</div>
 						{queueItems.length === 0 ? (
 							<div className="border-border rounded-lg border border-dashed p-8 text-center text-[11px] opacity-55">
-								Add the current setup, switch presets or ranges, then add
-								another.
+								添加当前设置后，可切换预设或范围并继续添加。
 							</div>
 						) : (
 							<ul className="space-y-2">
@@ -1525,13 +1664,13 @@ export function AdvancedExportPopover({
 													{item.label}
 												</div>
 												<div className="text-muted-foreground text-[8px]">
-													rev {item.projectRevision} · attempt {item.attempts} ·{" "}
+													版本 {item.projectRevision} · 第 {item.attempts} 次尝试 ·{" "}
 													{item.options.width}×{item.options.height}
 												</div>
 											</div>
 											<div className="flex items-center gap-2">
 												<span className="text-[9px] uppercase">
-													{item.status}
+													{QUEUE_STATUS_LABELS[item.status]}
 												</span>
 												{item.status === "failed" ||
 												item.status === "cancelled" ? (
@@ -1540,7 +1679,7 @@ export function AdvancedExportPopover({
 														className="text-primary text-[9px]"
 														onClick={() => exportQueue.retry({ id: item.id })}
 													>
-														Retry
+														重试
 													</button>
 												) : null}
 											</div>
@@ -1570,9 +1709,9 @@ export function AdvancedExportPopover({
 					<div className="space-y-3">
 						<div className="flex items-center justify-between">
 							<div>
-								<div className="text-xs font-semibold">Export history</div>
+								<div className="text-xs font-semibold">导出历史</div>
 								<div className="text-muted-foreground text-[9px]">
-									Settings, destination, result, errors, availability, and rerun
+									设置、目标、结果、错误、文件状态和重新运行
 								</div>
 							</div>
 							<Button
@@ -1580,12 +1719,12 @@ export function AdvancedExportPopover({
 								variant="outline"
 								onClick={() => void refreshAvailability()}
 							>
-								Refresh files
+								刷新文件
 							</Button>
 						</div>
 						{history.length === 0 ? (
 							<div className="border-border rounded-lg border border-dashed p-8 text-center text-[11px] opacity-55">
-								Completed, failed, and cancelled runs will appear here.
+								已完成、失败和取消的导出会显示在这里。
 							</div>
 						) : (
 							<ul className="space-y-2">
@@ -1600,7 +1739,7 @@ export function AdvancedExportPopover({
 													{entry.label}
 												</div>
 												<div className="text-muted-foreground text-[8px]">
-													rev {entry.projectRevision} · {entry.options.width}×
+													版本 {entry.projectRevision} · {entry.options.width}×
 													{entry.options.height} ·{" "}
 													{entry.options.format.toUpperCase()}
 												</div>
@@ -1615,14 +1754,14 @@ export function AdvancedExportPopover({
 																: "text-emerald-500"
 													}`}
 												>
-													{entry.status}
+													{EXPORT_STATUS_LABELS[entry.status]}
 												</span>
 												<Button
 													size="sm"
 													variant="outline"
 													onClick={() => void rerunHistory({ entry })}
 												>
-													Rerun
+													重新运行
 												</Button>
 											</div>
 										</div>
@@ -1630,8 +1769,8 @@ export function AdvancedExportPopover({
 											{entry.destinationName
 												? `${entry.destinationName} · ${
 														entry.available
-															? "file available"
-															: "file unavailable"
+															? "文件可用"
+															: "文件不可用"
 													}`
 												: entry.error}
 										</div>
@@ -1647,11 +1786,11 @@ export function AdvancedExportPopover({
 				{exportState.isExporting ? (
 					<div className="space-y-2">
 						<div className="flex justify-between text-[10px]">
-							<span>Encoding {Math.round(exportState.progress * 100)}%</span>
+							<span>正在编码 {Math.round(exportState.progress * 100)}%</span>
 							<span>
 								{remainingSeconds === null
-									? "Estimating time…"
-									: `≈ ${formatDuration(remainingSeconds)} remaining`}
+									? "正在估算时间…"
+									: `约剩余 ${formatDuration(remainingSeconds)}`}
 							</span>
 						</div>
 						<Progress value={exportState.progress * 100} />
@@ -1660,32 +1799,30 @@ export function AdvancedExportPopover({
 							className="w-full"
 							onClick={cancelCurrent}
 						>
-							Cancel current export
+							取消当前导出
 						</Button>
 					</div>
 				) : (
 					<div className="grid grid-cols-3 gap-2">
 						<Button variant="outline" onClick={() => void runPreflight()}>
-							Preflight
+							预检
 						</Button>
 						<Button variant="outline" onClick={addToQueue}>
-							Add to queue
+							加入队列
 						</Button>
 						<Button
 							onClick={() =>
 								void performVideoExport({
 									requestDraft: draft,
 									label:
-										EXPORT_PLATFORM_PRESETS.find(
-											(preset) => preset.id === draft.presetId,
-										)?.name ?? "Custom export",
+										getPresetCopy(draft.presetId).name,
 								})
 							}
 							disabled={validationIssues.some(
 								(issue) => issue.severity === "error",
 							)}
 						>
-							Export now
+							立即导出
 						</Button>
 					</div>
 				)}

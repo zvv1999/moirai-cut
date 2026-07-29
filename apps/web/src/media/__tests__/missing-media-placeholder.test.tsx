@@ -17,10 +17,10 @@ describe("MissingMediaPlaceholder", () => {
 
 		expect(html).toContain('data-missing-media="missing-video"');
 		expect(html).toContain('role="status"');
-		expect(html).toContain("Media missing");
+		expect(html).toContain("素材丢失");
 		expect(html).toContain("Interview.mov");
-		expect(html).toContain("Video · 2 timeline uses");
-		expect(html).toContain('aria-label="Relink Interview.mov"');
+		expect(html).toContain("视频 · 时间线使用 2 次");
+		expect(html).toContain('aria-label="重新链接 Interview.mov"');
 	});
 
 	test("renders compact timeline feedback without nesting an action", () => {
@@ -34,7 +34,7 @@ describe("MissingMediaPlaceholder", () => {
 		);
 
 		expect(html).toContain('data-missing-media="missing-image"');
-		expect(html).toContain("Missing · Poster.png");
+		expect(html).toContain("素材丢失 · Poster.png");
 		expect(html).not.toContain("<button");
 	});
 
@@ -49,7 +49,7 @@ describe("MissingMediaPlaceholder", () => {
 		);
 
 		expect(html).toContain('aria-live="polite"');
-		expect(html).toContain("MEDIA OFFLINE");
-		expect(html).toContain("Relink this file from the Assets panel");
+		expect(html).toContain("素材已离线");
+		expect(html).toContain("请在素材面板中重新链接此文件");
 	});
 });
