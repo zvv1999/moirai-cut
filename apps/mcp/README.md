@@ -8,7 +8,7 @@ agent → MCP → /api/projects → project.json          ← edits, no browser 
                                     ↓ file watcher
                               the open editor follows and previews
 
-agent → MCP → CDP → window.__opencutAgent → Command  ← pixels, undo history
+agent → MCP → CDP → window.__opencutAgent → Command  ← selected context, pixels, undo history
 ```
 
 Nothing here knows how to edit video. The file path applies the same operation
@@ -88,13 +88,15 @@ need no browser at all. The open editor notices the file changed and follows it.
 if any step fails nothing is written. Operations compose — later ones see the
 results of earlier ones — so a whole sequence can be built in one call.
 
-**Tab tools — for what only a running editor knows.** Rendered pixels, and the
-undo history. These drive a live tab over CDP.
+**Tab tools — for what only a running editor knows.** Human-selected Codex
+context, rendered pixels, and the undo history. These drive a live tab over CDP.
 
 | Tool | Purpose |
 | --- | --- |
 | `status` | Is a debugging port and an editor tab reachable? Start here when anything fails. |
 | `get_state` | Revision, project id, frame rate, media library, and every track with its clips. |
+| `get_context` | Compact pinned/live selection with stable `opencut://` paths and a prompt-ready block. |
+| `reveal_context` | Select an `opencut://` element or range and move the playhead to it. |
 | `list_operations` | What this build can execute — read from the page's registry, not from this server. |
 | `apply_operation` | Apply one edit. Requires `baseRevision` and `projectId`. |
 | `render_frames` | Render full PNGs, or one labeled JPEG contact sheet, to check an edit. |

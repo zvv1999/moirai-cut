@@ -13,6 +13,15 @@ import {
 } from "@/agent/workflow";
 import type { RenderFramesResult } from "@/agent/agent-manager";
 import {
+	buildAgentContextSnapshot,
+	buildElementContextReferences,
+	buildTimelineRangeReference,
+	resolveAgentContextTarget,
+	type AgentContextReference,
+} from "@/agent/context-references";
+import { useAgentContextStore } from "@/agent/context-store";
+import { toMediaTime, toSeconds } from "@/agent/time";
+import {
 	buildExportPreflight,
 	createExportDraftFromPreset,
 	detectExportCapabilities,
@@ -94,10 +103,45 @@ function primitive(value: unknown): number | string | boolean | undefined {
 		: undefined;
 }
 
+function elementRefsFromContext(
+	references: AgentContextReference[],
+): Array<{ trackId: string; elementId: string }> {
+	const unique = new Map<string, { trackId: string; elementId: string }>();
+	for (const reference of references) {
+		const elements =
+			reference.kind === "element"
+				? [
+						{
+							trackId: reference.trackId,
+							elementId: reference.elementId,
+						},
+					]
+				: reference.elements;
+		for (const element of elements) {
+			unique.set(`${element.trackId}\0${element.elementId}`, element);
+		}
+	}
+	return [...unique.values()];
+}
+
 export function AgentWorkbench() {
 	const editor = useEditor();
 	const selectedElements = useEditor((instance) =>
 		instance.selection.getSelectedElements(),
+	);
+	const playheadSeconds = useEditor(
+		(instance) => toSeconds(instance.playback.getCurrentTime()) ?? 0,
+	);
+	const timelineDurationSeconds = useEditor(
+		(instance) => toSeconds(instance.timeline.getTotalDuration()) ?? 0,
+	);
+	const pinnedReferences = useAgentContextStore((store) => store.references);
+	const addReferences = useAgentContextStore((store) => store.addReferences);
+	const removeReference = useAgentContextStore(
+		(store) => store.removeReference,
+	);
+	const clearReferences = useAgentContextStore(
+		(store) => store.clearReferences,
 	);
 	const [request, setRequest] = useState("收紧这段剪辑");
 	const [plan, setPlan] = useState<SemanticEditPlan | null>(null);
@@ -112,6 +156,21 @@ export function AgentWorkbench() {
 	const [qcRunning, setQcRunning] = useState(false);
 	const [qc, setQc] = useState<QcRun | null>(null);
 	const semanticState = editor.agent.getState();
+	const visibleReferences = pinnedReferences.filter(
+		(reference) =>
+			reference.projectId === semanticState.projectId &&
+			reference.sceneId === semanticState.sceneId,
+	);
+	const contextSelectedElements =
+		visibleReferences.length > 0
+			? elementRefsFromContext(visibleReferences)
+			: selectedElements;
+	const contextSnapshot = buildAgentContextSnapshot({
+		state: semanticState,
+		pinnedReferences: visibleReferences,
+		selectedElements,
+		playheadSeconds,
+	});
 	const semanticElementCount = semanticState.tracks.reduce(
 		(total, track) => total + track.elementCount,
 		0,
@@ -147,7 +206,7 @@ export function AgentWorkbench() {
 			request: compileRequestText(nextRequest),
 			context: {
 				state: editor.agent.getState(),
-				selectedElements,
+				selectedElements: contextSelectedElements,
 			},
 		});
 		setRequest(nextRequest);
@@ -159,6 +218,92 @@ export function AgentWorkbench() {
 		setReviewDecision({});
 		if (!next.valid) {
 			toast.error("计划需要处理", { description: next.errors[0] });
+		}
+	};
+
+	const pinSelectedElements = () => {
+		const references = buildElementContextReferences({
+			state: editor.agent.getState(),
+			selectedElements,
+		});
+		if (references.length === 0) {
+			toast.error("请先在时间线上选择素材");
+			return;
+		}
+		addReferences(references);
+		toast.success(`已引用 ${references.length} 个素材给 Codex`);
+	};
+
+	const pinTimelineRange = () => {
+		const current = editor.agent.getState();
+		const selected = buildElementContextReferences({
+			state: current,
+			selectedElements,
+		});
+		const selectedStart = Math.min(
+			...selected.map((reference) => reference.startSeconds),
+		);
+		const selectedEnd = Math.max(
+			...selected.map((reference) => reference.endSeconds),
+		);
+		const startSeconds =
+			selected.length > 0 ? selectedStart : Math.max(0, playheadSeconds - 2.5);
+		const endSeconds =
+			selected.length > 0
+				? selectedEnd
+				: Math.min(timelineDurationSeconds, playheadSeconds + 2.5);
+		if (
+			timelineDurationSeconds <= 0 ||
+			!Number.isFinite(startSeconds) ||
+			!Number.isFinite(endSeconds) ||
+			endSeconds <= startSeconds
+		) {
+			toast.error("当前播放头附近没有可引用的时间片段");
+			return;
+		}
+		const reference = buildTimelineRangeReference({
+			state: current,
+			startSeconds,
+			endSeconds,
+		});
+		addReferences([reference]);
+		toast.success("已引用时间片段给 Codex", {
+			description: `${reference.label} · ${reference.elements.length} 个相交元素`,
+		});
+	};
+
+	const revealReference = (uri: string) => {
+		try {
+			const target = resolveAgentContextTarget({
+				state: editor.agent.getState(),
+				uri,
+			});
+			editor.selection.setSelectedElements({
+				elements: target.selectedElements,
+			});
+			editor.playback.seek({
+				time: toMediaTime("context seek", target.seekSeconds),
+			});
+			toast.success("已定位 Codex 引用", {
+				description:
+					target.kind === "range"
+						? `选中 ${target.selectedElements.length} 个相交元素`
+						: "已选中素材并移动播放头",
+			});
+		} catch (error) {
+			toast.error("无法定位此引用", {
+				description:
+					error instanceof Error ? error.message : "Codex Path 已失效。",
+			});
+		}
+	};
+
+	const copyContext = async () => {
+		try {
+			await navigator.clipboard.writeText(contextSnapshot.promptContext);
+			toast.success("Codex 上下文已复制");
+		} catch {
+			toast.error("复制失败，请检查浏览器剪贴板权限");
 		}
 	};
 
@@ -453,6 +598,108 @@ export function AgentWorkbench() {
 						{preset.label}
 					</button>
 				))}
+			</div>
+			<div
+				className="border-border bg-background/80 mt-2 rounded-md border"
+				aria-label="Codex 上下文引用"
+			>
+				<div className="border-border flex items-center justify-between gap-2 border-b px-2 py-1.5">
+					<div className="min-w-0">
+						<div className="flex items-center gap-1.5">
+							<span className="text-[9px] font-semibold tracking-wide uppercase">
+								Codex 上下文
+							</span>
+							<span className="bg-cyan-500/10 text-cyan-600 rounded px-1 py-0.5 font-mono text-[8px] dark:text-cyan-300">
+								get_context
+							</span>
+						</div>
+						<div className="mt-0.5 truncate text-[8px] opacity-45">
+							固定素材或时间片段；Codex 可读取 Path，点击引用可回到时间线
+						</div>
+					</div>
+					<div className="flex shrink-0 items-center gap-1">
+						<button
+							type="button"
+							className="border-border rounded border px-1.5 py-0.5 text-[9px] hover:bg-foreground/5 disabled:opacity-35"
+							onClick={copyContext}
+							disabled={contextSnapshot.references.length === 0}
+						>
+							复制上下文
+						</button>
+						{visibleReferences.length > 0 ? (
+							<button
+								type="button"
+								className="px-1 py-0.5 text-[9px] opacity-55 hover:opacity-100"
+								onClick={clearReferences}
+							>
+								清空
+							</button>
+						) : null}
+					</div>
+				</div>
+				<div className="flex flex-wrap items-center gap-1 px-2 py-1.5">
+					<button
+						type="button"
+						className="border-border bg-foreground/[0.03] rounded border px-1.5 py-1 text-[9px] hover:bg-foreground/[0.07]"
+						onClick={pinSelectedElements}
+					>
+						＋ 引用已选素材
+					</button>
+					<button
+						type="button"
+						className="border-border bg-foreground/[0.03] rounded border px-1.5 py-1 text-[9px] hover:bg-foreground/[0.07]"
+						onClick={pinTimelineRange}
+					>
+						＋ 引用时间片段
+					</button>
+					{visibleReferences.length === 0 ? (
+						<span className="ml-1 text-[8px] opacity-40">
+							未固定时，Codex 自动读取当前选中素材
+						</span>
+					) : null}
+				</div>
+				{visibleReferences.length > 0 ? (
+					<ul className="border-border space-y-1 border-t px-2 py-1.5">
+						{visibleReferences.map((reference) => (
+							<li
+								key={reference.uri}
+								className="border-border bg-foreground/[0.025] flex min-w-0 items-center gap-1 rounded border px-1.5 py-1"
+							>
+								<button
+									type="button"
+									className="min-w-0 flex-1 text-left"
+									onClick={() => revealReference(reference.uri)}
+									title={reference.uri}
+								>
+									<span className="flex items-center gap-1.5">
+										<span className="bg-cyan-500/12 text-cyan-700 rounded px-1 py-0.5 text-[8px] font-medium dark:text-cyan-300">
+											{reference.kind === "element" ? "素材" : "片段"}
+										</span>
+										<span className="truncate text-[9px] font-medium">
+											{reference.label}
+										</span>
+										<span className="font-mono text-[8px] opacity-45">
+											{reference.kind === "range"
+												? `${reference.elements.length} 个元素`
+												: reference.elementType}
+										</span>
+									</span>
+									<span className="mt-0.5 block truncate font-mono text-[7px] opacity-40">
+										{reference.uri}
+									</span>
+								</button>
+								<button
+									type="button"
+									className="shrink-0 px-1 text-[11px] opacity-35 hover:opacity-100"
+									onClick={() => removeReference(reference.uri)}
+									aria-label={`移除引用 ${reference.label}`}
+								>
+									×
+								</button>
+							</li>
+						))}
+					</ul>
+				) : null}
 			</div>
 			<div className="border-border bg-background/60 mt-2 rounded-md border px-2 py-1.5">
 				<div className="flex items-center justify-between gap-2">

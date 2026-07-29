@@ -65,7 +65,7 @@ function postActivity(projectId, summary, revision) {
   fetch(`${base}/api/agent-activity/${encodeURIComponent(projectId)}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ actor: "Claude", summary, ...(revision !== undefined ? { revision } : {}) }),
+    body: JSON.stringify({ actor: "Codex", summary, ...(revision !== undefined ? { revision } : {}) }),
   }).catch(() => {});
 }
 
@@ -135,7 +135,7 @@ export function createOpenCutMcpServer() {
         [
           "Two ways in.",
           "FILE tools — list_projects, read_project, edit_project — change the project document on disk and need no browser. The open editor follows the file on its own. This is the normal way to compose an edit, and edit_project applies a whole batch atomically.",
-          "TAB tools — status, get_state, apply_operation, render_frames, undo, redo — drive a live editor tab over CDP, for the things only a running editor knows: rendered pixels and undo history.",
+          "TAB tools — status, get_state, get_context, reveal_context, apply_operation, render_frames, undo, redo — drive a live editor tab over CDP, for the things only a running editor knows: human-selected context, rendered pixels and undo history.",
           "Both refuse a stale baseRevision rather than merging it, so always read first and pass the revision you read.",
           "Read the result. noEffect:true means the operation ran but changed nothing, so the edit did NOT happen.",
         ].join(" "),
@@ -194,6 +194,39 @@ export function createOpenCutMcpServer() {
       annotations: readOnly,
     },
     ({ projectId: id }) => bridge({ method: "getState", projectId: id }),
+  );
+
+  server.registerTool(
+    "get_context",
+    {
+      description:
+        "Read the compact context the human selected or pinned for Codex. Returns stable opencut:// paths, the live selection, playhead, and a prompt-ready context block without dumping the whole project.",
+      inputSchema: { projectId },
+      annotations: readOnly,
+    },
+    ({ projectId: id }) => bridge({ method: "getContext", projectId: id }),
+  );
+
+  server.registerTool(
+    "reveal_context",
+    {
+      description:
+        "Reveal an opencut:// Codex Path in the open editor. Selects the exact element(s) and moves the playhead to the referenced clip or time range; does not edit the project.",
+      inputSchema: {
+        uri: z
+          .string()
+          .startsWith("opencut://project/")
+          .describe("A stable path returned by get_context."),
+        projectId,
+      },
+      annotations: readOnly,
+    },
+    ({ uri, projectId: id }) =>
+      bridge({
+        method: "revealContext",
+        args: [{ uri }],
+        projectId: id,
+      }),
   );
 
   server.registerTool(

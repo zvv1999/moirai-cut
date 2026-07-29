@@ -43,6 +43,15 @@ import {
   type NativeDeliveryJobState,
 } from "./native-delivery-jobs";
 import type { DeliveryPresetName } from "@/export/native-delivery-contract";
+import {
+  buildAgentContextSnapshot,
+  InvalidAgentContextReferenceError,
+  resolveAgentContextTarget,
+  type AgentContextSnapshot,
+  type AgentContextRevealTarget,
+} from "./context-references";
+import { useAgentContextStore } from "./context-store";
+import { toMediaTime, toSeconds } from "./time";
 
 /**
  * The out-of-page entry point.
@@ -74,6 +83,12 @@ export type BridgeResult<T> = BridgeOk<T> | BridgeErr;
 export interface AgentBridge {
   readonly version: 1;
   getState(): BridgeResult<ProjectStateSummary>;
+  /** Read the compact context the human selected or pinned for Codex. */
+  getContext(): BridgeResult<AgentContextSnapshot>;
+  /** Reveal an opencut:// path in the editor without mutating the project. */
+  revealContext(request: {
+    uri: string;
+  }): BridgeResult<AgentContextRevealTarget & { uri: string }>;
   supportedOperations(): BridgeResult<string[]>;
   applyOperation(envelope: {
     operation: Operation;
@@ -164,6 +179,9 @@ function errorCode(error: unknown): string {
   if (error instanceof ProjectMismatchError) return "project_mismatch";
   if (error instanceof UnresolvedReferenceError) return "unresolved_reference";
   if (error instanceof InvalidOperationError) return "invalid_operation";
+  if (error instanceof InvalidAgentContextReferenceError) {
+    return "invalid_context_reference";
+  }
   return "operation_failed";
 }
 
@@ -244,6 +262,31 @@ export function installAgentBridge(): () => void {
   const bridge: AgentBridge = {
     version: 1,
     getState: () => guard(() => EditorCore.getInstance().agent.getState()),
+    getContext: () =>
+      guard(() => {
+        const editor = EditorCore.getInstance();
+        return buildAgentContextSnapshot({
+          state: editor.agent.getState(),
+          pinnedReferences: useAgentContextStore.getState().references,
+          selectedElements: editor.selection.getSelectedElements(),
+          playheadSeconds: toSeconds(editor.playback.getCurrentTime()) ?? 0,
+        });
+      }),
+    revealContext: ({ uri }) =>
+      guard(() => {
+        const editor = EditorCore.getInstance();
+        const target = resolveAgentContextTarget({
+          state: editor.agent.getState(),
+          uri,
+        });
+        editor.selection.setSelectedElements({
+          elements: target.selectedElements,
+        });
+        editor.playback.seek({
+          time: toMediaTime("context seek", target.seekSeconds),
+        });
+        return { uri, ...target };
+      }),
     supportedOperations: () =>
       guard(() => EditorCore.getInstance().agent.supportedOperations() as string[]),
     applyOperation: (envelope) =>
