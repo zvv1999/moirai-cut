@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import { TICKS_PER_SECOND } from "./document.mjs";
 
-const TICKS_PER_SECOND = 60_000;
 const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/;
 const CATALOG_SCHEMA = "opencut.media-catalog.v1";
 const RANGE_SCHEMA = "opencut.timeline-inspection.v1";
@@ -407,4 +407,3 @@ export async function saveMediaAnalysis({
   catalog.updatedAt = new Date().toISOString();
   return writeMediaCatalog({ projectId, catalog, root });
 }
-
