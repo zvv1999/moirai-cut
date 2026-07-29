@@ -134,4 +134,48 @@ describe("native media jobs API", () => {
 			);
 		}
 	});
+
+	test("handles malformed JSON, missing fields, and missing jobs", async () => {
+		const stub = serviceStub();
+		stub.service.get = async () => null;
+		const handlers = createMediaJobsRouteHandlers({
+			service: stub.service,
+		});
+		const context = {
+			params: Promise.resolve({ projectId: "project" }),
+		};
+		const malformed = await handlers.POST(
+			new Request("http://localhost/api/media-jobs/project", {
+				method: "POST",
+				body: "{broken",
+			}),
+			context,
+		);
+		expect(malformed.status).toBe(400);
+
+		for (const body of [
+			{},
+			{ action: "ensureProxy" },
+			{ action: "cancel" },
+			{ action: "retry" },
+		]) {
+			const response = await handlers.POST(
+				new Request("http://localhost/api/media-jobs/project", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify(body),
+				}),
+				context,
+			);
+			expect(response.status).toBe(400);
+		}
+
+		const missing = await handlers.GET(
+			new Request(
+				"http://localhost/api/media-jobs/project?jobId=missing",
+			),
+			context,
+		);
+		expect(missing.status).toBe(404);
+	});
 });
