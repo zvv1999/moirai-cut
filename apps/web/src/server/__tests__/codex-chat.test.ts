@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
 import {
 	buildCodexAppServerArgs,
 	buildCodexPrompt,
+	CodexAppServerRpcClient,
 	createCodexChatService,
 	type CodexAppServerConnection,
 	type CodexAppServerSubscription,
@@ -30,6 +33,126 @@ function subscriptionOf({
 		close: onClose,
 	};
 }
+
+function appServerProcess() {
+	const stdin = new PassThrough();
+	const stdout = new PassThrough();
+	const stderr = new PassThrough();
+	const process = Object.assign(new EventEmitter(), {
+		stdin,
+		stdout,
+		stderr,
+	});
+	const writes: Array<Record<string, unknown>> = [];
+	let buffer = "";
+	stdin.on("data", (chunk: Buffer) => {
+		buffer += chunk.toString("utf8");
+		for (;;) {
+			const newline = buffer.indexOf("\n");
+			if (newline < 0) break;
+			const line = buffer.slice(0, newline);
+			buffer = buffer.slice(newline + 1);
+			writes.push(JSON.parse(line) as Record<string, unknown>);
+		}
+	});
+	return {
+		process,
+		stdout,
+		stderr,
+		writes,
+	};
+}
+
+async function waitForWrite(
+	writes: Array<Record<string, unknown>>,
+	count: number,
+): Promise<void> {
+	for (let attempt = 0; attempt < 100 && writes.length < count; attempt += 1) {
+		await Bun.sleep(1);
+	}
+	expect(writes.length).toBeGreaterThanOrEqual(count);
+}
+
+describe("Codex app-server JSON-RPC client", () => {
+	test("performs the handshake and dispatches thread notifications", async () => {
+		const fake = appServerProcess();
+		const client = new CodexAppServerRpcClient(fake.process);
+		const initialized = client.initialize();
+
+		await waitForWrite(fake.writes, 1);
+		expect(fake.writes[0]).toMatchObject({
+			id: 1,
+			method: "initialize",
+		});
+		fake.stdout.write('{"id":1,"result":{"userAgent":"test"}}\n');
+		await initialized;
+		await waitForWrite(fake.writes, 2);
+		expect(fake.writes[1]).toEqual({ method: "initialized" });
+
+		const subscription = client.subscribe("thread-1");
+		const iterator = subscription[Symbol.asyncIterator]();
+		const notification = iterator.next();
+		fake.stdout.write(
+			`${JSON.stringify({
+				method: "item/agentMessage/delta",
+				params: {
+					threadId: "thread-1",
+					turnId: "turn-1",
+					delta: "流",
+				},
+			})}\n`,
+		);
+		expect(await notification).toEqual({
+			done: false,
+			value: {
+				method: "item/agentMessage/delta",
+				params: {
+					threadId: "thread-1",
+					turnId: "turn-1",
+					delta: "流",
+				},
+			},
+		});
+
+		subscription.close();
+		expect(await iterator.next()).toEqual({
+			done: true,
+			value: undefined,
+		});
+	});
+
+	test("rejects RPC errors and closes pending work when the process exits", async () => {
+		const fake = appServerProcess();
+		const client = new CodexAppServerRpcClient(fake.process);
+		const rejectedRequest = client.request({
+			method: "thread/start",
+			params: {},
+		});
+
+		await waitForWrite(fake.writes, 1);
+		fake.stdout.write(
+			'{"id":1,"error":{"code":-32603,"message":"上游拒绝"}}\n',
+		);
+		expect(rejectedRequest).rejects.toThrow("上游拒绝");
+
+		const subscription = client.subscribe("thread-2");
+		const notification = subscription[Symbol.asyncIterator]().next();
+		const pendingRequest = client.request({
+			method: "turn/start",
+			params: {},
+		});
+		await waitForWrite(fake.writes, 2);
+		fake.stderr.write("Codex 连接中断");
+		fake.process.emit("close", 7);
+
+		expect(pendingRequest).rejects.toThrow("Codex 连接中断");
+		expect(notification).rejects.toThrow("Codex 连接中断");
+		expect(client.isOpen).toBe(false);
+		expect(
+			client.request({ method: "thread/start", params: {} }),
+		).rejects.toThrow("Codex app-server 未连接");
+	});
+});
 
 describe("Codex direct Smart Edit streaming chat", () => {
 	test("starts Codex app-server so agent message deltas are available", () => {
