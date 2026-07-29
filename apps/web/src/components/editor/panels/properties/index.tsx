@@ -20,7 +20,7 @@ export function PropertiesPanel() {
 
 	if (selectedElements.length === 0) {
 		return (
-			<div className="panel bg-background flex h-full flex-col items-center justify-center overflow-hidden rounded-sm border">
+			<div className="panel bg-background flex h-full flex-col items-center justify-center overflow-hidden rounded-lg border">
 				<EmptyView />
 			</div>
 		);
@@ -28,9 +28,9 @@ export function PropertiesPanel() {
 
 	if (selectedElements.length > 1) {
 		return (
-			<div className="panel bg-background flex h-full flex-col items-center justify-center overflow-hidden rounded-sm border">
+			<div className="panel bg-background flex h-full flex-col items-center justify-center overflow-hidden rounded-lg border">
 				<p className="text-muted-foreground text-sm">
-					{selectedElements.length} elements selected
+					已选择 {selectedElements.length} 个素材
 				</p>
 			</div>
 		);
@@ -58,7 +58,7 @@ export function PropertiesPanel() {
 	if (!activeTab) return null;
 
 	return (
-		<div className="panel bg-background flex h-full flex-col overflow-hidden rounded-sm border">
+		<div className="panel bg-background flex h-full flex-col overflow-hidden rounded-lg border">
 			<InspectorSelectionHeader
 				name={element.name}
 				type={element.type}

@@ -7,7 +7,7 @@ import { useRafLoop } from "@/hooks/use-raf-loop";
 import { useContainerSize } from "@/hooks/use-container-size";
 import { useFullscreen } from "@/hooks/use-fullscreen";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
-import { TICKS_PER_SECOND } from "@/wasm";
+import { TICKS_PER_SECOND, ZERO_MEDIA_TIME } from "@/wasm";
 import type { RootNode } from "@/services/renderer/nodes/root-node";
 import { buildScene } from "@/services/renderer/scene-builder";
 import { findActiveMissingVisualElements } from "@/media/missing-media";
@@ -27,6 +27,9 @@ import {
 } from "./preview-viewport";
 import { usePreviewStore } from "@/preview/preview-store";
 import { getPreviewFrameStep } from "@/playback/transport";
+import { getPreviewVisualState } from "@/preview/visual-state";
+import { Button } from "@/components/ui/button";
+import { Film, RotateCcw } from "lucide-react";
 
 function usePreviewSize() {
 	const canvasSize = useEditor(
@@ -82,7 +85,7 @@ export function PreviewPanel({
 	return (
 		<div
 			ref={handleContainerRef}
-			className="panel bg-background relative flex size-full min-h-0 min-w-0 flex-col rounded-sm border"
+			className="panel bg-background relative flex size-full min-h-0 min-w-0 flex-col rounded-lg border"
 		>
 			<PreviewCanvas
 				container={container}
@@ -165,6 +168,14 @@ function PreviewCanvas({
 				time: currentTime,
 			}),
 		[previewTracks, mediaAssets, currentTime],
+	);
+	const visualState = useMemo(
+		() =>
+			getPreviewVisualState({
+				tracks: [...previewTracks.overlay, previewTracks.main],
+				time: currentTime,
+			}),
+		[previewTracks, currentTime],
 	);
 	const viewport = usePreviewViewportState({
 		canvasHeight: nativeHeight,
@@ -375,6 +386,14 @@ function PreviewCanvas({
 									instances={overlayInstances}
 									plane="over-interaction"
 								/>
+								{!activeMissingMedia[0] && visualState.kind !== "visible" ? (
+									<PreviewEmptyState
+										kind={visualState.kind}
+										onGoToStart={() =>
+											editor.playback.seek({ time: ZERO_MEDIA_TIME })
+										}
+									/>
+								) : null}
 							</div>
 						</ContextMenuTrigger>
 						<PreviewContextMenu
@@ -388,5 +407,60 @@ function PreviewCanvas({
 				<PreviewToolbar onToggleFullscreen={onToggleFullscreen} />
 			</div>
 		</PreviewViewportProvider>
+	);
+}
+
+function PreviewEmptyState({
+	kind,
+	onGoToStart,
+}: {
+	kind: Exclude<ReturnType<typeof getPreviewVisualState>["kind"], "visible">;
+	onGoToStart: () => void;
+}) {
+	const copy = {
+		"no-visuals": {
+			title: "时间线里还没有画面",
+			description: "把视频、图片、文字或贴纸拖到时间线开始创作",
+		},
+		before: {
+			title: "画面尚未开始",
+			description: "向右拖动播放头，或返回开头开始预览",
+		},
+		gap: {
+			title: "当前位置没有画面",
+			description: "这里是空白间隙，音频仍可继续播放",
+		},
+		after: {
+			title: "画面已播放完",
+			description: "当前位置只剩音频或空白尾帧",
+		},
+	}[kind];
+
+	return (
+		<div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-black/45 backdrop-blur-[2px]">
+			<div className="flex max-w-64 flex-col items-center gap-3 px-5 text-center text-white">
+				<div className="flex size-10 items-center justify-center rounded-xl border border-white/15 bg-white/10 shadow-lg">
+					<Film className="size-5 text-white/80" />
+				</div>
+				<div className="space-y-1">
+					<p className="text-sm font-semibold tracking-wide">{copy.title}</p>
+					<p className="text-[11px] leading-5 text-white/55">
+						{copy.description}
+					</p>
+				</div>
+				{kind !== "no-visuals" ? (
+					<Button
+						type="button"
+						size="sm"
+						variant="secondary"
+						className="pointer-events-auto h-7 gap-1.5 border border-white/10 bg-white/12 px-3 text-[11px] text-white hover:bg-white/20"
+						onClick={onGoToStart}
+					>
+						<RotateCcw className="size-3.5" />
+						从头预览
+					</Button>
+				) : null}
+			</div>
+		</div>
 	);
 }

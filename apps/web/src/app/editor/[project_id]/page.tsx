@@ -42,7 +42,7 @@ export default function Editor() {
 	return (
 		<MobileGate>
 			<EditorProvider projectId={projectId}>
-				<div className="bg-background flex h-screen w-screen flex-col overflow-hidden">
+				<div className="dark editor-studio-shell bg-background flex h-screen w-screen flex-col overflow-hidden">
 					<DegradedRendererBanner />
 					<EditorHeader />
 					<div className="min-h-0 min-w-0 flex-1">
@@ -64,13 +64,13 @@ function DegradedRendererBanner() {
 
 	return (
 		<div className="bg-accent border-b h-9 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-			<span>For the best experience, open OpenCut in Chrome.</span>
+			<span>为获得最佳预览性能，建议使用 Chrome 打开 OpenCut。</span>
 			<Button
 				variant="text"
 				size="icon"
 				className="p-0 w-auto [&_svg]:size-3.5"
 				onClick={() => setDismissed(true)}
-				aria-label="Dismiss"
+				aria-label="关闭提示"
 			>
 				<HugeiconsIcon icon={Cancel01Icon} />
 			</Button>
@@ -128,7 +128,7 @@ function EditorLayout() {
 	return (
 		<ResizablePanelGroup
 			direction="vertical"
-			className="size-full gap-[0.18rem]"
+			className="size-full gap-1"
 			onLayout={(sizes) => {
 				setPanel({
 					panel: "mainContent",
@@ -148,7 +148,7 @@ function EditorLayout() {
 			>
 				<ResizablePanelGroup
 					direction="horizontal"
-					className="size-full gap-[0.19rem] px-3"
+					className="size-full gap-1 px-3"
 					onLayout={(sizes) => {
 						setPanel({ panel: "tools", size: sizes[0] ?? panels.tools });
 						setPanel({ panel: "preview", size: sizes[1] ?? panels.preview });

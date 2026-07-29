@@ -16,7 +16,6 @@ import { useRouter } from "next/navigation";
 import { FaDiscord } from "react-icons/fa6";
 import { ExportButton } from "./export-button";
 import { FeedbackPopover } from "@/feedback/components/feedback-popover";
-import { ThemeToggle } from "../theme-toggle";
 import { DEFAULT_LOGO_URL } from "@/site/brand";
 import { SOCIAL_LINKS } from "@/site/social";
 import { toast } from "sonner";
@@ -30,16 +29,16 @@ import { AlertCircle, Check, Cloud, Loader2 } from "lucide-react";
 
 export function EditorHeader() {
 	return (
-		<header className="bg-background flex h-[3.4rem] items-center justify-between px-3 pt-0.5">
-			<div className="flex items-center gap-1">
+		<header className="editor-studio-header flex h-12 shrink-0 items-center justify-between border-b px-3">
+			<div className="flex min-w-0 items-center gap-1">
 				<ProjectDropdown />
+				<span className="mx-1 h-4 w-px bg-white/10" aria-hidden="true" />
 				<EditableProjectName />
 			</div>
 			<nav className="flex items-center gap-2">
 				<SaveStatusIndicator />
 				<FeedbackPopover />
 				<ExportButton />
-				<ThemeToggle />
 			</nav>
 		</header>
 	);
@@ -56,31 +55,31 @@ function SaveStatusIndicator() {
 
 	const content = {
 		idle: {
-			label: "Autosave ready",
+			label: "自动保存已就绪",
 			icon: <Cloud className="size-3.5" />,
 			className: "text-muted-foreground",
 		},
 		dirty: {
-			label: "Unsaved changes",
+			label: "有未保存的更改",
 			icon: <Cloud className="size-3.5" />,
 			className: "text-amber-600 dark:text-amber-400",
 		},
 		saving: {
-			label: "Saving…",
+			label: "正在保存…",
 			icon: <Loader2 className="size-3.5 animate-spin" />,
 			className: "text-blue-600 dark:text-blue-400",
 		},
 		saved: {
 			label:
-				save.revision === null ? "Saved" : `Saved · revision ${save.revision}`,
+				save.revision === null ? "已保存" : `已保存 · 版本 ${save.revision}`,
 			icon: <Check className="size-3.5" />,
 			className: "text-emerald-600 dark:text-emerald-400",
 		},
 		error: {
 			label:
 				conflictRevision !== null
-					? "Disk version changed · Review"
-					: "Save failed · Retry",
+					? "磁盘版本已更新 · 请检查"
+					: "保存失败 · 点击重试",
 			icon: <AlertCircle className="size-3.5" />,
 			className: "text-destructive",
 		},
@@ -94,9 +93,8 @@ function SaveStatusIndicator() {
 			disabled={save.status !== "error"}
 			onClick={() => {
 				if (conflictRevision !== null) {
-					toast.error("Another editor changed this project", {
-						description:
-							"Open History to review and explicitly load the disk version.",
+					toast.error("另一处编辑器更新了该工程", {
+						description: "请在历史记录中检查并手动载入磁盘版本。",
 					});
 					return;
 				}
@@ -150,9 +148,8 @@ function ProjectDropdown() {
 					name: newName.trim(),
 				});
 			} catch (error) {
-				toast.error("Failed to rename project", {
-					description:
-						error instanceof Error ? error.message : "Please try again",
+				toast.error("工程重命名失败", {
+					description: error instanceof Error ? error.message : "请稍后重试",
 				});
 			} finally {
 				setOpenDialog(null);
@@ -168,9 +165,8 @@ function ProjectDropdown() {
 				});
 				router.push("/projects");
 			} catch (error) {
-				toast.error("Failed to delete project", {
-					description:
-						error instanceof Error ? error.message : "Please try again",
+				toast.error("删除工程失败", {
+					description: error instanceof Error ? error.message : "请稍后重试",
 				});
 			} finally {
 				setOpenDialog(null);
@@ -185,10 +181,10 @@ function ProjectDropdown() {
 					<Button variant="ghost" size="icon" className="p-1 rounded-sm size-8">
 						<Image
 							src={DEFAULT_LOGO_URL}
-							alt="Project thumbnail"
+							alt="工程菜单"
 							width={32}
 							height={32}
-							className="invert dark:invert-0 size-5"
+							className="size-5 brightness-0 invert"
 						/>
 					</Button>
 				</DropdownMenuTrigger>
@@ -198,14 +194,14 @@ function ProjectDropdown() {
 						disabled={isExiting}
 						icon={<HugeiconsIcon icon={Logout05Icon} />}
 					>
-						Exit project
+						退出工程
 					</DropdownMenuItem>
 
 					<DropdownMenuItem
 						onClick={() => setOpenDialog("shortcuts")}
 						icon={<HugeiconsIcon icon={CommandIcon} />}
 					>
-						Shortcuts
+						快捷键
 					</DropdownMenuItem>
 
 					<DropdownMenuSeparator />
@@ -277,9 +273,8 @@ function EditableProjectName() {
 					name: newName,
 				});
 			} catch (error) {
-				toast.error("Failed to rename project", {
-					description:
-						error instanceof Error ? error.message : "Please try again",
+				toast.error("工程重命名失败", {
+					description: error instanceof Error ? error.message : "请稍后重试",
 				});
 			}
 		}
@@ -311,8 +306,8 @@ function EditableProjectName() {
 			onKeyDown={handleKeyDown}
 			style={{ fieldSizing: "content" }}
 			className={cn(
-				"text-[0.9rem] h-8 px-2 py-1 rounded-sm bg-transparent outline-none cursor-pointer hover:bg-accent hover:text-accent-foreground",
-				isEditing && "ring-1 ring-ring cursor-text hover:bg-transparent",
+				"h-8 max-w-[28rem] truncate rounded-md bg-transparent px-2 py-1 text-[0.82rem] font-medium tracking-wide text-foreground/90 outline-none transition-colors hover:bg-white/5 hover:text-foreground",
+				isEditing && "cursor-text bg-white/5 ring-1 ring-primary/45",
 			)}
 		/>
 	);

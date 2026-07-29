@@ -115,6 +115,68 @@
   --ring: hsl(0, 0%, 52%);
 }
 
+.editor-studio-shell {
+  --background: hsl(225 9% 8%);
+  --foreground: hsl(210 12% 90%);
+  --card: hsl(225 8% 10%);
+  --card-foreground: hsl(210 12% 90%);
+  --popover: hsl(225 9% 11%);
+  --popover-hover: hsl(225 8% 16%);
+  --popover-foreground: hsl(210 12% 94%);
+  --primary: hsl(187 78% 53%);
+  --primary-foreground: hsl(222 16% 7%);
+  --secondary: hsl(188 52% 13%);
+  --secondary-border: hsl(188 48% 19%);
+  --secondary-foreground: hsl(185 78% 67%);
+  --muted: hsl(225 7% 20%);
+  --muted-foreground: hsl(220 6% 58%);
+  --accent: hsl(225 7% 15%);
+  --accent-foreground: hsl(210 12% 94%);
+  --border: hsl(225 7% 18%);
+  --input: hsl(225 7% 14%);
+  --ring: hsl(187 78% 53%);
+  font-family: var(--font-inter), "PingFang SC", "Microsoft YaHei", sans-serif;
+  background:
+    radial-gradient(
+      circle at 50% -20%,
+      hsl(188 50% 18% / 0.22),
+      transparent 34rem
+    ),
+    hsl(225 9% 8%);
+}
+
+.editor-studio-shell .panel {
+  --background: hsl(225 8% 10.5%);
+  --foreground: hsl(210 12% 88%);
+  --card: hsl(225 8% 11%);
+  --card-foreground: hsl(210 12% 90%);
+  --muted: hsl(225 7% 21%);
+  --muted-foreground: hsl(220 6% 57%);
+  --accent: hsl(225 7% 15%);
+  --accent-foreground: hsl(210 12% 94%);
+  --border: hsl(225 7% 18%);
+  --input: hsl(225 7% 14%);
+  box-shadow:
+    0 0 0 1px hsl(0 0% 100% / 0.015),
+    0 12px 30px hsl(225 30% 2% / 0.18);
+}
+
+.editor-studio-header {
+  background: linear-gradient(
+    180deg,
+    hsl(225 9% 11% / 0.98),
+    hsl(225 9% 8% / 0.98)
+  );
+  border-color: hsl(225 7% 18%);
+  box-shadow: 0 8px 30px hsl(225 30% 2% / 0.16);
+}
+
+.editor-studio-shell select,
+.editor-studio-shell input,
+.editor-studio-shell textarea {
+  color-scheme: dark;
+}
+
 @layer base {
   /*
     The default border color has changed to `currentcolor` in Tailwind CSS v4,

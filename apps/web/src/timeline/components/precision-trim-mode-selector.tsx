@@ -15,19 +15,19 @@ import { useElementSelection } from "@/timeline/hooks/element/use-element-select
 import { useTimelineStore } from "@/timeline/timeline-store";
 
 const MODE_LABELS: Record<PrecisionTrimMode, string> = {
-	standard: "Standard",
-	ripple: "Ripple",
-	roll: "Roll",
-	slip: "Slip",
-	slide: "Slide",
+	standard: "普通",
+	ripple: "联动",
+	roll: "滚动",
+	slip: "滑移",
+	slide: "滑动",
 };
 
 const MODE_ARIA_LABELS: Record<PrecisionTrimMode, string> = {
-	standard: "Standard trim",
-	ripple: "Ripple trim",
-	roll: "Roll edit",
-	slip: "Slip edit",
-	slide: "Slide edit",
+	standard: "普通修剪",
+	ripple: "联动修剪",
+	roll: "滚动编辑",
+	slip: "滑移编辑",
+	slide: "滑动编辑",
 };
 
 const PRECISION_TRIM_MODES: readonly PrecisionTrimMode[] = [
@@ -56,10 +56,10 @@ export function PrecisionTrimModeSelectorView({
 		<div
 			className="border-border/80 bg-muted/10 flex h-8 shrink-0 items-center gap-1 overflow-x-auto border-b px-2 scrollbar-hidden"
 			role="group"
-			aria-label="Precision trim tools"
+			aria-label="精确修剪工具"
 		>
 			<span className="text-muted-foreground mr-0.5 shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em]">
-				Trim
+				修剪
 			</span>
 			{PRECISION_TRIM_MODES.map((mode) => {
 				const modeAvailability = availability[mode];
@@ -80,8 +80,7 @@ export function PrecisionTrimModeSelectorView({
 							"border-border bg-background text-muted-foreground h-6 shrink-0 rounded border px-2 text-[10px] font-medium transition-colors",
 							activeMode === mode &&
 								"border-primary/40 bg-primary/10 text-primary",
-							!modeAvailability.available &&
-								"cursor-not-allowed opacity-40",
+							!modeAvailability.available && "cursor-not-allowed opacity-40",
 						)}
 						onClick={() => onSelect(mode)}
 					>
@@ -90,7 +89,7 @@ export function PrecisionTrimModeSelectorView({
 				);
 			})}
 			<span className="text-muted-foreground ml-auto shrink-0 text-[9px]">
-				Drag a selected clip edge
+				拖动已选素材的边缘
 			</span>
 		</div>
 	);
@@ -123,10 +122,10 @@ export function PrecisionTrimModeSelector() {
 		: [];
 	const getAvailability = (mode: PrecisionTrimMode) =>
 		getPrecisionTrimModeAvailability({
-				mode,
-				elementId: selection?.element.id ?? null,
-				elements: trackElements,
-			});
+			mode,
+			elementId: selection?.element.id ?? null,
+			elements: trackElements,
+		});
 	const availability: PrecisionTrimAvailabilityMap = {
 		standard: getAvailability("standard"),
 		ripple: getAvailability("ripple"),

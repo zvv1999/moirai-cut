@@ -197,7 +197,7 @@ function ToolbarLeftSection() {
 			<TooltipProvider delayDuration={500}>
 				<TimelineToolbarButton
 					icon={<HugeiconsIcon icon={ScissorIcon} />}
-					tooltip="Split element"
+					tooltip="分割素材"
 					shortcut={shortcutByAction.get("split")}
 					onClick={({ event }) => handleAction({ action: "split", event })}
 				/>
@@ -208,9 +208,9 @@ function ToolbarLeftSection() {
 					tooltip={
 						groupPlan.available
 							? groupPlan.action === "ungroup"
-								? "Ungroup selected clips"
-								: "Group selected clips"
-							: (groupPlan.reason ?? "Group selected clips")
+								? "取消素材编组"
+								: "将所选素材编组"
+							: (groupPlan.reason ?? "将所选素材编组")
 					}
 					disabled={!groupPlan.available}
 					onClick={({ event }) => {
@@ -229,9 +229,9 @@ function ToolbarLeftSection() {
 					tooltip={
 						linkPlan.available
 							? linkPlan.action === "unlink"
-								? "Unlink selected audio and video"
-								: "Link selected audio and video"
-							: (linkPlan.reason ?? "Link selected audio and video")
+								? "取消音视频链接"
+								: "链接所选音视频"
+							: (linkPlan.reason ?? "链接所选音视频")
 					}
 					disabled={!linkPlan.available}
 					onClick={({ event }) => {
@@ -242,14 +242,14 @@ function ToolbarLeftSection() {
 
 				<TimelineToolbarButton
 					icon={<HugeiconsIcon icon={AlignLeftIcon} />}
-					tooltip="Split left"
+					tooltip="分割并删除左侧"
 					shortcut={shortcutByAction.get("split-left")}
 					onClick={({ event }) => handleAction({ action: "split-left", event })}
 				/>
 
 				<TimelineToolbarButton
 					icon={<HugeiconsIcon icon={AlignRightIcon} />}
-					tooltip="Split right"
+					tooltip="分割并删除右侧"
 					shortcut={shortcutByAction.get("split-right")}
 					onClick={({ event }) =>
 						handleAction({ action: "split-right", event })
@@ -258,7 +258,7 @@ function ToolbarLeftSection() {
 
 				<TimelineToolbarButton
 					icon={<HugeiconsIcon icon={Copy01Icon} />}
-					tooltip="Duplicate element"
+					tooltip="复制素材"
 					shortcut={shortcutByAction.get("duplicate-selected")}
 					onClick={({ event }) =>
 						handleAction({ action: "duplicate-selected", event })
@@ -268,9 +268,7 @@ function ToolbarLeftSection() {
 				<TimelineToolbarButton
 					icon={<HugeiconsIcon icon={SnowIcon} />}
 					isActive={isFrozen}
-					tooltip={
-						isFrozen ? "Remove freeze frame" : "Freeze frame at playhead"
-					}
+					tooltip={isFrozen ? "移除定格" : "在播放头处定格"}
 					disabled={!canFreeze && !isFrozen}
 					onClick={({ event }) => {
 						event.stopPropagation();
@@ -280,7 +278,7 @@ function ToolbarLeftSection() {
 
 				<TimelineToolbarButton
 					icon={<HugeiconsIcon icon={Delete02Icon} />}
-					tooltip="Delete element"
+					tooltip="删除素材"
 					shortcut={shortcutByAction.get("delete-selected")}
 					onClick={({ event }) =>
 						handleAction({ action: "delete-selected", event })
@@ -293,7 +291,7 @@ function ToolbarLeftSection() {
 					<TimelineToolbarButton
 						icon={<HugeiconsIcon icon={Bookmark02Icon} />}
 						isActive={isCurrentlyBookmarked}
-						tooltip={isCurrentlyBookmarked ? "Remove bookmark" : "Add bookmark"}
+						tooltip={isCurrentlyBookmarked ? "移除书签" : "添加书签"}
 						onClick={({ event }) =>
 							handleAction({ action: "toggle-bookmark", event })
 						}
@@ -338,9 +336,7 @@ function ToolbarLeftSection() {
 					icon={<HugeiconsIcon icon={KeyframeIcon} />}
 					isActive={isSelectedElementExpanded}
 					tooltip={
-						isSelectedElementExpanded
-							? "Collapse keyframe lanes"
-							: "Expand keyframe lanes"
+						isSelectedElementExpanded ? "收起关键帧轨道" : "展开关键帧轨道"
 					}
 					disabled={!hasSelectedElementKeyframes}
 					onClick={({ event }) => {
@@ -364,7 +360,7 @@ function SceneSelector() {
 	return (
 		<div>
 			<SplitButton className="border-foreground/10 border">
-				<SplitButtonLeft>{currentScene?.name || "No Scene"}</SplitButtonLeft>
+				<SplitButtonLeft>{currentScene?.name || "未命名场景"}</SplitButtonLeft>
 				<SplitButtonSeparator />
 				<ScenesView>
 					<SplitButtonRight onClick={() => {}}>
@@ -391,8 +387,8 @@ function ToolbarRightSection({
 		<div className="flex items-center gap-1">
 			<div className="flex items-center gap-1">
 				<Button
-					aria-label="Zoom out timeline"
-					title="Zoom out timeline"
+					aria-label="缩小时间线"
+					title="缩小时间线"
 					variant="text"
 					size="icon"
 					onClick={() => onZoom({ direction: "out" })}
@@ -410,8 +406,8 @@ function ToolbarRightSection({
 					step={0.005}
 				/>
 				<Button
-					aria-label="Zoom in timeline"
-					title="Zoom in timeline"
+					aria-label="放大时间线"
+					title="放大时间线"
 					variant="text"
 					size="icon"
 					onClick={() => onZoom({ direction: "in" })}

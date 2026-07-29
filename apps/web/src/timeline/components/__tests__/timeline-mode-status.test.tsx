@@ -11,7 +11,7 @@ test("timeline edit modes expose persistent state, labels, and shortcuts", () =>
 			rippleEditingShortcut="R"
 			sourceAudio={{
 				status: "linked",
-				label: "Source audio linked",
+				label: "原声已连接",
 				canToggle: true,
 			}}
 			sourceAudioShortcut="A"
@@ -22,20 +22,20 @@ test("timeline edit modes expose persistent state, labels, and shortcuts", () =>
 	);
 
 	expect(markup).toContain('role="group"');
-	expect(markup).toContain('aria-label="Timeline edit modes"');
-	expect(markup).toContain('aria-label="Auto snapping: On (N)"');
+	expect(markup).toContain('aria-label="时间线编辑模式"');
+	expect(markup).toContain('aria-label="自动吸附：开启 (N)"');
 	expect(markup).toContain('aria-pressed="true"');
-	expect(markup).toContain("Snap");
-	expect(markup).toContain("On");
+	expect(markup).toContain("吸附");
+	expect(markup).toContain("开");
 	expect(markup).toContain("<kbd");
 	expect(markup).toContain(">N</kbd>");
-	expect(markup).toContain('aria-label="Ripple editing: Off (R)"');
-	expect(markup).toContain("Ripple");
-	expect(markup).toContain("Off");
+	expect(markup).toContain('aria-label="联动编辑：关闭 (R)"');
+	expect(markup).toContain("联动");
+	expect(markup).toContain("关");
 	expect(markup).toContain(">R</kbd>");
-	expect(markup).toContain('aria-label="Source audio linked (A)"');
-	expect(markup).toContain("Audio");
-	expect(markup).toContain("Linked");
+	expect(markup).toContain('aria-label="原声已连接 (A)"');
+	expect(markup).toContain("原声");
+	expect(markup).toContain("已连接");
 	expect(markup).toContain(">A</kbd>");
 });
 
@@ -48,7 +48,7 @@ test("source audio stays discoverable when the selection cannot use it", () => {
 			rippleEditingShortcut={null}
 			sourceAudio={{
 				status: "unavailable",
-				label: "Select one video clip to manage source audio",
+				label: "请选择一个视频素材以管理原声",
 				canToggle: false,
 			}}
 			sourceAudioShortcut={null}
@@ -58,9 +58,9 @@ test("source audio stays discoverable when the selection cannot use it", () => {
 		/>,
 	);
 
-	expect(markup).toContain('aria-label="Auto snapping: Off"');
-	expect(markup).toContain('aria-label="Ripple editing: On"');
-	expect(markup).toContain("Select one video clip to manage source audio");
-	expect(markup).toContain("Unavailable");
+	expect(markup).toContain('aria-label="自动吸附：关闭"');
+	expect(markup).toContain('aria-label="联动编辑：开启"');
+	expect(markup).toContain("请选择一个视频素材以管理原声");
+	expect(markup).toContain("不可用");
 	expect(markup).toContain("disabled");
 });

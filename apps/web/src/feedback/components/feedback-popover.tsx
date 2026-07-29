@@ -96,8 +96,8 @@ export function FeedbackPopover() {
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
-				<Button variant="outline" className="h-8">
-					Send feedback
+				<Button variant="ghost" className="h-8 text-xs">
+					反馈
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent align="end" className="w-80 p-0">
@@ -158,7 +158,10 @@ function FeedbackPopoverContent({ onClose }: { onClose: () => void }) {
 	return (
 		<div className="flex flex-col">
 			<Form persistKey={PERSIST_KEY} {...form}>
-				<form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col">
+				<form
+					onSubmit={form.handleSubmit(handleSubmit)}
+					className="flex flex-col"
+				>
 					<FormField
 						control={form.control}
 						name="message"

@@ -95,11 +95,11 @@ export function TimelineModeStatusView({
 	onToggleRippleEditing: () => void;
 	onToggleSourceAudio: () => void;
 }) {
-	const snappingLabel = `Auto snapping: ${
-		snappingEnabled ? "On" : "Off"
+	const snappingLabel = `自动吸附：${
+		snappingEnabled ? "开启" : "关闭"
 	}${snappingShortcut ? ` (${snappingShortcut})` : ""}`;
-	const rippleLabel = `Ripple editing: ${
-		rippleEditingEnabled ? "On" : "Off"
+	const rippleLabel = `联动编辑：${
+		rippleEditingEnabled ? "开启" : "关闭"
 	}${rippleEditingShortcut ? ` (${rippleEditingShortcut})` : ""}`;
 	const sourceAudioLabel = `${sourceAudio.label}${
 		sourceAudioShortcut ? ` (${sourceAudioShortcut})` : ""
@@ -110,17 +110,17 @@ export function TimelineModeStatusView({
 		<div
 			className="border-border/80 bg-muted/15 flex h-9 shrink-0 items-center gap-1.5 overflow-x-auto border-b px-2 scrollbar-hidden"
 			role="group"
-			aria-label="Timeline edit modes"
+			aria-label="时间线编辑模式"
 		>
 			<span className="text-muted-foreground mr-0.5 shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em]">
-				Modes
+				模式
 			</span>
 			<ModeButton
 				label={snappingLabel}
 				isActive={snappingEnabled}
 				icon={<HugeiconsIcon icon={MagnetIcon} />}
-				name="Snap"
-				state={snappingEnabled ? "On" : "Off"}
+				name="吸附"
+				state={snappingEnabled ? "开" : "关"}
 				shortcut={snappingShortcut}
 				onClick={onToggleSnapping}
 			/>
@@ -128,8 +128,8 @@ export function TimelineModeStatusView({
 				label={rippleLabel}
 				isActive={rippleEditingEnabled}
 				icon={<OcRippleIcon size={15} />}
-				name="Ripple"
-				state={rippleEditingEnabled ? "On" : "Off"}
+				name="联动"
+				state={rippleEditingEnabled ? "开" : "关"}
 				shortcut={rippleEditingShortcut}
 				onClick={onToggleRippleEditing}
 			/>
@@ -139,13 +139,13 @@ export function TimelineModeStatusView({
 				icon={
 					<HugeiconsIcon icon={audioIsSeparated ? Unlink02Icon : Link02Icon} />
 				}
-				name="Audio"
+				name="原声"
 				state={
 					sourceAudio.status === "linked"
-						? "Linked"
+						? "已连接"
 						: sourceAudio.status === "separated"
-							? "Separated"
-							: "Unavailable"
+							? "已分离"
+							: "不可用"
 				}
 				disabled={!sourceAudio.canToggle}
 				shortcut={sourceAudioShortcut}
@@ -153,13 +153,13 @@ export function TimelineModeStatusView({
 			/>
 			<span
 				className="border-border bg-background text-muted-foreground shrink-0 rounded-md border px-2 py-1 text-[10px]"
-				aria-label={`${selectionCount} timeline clips selected`}
+				aria-label={`时间线已选择 ${selectionCount} 个素材`}
 			>
-				Selection <strong className="text-foreground">{selectionCount}</strong>
-				<span className="ml-1.5">· Shift range · ⌘ toggle · drag box</span>
+				已选 <strong className="text-foreground">{selectionCount}</strong>
+				<span className="ml-1.5">· Shift 连选 · ⌘ 多选 · 框选</span>
 			</span>
 			<span className="text-muted-foreground ml-auto shrink-0 text-[10px]">
-				Drag + Shift bypasses snapping
+				拖动时按 Shift 可临时关闭吸附
 			</span>
 		</div>
 	);
@@ -202,7 +202,7 @@ export function TimelineModeStatus() {
 		if (!selectedElement || selectedElement.element.type !== "video") {
 			return {
 				status: "unavailable",
-				label: "Select one video clip to manage source audio",
+				label: "请选择一个视频素材以管理原声",
 				canToggle: false,
 			};
 		}
@@ -210,7 +210,7 @@ export function TimelineModeStatus() {
 		if (!canToggleSourceAudio(selectedElement.element, selectedMediaAsset)) {
 			return {
 				status: "unavailable",
-				label: "Selected video has no source audio",
+				label: "所选视频没有可用原声",
 				canToggle: false,
 			};
 		}
@@ -220,9 +220,7 @@ export function TimelineModeStatus() {
 		});
 		return {
 			status: separated ? "separated" : "linked",
-			label: separated
-				? "Source audio separated — click to recover"
-				: "Source audio linked — click to extract",
+			label: separated ? "原声已分离 — 点击恢复" : "原声已连接 — 点击提取",
 			canToggle: true,
 		};
 	})();

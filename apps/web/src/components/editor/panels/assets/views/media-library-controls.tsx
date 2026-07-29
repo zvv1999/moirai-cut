@@ -35,27 +35,27 @@ const MEDIA_TYPE_OPTIONS: Array<{
 	value: MediaTypeFilter;
 	label: string;
 }> = [
-	{ value: "all", label: "All media" },
-	{ value: "video", label: "Videos" },
-	{ value: "image", label: "Images" },
-	{ value: "audio", label: "Audio" },
+	{ value: "all", label: "全部媒体" },
+	{ value: "video", label: "视频" },
+	{ value: "image", label: "图片" },
+	{ value: "audio", label: "音频" },
 ];
 
 const DURATION_OPTIONS: Array<{
 	value: MediaDurationFilter;
 	label: string;
 }> = [
-	{ value: "all", label: "Any duration" },
-	{ value: "under-10", label: "Under 10 seconds" },
-	{ value: "10-60", label: "10 to 60 seconds" },
-	{ value: "over-60", label: "Over 60 seconds" },
+	{ value: "all", label: "不限时长" },
+	{ value: "under-10", label: "10 秒以内" },
+	{ value: "10-60", label: "10 至 60 秒" },
+	{ value: "over-60", label: "60 秒以上" },
 ];
 
 const RESOLUTION_OPTIONS: Array<{
 	value: MediaResolutionFilter;
 	label: string;
 }> = [
-	{ value: "all", label: "Any resolution" },
+	{ value: "all", label: "不限分辨率" },
 	{ value: "sd", label: "SD" },
 	{ value: "hd", label: "HD" },
 	{ value: "uhd", label: "UHD / 4K" },
@@ -65,26 +65,26 @@ const USAGE_OPTIONS: Array<{
 	value: MediaUsageFilter;
 	label: string;
 }> = [
-	{ value: "all", label: "Any usage" },
-	{ value: "used", label: "Used on timeline" },
-	{ value: "unused", label: "Unused" },
+	{ value: "all", label: "不限使用状态" },
+	{ value: "used", label: "已用于时间线" },
+	{ value: "unused", label: "未使用" },
 ];
 
 const AVAILABILITY_OPTIONS: Array<{
 	value: MediaAvailabilityFilter;
 	label: string;
 }> = [
-	{ value: "all", label: "Available and missing" },
-	{ value: "available", label: "Available only" },
-	{ value: "missing", label: "Missing only" },
+	{ value: "all", label: "全部可用状态" },
+	{ value: "available", label: "仅可用素材" },
+	{ value: "missing", label: "仅丢失素材" },
 ];
 
 const FAVORITE_OPTIONS: Array<{
 	value: MediaFavoriteFilter;
 	label: string;
 }> = [
-	{ value: "all", label: "All assets" },
-	{ value: "favorite", label: "Favorites only" },
+	{ value: "all", label: "全部素材" },
+	{ value: "favorite", label: "仅收藏" },
 ];
 
 export function MediaLibraryControlsView({
@@ -123,8 +123,8 @@ export function MediaLibraryControlsView({
 						aria-hidden="true"
 					/>
 					<Input
-						aria-label="Search assets by filename"
-						placeholder="Search"
+						aria-label="按文件名搜索素材"
+						placeholder="搜索素材"
 						value={query}
 						onChange={(event) => onQueryChange(event.currentTarget.value)}
 						onClear={() => onQueryChange("")}
@@ -136,8 +136,8 @@ export function MediaLibraryControlsView({
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<Button
-							aria-label={`Advanced asset filters: ${activeFilterCount} active`}
-							title={`Advanced asset filters: ${activeFilterCount} active`}
+							aria-label={`高级素材筛选：已启用 ${activeFilterCount} 项`}
+							title={`高级素材筛选：已启用 ${activeFilterCount} 项`}
 							size="icon"
 							variant={activeFilterCount === 0 ? "outline" : "secondary"}
 							className="size-7 shrink-0"
@@ -146,10 +146,10 @@ export function MediaLibraryControlsView({
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end" className="min-w-52">
-						<DropdownMenuLabel>Asset filters</DropdownMenuLabel>
+						<DropdownMenuLabel>素材筛选</DropdownMenuLabel>
 						<DropdownMenuSeparator />
 						<FilterSubmenu
-							label="Media type"
+							label="媒体类型"
 							value={type}
 							options={MEDIA_TYPE_OPTIONS}
 							onChange={({ value }) => {
@@ -160,7 +160,7 @@ export function MediaLibraryControlsView({
 							}}
 						/>
 						<FilterSubmenu
-							label="Duration"
+							label="时长"
 							value={filters.duration}
 							options={DURATION_OPTIONS}
 							onChange={({ value }) => {
@@ -176,7 +176,7 @@ export function MediaLibraryControlsView({
 							}}
 						/>
 						<FilterSubmenu
-							label="Resolution"
+							label="分辨率"
 							value={filters.resolution}
 							options={RESOLUTION_OPTIONS}
 							onChange={({ value }) => {
@@ -192,7 +192,7 @@ export function MediaLibraryControlsView({
 							}}
 						/>
 						<FilterSubmenu
-							label="Timeline usage"
+							label="时间线使用状态"
 							value={filters.usage}
 							options={USAGE_OPTIONS}
 							onChange={({ value }) => {
@@ -205,7 +205,7 @@ export function MediaLibraryControlsView({
 							}}
 						/>
 						<FilterSubmenu
-							label="Availability"
+							label="素材状态"
 							value={filters.availability}
 							options={AVAILABILITY_OPTIONS}
 							onChange={({ value }) => {
@@ -221,7 +221,7 @@ export function MediaLibraryControlsView({
 							}}
 						/>
 						<FilterSubmenu
-							label="Favorite"
+							label="收藏"
 							value={filters.favorite}
 							options={FAVORITE_OPTIONS}
 							onChange={({ value }) => {
@@ -237,10 +237,10 @@ export function MediaLibraryControlsView({
 							}}
 						/>
 						<FilterSubmenu
-							label="Tag"
+							label="标签"
 							value={filters.tag ?? "all"}
 							options={[
-								{ value: "all", label: "Any tag" },
+								{ value: "all", label: "不限标签" },
 								...availableTags.map((tag) => ({ value: tag, label: tag })),
 							]}
 							onChange={({ value }) =>
@@ -258,8 +258,8 @@ export function MediaLibraryControlsView({
 						size="icon"
 						variant="ghost"
 						className="size-7 shrink-0"
-						aria-label="Clear all asset filters"
-						title="Clear all asset filters"
+						aria-label="清除全部素材筛选"
+						title="清除全部素材筛选"
 						onClick={onClearAll}
 					>
 						<HugeiconsIcon icon={Cancel01Icon} className="size-3.5" />
@@ -269,13 +269,12 @@ export function MediaLibraryControlsView({
 			<div className="mt-1 flex items-center justify-between gap-2 px-0.5">
 				<p className="text-muted-foreground text-[11px]" aria-live="polite">
 					{resultCount === totalCount
-						? `${totalCount} assets`
-						: `${resultCount} of ${totalCount} assets`}
+						? `${totalCount} 个素材`
+						: `${resultCount} / ${totalCount} 个素材`}
 				</p>
 				{activeFilterCount > 0 ? (
 					<span className="text-primary text-[10px] font-medium">
-						{activeFilterCount}{" "}
-						{activeFilterCount === 1 ? "filter" : "filters"}
+						{activeFilterCount} 项筛选
 					</span>
 				) : null}
 			</div>
@@ -310,10 +309,7 @@ function FilterSubmenu({
 					onValueChange={(nextValue) => onChange({ value: nextValue })}
 				>
 					{options.map((option) => (
-						<DropdownMenuRadioItem
-							key={option.value}
-							value={option.value}
-						>
+						<DropdownMenuRadioItem key={option.value} value={option.value}>
 							{option.label}
 						</DropdownMenuRadioItem>
 					))}

@@ -63,27 +63,21 @@ export function MediaBinBrowserView({
 		() => ({ bins, assetBinIds }),
 		[assetBinIds, bins],
 	);
-	const tree = useMemo(
-		() => getMediaBinTree({ organization }),
-		[organization],
-	);
+	const tree = useMemo(() => getMediaBinTree({ organization }), [organization]);
 
 	return (
-		<section
-			className="border-border/70 border-b pb-2"
-			aria-label="Media bins"
-		>
+		<section className="border-border/70 border-b pb-2" aria-label="素材文件夹">
 			<div className="mb-1 flex items-center justify-between px-0.5">
 				<p className="text-muted-foreground text-[10px] font-bold uppercase tracking-[0.12em]">
-					Bins
+					素材库
 				</p>
 				<Button
 					type="button"
 					variant="ghost"
 					size="icon"
 					className="size-6"
-					aria-label="Create root bin"
-					title="Create root bin"
+					aria-label="新建素材文件夹"
+					title="新建素材文件夹"
 					onClick={() => setEditing({ mode: "create", parentId: null })}
 				>
 					<HugeiconsIcon icon={Add01Icon} className="size-3.5" />
@@ -91,28 +85,28 @@ export function MediaBinBrowserView({
 			</div>
 			<div className="space-y-0.5" role="tree">
 				<BinNavigationRow
-					label="All assets"
+					label="全部素材"
 					count={assetIds.length}
 					active={activeBinId === "all"}
-					ariaLabel="View all assets"
+					ariaLabel="查看全部素材"
 					onClick={() => onSelect("all")}
 				/>
 				<BinNavigationRow
-					label="Unfiled"
+					label="未分类"
 					count={getMediaBinAssetCount({
 						organization,
 						assetIds,
 						binId: "unfiled",
 					})}
 					active={activeBinId === "unfiled"}
-					ariaLabel="View unfiled assets"
+					ariaLabel="查看未分类素材"
 					onClick={() => onSelect("unfiled")}
 				/>
 				{editing?.mode === "create" && editing.parentId === null ? (
 					<BinNameEditor
 						depth={0}
-						initialValue="New bin"
-						ariaLabel="Name new root bin"
+						initialValue="新建文件夹"
+						ariaLabel="命名新的素材文件夹"
 						onCancel={() => setEditing(null)}
 						onCommit={({ name }) => {
 							onCreate({ name, parentId: null });
@@ -159,12 +153,11 @@ export function MediaBinBrowserView({
 								onDelete={() => onDelete({ binId: bin.id })}
 							/>
 						)}
-						{editing?.mode === "create" &&
-						editing.parentId === bin.id ? (
+						{editing?.mode === "create" && editing.parentId === bin.id ? (
 							<BinNameEditor
 								depth={depth + 1}
-								initialValue="New bin"
-								ariaLabel={`Name new bin inside ${bin.name}`}
+								initialValue="新建文件夹"
+								ariaLabel={`在 ${bin.name} 内命名新的素材文件夹`}
 								onCancel={() => setEditing(null)}
 								onCommit={({ name }) => {
 									onCreate({ name, parentId: bin.id });
@@ -242,7 +235,9 @@ function MediaBinRow({
 	const siblings = bins
 		.filter((candidate) => candidate.parentId === bin.parentId)
 		.sort((a, b) => a.order - b.order);
-	const siblingIndex = siblings.findIndex((candidate) => candidate.id === bin.id);
+	const siblingIndex = siblings.findIndex(
+		(candidate) => candidate.id === bin.id,
+	);
 	const invalidParentIds = getInvalidParentIds({ bins, binId: bin.id });
 	const parentCandidates = bins.filter(
 		(candidate) => !invalidParentIds.has(candidate.id),

@@ -1082,7 +1082,7 @@ export function MediaView() {
 			/>
 
 			<PanelView
-				title="Assets"
+				title="媒体"
 				actions={
 					<MediaActions
 						mediaViewMode={mediaViewMode}
@@ -1170,7 +1170,7 @@ export function MediaView() {
 									mediaOrganization.bins.find(
 										(bin) => bin.id === effectiveActiveBinId,
 									)?.name ??
-									(effectiveActiveBinId === "unfiled" ? "Unfiled" : null)
+									(effectiveActiveBinId === "unfiled" ? "未分类" : null)
 								}
 								onClear={() => {
 									setSearchQuery("");
@@ -1181,7 +1181,7 @@ export function MediaView() {
 							/>
 						) : filteredMediaItems.length > 0 ? (
 							<SelectableSurface
-								ariaLabel="Assets"
+								ariaLabel="素材"
 								orderedIds={orderedMediaIds}
 								revealId={highlightMediaId}
 								onRevealComplete={clearHighlight}
@@ -1889,9 +1889,7 @@ function MediaActions({
 					<TooltipTrigger asChild>
 						<Button
 							aria-label={
-								mediaViewMode === "grid"
-									? "Switch assets to list view"
-									: "Switch assets to grid view"
+								mediaViewMode === "grid" ? "切换为列表视图" : "切换为网格视图"
 							}
 							size="icon"
 							variant="ghost"
@@ -1910,9 +1908,7 @@ function MediaActions({
 					</TooltipTrigger>
 					<TooltipContent>
 						<p>
-							{mediaViewMode === "grid"
-								? "Switch to list view"
-								: "Switch to grid view"}
+							{mediaViewMode === "grid" ? "切换为列表视图" : "切换为网格视图"}
 						</p>
 					</TooltipContent>
 				</Tooltip>
@@ -1921,8 +1917,8 @@ function MediaActions({
 						<TooltipTrigger asChild>
 							<DropdownMenuTrigger asChild>
 								<Button
-									aria-label={`Sort assets by ${sortBy}, ${
-										sortOrder === "asc" ? "ascending" : "descending"
+									aria-label={`素材排序：${sortBy}，${
+										sortOrder === "asc" ? "升序" : "降序"
 									}`}
 									size="icon"
 									variant="ghost"
@@ -1935,42 +1931,42 @@ function MediaActions({
 						</TooltipTrigger>
 						<DropdownMenuContent align="end">
 							<SortMenuItem
-								label="Name"
+								label="名称"
 								sortKey="name"
 								currentSortBy={sortBy}
 								currentSortOrder={sortOrder}
 								onSort={onSort}
 							/>
 							<SortMenuItem
-								label="Type"
+								label="类型"
 								sortKey="type"
 								currentSortBy={sortBy}
 								currentSortOrder={sortOrder}
 								onSort={onSort}
 							/>
 							<SortMenuItem
-								label="Duration"
+								label="时长"
 								sortKey="duration"
 								currentSortBy={sortBy}
 								currentSortOrder={sortOrder}
 								onSort={onSort}
 							/>
 							<SortMenuItem
-								label="File size"
+								label="文件大小"
 								sortKey="size"
 								currentSortBy={sortBy}
 								currentSortOrder={sortOrder}
 								onSort={onSort}
 							/>
 							<SortMenuItem
-								label="Favorite"
+								label="收藏"
 								sortKey="favorite"
 								currentSortBy={sortBy}
 								currentSortOrder={sortOrder}
 								onSort={onSort}
 							/>
 							<SortMenuItem
-								label="Color label"
+								label="颜色标签"
 								sortKey="colorLabel"
 								currentSortBy={sortBy}
 								currentSortOrder={sortOrder}
@@ -1980,8 +1976,8 @@ function MediaActions({
 					</DropdownMenu>
 					<TooltipContent>
 						<p>
-							Sort by {sortBy} (
-							{sortOrder === "asc" ? "ascending" : "descending"})
+							按 {sortBy} 排序（
+							{sortOrder === "asc" ? "升序" : "降序"}）
 						</p>
 					</TooltipContent>
 				</Tooltip>
@@ -1993,7 +1989,7 @@ function MediaActions({
 				size="sm"
 				className="items-center justify-center px-2 text-xs"
 			>
-				Duplicates
+				重复项
 			</Button>
 			<Button
 				variant="outline"
@@ -2003,7 +1999,7 @@ function MediaActions({
 				className="items-center justify-center gap-1.5"
 			>
 				<HugeiconsIcon icon={CloudUploadIcon} />
-				Import
+				导入
 			</Button>
 		</div>
 	);

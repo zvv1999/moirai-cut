@@ -113,7 +113,7 @@ export function TrackControlRowView({
 					<input
 						autoFocus
 						value={draftName}
-						aria-label={`Track name for ${track.name}`}
+						aria-label={`${track.name} 的轨道名称`}
 						className="border-input bg-background h-6 min-w-0 flex-1 rounded border px-1 text-xs outline-none focus:border-primary"
 						onChange={(event) => setDraftName(event.target.value)}
 						onBlur={commitRename}
@@ -128,8 +128,8 @@ export function TrackControlRowView({
 				) : (
 					<button
 						type="button"
-						aria-label={`Rename ${track.name}`}
-						title={`${compatibilityLabel} · Double-click or press to rename`}
+						aria-label={`重命名 ${track.name}`}
+						title={`${compatibilityLabel} · 双击或点击重命名`}
 						className="min-w-0 flex-1 text-left"
 						onClick={(event) => {
 							event.stopPropagation();
@@ -138,10 +138,12 @@ export function TrackControlRowView({
 						}}
 					>
 						<span className="flex min-w-0 items-center gap-1">
-							<span className="truncate text-[11px] font-medium">{track.name}</span>
+							<span className="truncate text-[11px] font-medium">
+								{track.name}
+							</span>
 							{isMainTrack && (
 								<span className="bg-primary/10 text-primary shrink-0 rounded px-1 text-[8px] font-semibold uppercase">
-									Main
+									主轨
 								</span>
 							)}
 						</span>
@@ -153,7 +155,7 @@ export function TrackControlRowView({
 			</div>
 			<div className="flex items-center gap-0.5">
 				<TrackControlButton
-					label={`${track.locked ? "Unlock" : "Lock"} ${track.name}`}
+					label={`${track.locked ? "解锁" : "锁定"} ${track.name}`}
 					icon={LockIcon}
 					pressed={track.locked === true}
 					onClick={onToggleLock}
@@ -161,14 +163,14 @@ export function TrackControlRowView({
 				{canTrackHaveAudio(track) && (
 					<>
 						<TrackControlButton
-							label={`${track.solo ? "Disable solo for" : "Solo"} ${track.name}`}
+							label={`${track.solo ? "取消独奏" : "独奏"} ${track.name}`}
 							pressed={track.solo === true}
 							onClick={onToggleSolo}
 						>
 							S
 						</TrackControlButton>
 						<TrackControlButton
-							label={`${track.muted ? "Unmute" : "Mute"} ${track.name}`}
+							label={`${track.muted ? "取消静音" : "静音"} ${track.name}`}
 							icon={track.muted ? VolumeOffIcon : VolumeHighIcon}
 							pressed={track.muted}
 							onClick={onToggleMute}
@@ -177,20 +179,20 @@ export function TrackControlRowView({
 				)}
 				{canTrackBeHidden(track) && (
 					<TrackControlButton
-						label={`${track.hidden ? "Show" : "Hide"} ${track.name}`}
+						label={`${track.hidden ? "显示" : "隐藏"} ${track.name}`}
 						icon={track.hidden ? ViewOffSlashIcon : ViewIcon}
 						pressed={track.hidden}
 						onClick={onToggleVisibility}
 					/>
 				)}
 				<TrackControlButton
-					label={`Resize ${track.name}`}
+					label={`调整 ${track.name} 高度`}
 					icon={VerticalResizeIcon}
 					onClick={() => onSetHeight(getNextTrackDisplayHeight({ track }))}
 				/>
 				{!isMainTrack && (
 					<TrackControlButton
-						label={`Delete ${track.name}`}
+						label={`删除 ${track.name}`}
 						icon={Delete02Icon}
 						danger
 						onClick={onDelete}

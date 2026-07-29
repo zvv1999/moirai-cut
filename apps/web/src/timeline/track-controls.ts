@@ -14,11 +14,11 @@ export const TRACK_DEFAULT_HEIGHTS_PX: Record<TrackType, number> = {
 };
 
 const TRACK_COMPATIBILITY_LABELS: Record<TrackType, string> = {
-	video: "Video and image clips",
-	text: "Text clips",
-	audio: "Audio clips",
-	graphic: "Stickers and graphics",
-	effect: "Effect clips",
+	video: "视频与图片素材",
+	text: "文字素材",
+	audio: "音频素材",
+	graphic: "贴纸与图形",
+	effect: "特效素材",
 };
 
 export type TrackControlPatch = Partial<

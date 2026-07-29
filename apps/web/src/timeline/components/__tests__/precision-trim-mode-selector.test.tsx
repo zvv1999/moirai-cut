@@ -18,12 +18,12 @@ test("precision trim tools remain visible, named, and stateful", () => {
 	);
 
 	expect(markup).toContain('role="group"');
-	expect(markup).toContain('aria-label="Precision trim tools"');
-	expect(markup).toContain('aria-label="Standard trim"');
-	expect(markup).toContain('aria-label="Ripple trim"');
-	expect(markup).toContain('aria-label="Roll edit"');
-	expect(markup).toContain('aria-label="Slip edit: No source handles"');
-	expect(markup).toContain('aria-label="Slide edit: Needs both neighbours"');
+	expect(markup).toContain('aria-label="精确修剪工具"');
+	expect(markup).toContain('aria-label="普通修剪"');
+	expect(markup).toContain('aria-label="联动修剪"');
+	expect(markup).toContain('aria-label="滚动编辑"');
+	expect(markup).toContain('aria-label="滑移编辑: No source handles"');
+	expect(markup).toContain('aria-label="滑动编辑: Needs both neighbours"');
 	expect(markup).toContain('aria-pressed="true"');
 	expect(markup).toContain("disabled");
 });

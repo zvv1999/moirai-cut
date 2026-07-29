@@ -523,10 +523,10 @@ export function Timeline() {
 	return (
 		<section
 			className={
-				"panel bg-background relative flex h-full flex-col overflow-hidden rounded-sm border"
+				"panel bg-background relative flex h-full flex-col overflow-hidden rounded-lg border"
 			}
 			{...dragProps}
-			aria-label="Timeline"
+			aria-label="时间线"
 		>
 			<TimelineToolbar
 				zoomLevel={zoomLevel}
@@ -750,17 +750,17 @@ function TrackLabelsPanel({
 				style={{ height: timelineHeaderHeight || 48 }}
 			>
 				<div className="min-w-0">
-					<p className="text-[11px] font-semibold">Tracks</p>
+					<p className="text-[11px] font-semibold">轨道</p>
 					<p className="text-muted-foreground truncate text-[9px]">
-						{tracks.length} lanes · every change is undoable
+						{tracks.length} 条轨道 · 所有操作均可撤销
 					</p>
 				</div>
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<button
 							type="button"
-							aria-label="Add track"
-							title="Add track"
+							aria-label="添加轨道"
+							title="添加轨道"
 							className="hover:bg-muted text-muted-foreground hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded border transition-colors"
 						>
 							<HugeiconsIcon icon={Add01Icon} className="size-4" />
@@ -769,11 +769,11 @@ function TrackLabelsPanel({
 					<DropdownMenuContent align="start" className="w-44">
 						{(
 							[
-								["video", "Video track"],
-								["audio", "Audio track"],
-								["text", "Text track"],
-								["graphic", "Graphic track"],
-								["effect", "Effect track"],
+								["video", "视频轨道"],
+								["audio", "音频轨道"],
+								["text", "文字轨道"],
+								["graphic", "图形轨道"],
+								["effect", "特效轨道"],
 							] as const
 						).map(([type, label]) => (
 							<DropdownMenuItem

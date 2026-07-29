@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { getPreviewVisualState } from "@/preview/visual-state";
-import type { TimelineTrack } from "@/timeline";
-import { mediaTimeFromSeconds } from "@/wasm";
+import type { TimelineTrack } from "@/timeline/types";
+import type { MediaTime } from "@/wasm";
 
-const at = (seconds: number) => mediaTimeFromSeconds({ seconds });
+const at = (seconds: number) => (seconds * 1_000_000) as MediaTime;
 
 function visualTrack({
 	hidden = false,
@@ -40,11 +40,22 @@ describe("getPreviewVisualState", () => {
 				tracks: [visualTrack({ ranges: [[0, 2]] })],
 				time: at(1),
 			}),
-		).toEqual({ kind: "visible", firstVisualTime: at(0), lastVisualTime: at(2) });
+		).toEqual({
+			kind: "visible",
+			firstVisualTime: at(0),
+			lastVisualTime: at(2),
+		});
 	});
 
 	test("distinguishes an internal gap from the empty tail after the last visual", () => {
-		const tracks = [visualTrack({ ranges: [[0, 2], [4, 6]] })];
+		const tracks = [
+			visualTrack({
+				ranges: [
+					[0, 2],
+					[4, 6],
+				],
+			}),
+		];
 
 		expect(getPreviewVisualState({ tracks, time: at(3) }).kind).toBe("gap");
 		expect(getPreviewVisualState({ tracks, time: at(7) }).kind).toBe("after");

@@ -21,9 +21,9 @@ import {
 } from "@/playback/transport";
 
 const QUALITY_LABELS: Record<PreviewQuality, string> = {
-	full: "Full",
-	balanced: "Balanced",
-	performance: "Performance",
+	full: "完整",
+	balanced: "流畅",
+	performance: "性能",
 };
 
 export function PlaybackTransportControls({
@@ -58,14 +58,14 @@ export function PlaybackTransportControls({
 	return (
 		<div
 			className="flex min-w-0 items-center justify-center gap-0.5"
-			aria-label="Playback transport"
+			aria-label="播放控制"
 		>
 			<Button
 				variant="text"
 				size="icon"
 				className={buttonClassName}
-				aria-label="Go to timeline start (Home)"
-				title="Go to timeline start (Home)"
+				aria-label="回到时间线开头（Home）"
+				title="回到时间线开头（Home）"
 				onClick={onGoToStart}
 			>
 				<HugeiconsIcon icon={SkipBack} />
@@ -74,8 +74,8 @@ export function PlaybackTransportControls({
 				variant="text"
 				size="icon"
 				className={buttonClassName}
-				aria-label="Previous frame (Left Arrow)"
-				title="Previous frame (Left Arrow)"
+				aria-label="上一帧（←）"
+				title="上一帧（←）"
 				onClick={onStepBackward}
 			>
 				<HugeiconsIcon icon={PreviousIcon} />
@@ -84,8 +84,8 @@ export function PlaybackTransportControls({
 				variant="secondary"
 				size="icon"
 				className={buttonClassName}
-				aria-label={isPlaying ? "Pause (Space)" : "Play (Space)"}
-				title={isPlaying ? "Pause (Space)" : "Play (Space)"}
+				aria-label={isPlaying ? "暂停（空格）" : "播放（空格）"}
+				title={isPlaying ? "暂停（空格）" : "播放（空格）"}
 				onClick={onTogglePlay}
 			>
 				<HugeiconsIcon icon={isPlaying ? PauseIcon : PlayIcon} />
@@ -94,8 +94,8 @@ export function PlaybackTransportControls({
 				variant="text"
 				size="icon"
 				className={buttonClassName}
-				aria-label="Next frame (Right Arrow)"
-				title="Next frame (Right Arrow)"
+				aria-label="下一帧（→）"
+				title="下一帧（→）"
 				onClick={onStepForward}
 			>
 				<HugeiconsIcon icon={NextIcon} />
@@ -104,8 +104,8 @@ export function PlaybackTransportControls({
 				variant="text"
 				size="icon"
 				className={buttonClassName}
-				aria-label="Go to timeline end (End)"
-				title="Go to timeline end (End)"
+				aria-label="前往时间线结尾（End）"
+				title="前往时间线结尾（End）"
 				onClick={onGoToEnd}
 			>
 				<HugeiconsIcon icon={SkipForward} />
@@ -114,17 +114,17 @@ export function PlaybackTransportControls({
 				variant={loopEnabled ? "secondary" : "text"}
 				size="icon"
 				className={buttonClassName}
-				aria-label="Loop playback"
+				aria-label="循环播放"
 				aria-pressed={loopEnabled}
-				title={loopEnabled ? "Loop playback: On" : "Loop playback: Off"}
+				title={loopEnabled ? "循环播放：开启" : "循环播放：关闭"}
 				onClick={onToggleLoop}
 			>
 				<HugeiconsIcon icon={RepeatIcon} />
 			</Button>
 			<select
 				className="border-border bg-background h-7 w-12 shrink-0 rounded-md border px-1 text-[11px] font-medium tabular-nums"
-				aria-label="Playback speed"
-				title="Playback speed"
+				aria-label="播放速度"
+				title="播放速度"
 				value={playbackRate}
 				onChange={(event) => {
 					const rate = Number(event.currentTarget.value);
@@ -141,8 +141,8 @@ export function PlaybackTransportControls({
 			</select>
 			<select
 				className="border-border bg-background h-7 w-[5.4rem] shrink-0 rounded-md border px-1 text-[11px] font-medium"
-				aria-label="Preview quality"
-				title="Preview quality"
+				aria-label="预览画质"
+				title="预览画质"
 				value={previewQuality}
 				onChange={(event) => {
 					const quality = event.currentTarget.value;

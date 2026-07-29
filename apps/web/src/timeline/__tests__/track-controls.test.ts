@@ -15,14 +15,10 @@ import { buildEmptyTrack } from "@/timeline/placement/track-factory";
 describe("timeline track controls", () => {
 	test("describes the media each track type accepts", () => {
 		expect(getTrackCompatibilityLabel({ trackType: "video" })).toBe(
-			"Video and image clips",
+			"视频与图片素材",
 		);
-		expect(getTrackCompatibilityLabel({ trackType: "audio" })).toBe(
-			"Audio clips",
-		);
-		expect(getTrackCompatibilityLabel({ trackType: "text" })).toBe(
-			"Text clips",
-		);
+		expect(getTrackCompatibilityLabel({ trackType: "audio" })).toBe("音频素材");
+		expect(getTrackCompatibilityLabel({ trackType: "text" })).toBe("文字素材");
 	});
 
 	test("normalizes names without allowing an empty track label", () => {
@@ -37,12 +33,12 @@ describe("timeline track controls", () => {
 	test("clamps custom heights while preserving type defaults", () => {
 		const video = buildEmptyTrack({ id: "video", type: "video" });
 		expect(getTrackDisplayHeight({ track: video })).toBe(65);
-		expect(
-			getTrackDisplayHeight({ track: { ...video, height: 4 } }),
-		).toBe(TRACK_HEIGHT_MIN_PX);
-		expect(
-			getTrackDisplayHeight({ track: { ...video, height: 999 } }),
-		).toBe(TRACK_HEIGHT_MAX_PX);
+		expect(getTrackDisplayHeight({ track: { ...video, height: 4 } })).toBe(
+			TRACK_HEIGHT_MIN_PX,
+		);
+		expect(getTrackDisplayHeight({ track: { ...video, height: 999 } })).toBe(
+			TRACK_HEIGHT_MAX_PX,
+		);
 		expect(getNextTrackDisplayHeight({ track: video })).toBe(101);
 		expect(
 			getNextTrackDisplayHeight({ track: { ...video, height: 101 } }),
@@ -93,8 +89,8 @@ describe("timeline track controls", () => {
 				tracks: [{ ...music, solo: true, muted: true }, voice],
 			}),
 		).toBe(false);
-		expect(isTrackAudible({ track: voice, tracks: [video, music, voice] })).toBe(
-			true,
-		);
+		expect(
+			isTrackAudible({ track: voice, tracks: [video, music, voice] }),
+		).toBe(true);
 	});
 });

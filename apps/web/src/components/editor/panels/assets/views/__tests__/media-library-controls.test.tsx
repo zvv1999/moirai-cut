@@ -25,9 +25,9 @@ test("advanced media filters expose their active state and clear path", () => {
 		/>,
 	);
 
-	expect(markup).toContain('aria-label="Search assets by filename"');
-	expect(markup).toContain('aria-label="Advanced asset filters: 7 active"');
-	expect(markup).toContain('aria-label="Clear all asset filters"');
-	expect(markup).toContain("1 of 44 assets");
-	expect(markup).toContain("7 filters");
+	expect(markup).toContain('aria-label="按文件名搜索素材"');
+	expect(markup).toContain('aria-label="高级素材筛选：已启用 7 项"');
+	expect(markup).toContain('aria-label="清除全部素材筛选"');
+	expect(markup).toContain("1 / 44 个素材");
+	expect(markup).toContain("7 项筛选");
 });

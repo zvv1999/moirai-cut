@@ -21,19 +21,15 @@ export function ExportButton() {
 			<PopoverTrigger asChild>
 				<button
 					type="button"
+					aria-label="导出作品"
 					className={cn(
-						"flex items-center gap-1.5 rounded-md bg-[#38BDF8] px-[0.12rem] py-[0.12rem] text-white",
+						"flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-primary-foreground shadow-[0_8px_24px_rgba(50,210,230,0.16)] transition-all hover:-translate-y-px hover:brightness-110",
 						hasProject ? "cursor-pointer" : "cursor-not-allowed opacity-50",
 					)}
 					disabled={!hasProject}
 				>
-					<div className="relative flex items-center gap-1.5 rounded-[0.6rem] bg-linear-270 from-[#2567EC] to-[#37B6F7] px-4 py-1 shadow-[0_1px_3px_0px_rgba(0,0,0,0.65)]">
-						<HugeiconsIcon icon={TransitionTopIcon} className="z-50 size-3.5" />
-						<span className="z-50 text-[0.875rem]">Export</span>
-						<div className="absolute top-0 left-0 z-10 flex size-full items-center justify-center rounded-[0.6rem] bg-linear-to-t from-white/0 to-white/50">
-							<div className="absolute top-[0.08rem] z-50 h-[calc(100%-2px)] w-[calc(100%-2px)] rounded-[0.6rem] bg-linear-270 from-[#2567EC] to-[#37B6F7]" />
-						</div>
-					</div>
+					<HugeiconsIcon icon={TransitionTopIcon} className="size-3.5" />
+					<span className="text-xs font-semibold tracking-wide">导出</span>
 				</button>
 			</PopoverTrigger>
 			{hasProject ? (

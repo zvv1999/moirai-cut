@@ -38,8 +38,8 @@ export function PreviewToolbar({
 						variant="text"
 						size="icon"
 						className="size-7"
-						aria-label="Toggle fullscreen preview"
-						title="Toggle fullscreen preview"
+						aria-label="切换全屏预览"
+						title="全屏预览"
 						onClick={onToggleFullscreen}
 					>
 						<HugeiconsIcon icon={FullScreenIcon} />
@@ -94,7 +94,7 @@ function ZoomSelect() {
 	const { isAtFit, zoomPercent, fitToScreen, setViewportPercent } =
 		usePreviewViewport();
 
-	const displayLabel = isAtFit ? "Fit" : `${zoomPercent}%`;
+	const displayLabel = isAtFit ? "适合" : `${zoomPercent}%`;
 
 	const onValueChange = (value: string) => {
 		if (value === "fit") {
@@ -111,7 +111,7 @@ function ZoomSelect() {
 		>
 			<SelectTrigger className="tabular-nums">{displayLabel}</SelectTrigger>
 			<SelectContent>
-				<SelectItem value="fit">Fit</SelectItem>
+				<SelectItem value="fit">适合窗口</SelectItem>
 				<SelectSeparator />
 				{PREVIEW_ZOOM_PRESETS.map((preset) => (
 					<SelectItem key={preset} value={String(preset)}>
