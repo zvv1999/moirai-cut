@@ -293,6 +293,27 @@ describe("Codex context references", () => {
 		expect(snapshot.promptContext).not.toContain("thumbnailUrl");
 	});
 
+	test("Agent JSON names the file CAS revision separately from the live editor revision", () => {
+		const project = state();
+		project.revision = 3;
+		project.loadedFileRevision = 602;
+		const snapshot = buildAgentContextSnapshot({
+			state: project,
+			pinnedReferences: [],
+			selectedElements: [],
+			playheadSeconds: 1,
+		});
+
+		expect(snapshot.revision).toBe(3);
+		expect(snapshot.fileRevision).toBe(602);
+		expect(snapshot.context.project).toEqual(
+			expect.objectContaining({
+				revision: 602,
+				editorRevision: 3,
+			}),
+		);
+	});
+
 	test("rejects a path aimed at another project instead of revealing the wrong clip", () => {
 		expect(() =>
 			resolveAgentContextTarget({
