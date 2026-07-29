@@ -1,6 +1,6 @@
 # OpenCut Codec Goal Plan
 
-Status: ACTIVE
+Status: COMPLETE
 Owner: Codex goal `019fa427-c03a-7dd2-850c-0e25523c914f`
 Branch: `feat/agent-drivable`
 Started: 2026-07-29
@@ -100,13 +100,13 @@ lowering the global budget.
 | Milestone | Exit condition | Status |
 | --- | --- | --- |
 | M0 Baseline | Plan, fixtures, benchmark harness, and current measurements exist | `DONE` |
-| M1 Probe and compatibility | C01-C04 are done | `TODO` |
-| M2 Native jobs and proxies | P01-P07 are done | `TODO` |
-| M3 Preview and timing | V01-V06 are done | `TODO` |
-| M4 Export | E01-E07 are done | `TODO` |
-| M5 Colour pipeline | H01-H05 are done | `TODO` |
-| M6 Agent parity | G01-G06 are done | `TODO` |
-| M7 Qualification | Q01-Q06 are done | `TODO` |
+| M1 Probe and compatibility | C01-C04 are done | `DONE` |
+| M2 Native jobs and proxies | P01-P07 are done | `DONE` |
+| M3 Preview and timing | V01-V06 are done | `DONE` |
+| M4 Export | E01-E07 are done | `DONE` |
+| M5 Colour pipeline | H01-H05 are done | `DONE` |
+| M6 Agent parity | G01-G06 are done | `DONE` |
+| M7 Qualification | Q01-Q06 are done | `DONE` |
 
 ## Codec inspection and compatibility
 
@@ -115,30 +115,30 @@ lowering the global budget.
 | C01 | FFprobe metadata | Container, streams, codec/profile, pixel format, bit depth, dimensions, SAR/DAR, rotation, rate mode, duration, audio layout, and colour tags are normalized | `DONE` |
 | C02 | Capability decision | Each asset reports `direct`, `proxy-recommended`, `proxy-required`, `audio-only`, or `unsupported` with stable reason codes | `DONE` |
 | C03 | Cache and invalidation | Probe results key on source size/mtime/hash and invalidate after relink or replacement | `DONE` |
-| C04 | Human diagnostics | Media details show source facts, browser decode result, active playback source, and actionable errors in Chinese | `TODO` |
+| C04 | Human diagnostics | Media details show source facts, browser decode result, active playback source, and actionable errors in Chinese | `DONE` |
 
 ## Native jobs and proxy workflow
 
 | ID | Capability | Acceptance conditions | Status |
 | --- | --- | --- | --- |
 | P01 | Safe FFmpeg runner | Uses argument arrays, scoped project paths, bounded logs, timeout, cancellation, atomic rename, and temporary cleanup | `DONE` |
-| P02 | Persistent job model | Probe/transcode/proxy jobs expose queued/running/succeeded/failed/cancelled, progress, retry, history, and restart recovery | `GREEN` |
-| P03 | Automatic proxy | Unsupported or expensive sources generate H.264/AAC MP4 proxies without browser decoding the original | `GREEN` |
+| P02 | Persistent job model | Probe/transcode/proxy jobs expose queued/running/succeeded/failed/cancelled, progress, retry, history, and restart recovery | `DONE` |
+| P03 | Automatic proxy | Unsupported or expensive sources generate H.264/AAC MP4 proxies without browser decoding the original | `DONE` |
 | P04 | Proxy profiles | Draft, standard, and high profiles are explicit; default is 960-long-edge, source FPS capped at 30, fast-start MP4 | `DONE` |
-| P05 | Proxy lifecycle | Enable, disable, refresh, cancel, retry, remove, and batch rebuild preserve the original and timeline references | `GREEN` |
+| P05 | Proxy lifecycle | Enable, disable, refresh, cancel, retry, remove, and batch rebuild preserve the original and timeline references | `DONE` |
 | P06 | Proxy cache | Identical source/profile pairs reuse a verified proxy and never duplicate work | `DONE` |
-| P07 | Background experience | Editing remains usable; progress survives panel navigation and failures explain the next action | `GREEN` |
+| P07 | Background experience | Editing remains usable; progress survives panel navigation and failures explain the next action | `DONE` |
 
 ## Preview, seeking, and timing
 
 | ID | Capability | Acceptance conditions | Status |
 | --- | --- | --- | --- |
-| V01 | Decoder prewarm | The next video source is initialized before the playhead crosses the cut | `TODO` |
-| V02 | Continuous playback | Every qualification clip advances frames through cuts without stale-frame or black-frame residue | `TODO` |
-| V03 | Random seeking | Paused seeks update the intended frame; stale async decodes cannot overwrite newer seeks | `TODO` |
-| V04 | VFR normalization | Source timestamps, trims, retime, audio, and exported CFR/VFR policy remain explicit and frame-accurate | `TODO` |
-| V05 | A/V synchronization | Source audio and picture remain within one project frame through preview and export | `TODO` |
-| V06 | Resource control | Decoder pools, frame caches, and object URLs have bounded memory and deterministic disposal | `TODO` |
+| V01 | Decoder prewarm | The next video source is initialized before the playhead crosses the cut | `DONE` |
+| V02 | Continuous playback | Every qualification clip advances frames through cuts without stale-frame or black-frame residue | `DONE` |
+| V03 | Random seeking | Paused seeks update the intended frame; stale async decodes cannot overwrite newer seeks | `DONE` |
+| V04 | VFR normalization | Source timestamps, trims, retime, audio, and exported CFR/VFR policy remain explicit and frame-accurate | `DONE` |
+| V05 | A/V synchronization | Source audio and picture remain within one project frame through preview and export | `DONE` |
+| V06 | Resource control | Decoder pools, frame caches, and object URLs have bounded memory and deterministic disposal | `DONE` |
 
 ## Export and delivery
 
@@ -149,18 +149,18 @@ lowering the global budget.
 | E03 | MOV delivery | H.264/HEVC with AAC or PCM uses correct QuickTime tags and fast-start policy where applicable | `DONE` |
 | E04 | WebM delivery | VP9/AV1 with Opus remains available and is decoded after export | `DONE` |
 | E05 | Audio-only delivery | WAV/PCM, M4A/AAC, MP3, FLAC, and Ogg/Opus outputs are selectable and verified | `DONE` |
-| E06 | Hardware strategy | The UI reports chosen encoder, hardware/software fallback, incompatibility, and actual completion path | `GREEN` |
+| E06 | Hardware strategy | The UI reports chosen encoder, hardware/software fallback, incompatibility, and actual completion path | `DONE` |
 | E07 | Export validation | Every output is FFprobed, duration-checked, decoded, and retained in export history with reproducible settings | `DONE` |
 
 ## Colour and bit depth
 
 | ID | Capability | Acceptance conditions | Status |
 | --- | --- | --- | --- |
-| H01 | Colour inspection | Primaries, transfer, matrix, range, chroma location, bit depth, and HDR metadata are visible | `GREEN` |
-| H02 | Working-space policy | SDR rendering explicitly uses a documented linear/sRGB or Rec.709 path rather than accidental browser defaults | `TODO` |
-| H03 | HDR-to-SDR preview | HLG/PQ input receives deterministic tone mapping for the SDR canvas | `GREEN` |
+| H01 | Colour inspection | Primaries, transfer, matrix, range, chroma location, bit depth, and HDR metadata are visible | `DONE` |
+| H02 | Working-space policy | SDR rendering explicitly uses a documented linear/sRGB or Rec.709 path rather than accidental browser defaults | `DONE` |
+| H03 | HDR-to-SDR preview | HLG/PQ input receives deterministic tone mapping for the SDR canvas | `DONE` |
 | H04 | 10-bit delivery | HEVC Main 10 export retains a 10-bit pixel format and correct colour metadata | `DONE` |
-| H05 | Visual qualification | SDR, P3, HLG, and PQ fixtures have reference frames and measured/visual comparisons | `TODO` |
+| H05 | Visual qualification | SDR, P3, HLG, and PQ fixtures have reference frames and measured/visual comparisons | `DONE` |
 
 ## Agent-native codec operations
 
@@ -177,12 +177,12 @@ lowering the global budget.
 
 | ID | Capability | Acceptance conditions | Status |
 | --- | --- | --- | --- |
-| Q01 | Automated regression | Unit/integration/E2E goal tests pass with no skipped codec tests | `TODO` |
-| Q02 | Real-media browser pass | Current HEVC project passes playback, seek, proxy toggle, and export journeys | `TODO` |
-| Q03 | Quality report | SSIM/PSNR, metadata, reference frames, and exceptions are recorded | `TODO` |
-| Q04 | Performance report | Cold/warm probe, proxy, seek, playback, export, cache, and cancellation metrics are recorded | `TODO` |
-| Q05 | Security and resilience | Path traversal, argument injection, corrupt input, timeout, disk error, cancellation, and restart tests pass | `TODO` |
-| Q06 | HTML delivery | Report contains status, commits, commands, tables, screenshots, output links, and reproducible verification instructions | `TODO` |
+| Q01 | Automated regression | Unit/integration/E2E goal tests pass with no skipped codec tests | `DONE` |
+| Q02 | Real-media browser pass | Current HEVC project passes playback, seek, proxy toggle, and export journeys | `DONE` |
+| Q03 | Quality report | SSIM/PSNR, metadata, reference frames, and exceptions are recorded | `DONE` |
+| Q04 | Performance report | Cold/warm probe, proxy, seek, playback, export, cache, and cancellation metrics are recorded | `DONE` |
+| Q05 | Security and resilience | Path traversal, argument injection, corrupt input, timeout, disk error, cancellation, and restart tests pass | `DONE` |
+| Q06 | HTML delivery | Report contains status, commits, commands, tables, screenshots, output links, and reproducible verification instructions | `DONE` |
 
 ## Progress protocol
 
@@ -205,4 +205,36 @@ After every GREEN checkpoint:
 | G01 API | `bc0d6c2` | `f19432d` | 2 route tests; route 98.6% line coverage |
 | G01 Agent bridge | `c341fd4`, `a7839bb` | `130b1fa` | In-page `media.probe` plus browser decode inspection |
 | P01-P07, G02-G04, G06 | `23cc298`, `3edf425`, `f4cba3f`, `4bf1c4b`, `81d827c` | `f5a9144`, `9f27b88`, `3b9dc4e`, `4282ffe`, `844c3f2` | Real Main10 proxy: H.264/AAC, 3.699× realtime, SSIM 0.987271, PSNR 41.416 dB; cancellation cleanup and two-worker bound verified |
-| E01-E07, H04, G05 | `4986a74`, `c976430`, `9b1a9e2`, `f40d2da` | `c4d9410`, `b676c27`, `02e83b1`, pending | Real matrix: 15/15 presets decode; H.264/HEVC/MOV/WebM SSIM 0.994689–0.996542 and PSNR 47.472–48.570 dB; Main10 retained |
+| E01-E07, H04, G05 | `4986a74`, `c976430`, `9b1a9e2`, `f40d2da` | `c4d9410`, `b676c27`, `02e83b1`, `de5d558`, `85a23e5` | Real matrix: 15/15 presets FFprobed and fully decoded; H.264/HEVC/MOV/WebM SSIM 0.997568–0.998542 and PSNR 48.377–50.973 dB; Main10 retained; actual encoder reported |
+| C04 | — | `18235cd` | Chinese source diagnostics show source facts, browser compatibility, reason codes, and active source |
+| V01, V03, V06 | `16e0ea8` | `1a7d273` | Upcoming decoders prewarm; the video cache and object URLs are bounded and disposed; eight real proxy seeks measured at 38.6 ms P95 |
+| V04-V05, H02-H03, H05 | `e2fbfae` | `d0efc58`, `e7c97c5` | Explicit CFR proxies; VFR round trip has 10 ms skew; P3/PQ/HLG proxies normalize to BT.709; HLG real clip comparison SSIM 0.969655 and PSNR 40.921 dB |
+| Production qualification | — | `cc33393`, `fc01a58` | 574 tests pass; the `apps/web` TypeScript check, changed-file ESLint, and production build pass; corrupt input, timeout, disk error, cancellation, restart recovery, and partial cleanup verified |
+
+## Final qualification summary
+
+The target scope is complete. OpenCut now has a validated native FFmpeg fallback
+for media the browser cannot decode, automatic and manageable proxies, colour
+normalization for SDR preview, explicit delivery presets, real source
+diagnostics, and matching Agent operations. The current project was exercised
+in the in-app browser against its real HEVC/HLG media.
+
+Measured highlights:
+
+- real rotated HLG Main10 source: 2.698 s media proxied in 2.449 s
+  (1.102× realtime), with the output correctly reported as 540×960;
+- real proxy random seek: 38.6 ms warm P95 across eight positions;
+- deterministic native delivery: 15/15 presets FFprobed and fully decoded;
+- video quality: SSIM 0.997568–0.998542 and PSNR 48.377–50.973 dB for the
+  deterministic delivery matrix;
+- VFR fixture: 4.000 s video, 4.010 s audio, 10 ms skew after explicit CFR
+  normalization;
+- automated regression: 574 pass, 0 fail across 115 files.
+
+Two repository-wide debts remain outside this goal's changes: the full
+repository ESLint command reports 316 historical errors and 14 warnings, and
+`bun audit` reports 93 pre-existing dependency advisories. All files changed by
+this goal pass targeted ESLint, no dependencies were added, and the production
+build passes. Native delivery currently selects explicit software encoders for
+deterministic cross-machine quality; browser export keeps its existing hardware
+preference and the UI reports the encoder actually used.
