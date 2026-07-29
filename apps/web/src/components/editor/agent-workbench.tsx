@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useEditor } from "@/editor/use-editor";
 import {
@@ -39,6 +39,64 @@ interface QcRun {
 	summary: AgentQcSummary;
 	render: RenderFramesResult;
 	ranAt: string;
+}
+
+interface CodexConnection {
+	provider: "path";
+	path: string;
+	status: "ready" | "login-required" | "unavailable" | "invalid";
+	executable: boolean;
+	authenticated: boolean;
+	version: string | null;
+	message: string;
+}
+
+function isCodexConnection(value: unknown): value is CodexConnection {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		"provider" in value &&
+		value.provider === "path" &&
+		"path" in value &&
+		typeof value.path === "string" &&
+		"status" in value &&
+		(value.status === "ready" ||
+			value.status === "login-required" ||
+			value.status === "unavailable" ||
+			value.status === "invalid") &&
+		"executable" in value &&
+		typeof value.executable === "boolean" &&
+		"authenticated" in value &&
+		typeof value.authenticated === "boolean" &&
+		"version" in value &&
+		(typeof value.version === "string" || value.version === null) &&
+		"message" in value &&
+		typeof value.message === "string"
+	);
+}
+
+function unavailableCodexConnection(): CodexConnection {
+	return {
+		provider: "path",
+		path: "/Applications/ChatGPT.app/Contents/Resources/codex",
+		status: "unavailable",
+		executable: false,
+		authenticated: false,
+		version: null,
+		message: "无法读取 Codex 连接状态，请检查本地服务。",
+	};
+}
+
+async function fetchCodexConnection(): Promise<CodexConnection> {
+	const response = await fetch("/api/codex/config");
+	if (!response.ok) {
+		throw new Error(`Codex config check failed: ${response.status}`);
+	}
+	const value: unknown = await response.json();
+	if (!isCodexConnection(value)) {
+		throw new Error("Codex config response is invalid");
+	}
+	return value;
 }
 
 function canvasSizeOf(value: unknown): { width: number; height: number } {
@@ -152,6 +210,10 @@ export function AgentWorkbench() {
 	);
 	const [request, setRequest] = useState("");
 	const [submittedRequest, setSubmittedRequest] = useState<string | null>(null);
+	const [codexConnection, setCodexConnection] =
+		useState<CodexConnection | null>(null);
+	const [codexSettingsOpen, setCodexSettingsOpen] = useState(false);
+	const [codexChecking, setCodexChecking] = useState(false);
 	const [referencePickerOpen, setReferencePickerOpen] = useState(false);
 	const [referencePickerTab, setReferencePickerTab] = useState<
 		"timeline" | "library"
@@ -167,6 +229,32 @@ export function AgentWorkbench() {
 	const [executing, setExecuting] = useState(false);
 	const [qcRunning, setQcRunning] = useState(false);
 	const [qc, setQc] = useState<QcRun | null>(null);
+	const refreshCodexConnection = useCallback(async () => {
+		setCodexChecking(true);
+		try {
+			setCodexConnection(await fetchCodexConnection());
+		} catch {
+			setCodexConnection(unavailableCodexConnection());
+		} finally {
+			setCodexChecking(false);
+		}
+	}, []);
+	useEffect(() => {
+		let active = true;
+		void fetchCodexConnection()
+			.then((connection) => {
+				if (active) setCodexConnection(connection);
+			})
+			.catch(() => {
+				if (active) setCodexConnection(unavailableCodexConnection());
+			})
+			.finally(() => {
+				if (active) setCodexChecking(false);
+			});
+		return () => {
+			active = false;
+		};
+	}, []);
 	const semanticState = editor.agent.getState();
 	const visibleReferences = pinnedReferences.filter(
 		(reference) =>
@@ -212,6 +300,21 @@ export function AgentWorkbench() {
 		selectedElements.length === 0
 			? "未选择素材"
 			: `已选 ${selectedElements.length} 个素材`;
+	const codexStatusLabel = codexChecking
+		? "检测中"
+		: codexConnection?.status === "ready"
+			? "Codex 已连接"
+			: codexConnection?.status === "login-required"
+				? "需要登录"
+				: "连接异常";
+	const codexStatusClass =
+		codexConnection?.status === "ready"
+			? "bg-emerald-400"
+			: codexConnection?.status === "login-required"
+				? "bg-amber-400"
+				: codexChecking
+					? "bg-slate-500"
+					: "bg-red-400";
 
 	const preview = (nextRequest = request) => {
 		const normalizedRequest = nextRequest.trim();
@@ -621,10 +724,102 @@ export function AgentWorkbench() {
 						</div>
 					</div>
 				</div>
-				<div className="rounded-full border border-white/8 bg-white/[0.035] px-2.5 py-1 font-mono text-[10px] text-slate-400">
-					v{editor.agent.revision} · {selectedLabel}
+				<div className="flex items-center gap-2">
+					<button
+						type="button"
+						aria-label="配置 Codex 连接"
+						aria-expanded={codexSettingsOpen}
+						className="flex items-center gap-1.5 rounded-full border border-white/8 bg-white/[0.035] px-2.5 py-1 text-[10px] text-slate-300 transition hover:border-cyan-400/35 hover:text-white"
+						onClick={() => setCodexSettingsOpen((open) => !open)}
+					>
+						<span
+							className={`size-1.5 rounded-full ${codexStatusClass}`}
+							aria-hidden="true"
+						/>
+						{codexStatusLabel}
+					</button>
+					<div className="rounded-full border border-white/8 bg-white/[0.035] px-2.5 py-1 font-mono text-[10px] text-slate-400">
+						v{editor.agent.revision} · {selectedLabel}
+					</div>
 				</div>
 			</header>
+
+			{codexSettingsOpen ? (
+				<section
+					aria-label="Codex 连接设置"
+					className="shrink-0 border-b border-white/8 bg-[#16191c] px-5 py-4"
+				>
+					<div className="mb-3 flex items-start justify-between gap-4">
+						<div>
+							<h3 className="text-xs font-semibold text-slate-100">
+								Codex 连接
+							</h3>
+							<p className="mt-0.5 text-[10px] text-slate-500">
+								当前使用 ChatGPT/Codex 桌面应用内置的 CLI。
+							</p>
+						</div>
+						<button
+							type="button"
+							className="rounded-md border border-white/10 px-2.5 py-1 text-[10px] text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-200 disabled:opacity-50"
+							disabled={codexChecking}
+							onClick={() => void refreshCodexConnection()}
+						>
+							{codexChecking ? "检测中…" : "重新检测"}
+						</button>
+					</div>
+					<div className="grid grid-cols-2 gap-2">
+						<div className="rounded-lg border border-cyan-400/35 bg-cyan-400/[0.06] px-3 py-2">
+							<div className="flex items-center justify-between">
+								<span className="text-[11px] font-medium text-cyan-200">
+									Path 模式
+								</span>
+								<span className="rounded bg-cyan-400/12 px-1.5 py-0.5 text-[8px] text-cyan-300">
+									当前
+								</span>
+							</div>
+							<p className="mt-1 text-[9px] text-slate-500">
+								复用桌面登录，无需 API Key
+							</p>
+						</div>
+						<div
+							aria-disabled="true"
+							className="rounded-lg border border-white/6 bg-black/15 px-3 py-2 opacity-45"
+						>
+							<div className="flex items-center justify-between">
+								<span className="text-[11px] font-medium text-slate-300">
+									API 模式
+								</span>
+								<span className="text-[8px] text-slate-500">待接入</span>
+							</div>
+							<p className="mt-1 text-[9px] text-slate-600">
+								使用服务端 API Key
+							</p>
+						</div>
+					</div>
+					<label className="mt-3 block">
+						<span className="mb-1 block text-[9px] font-medium tracking-[0.1em] text-slate-500 uppercase">
+							Codex Path
+						</span>
+						<input
+							aria-label="Codex Path"
+							readOnly
+							value={
+								codexConnection?.path ??
+								"/Applications/ChatGPT.app/Contents/Resources/codex"
+							}
+							className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2.5 font-mono text-[10px] text-slate-300 outline-none"
+						/>
+					</label>
+					<div className="mt-2 flex items-center justify-between gap-3 text-[9px]">
+						<span className="min-w-0 truncate text-slate-500">
+							{codexConnection?.message ?? "正在检测桌面内置 Codex CLI…"}
+						</span>
+						<span className="shrink-0 font-mono text-slate-500">
+							{codexConnection?.version ?? "—"}
+						</span>
+					</div>
+				</section>
+			) : null}
 
 			<div
 				role="log"

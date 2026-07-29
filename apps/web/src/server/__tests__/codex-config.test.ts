@@ -33,7 +33,7 @@ describe("Codex CLI configuration", () => {
 
 	test("reports a ready connection only after version and login checks pass", async () => {
 		const calls: string[][] = [];
-		const run: CodexCommandRunner = async (_binary, args) => {
+		const run: CodexCommandRunner = async ({ args }) => {
 			calls.push(args);
 			return args[0] === "--version"
 				? { stdout: "codex-cli 0.146.0", stderr: "" }
@@ -58,7 +58,7 @@ describe("Codex CLI configuration", () => {
 	});
 
 	test("keeps a valid binary visible when Codex still needs login", async () => {
-		const run: CodexCommandRunner = async (_binary, args) => {
+		const run: CodexCommandRunner = async ({ args }) => {
 			if (args[0] === "--version") {
 				return { stdout: "codex-cli 0.146.0", stderr: "" };
 			}
