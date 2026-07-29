@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import {
 	JIANYING_SPEED_LABELS,
 	JIANYING_SPEED_TABS,
@@ -9,6 +10,14 @@ import {
 } from "../components/jianying-adjustments-tab";
 
 describe("Jianying speed and adjustment parity", () => {
+	const speedTabSource = readFileSync(
+		new URL(
+			"../../../../../speed/components/speed-tab.tsx",
+			import.meta.url,
+		),
+		"utf8",
+	);
+
 	test("matches Jianying's speed hierarchy and primary copy", () => {
 		expect(JIANYING_SPEED_TABS).toEqual([
 			{ id: "constant", label: "常规变速" },
@@ -21,6 +30,16 @@ describe("Jianying speed and adjustment parity", () => {
 			"声音变调",
 			"智能补帧",
 		]);
+	});
+
+	test("matches Jianying's constant-speed interaction contract", () => {
+		expect(speedTabSource).toContain('aria-label="倍数滑杆"');
+		expect(speedTabSource).toContain('aria-label="结果时长"');
+		expect(speedTabSource).toContain("data-speed-reset-footer");
+		expect(speedTabSource).toContain("仅对慢速片段补帧");
+		expect(speedTabSource).toContain("限免");
+		expect(speedTabSource).not.toContain("<SectionTitle>更多</SectionTitle>");
+		expect(speedTabSource).not.toContain("<SectionTitle>源素材边界</SectionTitle>");
 	});
 
 	test("matches Jianying's adjustment hierarchy and basic sections", () => {
