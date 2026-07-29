@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { PlaybackTransportControls } from "../playback-transport-controls";
 
 describe("PlaybackTransportControls", () => {
-	test("keeps the complete human playback workflow visible and labelled", () => {
+	test("keeps the complete human playback workflow visible and labelled in Chinese", () => {
 		const html = renderToStaticMarkup(
 			<PlaybackTransportControls
 				isPlaying={false}
@@ -21,20 +21,20 @@ describe("PlaybackTransportControls", () => {
 			/>,
 		);
 
-		expect(html).toContain('aria-label="Go to timeline start (Home)"');
-		expect(html).toContain('aria-label="Previous frame (Left Arrow)"');
-		expect(html).toContain('aria-label="Play (Space)"');
-		expect(html).toContain('aria-label="Next frame (Right Arrow)"');
-		expect(html).toContain('aria-label="Go to timeline end (End)"');
-		expect(html).toContain('aria-label="Loop playback"');
+		expect(html).toContain('aria-label="回到时间线开头（Home）"');
+		expect(html).toContain('aria-label="上一帧（←）"');
+		expect(html).toContain('aria-label="播放（空格）"');
+		expect(html).toContain('aria-label="下一帧（→）"');
+		expect(html).toContain('aria-label="前往时间线结尾（End）"');
+		expect(html).toContain('aria-label="循环播放"');
 		expect(html).toContain('aria-pressed="true"');
-		expect(html).toContain('aria-label="Playback speed"');
-		expect(html).toContain('aria-label="Preview quality"');
+		expect(html).toContain('aria-label="播放速度"');
+		expect(html).toContain('aria-label="预览画质"');
 		expect(html).toContain(">1×<");
-		expect(html).toContain(">Balanced<");
+		expect(html).toContain(">流畅<");
 	});
 
-	test("names the primary action Pause while playback is active", () => {
+	test("names the primary action Pause in Chinese while playback is active", () => {
 		const html = renderToStaticMarkup(
 			<PlaybackTransportControls
 				isPlaying
@@ -52,8 +52,8 @@ describe("PlaybackTransportControls", () => {
 			/>,
 		);
 
-		expect(html).toContain('aria-label="Pause (Space)"');
+		expect(html).toContain('aria-label="暂停（空格）"');
 		expect(html).toContain(">2×<");
-		expect(html).toContain(">Full<");
+		expect(html).toContain(">完整<");
 	});
 });
