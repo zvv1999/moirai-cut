@@ -30,9 +30,21 @@ export interface AgentRangeContextReference {
 	elements: ElementRefInput[];
 }
 
+export interface AgentMediaContextReference {
+	kind: "media";
+	uri: string;
+	label: string;
+	projectId: string;
+	sceneId: string;
+	mediaId: string;
+	mediaType: string;
+	durationSeconds: number | null;
+}
+
 export type AgentContextReference =
 	| AgentElementContextReference
-	| AgentRangeContextReference;
+	| AgentRangeContextReference
+	| AgentMediaContextReference;
 
 export type ParsedAgentContextReference =
 	| {
@@ -48,6 +60,12 @@ export type ParsedAgentContextReference =
 			sceneId: string;
 			startSeconds: number;
 			endSeconds: number;
+	  }
+	| {
+			kind: "media";
+			projectId: string;
+			sceneId: string;
+			mediaId: string;
 	  };
 
 export interface AgentContextSnapshot {
@@ -61,11 +79,16 @@ export interface AgentContextSnapshot {
 	promptContext: string;
 }
 
-export interface AgentContextRevealTarget {
-	kind: AgentContextReference["kind"];
-	seekSeconds: number;
-	selectedElements: ElementRefInput[];
-}
+export type AgentContextRevealTarget =
+	| {
+			kind: "element" | "range";
+			seekSeconds: number;
+			selectedElements: ElementRefInput[];
+	  }
+	| {
+			kind: "media";
+			mediaId: string;
+	  };
 
 export class InvalidAgentContextReferenceError extends Error {
 	constructor(message: string) {
@@ -186,6 +209,25 @@ function intersectingElements({
 	);
 }
 
+function mediaUri({
+	projectId,
+	sceneId,
+	mediaId,
+}: {
+	projectId: string;
+	sceneId: string;
+	mediaId: string;
+}): string {
+	return [
+		"opencut://project",
+		segment(projectId),
+		"scene",
+		segment(sceneId),
+		"media",
+		segment(mediaId),
+	].join("/");
+}
+
 export function buildElementContextReferences({
 	state,
 	selectedElements,
@@ -259,6 +301,37 @@ export function buildTimelineRangeReference({
 	};
 }
 
+export function buildMediaContextReferences({
+	state,
+	mediaIds,
+}: {
+	state: ProjectStateSummary;
+	mediaIds: string[];
+}): AgentMediaContextReference[] {
+	const { projectId, sceneId } = requiredAddress(state);
+	const mediaById = new Map(state.media.map((asset) => [asset.id, asset]));
+	const seen = new Set<string>();
+	const references: AgentMediaContextReference[] = [];
+
+	for (const mediaId of mediaIds) {
+		if (seen.has(mediaId)) continue;
+		seen.add(mediaId);
+		const asset = mediaById.get(mediaId);
+		if (!asset) continue;
+		references.push({
+			kind: "media",
+			uri: mediaUri({ projectId, sceneId, mediaId }),
+			label: asset.name,
+			projectId,
+			sceneId,
+			mediaId,
+			mediaType: asset.type,
+			durationSeconds: asset.durationSeconds,
+		});
+	}
+	return references;
+}
+
 function xml(value: string): string {
 	return value
 		.replaceAll("&", "&amp;")
@@ -284,6 +357,12 @@ export function serializeAgentContext({
 		if (reference.kind === "element") {
 			lines.push(
 				`  <element path="${xml(reference.uri)}" label="${xml(reference.label)}" type="${xml(reference.elementType)}" time="${reference.startSeconds.toFixed(3)}-${reference.endSeconds.toFixed(3)}s"><![CDATA[${reference.uri}]]></element>`,
+			);
+			continue;
+		}
+		if (reference.kind === "media") {
+			lines.push(
+				`  <media path="${xml(reference.uri)}" label="${xml(reference.label)}" type="${xml(reference.mediaType)}" duration="${reference.durationSeconds === null ? "unknown" : `${reference.durationSeconds.toFixed(3)}s`}"><![CDATA[${reference.uri}]]></media>`,
 			);
 			continue;
 		}
@@ -382,6 +461,14 @@ export function parseAgentContextUri(uri: string): ParsedAgentContextReference {
 			elementId: parts[6],
 		};
 	}
+	if (parts.length === 5 && parts[3] === "media" && parts[4]) {
+		return {
+			kind: "media",
+			projectId,
+			sceneId,
+			mediaId: parts[4],
+		};
+	}
 	if (parts.length === 5 && parts[3] === "timeline" && parts[4] === "range") {
 		const startValue = url.searchParams.get("start");
 		const endValue = url.searchParams.get("end");
@@ -443,6 +530,14 @@ export function resolveAgentContextTarget({
 				{ trackId: parsed.trackId, elementId: parsed.elementId },
 			],
 		};
+	}
+	if (parsed.kind === "media") {
+		if (!state.media.some((asset) => asset.id === parsed.mediaId)) {
+			throw new InvalidAgentContextReferenceError(
+				"该素材库元素已不存在，Codex Path 已失效。",
+			);
+		}
+		return { kind: "media", mediaId: parsed.mediaId };
 	}
 	return {
 		kind: "range",

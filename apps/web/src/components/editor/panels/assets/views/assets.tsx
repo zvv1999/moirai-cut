@@ -178,7 +178,7 @@ export function MediaView() {
 	);
 	const effectiveActiveBinId =
 		activeBinId === "all" ||
-		activeBinId === "unfiled" ||
+		(activeBinId === "unfiled" && mediaOrganization.bins.length > 0) ||
 		mediaOrganization.bins.some((bin) => bin.id === activeBinId)
 			? activeBinId
 			: "all";

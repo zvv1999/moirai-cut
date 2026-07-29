@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -91,17 +91,19 @@ export function MediaBinBrowserView({
 					ariaLabel="查看全部素材"
 					onClick={() => onSelect("all")}
 				/>
-				<BinNavigationRow
-					label="未分类"
-					count={getMediaBinAssetCount({
-						organization,
-						assetIds,
-						binId: "unfiled",
-					})}
-					active={activeBinId === "unfiled"}
-					ariaLabel="查看未分类素材"
-					onClick={() => onSelect("unfiled")}
-				/>
+				{bins.length > 0 ? (
+					<BinNavigationRow
+						label="未分类"
+						count={getMediaBinAssetCount({
+							organization,
+							assetIds,
+							binId: "unfiled",
+						})}
+						active={activeBinId === "unfiled"}
+						ariaLabel="查看未分类素材"
+						onClick={() => onSelect("unfiled")}
+					/>
+				) : null}
 				{editing?.mode === "create" && editing.parentId === null ? (
 					<BinNameEditor
 						depth={0}
@@ -192,6 +194,7 @@ function BinNavigationRow({
 			aria-level={1}
 			aria-label={ariaLabel}
 			aria-current={active ? "page" : undefined}
+			aria-selected={active}
 			className={cn(
 				"text-muted-foreground hover:bg-muted/70 flex h-7 w-full items-center gap-1.5 rounded px-1.5 text-left text-xs",
 				active && "bg-primary/10 text-primary",
@@ -257,6 +260,7 @@ function MediaBinRow({
 				aria-level={depth + 1}
 				aria-label={`查看素材文件夹 ${bin.name}`}
 				aria-current={active ? "page" : undefined}
+				aria-selected={active}
 				className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs"
 				onClick={onSelect}
 			>
@@ -364,7 +368,13 @@ function BinNameEditor({
 	onCancel: () => void;
 }) {
 	const [value, setValue] = useState(initialValue);
+	const inputRef = useRef<HTMLInputElement>(null);
 	const commit = () => onCommit({ name: value });
+
+	useEffect(() => {
+		inputRef.current?.focus();
+		inputRef.current?.select();
+	}, []);
 
 	return (
 		<div
@@ -376,7 +386,7 @@ function BinNameEditor({
 				className="text-muted-foreground size-3.5 shrink-0"
 			/>
 			<input
-				autoFocus
+				ref={inputRef}
 				aria-label={ariaLabel}
 				className="border-primary/40 bg-background h-6 min-w-0 flex-1 rounded border px-1.5 text-xs outline-none"
 				value={value}

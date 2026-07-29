@@ -15,12 +15,14 @@ import type { RenderFramesResult } from "@/agent/agent-manager";
 import {
 	buildAgentContextSnapshot,
 	buildElementContextReferences,
+	buildMediaContextReferences,
 	buildTimelineRangeReference,
 	resolveAgentContextTarget,
 	type AgentContextReference,
 } from "@/agent/context-references";
 import { useAgentContextStore } from "@/agent/context-store";
 import { toMediaTime, toSeconds } from "@/agent/time";
+import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
 import {
 	buildExportPreflight,
 	createExportDraftFromPreset,
@@ -116,7 +118,9 @@ function elementRefsFromContext(
 							elementId: reference.elementId,
 						},
 					]
-				: reference.elements;
+				: reference.kind === "range"
+					? reference.elements
+					: [];
 		for (const element of elements) {
 			unique.set(`${element.trackId}\0${element.elementId}`, element);
 		}
@@ -143,7 +147,15 @@ export function AgentWorkbench() {
 	const clearReferences = useAgentContextStore(
 		(store) => store.clearReferences,
 	);
-	const [request, setRequest] = useState("收紧这段剪辑");
+	const requestRevealMedia = useAssetsPanelStore(
+		(store) => store.requestRevealMedia,
+	);
+	const [request, setRequest] = useState("");
+	const [submittedRequest, setSubmittedRequest] = useState<string | null>(null);
+	const [referencePickerOpen, setReferencePickerOpen] = useState(false);
+	const [referencePickerTab, setReferencePickerTab] = useState<
+		"timeline" | "library"
+	>("timeline");
 	const [plan, setPlan] = useState<SemanticEditPlan | null>(null);
 	const [planDecision, setPlanDecision] = useState<
 		Record<string, PlanDecision>
@@ -202,14 +214,17 @@ export function AgentWorkbench() {
 			: `已选 ${selectedElements.length} 个素材`;
 
 	const preview = (nextRequest = request) => {
+		const normalizedRequest = nextRequest.trim();
+		if (!normalizedRequest) return;
 		const next = compileSemanticEdit({
-			request: compileRequestText(nextRequest),
+			request: compileRequestText(normalizedRequest),
 			context: {
 				state: editor.agent.getState(),
 				selectedElements: contextSelectedElements,
 			},
 		});
-		setRequest(nextRequest);
+		setRequest("");
+		setSubmittedRequest(normalizedRequest);
 		setPlan(next);
 		setPlanDecision(
 			Object.fromEntries(next.groups.map((group) => [group.id, "included"])),
@@ -219,6 +234,38 @@ export function AgentWorkbench() {
 		if (!next.valid) {
 			toast.error("计划需要处理", { description: next.errors[0] });
 		}
+	};
+
+	const toggleTimelineElementReference = ({
+		trackId,
+		elementId,
+	}: {
+		trackId: string;
+		elementId: string;
+	}) => {
+		const [reference] = buildElementContextReferences({
+			state: editor.agent.getState(),
+			selectedElements: [{ trackId, elementId }],
+		});
+		if (!reference) return;
+		if (visibleReferences.some((item) => item.uri === reference.uri)) {
+			removeReference(reference.uri);
+			return;
+		}
+		addReferences([reference]);
+	};
+
+	const toggleMediaReference = (mediaId: string) => {
+		const [reference] = buildMediaContextReferences({
+			state: editor.agent.getState(),
+			mediaIds: [mediaId],
+		});
+		if (!reference) return;
+		if (visibleReferences.some((item) => item.uri === reference.uri)) {
+			removeReference(reference.uri);
+			return;
+		}
+		addReferences([reference]);
 	};
 
 	const pinSelectedElements = () => {
@@ -278,6 +325,11 @@ export function AgentWorkbench() {
 				state: editor.agent.getState(),
 				uri,
 			});
+			if (target.kind === "media") {
+				requestRevealMedia(target.mediaId);
+				toast.success("已在素材库定位引用");
+				return;
+			}
 			editor.selection.setSelectedElements({
 				elements: target.selectedElements,
 			});
@@ -553,117 +605,94 @@ export function AgentWorkbench() {
 
 	return (
 		<section
-			className="border-primary/20 bg-primary/[0.035] mb-3 rounded-lg border p-2.5"
+			className="flex h-[min(78vh,760px)] min-h-[560px] flex-col overflow-hidden bg-[#111315]"
 			aria-label="智能剪辑工作台"
 		>
-			<div className="mb-2 flex items-start justify-between gap-3">
-				<div>
-					<div className="text-xs font-semibold">智能剪辑</div>
-					<div className="text-[10px] opacity-55">
-						计划 → 复核 → 共享命令 → 画面验证
+			<header className="flex h-14 shrink-0 items-center justify-between border-b border-white/8 px-5">
+				<div className="flex items-center gap-3">
+					<span className="relative flex size-8 items-center justify-center rounded-lg bg-cyan-400 text-sm font-black text-slate-950">
+						AI
+						<span className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-[#111315] bg-emerald-400" />
+					</span>
+					<div>
+						<div className="text-sm font-semibold tracking-tight">智能剪辑</div>
+						<div className="text-[10px] text-slate-400">
+							对话生成计划 · 人工复核后执行
+						</div>
 					</div>
 				</div>
-				<div className="border-primary/20 bg-background rounded-full border px-2 py-0.5 font-mono text-[9px]">
-					版本 {editor.agent.revision} · {selectedLabel}
+				<div className="rounded-full border border-white/8 bg-white/[0.035] px-2.5 py-1 font-mono text-[10px] text-slate-400">
+					v{editor.agent.revision} · {selectedLabel}
 				</div>
-			</div>
+			</header>
 
-			<div className="flex gap-1">
-				<input
-					aria-label="描述智能剪辑需求"
-					className="border-input bg-background min-w-0 flex-1 rounded-md border px-2 py-1.5 text-xs"
-					value={request}
-					onChange={(event) => setRequest(event.target.value)}
-					onKeyDown={(event) => {
-						if (event.key === "Enter") preview();
-					}}
-					placeholder="例如：收紧这段剪辑"
-				/>
-				<button
-					type="button"
-					className="bg-primary text-primary-foreground rounded-md px-3 py-1.5 text-[11px] font-medium"
-					onClick={() => preview()}
-				>
-					预览计划
-				</button>
-			</div>
-			<div className="mt-1.5 flex flex-wrap gap-1">
-				{AGENT_REQUEST_PRESETS.map((preset) => (
-					<button
-						key={preset.request}
-						type="button"
-						className="border-border bg-background rounded border px-1.5 py-0.5 text-[9px] opacity-70 hover:opacity-100"
-						onClick={() => preview(preset.label)}
-					>
-						{preset.label}
-					</button>
-				))}
-			</div>
 			<div
-				className="border-border bg-background/80 mt-2 rounded-md border"
-				aria-label="Codex 上下文引用"
+				role="log"
+				aria-label="智能剪辑对话记录"
+				aria-live="polite"
+				className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5"
 			>
-				<div className="border-border flex items-center justify-between gap-2 border-b px-2 py-1.5">
-					<div className="min-w-0">
-						<div className="flex items-center gap-1.5">
-							<span className="text-[9px] font-semibold tracking-wide uppercase">
-								Codex 上下文
-							</span>
-							<span className="bg-cyan-500/10 text-cyan-600 rounded px-1 py-0.5 font-mono text-[8px] dark:text-cyan-300">
-								get_context
-							</span>
-						</div>
-						<div className="mt-0.5 truncate text-[8px] opacity-45">
-							固定素材或时间片段；Codex 可读取 Path，点击引用可回到时间线
+				<div className="flex max-w-[78%] items-start gap-2.5">
+					<span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md bg-cyan-400 text-[9px] font-black text-slate-950">
+						AI
+					</span>
+					<div className="rounded-2xl rounded-tl-sm border border-white/8 bg-white/[0.045] px-3.5 py-3 text-xs leading-relaxed text-slate-200">
+						<p>告诉我你想怎么剪。我会先生成可复核计划，不会直接改动工程。</p>
+						<p className="mt-1 text-[10px] text-slate-500">
+							可用“＋”从时间线或素材库精确引用上下文。
+						</p>
+						<div className="mt-2 flex flex-wrap gap-1.5">
+							{AGENT_REQUEST_PRESETS.map((preset) => (
+								<button
+									key={preset.request}
+									type="button"
+									className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-300"
+									onClick={() => preview(preset.label)}
+								>
+									{preset.label}
+								</button>
+							))}
 						</div>
 					</div>
-					<div className="flex shrink-0 items-center gap-1">
-						<button
-							type="button"
-							className="border-border rounded border px-1.5 py-0.5 text-[9px] hover:bg-foreground/5 disabled:opacity-35"
-							onClick={copyContext}
-							disabled={contextSnapshot.references.length === 0}
-						>
-							复制上下文
-						</button>
-						{visibleReferences.length > 0 ? (
-							<button
-								type="button"
-								className="px-1 py-0.5 text-[9px] opacity-55 hover:opacity-100"
-								onClick={clearReferences}
-							>
-								清空
-							</button>
-						) : null}
+				</div>
+
+				{submittedRequest ? (
+					<div className="ml-auto max-w-[72%] rounded-2xl rounded-tr-sm bg-cyan-400 px-3.5 py-2.5 text-xs leading-relaxed text-slate-950">
+						{submittedRequest}
 					</div>
-				</div>
-				<div className="flex flex-wrap items-center gap-1 px-2 py-1.5">
-					<button
-						type="button"
-						className="border-border bg-foreground/[0.03] rounded border px-1.5 py-1 text-[9px] hover:bg-foreground/[0.07]"
-						onClick={pinSelectedElements}
-					>
-						＋ 引用已选素材
-					</button>
-					<button
-						type="button"
-						className="border-border bg-foreground/[0.03] rounded border px-1.5 py-1 text-[9px] hover:bg-foreground/[0.07]"
-						onClick={pinTimelineRange}
-					>
-						＋ 引用时间片段
-					</button>
-					{visibleReferences.length === 0 ? (
-						<span className="ml-1 text-[8px] opacity-40">
-							未固定时，Codex 自动读取当前选中素材
-						</span>
-					) : null}
-				</div>
+				) : null}
+
 				{visibleReferences.length > 0 ? (
-					<ul className="border-border space-y-1 border-t px-2 py-1.5">
+					<div
+						className="ml-8 max-w-[82%] rounded-xl border border-cyan-400/15 bg-cyan-400/[0.035] p-2.5"
+						aria-label="Codex 上下文引用"
+					>
+						<div className="mb-2 flex items-center justify-between gap-2">
+							<span className="text-[9px] font-semibold tracking-[0.14em] text-cyan-300 uppercase">
+								已引用 {visibleReferences.length} 项上下文
+							</span>
+							<div className="flex items-center gap-2">
+								<button
+									type="button"
+									className="text-[9px] text-slate-400 hover:text-slate-100"
+									onClick={copyContext}
+								>
+									复制 Path
+								</button>
+								<button
+									type="button"
+									className="text-[9px] text-slate-500 hover:text-red-300"
+									onClick={clearReferences}
+								>
+									清空
+								</button>
+							</div>
+						</div>
+						<ul className="space-y-1">
 						{visibleReferences.map((reference) => (
 							<li
 								key={reference.uri}
-								className="border-border bg-foreground/[0.025] flex min-w-0 items-center gap-1 rounded border px-1.5 py-1"
+								className="flex min-w-0 items-center gap-1 rounded-lg border border-white/7 bg-black/20 px-2 py-1.5"
 							>
 								<button
 									type="button"
@@ -672,8 +701,12 @@ export function AgentWorkbench() {
 									title={reference.uri}
 								>
 									<span className="flex items-center gap-1.5">
-										<span className="bg-cyan-500/12 text-cyan-700 rounded px-1 py-0.5 text-[8px] font-medium dark:text-cyan-300">
-											{reference.kind === "element" ? "素材" : "片段"}
+										<span className="rounded bg-cyan-400/10 px-1 py-0.5 text-[8px] font-medium text-cyan-300">
+											{reference.kind === "element"
+												? "时间线"
+												: reference.kind === "media"
+													? "素材库"
+													: "片段"}
 										</span>
 										<span className="truncate text-[9px] font-medium">
 											{reference.label}
@@ -681,10 +714,12 @@ export function AgentWorkbench() {
 										<span className="font-mono text-[8px] opacity-45">
 											{reference.kind === "range"
 												? `${reference.elements.length} 个元素`
-												: reference.elementType}
+												: reference.kind === "media"
+													? reference.mediaType
+													: reference.elementType}
 										</span>
 									</span>
-									<span className="mt-0.5 block truncate font-mono text-[7px] opacity-40">
+									<span className="mt-0.5 block truncate font-mono text-[7px] text-slate-600">
 										{reference.uri}
 									</span>
 								</button>
@@ -698,19 +733,11 @@ export function AgentWorkbench() {
 								</button>
 							</li>
 						))}
-					</ul>
+						</ul>
+					</div>
 				) : null}
-			</div>
-			<div className="border-border bg-background/60 mt-2 rounded-md border px-2 py-1.5">
-				<div className="flex items-center justify-between gap-2">
-					<span className="text-[9px] font-semibold tracking-wide uppercase opacity-50">
-						语义寻址空间
-					</span>
-					<span className="font-mono text-[8px] opacity-45">
-						CAS · 幂等 · 无效果验证
-					</span>
-				</div>
-				<div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-[8px] opacity-70">
+
+				<div className="ml-8 flex max-w-[82%] flex-wrap gap-x-2 gap-y-1 rounded-lg border border-white/6 bg-white/[0.025] px-2.5 py-2 font-mono text-[8px] text-slate-500">
 					<span>{semanticState.media.length} 个媒体</span>
 					<span>{semanticState.tracks.length} 条轨道</span>
 					<span>{semanticElementCount} 个素材</span>
@@ -723,10 +750,6 @@ export function AgentWorkbench() {
 							: "质检后显示问题"}
 					</span>
 				</div>
-				<div className="mt-1 text-[8px] opacity-45">
-					每个已应用计划都会成为一条共享撤销记录；被拒绝的改动组使用同一命令入口。
-				</div>
-			</div>
 
 			{plan ? (
 				<div className="border-border bg-background/70 mt-2 rounded-md border p-2">
@@ -1029,8 +1052,254 @@ export function AgentWorkbench() {
 					<p className="mt-2 text-[9px] leading-relaxed opacity-55">
 						通过导出渲染器生成开头、中点和末帧，并将每条发现绑定到当前版本。
 					</p>
-				)}
+					)}
+				</div>
 			</div>
-		</section>
-	);
-}
+
+			{referencePickerOpen ? (
+				<section
+					className="mx-4 mb-2 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-[#181b1e] shadow-xl"
+					aria-label="上下文选择器"
+				>
+					<div className="flex items-center justify-between border-b border-white/8 px-3 py-2">
+						<div>
+							<div className="text-[11px] font-semibold">添加上下文</div>
+							<div className="text-[9px] text-slate-500">
+								选择后会以 Codex Path 随消息发送
+							</div>
+						</div>
+						<button
+							type="button"
+							className="px-1 text-sm text-slate-500 hover:text-slate-100"
+							onClick={() => setReferencePickerOpen(false)}
+							aria-label="关闭上下文选择器"
+						>
+							×
+						</button>
+					</div>
+					<div className="flex gap-1 border-b border-white/8 px-3 pt-2">
+						<button
+							type="button"
+							aria-label="选择时间轴素材"
+							aria-pressed={referencePickerTab === "timeline"}
+							className={`border-b-2 px-3 pb-2 text-[10px] font-medium ${
+								referencePickerTab === "timeline"
+									? "border-cyan-400 text-cyan-300"
+									: "border-transparent text-slate-500 hover:text-slate-200"
+							}`}
+							onClick={() => setReferencePickerTab("timeline")}
+						>
+							时间轴素材 · {semanticElementCount}
+						</button>
+						<button
+							type="button"
+							aria-label="选择素材库元素"
+							aria-pressed={referencePickerTab === "library"}
+							className={`border-b-2 px-3 pb-2 text-[10px] font-medium ${
+								referencePickerTab === "library"
+									? "border-cyan-400 text-cyan-300"
+									: "border-transparent text-slate-500 hover:text-slate-200"
+							}`}
+							onClick={() => setReferencePickerTab("library")}
+						>
+							素材库 · {semanticState.media.length}
+						</button>
+						<div className="ml-auto flex items-start gap-1 pb-1">
+							<button
+								type="button"
+								className="rounded border border-white/8 px-2 py-1 text-[9px] text-slate-400 hover:text-slate-100"
+								onClick={pinSelectedElements}
+							>
+								引用当前选择
+							</button>
+							<button
+								type="button"
+								className="rounded border border-white/8 px-2 py-1 text-[9px] text-slate-400 hover:text-slate-100"
+								onClick={pinTimelineRange}
+							>
+								引用播放头片段
+							</button>
+						</div>
+					</div>
+					<div className="max-h-48 overflow-y-auto p-2">
+						{referencePickerTab === "timeline" ? (
+							<div className="space-y-2">
+								{semanticState.tracks.map((track) =>
+									track.elements.length > 0 ? (
+										<div key={track.id}>
+											<div className="px-1 pb-1 text-[8px] font-semibold tracking-[0.12em] text-slate-600 uppercase">
+												{track.name ?? track.type} · {track.elements.length}
+											</div>
+											<div className="grid grid-cols-2 gap-1">
+												{track.elements.map((element) => {
+													const selected = visibleReferences.some(
+														(reference) =>
+															reference.kind === "element" &&
+															reference.trackId === track.id &&
+															reference.elementId === element.id,
+													);
+													return (
+														<button
+															key={element.id}
+															type="button"
+															aria-pressed={selected}
+															className={`flex min-w-0 items-center gap-2 rounded-lg border px-2 py-1.5 text-left ${
+																selected
+																	? "border-cyan-400/40 bg-cyan-400/10 text-cyan-200"
+																	: "border-white/6 bg-black/15 text-slate-300 hover:border-white/15"
+															}`}
+															onClick={() =>
+																toggleTimelineElementReference({
+																	trackId: track.id,
+																	elementId: element.id,
+																})
+															}
+														>
+															<span
+																className={`flex size-3.5 shrink-0 items-center justify-center rounded border text-[8px] ${
+																	selected
+																		? "border-cyan-300 bg-cyan-300 text-slate-950"
+																		: "border-white/15 text-transparent"
+																}`}
+															>
+																✓
+															</span>
+															<span className="min-w-0 flex-1">
+																<span className="block truncate text-[10px] font-medium">
+																	{element.name}
+																</span>
+																<span className="block font-mono text-[8px] text-slate-600">
+																	{element.startTimeSeconds?.toFixed(2) ?? "—"}s ·{" "}
+																	{element.type}
+																</span>
+															</span>
+														</button>
+													);
+												})}
+											</div>
+										</div>
+									) : null,
+								)}
+							</div>
+						) : (
+							<div className="grid grid-cols-2 gap-1">
+								{semanticState.media.map((asset) => {
+									const selected = visibleReferences.some(
+										(reference) =>
+											reference.kind === "media" &&
+											reference.mediaId === asset.id,
+									);
+									return (
+										<button
+											key={asset.id}
+											type="button"
+											aria-pressed={selected}
+											className={`flex min-w-0 items-center gap-2 rounded-lg border px-2 py-1.5 text-left ${
+												selected
+													? "border-cyan-400/40 bg-cyan-400/10 text-cyan-200"
+													: "border-white/6 bg-black/15 text-slate-300 hover:border-white/15"
+											}`}
+											onClick={() => toggleMediaReference(asset.id)}
+										>
+											<span
+												className={`flex size-3.5 shrink-0 items-center justify-center rounded border text-[8px] ${
+													selected
+														? "border-cyan-300 bg-cyan-300 text-slate-950"
+														: "border-white/15 text-transparent"
+												}`}
+											>
+												✓
+											</span>
+											<span className="min-w-0 flex-1">
+												<span className="block truncate text-[10px] font-medium">
+													{asset.name}
+												</span>
+												<span className="block text-[8px] text-slate-600">
+													{asset.type}
+													{asset.durationSeconds === null
+														? ""
+														: ` · ${asset.durationSeconds.toFixed(1)}s`}
+												</span>
+											</span>
+										</button>
+									);
+								})}
+							</div>
+						)}
+					</div>
+				</section>
+			) : null}
+
+			<form
+				className="shrink-0 border-t border-white/8 bg-[#151719] px-4 py-3"
+				onSubmit={(event) => {
+					event.preventDefault();
+					preview();
+				}}
+			>
+				{visibleReferences.length > 0 ? (
+					<div className="mb-2 flex items-center gap-1.5 overflow-x-auto">
+						{visibleReferences.map((reference) => (
+							<button
+								key={reference.uri}
+								type="button"
+								className="shrink-0 rounded-full border border-cyan-400/20 bg-cyan-400/[0.06] px-2 py-1 text-[9px] text-cyan-200"
+								onClick={() => removeReference(reference.uri)}
+								title={`移除 ${reference.label}`}
+							>
+								@
+								{reference.kind === "media"
+									? "素材库"
+									: reference.kind === "range"
+										? "片段"
+										: "时间线"}{" "}
+								{reference.label} ×
+							</button>
+						))}
+					</div>
+				) : null}
+				<div className="flex items-end gap-2 rounded-xl border border-white/10 bg-black/20 p-2 focus-within:border-cyan-400/35">
+					<button
+						type="button"
+						aria-label="添加上下文引用"
+						aria-pressed={referencePickerOpen}
+						className={`flex size-8 shrink-0 items-center justify-center rounded-lg text-lg transition ${
+							referencePickerOpen
+								? "bg-cyan-400 text-slate-950"
+								: "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+						}`}
+						onClick={() => setReferencePickerOpen((open) => !open)}
+					>
+						+
+					</button>
+					<textarea
+						aria-label="描述智能剪辑需求"
+						className="max-h-28 min-h-8 flex-1 resize-none bg-transparent px-1 py-1.5 text-xs leading-relaxed text-slate-100 outline-none placeholder:text-slate-600"
+						value={request}
+						rows={1}
+						onChange={(event) => setRequest(event.target.value)}
+						onKeyDown={(event) => {
+							if (event.key === "Enter" && !event.shiftKey) {
+								event.preventDefault();
+								preview();
+							}
+						}}
+						placeholder="描述你想要的剪辑效果…"
+					/>
+					<button
+						type="submit"
+						aria-label="发送智能剪辑需求"
+						disabled={!request.trim()}
+						className="flex h-8 shrink-0 items-center rounded-lg bg-cyan-400 px-3 text-[10px] font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-30"
+					>
+						发送
+					</button>
+				</div>
+				<div className="mt-1.5 flex items-center justify-between px-1 text-[8px] text-slate-600">
+					<span>Enter 发送 · Shift + Enter 换行</span>
+					<span>所有改动先预览，再写入共享撤销历史</span>
+				</div>
+			</form>
+			</section>
+		);
+	}

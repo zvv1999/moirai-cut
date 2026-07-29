@@ -10,7 +10,13 @@ import {
 	type ProjectFileSyncState,
 } from "@/services/storage/project-file-sync";
 import type { ProjectRevisionDiff } from "@/project/revision-diff";
-import { ReliabilityWorkbench } from "./reliability-workbench";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { AgentWorkbench } from "./agent-workbench";
 
 interface RevisionEntry {
@@ -293,45 +299,41 @@ export function AgentBadge() {
 	const { agent, blockedByUnsavedChanges } = sync;
 
 	return (
-		<div className="fixed right-4 bottom-4 z-50 flex flex-col items-end gap-2">
-			{openSurface && (
-				<div
-					className={`bg-popover text-popover-foreground border-border max-h-[82vh] overflow-y-auto rounded-lg border p-3 shadow-xl ${
-						openSurface === "smart-edit" ? "w-[34rem]" : "w-[32rem]"
-					}`}
-					aria-label={
-						openSurface === "smart-edit" ? "智能剪辑面板" : "工程历史面板"
-					}
+		<>
+			<Dialog open={openSurface === "smart-edit"} onOpenChange={(open) => {
+				setOpenSurface(open ? "smart-edit" : null);
+			}}>
+				<DialogContent
+					aria-label="智能剪辑对话框"
+					className="max-h-[86vh] w-[min(920px,calc(100vw-2rem))] max-w-[920px] gap-0 overflow-hidden border-white/10 bg-[#111315] p-0 text-slate-100 shadow-2xl"
 				>
-					{openSurface === "smart-edit" ? (
-						<>
-							<div className="border-border mb-3 flex items-center justify-between border-b pb-2">
-								<div>
-									<div className="text-sm font-semibold">智能剪辑工作台</div>
-									<div className="text-[11px] opacity-55">
-										Codex 上下文 · 计划复核 · 画面质检
-									</div>
-								</div>
-								<span className="bg-cyan-500/10 text-cyan-600 rounded px-2 py-1 font-mono text-[10px] dark:text-cyan-300">
-									Agent v{editor.agent.revision}
-								</span>
+					<DialogHeader className="sr-only">
+						<DialogTitle>智能剪辑对话框</DialogTitle>
+						<DialogDescription>
+							通过对话描述剪辑需求，并引用时间线素材或素材库元素。
+						</DialogDescription>
+					</DialogHeader>
+					<AgentWorkbench />
+				</DialogContent>
+			</Dialog>
+
+			<div className="fixed right-4 bottom-4 z-50 flex flex-col items-end gap-2">
+			{openSurface === "project-history" && (
+				<div
+					className="bg-popover text-popover-foreground border-border max-h-[82vh] w-[32rem] overflow-y-auto rounded-lg border p-3 shadow-xl"
+					aria-label="工程历史面板"
+				>
+					<div className="border-border mb-3 flex items-start justify-between gap-3 border-b pb-2">
+						<div>
+							<div className="text-sm font-semibold">工程历史</div>
+							<div className="text-[11px] opacity-60">
+								当前版本 {currentRevision ?? "…"} · 恢复前请先比较
 							</div>
-							<AgentWorkbench />
-							<ReliabilityWorkbench />
-						</>
-					) : (
-						<div className="border-border mb-3 flex items-start justify-between gap-3 border-b pb-2">
-							<div>
-								<div className="text-sm font-semibold">工程历史</div>
-								<div className="text-[11px] opacity-60">
-									当前版本 {currentRevision ?? "…"} · 恢复前请先比较
-								</div>
-							</div>
-							<span className="bg-muted rounded px-2 py-1 font-mono text-[10px]">
-								已保存 {revisions.length} 个
-							</span>
 						</div>
-					)}
+						<span className="bg-muted rounded px-2 py-1 font-mono text-[10px]">
+							已保存 {revisions.length} 个
+						</span>
+					</div>
 
 					{openSurface === "project-history" ? (
 						<>
@@ -596,28 +598,6 @@ export function AgentBadge() {
 						</>
 					) : null}
 
-					{openSurface === "smart-edit" &&
-					(agent.active || agent.events.length > 0) ? (
-						<div className="mt-3">
-							<div className="mb-1 text-xs font-medium opacity-70">
-								最近的智能体活动
-							</div>
-							{agent.events.length === 0 ? (
-								<div className="text-xs opacity-50">暂无活动</div>
-							) : (
-								<ul className="flex max-h-24 flex-col gap-1 overflow-y-auto">
-									{[...agent.events].reverse().map((event) => (
-										<li key={event.seq} className="text-xs leading-snug">
-											<span className="opacity-60">
-												{new Date(event.at).toLocaleTimeString()}{" "}
-											</span>
-											{event.summary}
-										</li>
-									))}
-								</ul>
-							)}
-						</div>
-					) : null}
 				</div>
 			)}
 			<div className="border-border bg-background/85 flex items-center gap-1 rounded-full border p-1 shadow-lg backdrop-blur-md">
@@ -677,6 +657,7 @@ export function AgentBadge() {
 					{agent.active ? `${agent.actor ?? "智能体"} 已连接` : "智能剪辑"}
 				</button>
 			</div>
-		</div>
+			</div>
+		</>
 	);
 }

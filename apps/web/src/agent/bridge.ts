@@ -1,4 +1,5 @@
 import { EditorCore } from "@/core";
+import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
 import {
   OperationConflictError,
   ProjectMismatchError,
@@ -279,6 +280,10 @@ export function installAgentBridge(): () => void {
           state: editor.agent.getState(),
           uri,
         });
+        if (target.kind === "media") {
+          useAssetsPanelStore.getState().requestRevealMedia(target.mediaId);
+          return { uri, ...target };
+        }
         editor.selection.setSelectedElements({
           elements: target.selectedElements,
         });
