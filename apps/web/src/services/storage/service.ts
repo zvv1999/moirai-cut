@@ -23,9 +23,13 @@ import {
 	migrations,
 	runStorageMigrations,
 } from "@/services/storage/migrations";
-import type { Bookmark, SceneTracks, TScene } from "@/timeline";
+import type { Bookmark, SceneTracks } from "@/timeline";
 import { roundMediaTime } from "@/wasm";
 import { isMediaProxyStorageId } from "@/media/proxy";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return !!value && typeof value === "object" && !Array.isArray(value);
+}
 
 function normalizeBookmarks({ raw }: { raw: unknown }): Bookmark[] {
 	if (!Array.isArray(raw)) return [];
@@ -35,20 +39,17 @@ function normalizeBookmarks({ raw }: { raw: unknown }): Bookmark[] {
 				const time = roundMediaTime({ time: item });
 				return { id: `legacy-marker-${time}`, time, scope: "timeline" };
 			}
-			const obj = item as Record<string, unknown>;
-			if (
-				typeof obj !== "object" ||
-				obj === null ||
-				typeof obj.time !== "number"
-			) {
+			if (!isRecord(item) || typeof item.time !== "number") {
 				return null;
 			}
+			const time = roundMediaTime({ time: item.time });
+			const obj = item;
 			return {
 				id:
 					typeof obj.id === "string"
 						? obj.id
-						: `legacy-marker-${roundMediaTime({ time: obj.time })}`,
-				time: roundMediaTime({ time: obj.time }),
+						: `legacy-marker-${time}`,
+				time,
 				...(typeof obj.name === "string" && { name: obj.name }),
 				...(typeof obj.note === "string" && { note: obj.note }),
 				...(typeof obj.color === "string" && { color: obj.color }),
@@ -325,9 +326,17 @@ class StorageService {
 				duration: roundMediaTime({
 					time:
 						serializedProject.metadata.duration ??
-						getProjectDurationFromScenes({
-							scenes: (serializedProject.scenes ?? []) as unknown as TScene[],
-						}),
+							getProjectDurationFromScenes({
+								scenes:
+									serializedProject.scenes?.map((scene) => ({
+										...scene,
+										bookmarks: normalizeBookmarks({
+											raw: scene.bookmarks,
+										}),
+										createdAt: new Date(scene.createdAt),
+										updatedAt: new Date(scene.updatedAt),
+									})) ?? [],
+							}),
 				}),
 				createdAt: new Date(serializedProject.metadata.createdAt),
 				updatedAt: new Date(serializedProject.metadata.updatedAt),
@@ -365,6 +374,7 @@ class StorageService {
 			duration: mediaAsset.duration,
 			fps: mediaAsset.fps,
 			hasAudio: mediaAsset.hasAudio,
+			browserCanDecode: mediaAsset.browserCanDecode,
 			thumbnailUrl: mediaAsset.thumbnailUrl,
 			ephemeral: mediaAsset.ephemeral,
 			proxy: mediaAsset.proxy,
@@ -434,6 +444,7 @@ class StorageService {
 				duration: mediaAsset.duration,
 				fps: mediaAsset.fps,
 				hasAudio: mediaAsset.hasAudio,
+				browserCanDecode: mediaAsset.browserCanDecode,
 				thumbnailUrl: mediaAsset.thumbnailUrl,
 				ephemeral: mediaAsset.ephemeral,
 				proxy: mediaAsset.proxy,
@@ -520,6 +531,7 @@ class StorageService {
 			duration: metadata.duration,
 			fps: metadata.fps,
 			hasAudio: metadata.hasAudio,
+			browserCanDecode: metadata.browserCanDecode,
 			thumbnailUrl: metadata.thumbnailUrl,
 			ephemeral: metadata.ephemeral,
 			proxy: proxyFile ? metadata.proxy : undefined,

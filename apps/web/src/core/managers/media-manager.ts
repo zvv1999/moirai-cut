@@ -11,7 +11,14 @@ import {
 	RemoveMediaAssetCommand,
 	UpdateMediaAssetCommand,
 } from "@/commands";
-import { buildBatchMediaNames } from "@/media/proxy";
+import {
+	buildBatchMediaNames,
+	shouldAutoGenerateProxy,
+} from "@/media/proxy";
+import {
+	ensureNativeProxy,
+	waitForNativeMediaJob,
+} from "@/agent/media-codec";
 
 export class MediaManager {
 	private assets: MediaAsset[] = [];
@@ -40,6 +47,12 @@ export class MediaManager {
 			this.editor.project.ratchetFpsForImportedMedia({
 				importedAssets: [newAsset],
 			});
+			if (shouldAutoGenerateProxy({ asset: newAsset })) {
+				void this.generateAutomaticProxy({
+					projectId,
+					asset: newAsset,
+				});
+			}
 			return newAsset;
 		} catch (error) {
 			console.error("Failed to save media asset:", error);
@@ -53,6 +66,45 @@ export class MediaManager {
 			}
 
 			return null;
+		}
+	}
+
+	private async generateAutomaticProxy({
+		projectId,
+		asset,
+	}: {
+		projectId: string;
+		asset: MediaAsset;
+	}): Promise<void> {
+		try {
+			toast.info(`正在为 ${asset.name} 创建代理`, {
+				description: "原视频不变，代理仅用于流畅预览。",
+			});
+			const queued = await ensureNativeProxy({
+				projectId,
+				assetId: asset.id,
+				profile: "standard",
+			});
+			const completed = await waitForNativeMediaJob({
+				projectId,
+				jobId: queued.id,
+			});
+			if (completed.status !== "succeeded") {
+				throw new Error(
+					completed.error?.message ??
+						`代理任务状态：${completed.status}`,
+				);
+			}
+			await this.loadProjectMedia({ projectId });
+			toast.success(`${asset.name} 的代理已就绪`, {
+				description: "预览已自动切换到流畅模式，导出仍使用原片。",
+			});
+		} catch (error) {
+			console.error("Automatic proxy generation failed:", error);
+			toast.error(`${asset.name} 无法生成代理`, {
+				description:
+					error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 

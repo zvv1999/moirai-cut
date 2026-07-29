@@ -88,6 +88,21 @@ export function getMediaAssetPlaybackSource({
 	};
 }
 
+export function shouldAutoGenerateProxy({
+	asset,
+}: {
+	asset: Pick<
+		MediaAsset,
+		"type" | "browserCanDecode" | "proxy" | "proxyFile"
+	>;
+}): boolean {
+	return (
+		asset.type === "video" &&
+		asset.browserCanDecode === false &&
+		(!asset.proxy || !asset.proxyFile)
+	);
+}
+
 function fileExtension({ name }: { name: string }): string {
 	const lastDot = name.lastIndexOf(".");
 	return lastDot > 0 ? name.slice(lastDot) : "";

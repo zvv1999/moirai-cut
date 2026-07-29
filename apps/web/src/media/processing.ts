@@ -7,7 +7,7 @@ import { readVideoFile } from "./mediabunny";
 import type { VideoFileData } from "./mediabunny";
 import { renderThumbnailDataUrl } from "./thumbnail";
 
-export interface ProcessedMediaAsset extends Omit<MediaAsset, "id"> {}
+export type ProcessedMediaAsset = Omit<MediaAsset, "id">;
 
 const getUnsupportedVideoDescription = ({
 	codec,
@@ -124,6 +124,7 @@ export async function processMediaAssets({
 		let height: number | undefined;
 		let fps: number | undefined;
 		let hasAudio: boolean | undefined;
+		let browserCanDecode: boolean | undefined;
 
 		try {
 			if (fileType === "image") {
@@ -141,6 +142,7 @@ export async function processMediaAssets({
 						? Math.round(videoData.fps)
 						: undefined;
 					hasAudio = videoData.hasAudio;
+					browserCanDecode = videoData.canDecode;
 					thumbnailUrl = videoData.thumbnailUrl ?? undefined;
 
 					if (!videoData.canDecode) {
@@ -175,6 +177,7 @@ export async function processMediaAssets({
 				height,
 				fps,
 				hasAudio,
+				browserCanDecode,
 			});
 
 			await new Promise((resolve) => setTimeout(resolve, 0));
@@ -196,9 +199,9 @@ export async function processMediaAssets({
 
 const getMediaDuration = ({ file }: { file: File }): Promise<number> => {
 	return new Promise((resolve, reject) => {
-		const element = document.createElement(
-			file.type.startsWith("video/") ? "video" : "audio",
-		) as HTMLVideoElement;
+		const element = file.type.startsWith("video/")
+			? document.createElement("video")
+			: document.createElement("audio");
 		const objectUrl = URL.createObjectURL(file);
 
 		element.addEventListener("loadedmetadata", () => {

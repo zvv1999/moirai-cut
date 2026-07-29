@@ -25,6 +25,7 @@ export interface MediaAssetData {
 	duration?: number;
 	fps?: number;
 	hasAudio?: boolean;
+	browserCanDecode?: boolean;
 	ephemeral?: boolean;
 	thumbnailUrl?: string;
 	proxy?: MediaProxyData;
