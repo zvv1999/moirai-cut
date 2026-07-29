@@ -1,8 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import {
+	cancelNativeMediaJob,
 	checkBrowserDecodeSupport,
+	ensureNativeProxy,
+	getNativeMediaJob,
+	listNativeMediaJobs,
 	requestMediaProbe,
+	retryNativeMediaJob,
+	waitForNativeMediaJob,
 } from "@/agent/media-codec";
+import type { NativeMediaJob } from "@/server/media-jobs";
 
 describe("agent media codec client", () => {
 	test("only asks the browser decoder about video assets", async () => {
@@ -84,5 +91,84 @@ describe("agent media codec client", () => {
 				fetcher,
 			}),
 		).rejects.toThrow("FFprobe failed: invalid data");
+	});
+
+	test("uses the native job actions and polls until proxy completion", async () => {
+		const calls: Array<{ url: string; action?: string }> = [];
+		let polls = 0;
+		const baseJob: NativeMediaJob = {
+			id: "job-1",
+			kind: "proxy",
+			projectId: "project",
+			assetId: "asset",
+			profile: "standard",
+			cacheKey: "hash:standard",
+			status: "queued",
+			progress: 0,
+			processedSeconds: 0,
+			createdAt: "2026-07-29T00:00:00.000Z",
+			updatedAt: "2026-07-29T00:00:00.000Z",
+		};
+		const fetcher = async (
+			input: RequestInfo | URL,
+			init?: RequestInit,
+		) => {
+			const body =
+				typeof init?.body === "string"
+					? JSON.parse(init.body)
+					: undefined;
+			calls.push({ url: String(input), action: body?.action });
+			if (String(input).includes("jobId=")) {
+				polls += 1;
+				return Response.json({
+					data: {
+						...baseJob,
+						status: polls > 1 ? "succeeded" : "running",
+						progress: polls > 1 ? 1 : 0.5,
+					},
+				});
+			}
+			if (!init?.method) {
+				return Response.json({ data: [baseJob] });
+			}
+			return Response.json({ data: baseJob });
+		};
+
+		await ensureNativeProxy({
+			projectId: "project",
+			assetId: "asset",
+			profile: "high",
+			fetcher,
+		});
+		await listNativeMediaJobs({ projectId: "project", fetcher });
+		await getNativeMediaJob({
+			projectId: "project",
+			jobId: "job-1",
+			fetcher,
+		});
+		await cancelNativeMediaJob({
+			projectId: "project",
+			jobId: "job-1",
+			fetcher,
+		});
+		await retryNativeMediaJob({
+			projectId: "project",
+			jobId: "job-1",
+			fetcher,
+		});
+		const completed = await waitForNativeMediaJob({
+			projectId: "project",
+			jobId: "job-1",
+			pollIntervalMs: 1,
+			fetcher,
+		});
+
+		expect(completed.status).toBe("succeeded");
+		expect(calls.map((call) => call.action).filter(Boolean)).toEqual([
+			"ensureProxy",
+			"cancel",
+			"retry",
+		]);
+		expect(calls[0]?.url).toBe("/api/media-jobs/project");
 	});
 });
