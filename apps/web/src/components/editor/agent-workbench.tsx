@@ -132,7 +132,12 @@ async function sendCodexTurn({
 	const response = await fetch("/api/codex/chat", {
 		method: "POST",
 		headers: { "content-type": "application/json" },
-		body: JSON.stringify({ projectId, message, context, sessionId }),
+		body: JSON.stringify({
+			projectId,
+			message,
+			context,
+			...(sessionId ? { sessionId } : {}),
+		}),
 	});
 	if (!response.ok) {
 		const value: unknown = await response.json();

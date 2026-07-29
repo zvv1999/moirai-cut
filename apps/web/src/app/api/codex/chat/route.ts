@@ -27,6 +27,7 @@ function chatInput(value: unknown): CodexChatInput | null {
 		value.context.length > 200_000 ||
 		("sessionId" in value &&
 			value.sessionId !== undefined &&
+			value.sessionId !== null &&
 			(typeof value.sessionId !== "string" ||
 				!value.sessionId.trim() ||
 				value.sessionId.length > 200))
