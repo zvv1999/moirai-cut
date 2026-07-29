@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+	chmod,
 	mkdir,
 	mkdtemp,
 	readFile,
@@ -11,6 +12,7 @@ import path from "node:path";
 import {
 	NativeMediaJobService,
 	buildProxyFfmpegArgs,
+	runNativeTranscode,
 	type NativeTranscodeRunner,
 } from "@/server/media-jobs";
 import type {
@@ -139,6 +141,59 @@ describe("proxy command construction", () => {
 		expect(args.join(" ")).toContain("min(960");
 		expect(args.join(" ")).toContain("fps=30");
 		expect(args.join(" ")).toContain("tonemap");
+	});
+
+	test("native runner parses FFmpeg progress and reports bounded failures", async () => {
+		const directory = await mkdtemp(
+			path.join(tmpdir(), "opencut-fake-transcoder-"),
+		);
+		const binary = path.join(directory, "ffmpeg");
+		await writeFile(
+			binary,
+			"#!/bin/sh\nprintf 'out_time_us=5000000\\nprogress=continue\\n'\nprintf 'diagnostic' >&2\nexit 0\n",
+		);
+		await chmod(binary, 0o755);
+		const originalBinary = process.env.FFMPEG_BIN;
+		process.env.FFMPEG_BIN = binary;
+		const updates: Array<{
+			progress: number;
+			processedSeconds: number;
+		}> = [];
+		try {
+			await runNativeTranscode({
+				args: [],
+				inputPath: "/tmp/source.mp4",
+				temporaryOutputPath: "/tmp/output.mp4",
+				signal: new AbortController().signal,
+				durationSeconds: 10,
+				onProgress: (update) => updates.push(update),
+			});
+			expect(updates).toContainEqual({
+				progress: 0.5,
+				processedSeconds: 5,
+			});
+
+			await writeFile(
+				binary,
+				"#!/bin/sh\nprintf 'intentional failure' >&2\nexit 7\n",
+			);
+			await expect(
+				runNativeTranscode({
+					args: [],
+					inputPath: "/tmp/source.mp4",
+					temporaryOutputPath: "/tmp/output.mp4",
+					signal: new AbortController().signal,
+					durationSeconds: 10,
+					onProgress: () => undefined,
+				}),
+			).rejects.toThrow("intentional failure");
+		} finally {
+			if (originalBinary === undefined) {
+				delete process.env.FFMPEG_BIN;
+			} else {
+				process.env.FFMPEG_BIN = originalBinary;
+			}
+		}
 	});
 });
 
