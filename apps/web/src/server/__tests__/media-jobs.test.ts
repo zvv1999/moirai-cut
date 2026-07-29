@@ -15,6 +15,7 @@ import {
 	runNativeTranscode,
 	type NativeTranscodeRunner,
 } from "@/server/media-jobs";
+import { normalizeFfprobe } from "@/media/codec-capabilities";
 import type {
 	ProbeFile,
 	ProjectMediaProbeResult,
@@ -206,6 +207,54 @@ describe("proxy command construction", () => {
 			probe,
 		});
 		expect(args.join(" ")).toContain("fps=24");
+	});
+
+	test("converts Display P3 SDR proxies into the BT.709 preview space", () => {
+		const probe = {
+			source: {
+				assetId: "p3-asset",
+				fileName: "p3.mp4",
+				extension: "mp4",
+				mimeType: "video/mp4",
+				sizeBytes: 12,
+				mtimeMs: 0,
+				ctimeMs: 0,
+				inode: 1,
+				sha256: "c".repeat(64),
+			},
+			probe: normalizeFfprobe({
+				format: { format_name: "mov,mp4", duration: "4" },
+				streams: [
+					{
+						index: 0,
+						codec_type: "video",
+						codec_name: "hevc",
+						profile: "Main 10",
+						pix_fmt: "yuv420p10le",
+						width: 640,
+						height: 360,
+						avg_frame_rate: "30/1",
+						r_frame_rate: "30/1",
+						color_primaries: "smpte432",
+						color_transfer: "iec61966-2-1",
+						color_space: "bt709",
+						color_range: "tv",
+					},
+				],
+			}),
+			probedAt: "2026-07-29T00:00:00.000Z",
+			cacheHit: false,
+		} satisfies ProjectMediaProbeResult;
+		const args = buildProxyFfmpegArgs({
+			inputPath: "/tmp/p3.mp4",
+			outputPath: "/tmp/p3.proxy.mp4",
+			profile: "standard",
+			probe,
+		});
+
+		expect(args.join(" ")).toContain(
+			"zscale=p=bt709:t=bt709:m=bt709:r=tv",
+		);
 	});
 
 	test("native runner parses FFmpeg progress and reports bounded failures", async () => {

@@ -293,6 +293,8 @@ function proxyVideoFilter({
 			"tonemap=tonemap=hable:desat=0",
 			"zscale=p=bt709:t=bt709:m=bt709:r=tv",
 		);
+	} else if (video?.color.primaries === "smpte432") {
+		filters.push("zscale=p=bt709:t=bt709:m=bt709:r=tv");
 	}
 	filters.push("format=yuv420p");
 	return filters.join(",");

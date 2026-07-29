@@ -34,6 +34,12 @@ encode_av "$output_dir/hevc-main10-aac.mp4" \
 	-x265-params log-level=error -tag:v hvc1 \
 	-c:a aac -b:a 160k -movflags +faststart
 
+encode_av "$output_dir/hevc-main10-p3-aac.mp4" \
+	-c:v libx265 -preset ultrafast -crf 22 -pix_fmt yuv420p10le \
+	-x265-params log-level=error -tag:v hvc1 \
+	-color_primaries smpte432 -color_trc iec61966-2-1 -colorspace bt709 \
+	-color_range tv -c:a aac -b:a 160k -movflags +faststart
+
 encode_av "$output_dir/hevc-main10-pq-aac.mp4" \
 	-c:v libx265 -preset ultrafast -crf 22 -pix_fmt yuv420p10le \
 	-x265-params log-level=error -tag:v hvc1 \
