@@ -89,6 +89,43 @@ describe("editor surface localization", () => {
 		}
 	});
 
+	test("keeps mask and text creation workflows fully Chinese", () => {
+		const sources = [
+			readSource("../../../masks/components/masks-tab.tsx"),
+			readSource("../../../text/components/assets-view.tsx"),
+		].join("\n");
+
+		for (const translatedLabel of [
+			"蒙版",
+			"添加蒙版",
+			"混合方式",
+			"基础蒙版",
+			"位置",
+			"大小",
+			"羽化",
+			"描边",
+			"暂无蒙版",
+			"默认文本",
+		]) {
+			expect(sources).toContain(translatedLabel);
+		}
+
+		for (const englishLabel of [
+			"<SectionTitle>Masks</SectionTitle>",
+			'aria-label="Add mask"',
+			'label="Combine"',
+			">Base mask<",
+			'label="Position"',
+			'label="Feather"',
+			'label="Stroke"',
+			">No masks<",
+			'title="Text"',
+			">Default text<",
+		]) {
+			expect(sources).not.toContain(englishLabel);
+		}
+	});
+
 	test("localizes the persistent editor chrome and timeline controls", () => {
 		const sources = [
 			readSource("../agent-badge.tsx"),
