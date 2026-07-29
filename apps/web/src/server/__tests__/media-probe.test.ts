@@ -1,9 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import {
+	chmod,
+	mkdir,
+	mkdtemp,
+	readFile,
+	writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
 	probeProjectMedia,
+	runFfprobe,
 	type ProbeFile,
 } from "@/server/media-probe";
 import type { RawFfprobeOutput } from "@/media/codec-capabilities";
@@ -118,6 +125,54 @@ describe("project media probe", () => {
 		expect(invocations).toBe(2);
 	});
 
+	test("honors force refresh and recovers from a malformed cache file", async () => {
+		const source = await fixture();
+		let invocations = 0;
+		const probeFile: ProbeFile = async () => {
+			invocations += 1;
+			return rawProbe;
+		};
+
+		await probeProjectMedia({ ...source, probeFile });
+		const forced = await probeProjectMedia({
+			...source,
+			probeFile,
+			force: true,
+		});
+		expect(forced.cacheHit).toBe(false);
+		await writeFile(
+			path.join(
+				source.mediaDirectory,
+				".codec-cache",
+				`${source.assetId}.probe.json`,
+			),
+			"{broken",
+		);
+		const recovered = await probeProjectMedia({ ...source, probeFile });
+
+		expect(recovered.cacheHit).toBe(false);
+		expect(invocations).toBe(3);
+	});
+
+	test("invokes FFprobe as an argument-array process and parses JSON output", async () => {
+		const directory = await mkdtemp(
+			path.join(tmpdir(), "opencut-fake-ffprobe-"),
+		);
+		const fakeBinary = path.join(directory, "ffprobe");
+		await writeFile(
+			fakeBinary,
+			`#!/bin/sh\nprintf '%s' '${JSON.stringify(rawProbe)}'\n`,
+		);
+		await chmod(fakeBinary, 0o755);
+
+		const result = await runFfprobe({
+			filePath: "/tmp/a file;still-one-argument.mp4",
+			ffprobeBinary: fakeBinary,
+		});
+
+		expect(result.streams?.[0]?.codec_name).toBe("hevc");
+	});
+
 	test("rejects unsafe identifiers before touching the filesystem", async () => {
 		const source = await fixture();
 		const probeFile: ProbeFile = async () => rawProbe;
@@ -136,5 +191,27 @@ describe("project media probe", () => {
 				probeFile,
 			}),
 		).rejects.toThrow("Unsafe asset id");
+	});
+
+	test("reports missing assets and unsafe extensions", async () => {
+		const source = await fixture();
+		const probeFile: ProbeFile = async () => rawProbe;
+		await expect(
+			probeProjectMedia({
+				...source,
+				assetId: "not-there",
+				probeFile,
+			}),
+		).rejects.toThrow("No asset not-there");
+
+		await writeFile(
+			path.join(source.mediaDirectory, "index.json"),
+			JSON.stringify({
+				[source.assetId]: { ext: "../mov", name: "unsafe.mov" },
+			}),
+		);
+		await expect(
+			probeProjectMedia({ ...source, probeFile }),
+		).rejects.toThrow("Unsafe extension");
 	});
 });
