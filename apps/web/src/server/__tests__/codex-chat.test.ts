@@ -262,6 +262,9 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(prompt).toContain(
 			"不要调用 status、get_context、open_editor、reveal_context",
 		);
+		expect(prompt).toContain(
+			"不要读取、调用或套用 LocalCut、localcut-native-video",
+		);
 		expect(prompt).not.toContain("优先使用 get_context");
 		expect(prompt).not.toContain("至少需要两个字幕素材");
 	});
