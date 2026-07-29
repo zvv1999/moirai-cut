@@ -20,8 +20,31 @@ import {
 import { getMediaAssetPlaybackSource } from "@/media/proxy";
 import { expandCompoundElements } from "@/timeline/compound-clips";
 import { normalizeVisualAppearance } from "@/visual/appearance";
+import { mediaTimeFromSeconds } from "@/wasm";
 
 const PREVIEW_MAX_IMAGE_SIZE = 2048;
+
+function getVideoSourceDuration({
+	element,
+	mediaAsset,
+}: {
+	element: Extract<TimelineTrack["elements"][number], { type: "video" }>;
+	mediaAsset: MediaAsset;
+}): number {
+	if (element.sourceDuration !== undefined) {
+		return element.sourceDuration;
+	}
+
+	if (
+		typeof mediaAsset.duration === "number" &&
+		Number.isFinite(mediaAsset.duration) &&
+		mediaAsset.duration > 0
+	) {
+		return mediaTimeFromSeconds({ seconds: mediaAsset.duration });
+	}
+
+	return element.trimStart + element.duration + element.trimEnd;
+}
 
 function getVisibleSortedElements({ track }: { track: TimelineTrack }) {
 	return expandCompoundElements({ elements: track.elements })
@@ -82,7 +105,10 @@ function buildTrackNodes({
 							timeOffset: element.startTime,
 							trimStart: element.trimStart,
 							trimEnd: element.trimEnd,
-							sourceDuration: element.sourceDuration,
+							sourceDuration: getVideoSourceDuration({
+								element,
+								mediaAsset,
+							}),
 							retime: element.retime,
 							transform: buildTransformFromParams({ params: element.params }),
 							animations: element.animations,
