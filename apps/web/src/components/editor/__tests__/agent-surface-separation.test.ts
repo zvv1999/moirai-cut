@@ -67,4 +67,13 @@ describe("智能剪辑与工程历史分面", () => {
 			"CODEX_BIN=/Applications/ChatGPT.app/Contents/Resources/codex",
 		);
 	});
+
+	test("每条智能剪辑消息直接进入 Codex，不再经过本地计划和质检", () => {
+		expect(workbenchSource).toContain('fetch("/api/codex/chat"');
+		expect(workbenchSource).toContain("Codex 正在处理");
+		expect(workbenchSource).toContain("本会话由 Codex 直接处理");
+		expect(workbenchSource).not.toContain("compileSemanticEdit");
+		expect(workbenchSource).not.toContain("计划需要处理");
+		expect(workbenchSource).not.toContain("运行质检");
+	});
 });
