@@ -15,8 +15,15 @@ import {
 import { listProjects, readProject, writeProject } from "./project-file.mjs";
 import { importMedia, listMedia, mediaIndexOf } from "./media-import.mjs";
 import { analyzeAudio } from "./audio-analyze.mjs";
-import { inspectMedia } from "./video-inspect.mjs";
+import { inspectMedia, inspectMediaScenes } from "./video-inspect.mjs";
 import { lintDocument } from "./cut-lint.mjs";
+import {
+  buildMediaCatalog,
+  planTimelineRangeInspection,
+  readMediaCatalog,
+  saveMediaAnalysis,
+  writeMediaCatalog,
+} from "./media-analysis.mjs";
 
 /**
  * MCP server for an OpenCut editor tab.
@@ -35,6 +42,34 @@ const projectId = z
   .min(1)
   .optional()
   .describe("Pin to one editor tab by project id. Omit to use the only open editor tab.");
+
+const MediaSceneAnalysisSchema = z.object({
+  startSeconds: z.number().finite().nonnegative(),
+  endSeconds: z.number().finite().nonnegative(),
+  description: z.string().min(1).max(4_000),
+  subjects: z.array(z.string().max(200)).max(50).optional(),
+  actions: z.array(z.string().max(300)).max(50).optional(),
+  location: z.string().max(500).optional(),
+  mood: z.string().max(500).optional(),
+  shotType: z.string().max(200).optional(),
+  cameraMovement: z.string().max(300).optional(),
+  onScreenText: z.array(z.string().max(1_000)).max(50).optional(),
+  qualityNotes: z.array(z.string().max(1_000)).max(50).optional(),
+});
+
+const MediaAnalysisSchema = z.object({
+  provider: z
+    .enum(["codex-multimodal", "ai-platform", "human", "other"])
+    .default("codex-multimodal"),
+  model: z.string().max(200).optional(),
+  summary: z.string().min(1).max(12_000),
+  tags: z.array(z.string().max(200)).max(200).default([]),
+  scenes: z.array(MediaSceneAnalysisSchema).max(200).default([]),
+  language: z.string().max(100).optional(),
+  transcript: z.string().max(100_000).optional(),
+  notes: z.array(z.string().max(2_000)).max(100).optional(),
+  analyzedAt: z.string().datetime().optional(),
+});
 
 /**
  * Tabs THIS process opened via open_editor. close_editor refuses to close any
@@ -67,6 +102,28 @@ function postActivity(projectId, summary, revision) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ actor: "Codex", summary, ...(revision !== undefined ? { revision } : {}) }),
   }).catch(() => {});
+}
+
+async function activeEditorPresence() {
+  const base = process.env.OPENCUT_BASE_URL ?? "http://localhost:3000";
+  let response;
+  try {
+    response = await fetch(`${base.replace(/\/+$/, "")}/api/editor-presence`, {
+      headers: { accept: "application/json" },
+    });
+  } catch (error) {
+    const wrapped = new Error(
+      `Cannot reach OpenCut editor presence at ${base}: ${String(error?.message ?? error)}`,
+    );
+    wrapped.code = "server_unreachable";
+    throw wrapped;
+  }
+  if (!response.ok) {
+    const error = new Error(`Editor presence request failed: ${response.status}`);
+    error.code = "presence_failed";
+    throw error;
+  }
+  return response.json();
 }
 
 const asText = (value) => ({
@@ -135,6 +192,8 @@ export function createOpenCutMcpServer() {
         [
           "Two ways in.",
           "FILE tools — list_projects, read_project, edit_project — change the project document on disk and need no browser. The open editor follows the file on its own. This is the normal way to compose an edit, and edit_project applies a whole batch atomically.",
+          "CODEX APP entry — get_active_project discovers the freshest editor heartbeat without CDP; read_agent_context returns its pinned/live opencut:// references, compact project summary, and media catalog.",
+          "VISION workflow — inspect_media_scenes finds source-video shot changes; inspect_timeline_range maps a selected timeline interval back to source frames and returns contact sheets. After looking at those images, persist observations with save_media_analysis so later turns can read_media_catalog instead of looking again.",
           "TAB tools — status, get_state, get_context, reveal_context, apply_operation, render_frames, undo, redo — drive a live editor tab over CDP, for the things only a running editor knows: human-selected context, rendered pixels and undo history.",
           "Both refuse a stale baseRevision rather than merging it, so always read first and pass the revision you read.",
           "Read the result. noEffect:true means the operation ran but changed nothing, so the edit did NOT happen.",
@@ -205,6 +264,95 @@ export function createOpenCutMcpServer() {
       annotations: readOnly,
     },
     ({ projectId: id }) => bridge({ method: "getContext", projectId: id }),
+  );
+
+  server.registerTool(
+    "get_active_project",
+    {
+      description:
+        "Discover the project currently open in the human's freshest OpenCut editor, including its revision, scene, and compact pinned/live opencut:// context. Browser debugging is NOT required; the editor publishes a local heartbeat.",
+      inputSchema: {},
+      annotations: readOnly,
+    },
+    async () => {
+      try {
+        const presence = await activeEditorPresence();
+        if (presence?.active !== true) {
+          return asError({
+            code: "no_active_editor",
+            message: "No OpenCut editor heartbeat is active.",
+            hint: "Open a project in OpenCut, wait up to five seconds, then retry. Use list_projects when no editor should be open.",
+          });
+        }
+        return asText(presence);
+      } catch (error) {
+        return asError({
+          code: error?.code ?? "presence_failed",
+          message: String(error?.message ?? error),
+        });
+      }
+    },
+  );
+
+  server.registerTool(
+    "read_agent_context",
+    {
+      description:
+        "One browser-free entry call for a Codex App conversation. Omit projectId to use the active OpenCut editor; returns selected/pinned context, a compact project summary, and an Agent-readable media catalog (generated in memory if no sidecar exists).",
+      inputSchema: {
+        projectId: z
+          .string()
+          .min(1)
+          .optional()
+          .describe("Omit to use get_active_project discovery."),
+      },
+      annotations: readOnly,
+    },
+    async ({ projectId: requestedId }) => {
+      try {
+        const presence = await activeEditorPresence().catch(() => ({ active: false }));
+        const id =
+          requestedId ??
+          (presence?.active === true && typeof presence.projectId === "string"
+            ? presence.projectId
+            : null);
+        if (!id) {
+          return asError({
+            code: "no_active_editor",
+            message: "No projectId was supplied and no active OpenCut editor was found.",
+            hint: "Open a project or call list_projects and pass one of its ids.",
+          });
+        }
+        const document = await readProject({ projectId: id });
+        const mediaIndex = await mediaIndexOf({ projectId: id }).catch(() => ({}));
+        const persisted = await readMediaCatalog({ projectId: id });
+        const catalog =
+          persisted ??
+          buildMediaCatalog({
+            document,
+            mediaIndex,
+            generatedAt: new Date().toISOString(),
+          });
+        return asText({
+          activeEditor:
+            presence?.active === true && presence.projectId === id
+              ? presence
+              : { active: false, projectId: id },
+          context:
+            presence?.active === true && presence.projectId === id
+              ? (presence.context ?? null)
+              : null,
+          project: describeDocument({ document, detail: "summary" }),
+          mediaCatalog: catalog,
+          mediaCatalogPersisted: persisted !== null,
+        });
+      } catch (error) {
+        return asError({
+          code: error?.code ?? "driver_error",
+          message: String(error?.message ?? error),
+        });
+      }
+    },
   );
 
   server.registerTool(
@@ -627,6 +775,272 @@ export function createOpenCutMcpServer() {
         };
       } catch (error) {
         return asError({ code: error.code ?? "driver_error", message: error.message });
+      }
+    },
+  );
+
+  server.registerTool(
+    "inspect_media_scenes",
+    {
+      description:
+        "Scene-aware multimodal look at one SOURCE video. ffmpeg detects visual cut points, samples the midpoint of each shot, and returns one labeled contact sheet plus exact source seconds. After interpreting the image, call save_media_analysis.",
+      inputSchema: {
+        projectId: z.string().min(1),
+        assetId: z.string().min(1).describe("From list_media or read_media_catalog."),
+        threshold: z
+          .number()
+          .min(0.05)
+          .max(0.95)
+          .optional()
+          .describe("Scene-change sensitivity; default 0.32. Lower finds more cuts."),
+        maxScenes: z.number().int().min(1).max(25).optional(),
+        cellWidth: z.number().int().min(160).max(640).optional(),
+      },
+      annotations: readOnly,
+    },
+    async ({ projectId: id, assetId, threshold, maxScenes, cellWidth }) => {
+      try {
+        const { detection, sheet } = await inspectMediaScenes({
+          projectId: id,
+          assetId,
+          ...(threshold !== undefined ? { threshold } : {}),
+          ...(maxScenes !== undefined ? { maxScenes } : {}),
+          ...(cellWidth !== undefined ? { cellWidth } : {}),
+        });
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  schemaVersion: "opencut.scene-inspection.v1",
+                  detection,
+                  grid: sheet.grid,
+                  labeled: sheet.labeled,
+                  cells: sheet.cells,
+                  next:
+                    "Interpret this contact sheet multimodally, then call save_media_analysis with scene intervals, descriptions, tags, and summary.",
+                },
+                null,
+                2,
+              ),
+            },
+            { type: "image", data: sheet.jpegBase64, mimeType: "image/jpeg" },
+          ],
+        };
+      } catch (error) {
+        return asError({ code: error.code ?? "driver_error", message: error.message });
+      }
+    },
+  );
+
+  server.registerTool(
+    "inspect_timeline_range",
+    {
+      description:
+        "Look at a TIMELINE interval without a browser. Maps uniformly spaced timeline moments through trims/constant or curve speed/reverse into source-media seconds, groups them per asset, and returns one contact sheet per source. This is the tool named by range references in opencut.agent-context.v1.",
+      inputSchema: {
+        projectId: z.string().min(1),
+        sceneId: z.string().min(1).optional(),
+        startSeconds: z.number().finite().nonnegative(),
+        endSeconds: z.number().finite().positive(),
+        maxFrames: z.number().int().min(1).max(25).optional(),
+        cellWidth: z.number().int().min(160).max(640).optional(),
+      },
+      annotations: readOnly,
+    },
+    async ({
+      projectId: id,
+      sceneId,
+      startSeconds,
+      endSeconds,
+      maxFrames,
+      cellWidth,
+    }) => {
+      try {
+        const document = await readProject({ projectId: id });
+        const plan = planTimelineRangeInspection({
+          document,
+          ...(sceneId ? { sceneId } : {}),
+          startSeconds,
+          endSeconds,
+          ...(maxFrames !== undefined ? { maxFrames } : {}),
+        });
+        const mediaIndex = await mediaIndexOf({ projectId: id }).catch(() => ({}));
+        const content = [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                ...plan,
+                next:
+                  "Read every returned contact sheet as one time sequence. Persist reusable per-asset observations with save_media_analysis before editing.",
+              },
+              null,
+              2,
+            ),
+          },
+        ];
+        for (const group of Object.values(plan.byAsset)) {
+          const asset = mediaIndex[group.assetId];
+          if (!asset || asset.type === "audio") {
+            content.push({
+              type: "text",
+              text: JSON.stringify({
+                assetId: group.assetId,
+                warning: asset ? "Asset has no visual stream." : "Asset is missing from media index.",
+              }),
+            });
+            continue;
+          }
+          const duration =
+            typeof asset.duration === "number" && asset.duration > 0
+              ? asset.duration
+              : null;
+          const validTimes =
+            asset.type === "image"
+              ? [0]
+              : group.sourceSeconds.filter(
+                  (value) => duration === null || (value >= 0 && value < duration),
+                );
+          if (validTimes.length === 0) {
+            content.push({
+              type: "text",
+              text: JSON.stringify({
+                assetId: group.assetId,
+                warning: "Every mapped source time is outside the decodable asset duration.",
+                requestedSourceSeconds: group.sourceSeconds,
+                durationSeconds: duration,
+              }),
+            });
+            continue;
+          }
+          const sheet = await inspectMedia({
+            projectId: id,
+            assetId: group.assetId,
+            atSeconds: validTimes,
+            ...(cellWidth !== undefined ? { cellWidth } : {}),
+          });
+          content.push({
+            type: "text",
+            text: JSON.stringify(
+              {
+                assetId: group.assetId,
+                assetName: asset.name ?? group.assetId,
+                timelineSamples: group.samples,
+                cells: sheet.cells,
+                grid: sheet.grid,
+              },
+              null,
+              2,
+            ),
+          });
+          content.push({ type: "image", data: sheet.jpegBase64, mimeType: "image/jpeg" });
+        }
+        return { content };
+      } catch (error) {
+        return asError({
+          code: error.code ?? "driver_error",
+          message: String(error?.message ?? error),
+        });
+      }
+    },
+  );
+
+  server.registerTool(
+    "build_media_catalog",
+    {
+      description:
+        "Build or refresh agent/media-catalog.json for every project asset: compact technical facts, all timeline uses, stable opencut:// URI, and preserved multimodal analysis. Thumbnails/data URLs and private storage ids are excluded.",
+      inputSchema: { projectId: z.string().min(1) },
+      annotations: { readOnlyHint: false, destructiveHint: false },
+    },
+    async ({ projectId: id }) => {
+      try {
+        const document = await readProject({ projectId: id });
+        const mediaIndex = await mediaIndexOf({ projectId: id }).catch(() => ({}));
+        const existingCatalog = await readMediaCatalog({ projectId: id });
+        const catalog = buildMediaCatalog({
+          document,
+          mediaIndex,
+          existingCatalog,
+        });
+        const result = await writeMediaCatalog({ projectId: id, catalog });
+        return asText({
+          ok: true,
+          projectId: id,
+          assetCount: Object.keys(catalog.assets).length,
+          path: result.path,
+          catalog,
+        });
+      } catch (error) {
+        return asError({
+          code: error.code ?? "driver_error",
+          message: String(error?.message ?? error),
+        });
+      }
+    },
+  );
+
+  server.registerTool(
+    "read_media_catalog",
+    {
+      description:
+        "Read the persisted Agent-readable media JSON sidecar. It contains technical metadata, timeline uses, and prior Codex/human scene observations so later turns do not need to re-inspect known footage.",
+      inputSchema: { projectId: z.string().min(1) },
+      annotations: readOnly,
+    },
+    async ({ projectId: id }) => {
+      try {
+        const catalog = await readMediaCatalog({ projectId: id });
+        if (!catalog) {
+          return asError({
+            code: "media_catalog_missing",
+            message: `Project ${id} has no media catalog yet.`,
+            hint: "Call build_media_catalog once, then inspect_media_scenes or inspect_timeline_range and save_media_analysis.",
+          });
+        }
+        return asText(catalog);
+      } catch (error) {
+        return asError({
+          code: error.code ?? "driver_error",
+          message: String(error?.message ?? error),
+        });
+      }
+    },
+  );
+
+  server.registerTool(
+    "save_media_analysis",
+    {
+      description:
+        "Persist the multimodal observations you made from inspect_media_scenes/inspect_timeline_range into agent/media-catalog.json. This does not modify the edit timeline or project revision.",
+      inputSchema: {
+        projectId: z.string().min(1),
+        assetId: z.string().min(1),
+        analysis: MediaAnalysisSchema,
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false },
+    },
+    async ({ projectId: id, assetId, analysis }) => {
+      try {
+        const { path, catalog } = await saveMediaAnalysis({
+          projectId: id,
+          assetId,
+          analysis,
+        });
+        return asText({
+          ok: true,
+          projectId: id,
+          assetId,
+          path,
+          analysis: catalog.assets[assetId].analysis,
+        });
+      } catch (error) {
+        return asError({
+          code: error.code ?? "driver_error",
+          message: String(error?.message ?? error),
+        });
       }
     },
   );

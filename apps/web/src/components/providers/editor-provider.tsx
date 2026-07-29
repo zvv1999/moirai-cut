@@ -10,6 +10,9 @@ import { useKeybindingsStore } from "@/actions/keybindings-store";
 import { useTimelineStore } from "@/timeline/timeline-store";
 import { useEditorActions } from "@/actions/use-editor-actions";
 import { installAgentBridge } from "@/agent/bridge";
+import { buildAgentContextSnapshot } from "@/agent/context-references";
+import { useAgentContextStore } from "@/agent/context-store";
+import { toSeconds } from "@/agent/time";
 import { watchProjectFile } from "@/services/storage/project-file-sync";
 import { AgentBadge } from "@/components/editor/agent-badge";
 import { loadFontAtlas } from "@/fonts/google-fonts";
@@ -169,11 +172,61 @@ function EditorRuntimeBindings() {
 	// The editor is no longer the only writer of its own document: with the
 	// project on disk, an agent or another window can change it. Watch the file
 	// so an external edit is picked up instead of being silently overwritten.
-	const activeProjectId = editor.project.getActiveOrNull()?.metadata.id ?? null;
+	const activeProjectId = useEditor(
+		(instance) => instance.project.getActiveOrNull()?.metadata.id ?? null,
+	);
 	useEffect(() => {
 		if (!activeProjectId) return;
 		return watchProjectFile({ projectId: activeProjectId });
 	}, [activeProjectId]);
+
+	// Publish a compact heartbeat so a Codex App conversation launched outside
+	// this panel can discover the human's current project and exact pinned/live
+	// context. The snapshot is rebuilt at send time, so selection/playhead
+	// changes do not need another React subscription while video is playing.
+	useEffect(() => {
+		if (!activeProjectId) return;
+		let disposed = false;
+		const publish = async () => {
+			if (disposed) return;
+			const state = editor.agent.getState();
+			const snapshot = buildAgentContextSnapshot({
+				state,
+				pinnedReferences: useAgentContextStore.getState().references,
+				selectedElements: editor.selection.getSelectedElements(),
+				playheadSeconds:
+					toSeconds(editor.playback.getCurrentTime()) ?? 0,
+			});
+			await fetch("/api/editor-presence", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					projectId: activeProjectId,
+					sceneId: state.sceneId,
+					revision: state.revision,
+					context: snapshot.context,
+				}),
+				keepalive: true,
+			}).catch(() => undefined);
+		};
+		void publish();
+		const timer = window.setInterval(() => void publish(), 5_000);
+		const onVisibility = () => {
+			if (document.visibilityState === "visible") void publish();
+		};
+		document.addEventListener("visibilitychange", onVisibility);
+		return () => {
+			disposed = true;
+			window.clearInterval(timer);
+			document.removeEventListener("visibilitychange", onVisibility);
+			void fetch("/api/editor-presence", {
+				method: "DELETE",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ projectId: activeProjectId }),
+				keepalive: true,
+			}).catch(() => undefined);
+		};
+	}, [activeProjectId, editor]);
 
 	useEditorActions();
 	useKeybindingsListener();

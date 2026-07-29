@@ -146,8 +146,29 @@ export interface ProjectStateSummary {
    * video of the previous cut, with no error anywhere.
    */
   loadedFileRevision: number | null;
-  /** Importable media, so `element.insert` can name a real source. */
-  media: Array<{ id: string; name: string; type: string; durationSeconds: number | null }>;
+  /**
+   * Importable media, so `element.insert` can name a real source. This is a
+   * deliberately compact technical view: thumbnails and browser object URLs
+   * are excluded because they can be megabytes and are meaningless to an
+   * out-of-page agent.
+   */
+  media: Array<{
+    id: string;
+    name: string;
+    type: string;
+    durationSeconds: number | null;
+    width?: number;
+    height?: number;
+    fps?: number;
+    hasAudio?: boolean;
+    browserCanDecode?: boolean;
+    proxy?: {
+      enabled: boolean;
+      width: number;
+      height: number;
+      mimeType: string;
+    };
+  }>;
 }
 
 function describeFrameRate(
@@ -826,18 +847,53 @@ export class AgentManager {
     };
     const assets = typeof manager?.getAssets === "function" ? manager.getAssets() : [];
     if (!Array.isArray(assets)) return [];
-    return assets.map((asset) => ({
-      id: String(asset.id ?? ""),
-      name: String(asset.name ?? ""),
-      type: String(asset.type ?? asset.mediaType ?? "unknown"),
-      // NOT toSeconds(): a MediaAsset's duration is already in seconds — it comes
-      // straight from mediabunny's computeDuration() and every other consumer
-      // feeds it to mediaTimeFromSeconds. Only timeline ELEMENTS store ticks.
-      durationSeconds:
-        typeof asset.duration === "number" && Number.isFinite(asset.duration)
-          ? asset.duration
-          : null,
-    }));
+    return assets.map((asset) => {
+      const proxy =
+        asset.proxy && typeof asset.proxy === "object"
+          ? (asset.proxy as Record<string, unknown>)
+          : null;
+      return {
+        id: String(asset.id ?? ""),
+        name: String(asset.name ?? ""),
+        type: String(asset.type ?? asset.mediaType ?? "unknown"),
+        // NOT toSeconds(): a MediaAsset's duration is already in seconds — it comes
+        // straight from mediabunny's computeDuration() and every other consumer
+        // feeds it to mediaTimeFromSeconds. Only timeline ELEMENTS store ticks.
+        durationSeconds:
+          typeof asset.duration === "number" && Number.isFinite(asset.duration)
+            ? asset.duration
+            : null,
+        ...(typeof asset.width === "number" && Number.isFinite(asset.width)
+          ? { width: asset.width }
+          : {}),
+        ...(typeof asset.height === "number" && Number.isFinite(asset.height)
+          ? { height: asset.height }
+          : {}),
+        ...(typeof asset.fps === "number" && Number.isFinite(asset.fps)
+          ? { fps: asset.fps }
+          : {}),
+        ...(typeof asset.hasAudio === "boolean"
+          ? { hasAudio: asset.hasAudio }
+          : {}),
+        ...(typeof asset.browserCanDecode === "boolean"
+          ? { browserCanDecode: asset.browserCanDecode }
+          : {}),
+        ...(proxy &&
+        typeof proxy.enabled === "boolean" &&
+        typeof proxy.width === "number" &&
+        typeof proxy.height === "number" &&
+        typeof proxy.mimeType === "string"
+          ? {
+              proxy: {
+                enabled: proxy.enabled,
+                width: proxy.width,
+                height: proxy.height,
+                mimeType: proxy.mimeType,
+              },
+            }
+          : {}),
+      };
+    });
   }
 
   private rememberKey(key: string): void {

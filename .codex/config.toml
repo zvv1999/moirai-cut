@@ -1,0 +1,9 @@
+[mcp_servers.opencut]
+command = "node"
+args = ["apps/mcp/src/server.mjs"]
+cwd = "."
+startup_timeout_sec = 30.0
+
+[mcp_servers.opencut.env]
+OPENCUT_BASE_URL = "http://127.0.0.1:3000"
+OPENCUT_PROJECTS_DIR = "../opencut-projects"

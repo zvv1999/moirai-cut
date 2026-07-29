@@ -17,6 +17,9 @@ export interface AgentElementContextReference {
 	elementType: string;
 	startSeconds: number;
 	endSeconds: number;
+	mediaId?: string;
+	sourceStartSeconds?: number;
+	sourceEndSeconds?: number;
 }
 
 export interface AgentRangeContextReference {
@@ -28,6 +31,15 @@ export interface AgentRangeContextReference {
 	startSeconds: number;
 	endSeconds: number;
 	elements: ElementRefInput[];
+	analysisRequest: {
+		tool: "inspect_timeline_range";
+		arguments: {
+			projectId: string;
+			sceneId: string;
+			startSeconds: number;
+			endSeconds: number;
+		};
+	};
 }
 
 export interface AgentMediaContextReference {
@@ -39,6 +51,17 @@ export interface AgentMediaContextReference {
 	mediaId: string;
 	mediaType: string;
 	durationSeconds: number | null;
+	width?: number;
+	height?: number;
+	fps?: number;
+	hasAudio?: boolean;
+	browserCanDecode?: boolean;
+	proxy?: {
+		enabled: boolean;
+		width: number;
+		height: number;
+		mimeType: string;
+	};
 }
 
 export type AgentContextReference =
@@ -76,7 +99,32 @@ export interface AgentContextSnapshot {
 	source: "pinned" | "live-selection" | "empty";
 	references: AgentContextReference[];
 	liveSelection: AgentElementContextReference[];
+	context: AgentContextPacket;
+	contextJson: string;
 	promptContext: string;
+}
+
+export interface AgentContextPacket {
+	schemaVersion: "opencut.agent-context.v1";
+	project: {
+		id: string;
+		name: string | null;
+		revision: number;
+		sceneId: string;
+		sceneName: string | null;
+		playheadSeconds: number;
+		fps: ProjectStateSummary["fps"];
+	};
+	source: AgentContextSnapshot["source"];
+	references: AgentContextReference[];
+	timelineElements: AgentElementContextReference[];
+	media: AgentMediaContextReference[];
+	workflow: {
+		readTool: "read_project";
+		editTool: "edit_project";
+		mediaCatalogTool: "read_media_catalog";
+		rangeInspectionTool: "inspect_timeline_range";
+	};
 }
 
 export type AgentContextRevealTarget =
@@ -260,6 +308,20 @@ export function buildElementContextReferences({
 			elementType: found.element.type,
 			startSeconds,
 			endSeconds,
+			...(found.element.mediaId
+				? {
+						mediaId: found.element.mediaId,
+						...(found.element.trimStartSeconds !== null
+							? {
+									sourceStartSeconds:
+										found.element.trimStartSeconds,
+									sourceEndSeconds:
+										found.element.trimStartSeconds +
+										(endSeconds - startSeconds),
+								}
+							: {}),
+					}
+				: {}),
 		});
 	}
 	return references;
@@ -298,6 +360,15 @@ export function buildTimelineRangeReference({
 			startSeconds: start,
 			endSeconds: end,
 		}),
+		analysisRequest: {
+			tool: "inspect_timeline_range",
+			arguments: {
+				projectId,
+				sceneId,
+				startSeconds: start,
+				endSeconds: end,
+			},
+		},
 	};
 }
 
@@ -327,6 +398,14 @@ export function buildMediaContextReferences({
 			mediaId,
 			mediaType: asset.type,
 			durationSeconds: asset.durationSeconds,
+			...(asset.width !== undefined ? { width: asset.width } : {}),
+			...(asset.height !== undefined ? { height: asset.height } : {}),
+			...(asset.fps !== undefined ? { fps: asset.fps } : {}),
+			...(asset.hasAudio !== undefined ? { hasAudio: asset.hasAudio } : {}),
+			...(asset.browserCanDecode !== undefined
+				? { browserCanDecode: asset.browserCanDecode }
+				: {}),
+			...(asset.proxy ? { proxy: asset.proxy } : {}),
 		});
 	}
 	return references;
@@ -401,6 +480,18 @@ export function buildAgentContextSnapshot({
 			: liveSelection.length > 0
 				? "live-selection"
 				: "empty";
+	const context = buildAgentContextPacket({
+		state,
+		references,
+		playheadSeconds,
+		source,
+	});
+	const contextJson = JSON.stringify(context, null, 2);
+	const compactPaths = serializeAgentContext({
+		state,
+		references,
+		playheadSeconds,
+	});
 	return {
 		revision: state.revision,
 		projectId,
@@ -409,11 +500,84 @@ export function buildAgentContextSnapshot({
 		source,
 		references,
 		liveSelection,
-		promptContext: serializeAgentContext({
-			state,
-			references,
+		context,
+		contextJson,
+		promptContext: [
+			compactPaths,
+			"<opencut-agent-context-json>",
+			contextJson,
+			"</opencut-agent-context-json>",
+		].join("\n"),
+	};
+}
+
+export function buildAgentContextPacket({
+	state,
+	references,
+	playheadSeconds,
+	source,
+}: {
+	state: ProjectStateSummary;
+	references: AgentContextReference[];
+	playheadSeconds: number;
+	source: AgentContextSnapshot["source"];
+}): AgentContextPacket {
+	const { projectId, sceneId } = requiredAddress(state);
+	const directElements = references.filter(
+		(reference): reference is AgentElementContextReference =>
+			reference.kind === "element",
+	);
+	const rangedElements = references.flatMap((reference) =>
+		reference.kind === "range"
+			? buildElementContextReferences({
+					state,
+					selectedElements: reference.elements,
+				})
+			: [],
+	);
+	const timelineElements = [
+		...new Map(
+			[...directElements, ...rangedElements].map((reference) => [
+				reference.uri,
+				reference,
+			]),
+		).values(),
+	];
+	const referencedMediaIds = new Set<string>();
+	for (const reference of references) {
+		if (reference.kind === "media") referencedMediaIds.add(reference.mediaId);
+		if (reference.kind === "element" && reference.mediaId) {
+			referencedMediaIds.add(reference.mediaId);
+		}
+	}
+	for (const reference of timelineElements) {
+		if (reference.mediaId) referencedMediaIds.add(reference.mediaId);
+	}
+	const media = buildMediaContextReferences({
+		state,
+		mediaIds: [...referencedMediaIds],
+	});
+	return {
+		schemaVersion: "opencut.agent-context.v1",
+		project: {
+			id: projectId,
+			name: state.projectName,
+			revision: state.revision,
+			sceneId,
+			sceneName: state.sceneName,
 			playheadSeconds,
-		}),
+			fps: state.fps,
+		},
+		source,
+		references,
+		timelineElements,
+		media,
+		workflow: {
+			readTool: "read_project",
+			editTool: "edit_project",
+			mediaCatalogTool: "read_media_catalog",
+			rangeInspectionTool: "inspect_timeline_range",
+		},
 	};
 }
 

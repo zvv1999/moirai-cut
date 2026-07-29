@@ -25,6 +25,159 @@ const run = promisify(execFile);
 const FONT = "/System/Library/Fonts/Helvetica.ttc";
 const MAX_CELLS = 25;
 
+export function parseSceneChangeTimes(output) {
+  const seen = new Set();
+  const times = [];
+  for (const match of String(output ?? "").matchAll(/pts_time:([0-9]+(?:\.[0-9]+)?)/g)) {
+    const value = Math.round(Number(match[1]) * 1000) / 1000;
+    if (!Number.isFinite(value) || value <= 0) continue;
+    // ffmpeg can emit adjacent frames around one transition. At inspection
+    // scale those are one cut, not two one-frame scenes.
+    const bucket = Math.round(value * 100);
+    if (seen.has(bucket)) continue;
+    seen.add(bucket);
+    times.push(value);
+  }
+  return times.sort((a, b) => a - b);
+}
+
+export function planSceneInspectionTimes({
+  durationSeconds,
+  sceneChanges,
+  maxScenes = 16,
+}) {
+  if (
+    typeof durationSeconds !== "number" ||
+    !Number.isFinite(durationSeconds) ||
+    durationSeconds <= 0
+  ) {
+    return [0];
+  }
+  if (!Number.isInteger(maxScenes) || maxScenes < 1 || maxScenes > MAX_CELLS) {
+    throw new MediaImportError(
+      `Scene count must be an integer from 1 to ${MAX_CELLS}; got ${JSON.stringify(maxScenes)}.`,
+      "invalid_inspection_request",
+    );
+  }
+  const cuts = [...new Set(sceneChanges ?? [])]
+    .filter(
+      (value) =>
+        typeof value === "number" &&
+        Number.isFinite(value) &&
+        value > 0 &&
+        value < durationSeconds,
+    )
+    .sort((a, b) => a - b);
+  const boundaries = [0, ...cuts, durationSeconds];
+  const midpoints = boundaries
+    .slice(0, -1)
+    .map((start, index) => (start + boundaries[index + 1]) / 2);
+  if (midpoints.length <= maxScenes) return midpoints;
+  return Array.from(
+    { length: maxScenes },
+    (_, index) =>
+      midpoints[
+        Math.min(
+          midpoints.length - 1,
+          Math.floor(((index + 0.5) * midpoints.length) / maxScenes),
+        )
+      ],
+  );
+}
+
+export async function detectMediaScenes({
+  projectId,
+  assetId,
+  threshold = 0.32,
+  maxScenes = 16,
+  base = process.env.OPENCUT_BASE_URL ?? "http://localhost:3000",
+}, {
+  loadMediaIndex = mediaIndexOf,
+  runCommand = run,
+} = {}) {
+  const index = await loadMediaIndex({ projectId, base });
+  const asset = index[assetId];
+  if (!asset) {
+    throw new MediaImportError(
+      `No asset ${assetId} in project ${projectId}. Use list_media for the ids.`,
+      "unknown_asset",
+    );
+  }
+  if (asset.type !== "video") {
+    throw new MediaImportError(
+      `${asset.name ?? assetId} is not a video — scene detection needs a video stream.`,
+      "no_video_stream",
+    );
+  }
+  if (
+    typeof threshold !== "number" ||
+    !Number.isFinite(threshold) ||
+    threshold < 0.05 ||
+    threshold > 0.95
+  ) {
+    throw new MediaImportError(
+      "Scene threshold must be between 0.05 and 0.95.",
+      "invalid_inspection_request",
+    );
+  }
+  const durationSeconds =
+    typeof asset.duration === "number" && asset.duration > 0
+      ? asset.duration
+      : null;
+  const url = `${base.replace(/\/+$/, "")}/api/media/${encodeURIComponent(projectId)}/${encodeURIComponent(assetId)}`;
+  const result = await runCommand(
+    "ffmpeg",
+    [
+      "-hide_banner",
+      "-v",
+      "info",
+      "-i",
+      url,
+      "-vf",
+      `select=gt(scene\\,${threshold}),showinfo`,
+      "-an",
+      "-f",
+      "null",
+      "-",
+    ],
+    { maxBuffer: 16 * 1024 * 1024 },
+  ).catch((error) => {
+    throw new MediaImportError(
+      `ffmpeg scene detection failed for ${asset.name ?? assetId}: ${String(error?.stderr ?? error?.message ?? "").slice(-500)}`,
+    );
+  });
+  const sceneChanges = parseSceneChangeTimes(result.stderr);
+  const sampleSeconds = planSceneInspectionTimes({
+    durationSeconds,
+    sceneChanges,
+    maxScenes,
+  });
+  return {
+    asset: {
+      id: assetId,
+      name: asset.name ?? assetId,
+      durationSeconds,
+      width: asset.width ?? null,
+      height: asset.height ?? null,
+    },
+    threshold,
+    sceneChanges,
+    sampleSeconds,
+  };
+}
+
+export async function inspectMediaScenes(options, dependencies = {}) {
+  const detection = await detectMediaScenes(options, dependencies);
+  const sheet = await inspectMedia(
+    {
+      ...options,
+      atSeconds: detection.sampleSeconds,
+    },
+    dependencies,
+  );
+  return { detection, sheet };
+}
+
 /**
  * Decide which source-media seconds to inspect before paying for ffmpeg.
  *
