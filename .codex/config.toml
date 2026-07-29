@@ -1,5 +1,5 @@
 [mcp_servers.opencut]
-command = "node"
+command = "bun"
 args = ["apps/mcp/src/server.mjs"]
 cwd = "."
 startup_timeout_sec = 30.0

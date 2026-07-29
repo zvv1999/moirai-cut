@@ -78,7 +78,7 @@ function commonCodexConfigArgs(runtime: CodexRuntimeConfig): string[] {
 		"-c",
 		"mcp_servers={}",
 		"-c",
-		'mcp_servers.opencut.command="node"',
+		'mcp_servers.opencut.command="bun"',
 		"-c",
 		`mcp_servers.opencut.args=${JSON.stringify([runtime.mcpServerPath])}`,
 		"-c",
