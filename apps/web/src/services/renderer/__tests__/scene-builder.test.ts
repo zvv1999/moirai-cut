@@ -5,7 +5,11 @@ import { mediaTimeFromSeconds } from "@/wasm";
 import { buildScene } from "../scene-builder";
 import { VideoNode } from "../nodes/video-node";
 
-function legacyTrimmedVideoTracks(): SceneTracks {
+function legacyTrimmedVideoTracks({
+	sourceDuration,
+}: {
+	sourceDuration?: number;
+} = {}): SceneTracks {
 	return {
 		overlay: [],
 		main: {
@@ -24,6 +28,7 @@ function legacyTrimmedVideoTracks(): SceneTracks {
 					duration: mediaTimeFromSeconds({ seconds: 4.7 }),
 					trimStart: mediaTimeFromSeconds({ seconds: 0.5 }),
 					trimEnd: mediaTimeFromSeconds({ seconds: 7.808 }),
+					...(sourceDuration === undefined ? {} : { sourceDuration }),
 					params: {},
 				},
 			],
@@ -32,14 +37,18 @@ function legacyTrimmedVideoTracks(): SceneTracks {
 	};
 }
 
-function videoAsset(): MediaAsset {
+function videoAsset({
+	duration = 13.008333,
+}: {
+	duration?: number | null;
+} = {}): MediaAsset {
 	return {
 		id: "video-media",
 		name: "微信视频.mp4",
 		type: "video",
 		file: new File(["video"], "微信视频.mp4", { type: "video/mp4" }),
 		url: "blob:video",
-		duration: 13.008333,
+		...(duration == null ? {} : { duration }),
 		width: 1920,
 		height: 1080,
 	};
@@ -63,6 +72,43 @@ describe("preview scene video source timing", () => {
 
 		expect(videoNode?.params.sourceDuration).toBe(
 			mediaTimeFromSeconds({ seconds: asset.duration! }),
+		);
+	});
+
+	test("preserves an explicit clip source duration", () => {
+		const sourceDuration = mediaTimeFromSeconds({ seconds: 20 });
+		const scene = buildScene({
+			canvasSize: { width: 1080, height: 1920 },
+			tracks: legacyTrimmedVideoTracks({ sourceDuration }),
+			mediaAssets: [videoAsset()],
+			duration: mediaTimeFromSeconds({ seconds: 47.7 }),
+			background: { type: "color", color: "#000000" },
+		});
+
+		const videoNode = scene.children.find(
+			(node): node is VideoNode => node instanceof VideoNode,
+		);
+
+		expect(videoNode?.params.sourceDuration).toBe(sourceDuration);
+	});
+
+	test("falls back to the stored trim equation when media duration is unavailable", () => {
+		const tracks = legacyTrimmedVideoTracks();
+		const element = tracks.main.elements[0]!;
+		const scene = buildScene({
+			canvasSize: { width: 1080, height: 1920 },
+			tracks,
+			mediaAssets: [videoAsset({ duration: null })],
+			duration: mediaTimeFromSeconds({ seconds: 47.7 }),
+			background: { type: "color", color: "#000000" },
+		});
+
+		const videoNode = scene.children.find(
+			(node): node is VideoNode => node instanceof VideoNode,
+		);
+
+		expect(videoNode?.params.sourceDuration).toBe(
+			element.trimStart + element.duration + element.trimEnd,
 		);
 	});
 });
