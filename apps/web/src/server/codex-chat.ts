@@ -222,7 +222,7 @@ interface PendingRpcRequest {
 	timer: ReturnType<typeof setTimeout>;
 }
 
-class CodexAppServerRpcClient implements CodexAppServerConnection {
+export class CodexAppServerRpcClient implements CodexAppServerConnection {
 	private nextRequestId = 0;
 	private readonly pending = new Map<number, PendingRpcRequest>();
 	private readonly subscriptions = new Map<

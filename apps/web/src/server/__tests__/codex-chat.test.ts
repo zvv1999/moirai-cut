@@ -52,7 +52,11 @@ function appServerProcess() {
 			if (newline < 0) break;
 			const line = buffer.slice(0, newline);
 			buffer = buffer.slice(newline + 1);
-			writes.push(JSON.parse(line) as Record<string, unknown>);
+			const message: unknown = JSON.parse(line);
+			if (!message || typeof message !== "object" || Array.isArray(message)) {
+				throw new Error("Expected a JSON-RPC object.");
+			}
+			writes.push(message);
 		}
 	});
 	return {
@@ -63,10 +67,13 @@ function appServerProcess() {
 	};
 }
 
-async function waitForWrite(
-	writes: Array<Record<string, unknown>>,
-	count: number,
-): Promise<void> {
+async function waitForWrite({
+	writes,
+	count,
+}: {
+	writes: Array<Record<string, unknown>>;
+	count: number;
+}): Promise<void> {
 	for (let attempt = 0; attempt < 100 && writes.length < count; attempt += 1) {
 		await Bun.sleep(1);
 	}
@@ -79,14 +86,14 @@ describe("Codex app-server JSON-RPC client", () => {
 		const client = new CodexAppServerRpcClient(fake.process);
 		const initialized = client.initialize();
 
-		await waitForWrite(fake.writes, 1);
+		await waitForWrite({ writes: fake.writes, count: 1 });
 		expect(fake.writes[0]).toMatchObject({
 			id: 1,
 			method: "initialize",
 		});
 		fake.stdout.write('{"id":1,"result":{"userAgent":"test"}}\n');
 		await initialized;
-		await waitForWrite(fake.writes, 2);
+		await waitForWrite({ writes: fake.writes, count: 2 });
 		expect(fake.writes[1]).toEqual({ method: "initialized" });
 
 		const subscription = client.subscribe("thread-1");
@@ -129,7 +136,7 @@ describe("Codex app-server JSON-RPC client", () => {
 			params: {},
 		});
 
-		await waitForWrite(fake.writes, 1);
+		await waitForWrite({ writes: fake.writes, count: 1 });
 		fake.stdout.write(
 			'{"id":1,"error":{"code":-32603,"message":"上游拒绝"}}\n',
 		);
@@ -141,7 +148,7 @@ describe("Codex app-server JSON-RPC client", () => {
 			method: "turn/start",
 			params: {},
 		});
-		await waitForWrite(fake.writes, 2);
+		await waitForWrite({ writes: fake.writes, count: 2 });
 		fake.stderr.write("Codex 连接中断");
 		fake.process.emit("close", 7);
 
