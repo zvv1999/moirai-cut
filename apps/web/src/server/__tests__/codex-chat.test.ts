@@ -57,6 +57,11 @@ describe("Codex direct Smart Edit chat", () => {
 		);
 		expect(prompt).toContain("直接执行");
 		expect(prompt).toContain("不要运行 lint_cut、render_frames");
+		expect(prompt).toContain("使用 read_project 和 edit_project");
+		expect(prompt).toContain(
+			"不要调用 status、get_context、open_editor、reveal_context",
+		);
+		expect(prompt).not.toContain("优先使用 get_context");
 		expect(prompt).not.toContain("至少需要两个字幕素材");
 	});
 
