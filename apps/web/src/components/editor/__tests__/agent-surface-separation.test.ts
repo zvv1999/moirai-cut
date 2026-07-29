@@ -58,6 +58,16 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain("buildMediaContextReferences");
 	});
 
+	test("上下文选择器支持搜索、精确时间段、批量引用和 Agent JSON", () => {
+		expect(workbenchSource).toContain('aria-label="搜索可引用内容"');
+		expect(workbenchSource).toContain('aria-label="引用开始时间（秒）"');
+		expect(workbenchSource).toContain('aria-label="引用结束时间（秒）"');
+		expect(workbenchSource).toContain("引用精确时间段");
+		expect(workbenchSource).toContain("引用筛选结果");
+		expect(workbenchSource).toContain("contextSnapshot.contextJson");
+		expect(workbenchSource).toContain("复制 JSON");
+	});
+
 	test("对话框展示可配置的 Codex Path 连接状态", () => {
 		expect(workbenchSource).toContain('fetch("/api/codex/config")');
 		expect(workbenchSource).toContain('aria-label="配置 Codex 连接"');
