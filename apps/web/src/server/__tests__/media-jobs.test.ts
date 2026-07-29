@@ -308,4 +308,58 @@ describe("native media proxy jobs", () => {
 			code: "ENOENT",
 		});
 	});
+
+	test("bounds concurrent transcodes so batch proxy work keeps editing responsive", async () => {
+		const source = await fixture();
+		const indexPath = path.join(source.mediaDirectory, "index.json");
+		const index = JSON.parse(await readFile(indexPath, "utf8"));
+		for (const assetId of ["asset-jobs-2", "asset-jobs-3"]) {
+			index[assetId] = {
+				...index[source.assetId],
+				id: assetId,
+				name: `${assetId}.mp4`,
+			};
+			await writeFile(
+				path.join(source.mediaDirectory, `${assetId}.mp4`),
+				`source-${assetId}`,
+			);
+		}
+		await writeFile(indexPath, JSON.stringify(index));
+
+		let active = 0;
+		let maximumActive = 0;
+		const transcode: NativeTranscodeRunner = async ({
+			temporaryOutputPath,
+		}) => {
+			active += 1;
+			maximumActive = Math.max(maximumActive, active);
+			await Bun.sleep(20);
+			await writeFile(temporaryOutputPath, "proxy");
+			active -= 1;
+		};
+		const service = new NativeMediaJobService({
+			projectsRoot: source.projectsRoot,
+			probeFile,
+			transcode,
+			maxConcurrent: 2,
+		});
+		const queued = await Promise.all(
+			[source.assetId, "asset-jobs-2", "asset-jobs-3"].map((assetId) =>
+				service.ensureProxy({
+					projectId: source.projectId,
+					assetId,
+				}),
+			),
+		);
+		await Promise.all(
+			queued.map((job) =>
+				service.waitForTerminal({
+					projectId: source.projectId,
+					jobId: job.id,
+				}),
+			),
+		);
+
+		expect(maximumActive).toBe(2);
+	});
 });
