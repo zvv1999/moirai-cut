@@ -84,6 +84,12 @@ export type NativeTranscodeRunner = ({
 	}) => void;
 }) => Promise<void>;
 
+interface QueuedProxyExecution {
+	jobId: string;
+	probe: ProjectMediaProbeResult;
+	controller: AbortController;
+}
+
 interface ProxyProfile {
 	maxLongEdge: number;
 	maxFps: number;
@@ -456,22 +462,35 @@ export class NativeMediaJobService {
 	private readonly projectsRoot: string;
 	private readonly probeFile?: ProbeFile;
 	private readonly transcode: NativeTranscodeRunner;
+	private readonly maxConcurrent: number;
 	private readonly jobs = new Map<string, Map<string, NativeMediaJob>>();
 	private readonly loadedProjects = new Set<string>();
+	private readonly loadingProjects = new Map<
+		string,
+		Promise<Map<string, NativeMediaJob>>
+	>();
 	private readonly controllers = new Map<string, AbortController>();
+	private readonly pendingExecutions: QueuedProxyExecution[] = [];
+	private activeExecutions = 0;
 
 	constructor({
 		projectsRoot = defaultProjectsRoot(),
 		probeFile,
 		transcode = runNativeTranscode,
+		maxConcurrent = 2,
 	}: {
 		projectsRoot?: string;
 		probeFile?: ProbeFile;
 		transcode?: NativeTranscodeRunner;
+		maxConcurrent?: number;
 	} = {}) {
 		this.projectsRoot = projectsRoot;
 		this.probeFile = probeFile;
 		this.transcode = transcode;
+		this.maxConcurrent = Math.max(
+			1,
+			Math.min(8, Math.trunc(maxConcurrent)),
+		);
 	}
 
 	private controllerKey({
@@ -493,6 +512,24 @@ export class NativeMediaJobService {
 		if (this.loadedProjects.has(projectId)) {
 			return this.jobs.get(projectId) ?? new Map();
 		}
+		const loading = this.loadingProjects.get(projectId);
+		if (loading) {
+			return loading;
+		}
+		const load = this.loadProjectJobs({ projectId });
+		this.loadingProjects.set(projectId, load);
+		try {
+			return await load;
+		} finally {
+			this.loadingProjects.delete(projectId);
+		}
+	}
+
+	private async loadProjectJobs({
+		projectId,
+	}: {
+		projectId: string;
+	}): Promise<Map<string, NativeMediaJob>> {
 		const projectJobs = new Map<string, NativeMediaJob>();
 		try {
 			const parsed: unknown = JSON.parse(
@@ -535,6 +572,28 @@ export class NativeMediaJobService {
 		this.jobs.set(projectId, projectJobs);
 		this.loadedProjects.add(projectId);
 		return projectJobs;
+	}
+
+	private enqueueProxy(execution: QueuedProxyExecution): void {
+		this.pendingExecutions.push(execution);
+		this.drainProxyQueue();
+	}
+
+	private drainProxyQueue(): void {
+		while (
+			this.activeExecutions < this.maxConcurrent &&
+			this.pendingExecutions.length > 0
+		) {
+			const execution = this.pendingExecutions.shift();
+			if (!execution) {
+				return;
+			}
+			this.activeExecutions += 1;
+			void this.executeProxy(execution).finally(() => {
+				this.activeExecutions -= 1;
+				this.drainProxyQueue();
+			});
+		}
 	}
 
 	private async persist({ projectId }: { projectId: string }): Promise<void> {
@@ -638,7 +697,7 @@ export class NativeMediaJobService {
 			this.controllerKey({ projectId, jobId: job.id }),
 			controller,
 		);
-		void this.executeProxy({ jobId: job.id, probe, controller });
+		this.enqueueProxy({ jobId: job.id, probe, controller });
 		return cloneJob(job);
 	}
 
@@ -666,6 +725,9 @@ export class NativeMediaJobService {
 			`.${assetId}-proxy.${jobId}.tmp.mp4`,
 		);
 		try {
+			if (controller.signal.aborted) {
+				throw new DOMException("Transcode cancelled", "AbortError");
+			}
 			this.updateJob({
 				projectId,
 				jobId,
@@ -865,7 +927,15 @@ export class NativeMediaJobService {
 		});
 		const key = this.controllerKey({ projectId, jobId });
 		const controller = this.controllers.get(key);
-		controller?.abort();
+		const pendingIndex = this.pendingExecutions.findIndex(
+			(execution) => execution.jobId === jobId,
+		);
+		if (pendingIndex >= 0) {
+			this.pendingExecutions.splice(pendingIndex, 1);
+			this.controllers.delete(key);
+		} else {
+			controller?.abort();
+		}
 		await this.persist({ projectId });
 		if (controller) {
 			const deadline = Date.now() + 2_000;
