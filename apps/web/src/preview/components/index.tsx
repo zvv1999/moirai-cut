@@ -7,7 +7,11 @@ import { useRafLoop } from "@/hooks/use-raf-loop";
 import { useContainerSize } from "@/hooks/use-container-size";
 import { useFullscreen } from "@/hooks/use-fullscreen";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
-import { TICKS_PER_SECOND, ZERO_MEDIA_TIME } from "@/wasm";
+import {
+	mediaTimeToSeconds,
+	TICKS_PER_SECOND,
+	ZERO_MEDIA_TIME,
+} from "@/wasm";
 import type { RootNode } from "@/services/renderer/nodes/root-node";
 import { buildScene } from "@/services/renderer/scene-builder";
 import { findActiveMissingVisualElements } from "@/media/missing-media";
@@ -30,6 +34,9 @@ import { getPreviewFrameStep } from "@/playback/transport";
 import { getPreviewVisualState } from "@/preview/visual-state";
 import { Button } from "@/components/ui/button";
 import { Film, RotateCcw } from "lucide-react";
+import { selectVideoPrewarmCandidates } from "@/media/preview-prewarm";
+import { getMediaAssetPlaybackSource } from "@/media/proxy";
+import { videoCache } from "@/services/video-cache/service";
 
 function usePreviewSize() {
 	const canvasSize = useEditor(
@@ -185,6 +192,49 @@ function PreviewCanvas({
 		viewportWidth: viewportSize.width,
 	});
 	const { canPan, panByScreenDelta, scaleZoom } = viewport;
+
+	useEffect(() => {
+		const elements = [
+			...previewTracks.overlay.flatMap((track) => track.elements),
+			...previewTracks.main.elements,
+		].flatMap((element) =>
+			"mediaId" in element
+				? [
+						{
+							type: element.type,
+							mediaId: element.mediaId,
+							startSeconds: mediaTimeToSeconds({
+								time: element.startTime,
+							}),
+							durationSeconds: mediaTimeToSeconds({
+								time: element.duration,
+							}),
+						},
+					]
+				: [],
+		);
+		const mediaIds = selectVideoPrewarmCandidates({
+			elements,
+			currentTime: mediaTimeToSeconds({ time: currentTime }),
+			lookaheadSeconds: 3,
+			maxCandidates: 2,
+		});
+		for (const mediaId of mediaIds) {
+			const asset = mediaAssets.find(
+				(candidate) => candidate.id === mediaId,
+			);
+			if (!asset || asset.type !== "video") {
+				continue;
+			}
+			const source = getMediaAssetPlaybackSource({
+				asset,
+				isPreview: true,
+			});
+			void videoCache
+				.prewarm({ mediaId: source.mediaId, file: source.file })
+				.catch(() => undefined);
+		}
+	}, [currentTime, mediaAssets, previewTracks]);
 
 	const renderer = useMemo(() => {
 		return new CanvasRenderer({

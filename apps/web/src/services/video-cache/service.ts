@@ -18,10 +18,23 @@ interface VideoSinkData {
 }
 
 export class VideoCache {
+	private readonly maxSinks = 8;
 	private sinks = new Map<string, VideoSinkData>();
 	private initPromises = new Map<string, Promise<void>>();
 	private frameChain = new Map<string, Promise<unknown>>();
 	private seekGenerations = new Map<string, number>();
+	private lastAccess = new Map<string, number>();
+
+	async prewarm({
+		mediaId,
+		file,
+	}: {
+		mediaId: string;
+		file: File;
+	}): Promise<void> {
+		this.lastAccess.set(mediaId, performance.now());
+		await this.ensureSink({ mediaId, file });
+	}
 
 	async getFrameAt({
 		mediaId,
@@ -32,6 +45,7 @@ export class VideoCache {
 		file: File;
 		time: number;
 	}): Promise<WrappedCanvas | null> {
+		this.lastAccess.set(mediaId, performance.now());
 		await this.ensureSink({ mediaId, file });
 
 		const sinkData = this.sinks.get(mediaId);
@@ -293,10 +307,31 @@ export class VideoCache {
 				prefetching: false,
 				prefetchPromise: null,
 			});
+			this.evictLeastRecentlyUsed({ keepMediaId: mediaId });
 		} catch (error) {
 			input.dispose();
 			console.error(`Failed to initialize video sink for ${mediaId}:`, error);
 			throw error;
+		}
+	}
+
+	private evictLeastRecentlyUsed({
+		keepMediaId,
+	}: {
+		keepMediaId: string;
+	}): void {
+		while (this.sinks.size > this.maxSinks) {
+			const candidate = [...this.sinks.keys()]
+				.filter((mediaId) => mediaId !== keepMediaId)
+				.sort(
+					(left, right) =>
+						(this.lastAccess.get(left) ?? 0) -
+						(this.lastAccess.get(right) ?? 0),
+				)[0];
+			if (!candidate) {
+				return;
+			}
+			this.clearVideo({ mediaId: candidate });
 		}
 	}
 
@@ -314,6 +349,7 @@ export class VideoCache {
 		this.initPromises.delete(mediaId);
 		this.frameChain.delete(mediaId);
 		this.seekGenerations.delete(mediaId);
+		this.lastAccess.delete(mediaId);
 	}
 
 	clearAll(): void {
