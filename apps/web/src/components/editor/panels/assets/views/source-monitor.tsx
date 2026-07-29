@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import {
+	useEffect,
 	useRef,
 	useState,
 	type KeyboardEvent as ReactKeyboardEvent,
@@ -26,6 +27,13 @@ import {
 	type SourceRange,
 } from "@/media/source-range";
 import { Pause, Play, RotateCcw } from "lucide-react";
+import {
+	checkBrowserDecodeSupport,
+	requestMediaProbe,
+	type AgentMediaProbeResult,
+} from "@/agent/media-codec";
+import { useEditor } from "@/editor/use-editor";
+import { getMediaAssetPlaybackSource } from "@/media/proxy";
 
 export function SourceMonitorDialog({
 	open,
@@ -81,14 +89,60 @@ export function SourceMonitorView({
 	onClose: () => void;
 }) {
 	const duration = getSourceDurationSeconds({ asset });
+	const projectId = useEditor(
+		(editor) => editor.project.getActive().metadata.id,
+	);
 	const [range, setRange] = useState<SourceRange>(() =>
 		getDefaultSourceRange({ asset }),
 	);
 	const [currentTime, setCurrentTime] = useState(0);
 	const [isPlaying, setIsPlaying] = useState(false);
+	const [diagnostics, setDiagnostics] =
+		useState<AgentMediaProbeResult | null>(null);
+	const [diagnosticError, setDiagnosticError] = useState<string | null>(
+		null,
+	);
 	const mediaRef = useRef<HTMLMediaElement | null>(null);
 	const canPlay = asset.type !== "image";
 	const rangeDuration = range.outPoint - range.inPoint;
+	const playbackSource = getMediaAssetPlaybackSource({
+		asset,
+		isPreview: true,
+	});
+
+	useEffect(() => {
+		if (asset.type === "image") {
+			return;
+		}
+		let active = true;
+		void (async () => {
+			try {
+				const browserCanDecode =
+					asset.browserCanDecode ??
+					(await checkBrowserDecodeSupport({ asset }));
+				const result = await requestMediaProbe({
+					projectId,
+					assetId: asset.id,
+					browserCanDecode,
+				});
+				if (active) {
+					setDiagnostics(result);
+					setDiagnosticError(null);
+				}
+			} catch (error) {
+				if (active) {
+					setDiagnosticError(
+						error instanceof Error
+							? error.message
+							: String(error),
+					);
+				}
+			}
+		})();
+		return () => {
+			active = false;
+		};
+	}, [asset, projectId]);
 
 	const seek = ({ time }: { time: number }) => {
 		const nextTime = Math.min(duration, Math.max(0, time));
@@ -154,8 +208,7 @@ export function SourceMonitorView({
 			<DialogHeader className="pr-12">
 				<DialogTitle className="truncate">{asset.name}</DialogTitle>
 				<DialogDescription>
-					Source monitor · hover-scrub from the bin, then refine a frame range
-					here. Source files remain unchanged.
+					源监视器 · 精确设置入点和出点，原始素材不会被修改。
 				</DialogDescription>
 			</DialogHeader>
 			<DialogBody className="gap-4">
@@ -168,7 +221,7 @@ export function SourceMonitorView({
 								ref={(element) => {
 									mediaRef.current = element;
 								}}
-								src={asset.url}
+								src={playbackSource.url}
 								className="size-full object-contain"
 								preload="metadata"
 								playsInline
@@ -198,7 +251,7 @@ export function SourceMonitorView({
 								ref={(element) => {
 									mediaRef.current = element;
 								}}
-								src={asset.url}
+								src={playbackSource.url}
 								preload="metadata"
 								className="w-full"
 								onPlay={() => setIsPlaying(true)}
@@ -235,6 +288,14 @@ export function SourceMonitorView({
 						<span>{formatSourceTime({ seconds: duration })}</span>
 					</div>
 				</div>
+
+				{asset.type !== "image" ? (
+					<MediaCodecDiagnostics
+						asset={asset}
+						diagnostics={diagnostics}
+						error={diagnosticError}
+					/>
+				) : null}
 
 				<div className="grid gap-3 rounded-md border p-3">
 					<div className="flex items-center gap-2">
@@ -326,6 +387,140 @@ export function SourceMonitorView({
 					</Button>
 				</div>
 			</DialogFooter>
+		</div>
+	);
+}
+
+function MediaCodecDiagnostics({
+	asset,
+	diagnostics,
+	error,
+}: {
+	asset: MediaAsset;
+	diagnostics: AgentMediaProbeResult | null;
+	error: string | null;
+}) {
+	const video = diagnostics?.probe.videoStreams[0];
+	const audio = diagnostics?.probe.audioStreams[0];
+	const strategyLabels = {
+		direct: "原片直放",
+		"proxy-recommended": "建议代理",
+		"proxy-required": "必须代理",
+		"audio-only": "纯音频",
+		unsupported: "暂不支持",
+	} as const;
+
+	return (
+		<section
+			className="grid gap-2 rounded-md border bg-muted/20 p-3 text-[11px]"
+			aria-label="媒体兼容性诊断"
+		>
+			<div className="flex items-center justify-between gap-3">
+				<strong className="text-xs">媒体信息与兼容性</strong>
+				<span className="rounded-full bg-background px-2 py-1 font-medium">
+					{asset.proxy?.enabled && asset.proxyFile
+						? "当前预览：代理"
+						: "当前预览：原片"}
+				</span>
+			</div>
+			{diagnostics ? (
+				<>
+					<div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
+						<CodecFact
+							label="策略"
+							value={
+								strategyLabels[diagnostics.compatibility.kind]
+							}
+						/>
+						<CodecFact
+							label="封装"
+							value={
+								diagnostics.probe.container.formatNames[0] ??
+								"未知"
+							}
+						/>
+						<CodecFact
+							label="视频"
+							value={
+								video
+									? `${video.codec ?? "未知"}${video.profile ? ` · ${video.profile}` : ""}`
+									: "无"
+							}
+						/>
+						<CodecFact
+							label="像素格式"
+							value={
+								video
+									? `${video.pixelFormat ?? "未知"}${video.bitDepth ? ` · ${video.bitDepth}-bit` : ""}`
+									: "—"
+							}
+						/>
+						<CodecFact
+							label="尺寸 / 帧率"
+							value={
+								video
+									? `${video.width ?? "?"}×${video.height ?? "?"} · ${video.averageFrameRate?.toFixed(2) ?? "?"} fps`
+									: "—"
+							}
+						/>
+						<CodecFact
+							label="帧率模式"
+							value={
+								video?.frameRateMode === "variable"
+									? "可变帧率 VFR"
+									: video?.frameRateMode === "constant"
+										? "恒定帧率 CFR"
+										: "未知"
+							}
+						/>
+						<CodecFact
+							label="色彩"
+							value={
+								video
+									? `${video.color.primaries ?? "未标记"} / ${video.color.transfer ?? "未标记"}${video.hdr ? " · HDR" : " · SDR"}`
+									: "—"
+							}
+						/>
+						<CodecFact
+							label="音频"
+							value={
+								audio
+									? `${audio.codec ?? "未知"} · ${audio.sampleRate ?? "?"} Hz · ${audio.channelLayout ?? `${audio.channels ?? "?"} 声道`}`
+									: "无"
+							}
+						/>
+					</div>
+					{diagnostics.compatibility.reasonCodes.length > 0 ? (
+						<p className="text-muted-foreground">
+							判断依据：
+							{diagnostics.compatibility.reasonCodes.join(" · ")}
+						</p>
+					) : null}
+				</>
+			) : error ? (
+				<p className="text-amber-600">
+					无法读取编解码信息：{error}
+				</p>
+			) : (
+				<p className="text-muted-foreground">正在检测媒体信息…</p>
+			)}
+		</section>
+	);
+}
+
+function CodecFact({
+	label,
+	value,
+}: {
+	label: string;
+	value: string;
+}) {
+	return (
+		<div className="min-w-0">
+			<div className="text-muted-foreground">{label}</div>
+			<div className="truncate font-medium" title={value}>
+				{value}
+			</div>
 		</div>
 	);
 }
