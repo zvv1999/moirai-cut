@@ -22,8 +22,7 @@ export function buildGaussianBlurPasses({
 		Math.max(
 			1,
 			Math.ceil(
-				(maxSigma * maxSigma) /
-					(MAX_EFFECTIVE_SIGMA * MAX_EFFECTIVE_SIGMA),
+				(maxSigma * maxSigma) / (MAX_EFFECTIVE_SIGMA * MAX_EFFECTIVE_SIGMA),
 			),
 		),
 	);
@@ -56,7 +55,15 @@ export function buildGaussianBlurPasses({
 
 export const INTENSITY_TO_SIGMA_DIVISOR = 5;
 
-export function intensityToSigma({ intensity, resolution, reference }: { intensity: number; resolution: number; reference: number }): number {
+export function intensityToSigma({
+	intensity,
+	resolution,
+	reference,
+}: {
+	intensity: number;
+	resolution: number;
+	reference: number;
+}): number {
 	return (intensity / INTENSITY_TO_SIGMA_DIVISOR) * (resolution / reference);
 }
 
@@ -67,12 +74,12 @@ function parseIntensity(effectParams: Record<string, unknown>): number {
 
 export const blurEffectDefinition: EffectDefinition = {
 	type: "blur",
-	name: "Blur",
-	keywords: ["blur", "soft", "defocus"],
+	name: "模糊",
+	keywords: ["模糊", "柔化", "失焦", "blur", "soft", "defocus"],
 	params: [
 		{
 			key: "intensity",
-			label: "Intensity",
+			label: "强度",
 			type: "number",
 			default: 15,
 			min: 0,
@@ -85,7 +92,14 @@ export const blurEffectDefinition: EffectDefinition = {
 			{
 				shader: GAUSSIAN_BLUR_SHADER,
 				uniforms: ({ effectParams, width }) => ({
-					u_sigma: Math.max(intensityToSigma({ intensity: parseIntensity(effectParams), resolution: width, reference: 1920 }), 0.001),
+					u_sigma: Math.max(
+						intensityToSigma({
+							intensity: parseIntensity(effectParams),
+							resolution: width,
+							reference: 1920,
+						}),
+						0.001,
+					),
 					u_step: 1,
 					u_direction: [1, 0],
 				}),
@@ -93,7 +107,14 @@ export const blurEffectDefinition: EffectDefinition = {
 			{
 				shader: GAUSSIAN_BLUR_SHADER,
 				uniforms: ({ effectParams, height }) => ({
-					u_sigma: Math.max(intensityToSigma({ intensity: parseIntensity(effectParams), resolution: height, reference: 1080 }), 0.001),
+					u_sigma: Math.max(
+						intensityToSigma({
+							intensity: parseIntensity(effectParams),
+							resolution: height,
+							reference: 1080,
+						}),
+						0.001,
+					),
 					u_step: 1,
 					u_direction: [0, 1],
 				}),
@@ -101,9 +122,17 @@ export const blurEffectDefinition: EffectDefinition = {
 		],
 		buildPasses: ({ effectParams, width, height }) => {
 			const intensity = parseIntensity(effectParams);
-		return buildGaussianBlurPasses({
-				sigmaX: intensityToSigma({ intensity, resolution: width, reference: 1920 }),
-				sigmaY: intensityToSigma({ intensity, resolution: height, reference: 1080 }),
+			return buildGaussianBlurPasses({
+				sigmaX: intensityToSigma({
+					intensity,
+					resolution: width,
+					reference: 1920,
+				}),
+				sigmaY: intensityToSigma({
+					intensity,
+					resolution: height,
+					reference: 1080,
+				}),
 			});
 		},
 	},

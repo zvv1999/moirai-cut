@@ -31,7 +31,7 @@ function frameToLuma({
 		alpha: false,
 		willReadFrequently: true,
 	});
-	if (!ctx) throw new Error("Could not create the tracking canvas");
+	if (!ctx) throw new Error("无法创建运动跟踪画布");
 	ctx.drawImage(source, 0, 0, width, height);
 	const rgba = ctx.getImageData(0, 0, width, height).data;
 	const luma = new Uint8Array(width * height);
@@ -107,8 +107,7 @@ export async function analyzeVideoMotion({
 	const frames: TrackingFrame[] = [];
 
 	for (let index = 0; index < sampleCount; index++) {
-		if (signal.aborted)
-			throw new DOMException("Tracking cancelled", "AbortError");
+		if (signal.aborted) throw new DOMException("运动跟踪已取消", "AbortError");
 		const localTime = Math.round(
 			(element.duration * index) / Math.max(1, sampleCount - 1),
 		);
@@ -125,7 +124,7 @@ export async function analyzeVideoMotion({
 			time: sourceTime / TICKS_PER_SECOND,
 		});
 		if (!frame) {
-			throw new Error(`Could not decode tracking frame ${index + 1}`);
+			throw new Error(`无法解码第 ${index + 1} 个跟踪画面`);
 		}
 		frames.push({
 			time: localTime,

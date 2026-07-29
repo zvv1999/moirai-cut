@@ -16,18 +16,26 @@ function numberValue({
 
 export const chromaKeyEffectDefinition: EffectDefinition = {
 	type: "chroma-key",
-	name: "Chroma Key",
-	keywords: ["green screen", "key", "remove color", "background"],
+	name: "色度抠图",
+	keywords: [
+		"色度抠图",
+		"绿幕",
+		"去色",
+		"green screen",
+		"key",
+		"remove color",
+		"background",
+	],
 	params: [
 		{
 			key: "keyColor",
-			label: "Key Color",
+			label: "吸取颜色",
 			type: "color",
 			default: "#00ff00",
 		},
 		{
 			key: "similarity",
-			label: "Similarity",
+			label: "相似度",
 			type: "number",
 			default: 20,
 			min: 0,
@@ -36,7 +44,7 @@ export const chromaKeyEffectDefinition: EffectDefinition = {
 		},
 		{
 			key: "softness",
-			label: "Edge Softness",
+			label: "边缘柔化",
 			type: "number",
 			default: 10,
 			min: 0,
@@ -45,7 +53,7 @@ export const chromaKeyEffectDefinition: EffectDefinition = {
 		},
 		{
 			key: "spill",
-			label: "Spill Suppression",
+			label: "溢色抑制",
 			type: "number",
 			default: 50,
 			min: 0,

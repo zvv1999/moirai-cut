@@ -78,6 +78,31 @@ function RegionField({
 	);
 }
 
+function getMaskTypeLabel(type: string): string {
+	switch (type) {
+		case "split":
+			return "线性";
+		case "cinematic-bars":
+			return "电影黑边";
+		case "rectangle":
+			return "矩形";
+		case "ellipse":
+			return "椭圆";
+		case "heart":
+			return "爱心";
+		case "diamond":
+			return "菱形";
+		case "star":
+			return "星形";
+		case "text":
+			return "文字";
+		case "freeform":
+			return "自由绘制";
+		default:
+			return type;
+	}
+}
+
 export function MotionTrackingTab({
 	element,
 	trackId,
@@ -127,7 +152,7 @@ export function MotionTrackingTab({
 			.getAssets()
 			.find((candidate) => candidate.id === element.mediaId);
 		if (!asset) {
-			toast.error("The source media is unavailable for tracking");
+			toast.error("源素材不可用，无法进行运动跟踪");
 			return;
 		}
 		const controller = new AbortController();
@@ -147,13 +172,15 @@ export function MotionTrackingTab({
 				motionTracking: { ...result, binding: resolvedBinding() },
 			});
 			toast.success(
-				`Tracked ${result.samples.length} frames · ${result.failureRanges.length} failure ranges`,
+				`已完成 ${result.samples.length} 个采样点 · ${result.failureRanges.length} 段需要检查`,
 			);
 		} catch (error) {
 			if (error instanceof DOMException && error.name === "AbortError") {
-				toast.info("Motion tracking cancelled");
+				toast.info("已取消运动跟踪");
 			} else {
-				toast.error(error instanceof Error ? error.message : "Tracking failed");
+				toast.error(
+					error instanceof Error ? error.message : "运动跟踪失败，请重试",
+				);
 			}
 		} finally {
 			abortRef.current = null;
@@ -191,39 +218,47 @@ export function MotionTrackingTab({
 
 	return (
 		<div className="flex h-full flex-col">
-			<div className="border-b px-3.5 h-11 shrink-0 flex items-center">
-				<SectionTitle>Motion</SectionTitle>
+			<div className="border-b px-3.5 py-3 shrink-0">
+				<div className="flex items-center justify-between gap-2">
+					<SectionTitle>智能跟踪</SectionTitle>
+					<span className="rounded bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-medium text-cyan-500">
+						本地分析
+					</span>
+				</div>
+				<p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+					识别选定区域的运动，可驱动画面位置或蒙版，并用于视频防抖。
+				</p>
 			</div>
 			<Section sectionKey="motion-region" showTopBorder={false}>
 				<SectionHeader>
-					<SectionTitle>Track region</SectionTitle>
+					<SectionTitle>跟踪区域</SectionTitle>
 				</SectionHeader>
 				<SectionContent>
 					<SectionFields>
 						<div className="grid grid-cols-2 gap-2">
 							<RegionField
-								label="Left"
+								label="左边界"
 								value={region.x}
 								onChange={(x) => setRegion({ ...region, x })}
 							/>
 							<RegionField
-								label="Top"
+								label="上边界"
 								value={region.y}
 								onChange={(y) => setRegion({ ...region, y })}
 							/>
 							<RegionField
-								label="Width"
+								label="宽度"
 								value={region.width}
 								onChange={(width) => setRegion({ ...region, width })}
 							/>
 							<RegionField
-								label="Height"
+								label="高度"
 								value={region.height}
 								onChange={(height) => setRegion({ ...region, height })}
 							/>
 						</div>
 						<label className="flex flex-col gap-1 text-xs">
-							<span className="text-muted-foreground">Analysis quality</span>
+							<span className="text-muted-foreground">分析质量</span>
 							<select
 								className="h-8 rounded-md border bg-background px-2"
 								value={quality}
@@ -233,16 +268,17 @@ export function MotionTrackingTab({
 									}
 								}}
 							>
-								<option value="fast">Fast · 4 samples/s</option>
-								<option value="balanced">Balanced · 7 samples/s</option>
-								<option value="precise">Precise · 10 samples/s</option>
+								<option value="fast">快速 · 每秒 4 个采样点</option>
+								<option value="balanced">均衡 · 每秒 7 个采样点</option>
+								<option value="precise">精细 · 每秒 10 个采样点</option>
 							</select>
 						</label>
 						<label className="flex flex-col gap-1 text-xs">
 							<span className="text-muted-foreground">
-								Confidence threshold · {Math.round(confidenceThreshold * 100)}%
+								置信度 · {Math.round(confidenceThreshold * 100)}%
 							</span>
 							<input
+								aria-label={`置信度 · ${Math.round(confidenceThreshold * 100)}%`}
 								type="range"
 								min={10}
 								max={95}
@@ -265,10 +301,10 @@ export function MotionTrackingTab({
 							/>
 						</label>
 						<label className="flex flex-col gap-1 text-xs">
-							<span className="text-muted-foreground">Bind result</span>
+							<span className="text-muted-foreground">应用结果</span>
 							<select
 								className="h-8 rounded-md border bg-background px-2"
-								aria-label="Motion tracking binding"
+								aria-label="运动跟踪应用结果"
 								value={binding}
 								onChange={(event) => {
 									setBinding(event.target.value);
@@ -290,18 +326,18 @@ export function MotionTrackingTab({
 									}
 								}}
 							>
-								<option value="none">Analyze only</option>
-								<option value="transform">Clip transform</option>
+								<option value="none">仅分析，不应用</option>
+								<option value="transform">应用到画面位置</option>
 								{(element.masks ?? []).map((mask, index) => (
 									<option key={mask.id} value={`mask:${mask.id}`}>
-										Mask {index + 1} · {mask.type}
+										蒙版 {index + 1} · {getMaskTypeLabel(mask.type)}
 									</option>
 								))}
 							</select>
 						</label>
 						{progress === null ? (
 							<Button onClick={() => void runTracking()}>
-								{tracking ? "Analyze again" : "Track region"}
+								{tracking ? "重新分析" : "开始跟踪"}
 							</Button>
 						) : (
 							<div className="flex flex-col gap-2">
@@ -312,13 +348,13 @@ export function MotionTrackingTab({
 									/>
 								</div>
 								<div className="flex items-center justify-between text-xs">
-									<span>{Math.round(progress * 100)}% · decoding frames</span>
+									<span>{Math.round(progress * 100)}% · 正在解码画面</span>
 									<Button
 										size="sm"
 										variant="ghost"
 										onClick={() => abortRef.current?.abort()}
 									>
-										Cancel
+										取消
 									</Button>
 								</div>
 							</div>
@@ -326,12 +362,12 @@ export function MotionTrackingTab({
 						{tracking ? (
 							<div className="rounded-md border p-2 text-xs">
 								<div className="font-medium text-emerald-600">
-									{tracking.samples.length} samples ready
+									已完成 {tracking.samples.length} 个采样点
 								</div>
 								<div className="text-muted-foreground">
 									{failures.length === 0
-										? "No low-confidence ranges"
-										: `${failures.length} low-confidence ranges need review`}
+										? "没有低置信度区间"
+										: `${failures.length} 段低置信度区间需要检查`}
 								</div>
 							</div>
 						) : null}
@@ -342,13 +378,13 @@ export function MotionTrackingTab({
 			{tracking ? (
 				<Section sectionKey="tracking-failures">
 					<SectionHeader>
-						<SectionTitle>Failure ranges</SectionTitle>
+						<SectionTitle>待检查区间</SectionTitle>
 					</SectionHeader>
 					<SectionContent>
 						<SectionFields>
 							{failures.length === 0 ? (
 								<p className="text-muted-foreground text-xs">
-									Every sample is above the confidence threshold.
+									所有采样点均达到当前置信度要求。
 								</p>
 							) : (
 								failures.map((range, index) => (
@@ -357,7 +393,7 @@ export function MotionTrackingTab({
 										className="grid grid-cols-[1fr_1fr_auto] items-end gap-1.5"
 									>
 										<label className="flex flex-col gap-1 text-xs">
-											<span className="text-muted-foreground">Start</span>
+											<span className="text-muted-foreground">开始</span>
 											<input
 												type="number"
 												step={0.01}
@@ -375,7 +411,7 @@ export function MotionTrackingTab({
 											/>
 										</label>
 										<label className="flex flex-col gap-1 text-xs">
-											<span className="text-muted-foreground">End</span>
+											<span className="text-muted-foreground">结束</span>
 											<input
 												type="number"
 												step={0.01}
@@ -403,13 +439,14 @@ export function MotionTrackingTab({
 
 			<Section sectionKey="stabilization">
 				<SectionHeader>
-					<SectionTitle>Stabilization</SectionTitle>
+					<SectionTitle>防抖</SectionTitle>
 				</SectionHeader>
 				<SectionContent>
 					<SectionFields>
 						<div className="flex items-center justify-between text-sm">
-							<span>Stabilize tracked motion</span>
+							<span>稳定跟踪运动</span>
 							<Switch
+								aria-label="稳定跟踪运动"
 								disabled={!tracking}
 								checked={stabilization.enabled}
 								onCheckedChange={(enabled) =>
@@ -421,9 +458,10 @@ export function MotionTrackingTab({
 						</div>
 						<label className="flex flex-col gap-1 text-xs">
 							<span className="text-muted-foreground">
-								Strength · {Math.round(stabilization.strength)}%
+								强度 · {Math.round(stabilization.strength)}%
 							</span>
 							<input
+								aria-label={`防抖强度 · ${Math.round(stabilization.strength)}%`}
 								type="range"
 								min={0}
 								max={100}
@@ -440,8 +478,9 @@ export function MotionTrackingTab({
 							/>
 						</label>
 						<div className="flex items-center justify-between text-sm">
-							<span>Auto crop edges</span>
+							<span>自动裁切边缘</span>
 							<Switch
+								aria-label="自动裁切边缘"
 								disabled={!tracking}
 								checked={stabilization.autoCrop}
 								onCheckedChange={(autoCrop) =>
@@ -462,9 +501,9 @@ export function MotionTrackingTab({
 						>
 							{tracking
 								? failures.length === 0
-									? "Quality: good · no failed ranges"
-									: `Quality: review ${failures.length} failed ranges`
-								: "Run motion analysis before enabling stabilization"}
+									? "分析质量良好 · 没有待检查区间"
+									: `请检查 ${failures.length} 段低置信度区间`
+								: "完成运动跟踪后即可开启防抖"}
 						</div>
 						{tracking ? (
 							<Button
@@ -476,7 +515,7 @@ export function MotionTrackingTab({
 									})
 								}
 							>
-								Clear analysis
+								清除分析结果
 							</Button>
 						) : null}
 					</SectionFields>

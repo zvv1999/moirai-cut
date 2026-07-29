@@ -87,7 +87,7 @@ function buildOverlayStarPath({
 
 export const starMaskDefinition: MaskDefinition<"star"> = {
 	type: "star",
-	name: "Star",
+	name: "星形",
 	features: {
 		hasPosition: true,
 		hasRotation: true,

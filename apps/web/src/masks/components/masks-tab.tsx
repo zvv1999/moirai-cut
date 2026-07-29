@@ -276,13 +276,13 @@ export function MasksTab({ element, trackId }: MasksTabProps) {
 	return (
 		<div className="flex flex-col h-full">
 			<div className="border-b px-3.5 h-11 shrink-0 flex items-center justify-between gap-2">
-				<SectionTitle>Masks</SectionTitle>
+				<SectionTitle>蒙版</SectionTitle>
 				<DropdownMenu
 					open={isDropdownOpen}
 					onOpenChange={handleDropdownOpenChange}
 				>
 					<DropdownMenuTrigger asChild>
-						<Button variant="ghost" size="icon" aria-label="Add mask">
+						<Button variant="ghost" size="icon" aria-label="添加蒙版">
 							<HugeiconsIcon icon={PlusSignIcon} className="size-3.5!" />
 						</Button>
 					</DropdownMenuTrigger>
@@ -317,9 +317,7 @@ export function MasksTab({ element, trackId }: MasksTabProps) {
 						}
 						onCommit={commit}
 						isFirst={index === 0}
-						onCombineModeChange={(mode) =>
-							updateCombineMode({ index, mode })
-						}
+						onCombineModeChange={(mode) => updateCombineMode({ index, mode })}
 					/>
 				))
 			)}
@@ -347,7 +345,7 @@ function MaskItem({
 						<Button
 							variant="ghost"
 							size="icon"
-							aria-label={`Toggle ${definition.name} mask inversion`}
+							aria-label={`切换${definition.name}反转`}
 							onClick={() =>
 								editor.timeline.toggleMaskInverted({
 									trackId,
@@ -363,7 +361,7 @@ function MaskItem({
 						<Button
 							variant="ghost"
 							size="icon"
-							aria-label={`Remove ${definition.name} mask`}
+							aria-label={`移除${definition.name}`}
 							onClick={() =>
 								editor.timeline.removeMask({
 									trackId,
@@ -385,7 +383,7 @@ function MaskItem({
 				</div>
 			</SectionHeader>
 			<SectionContent>
-				<SectionField label="Combine">
+				<SectionField label="混合方式">
 					<Select
 						value={isFirst ? "base" : (mask.combineMode ?? "add")}
 						disabled={isFirst}
@@ -395,15 +393,15 @@ function MaskItem({
 							}
 						}}
 					>
-						<SelectTrigger aria-label={`${definition.name} combine mode`}>
+						<SelectTrigger aria-label={`${definition.name}混合方式`}>
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							{isFirst ? <SelectItem value="base">Base mask</SelectItem> : null}
-							<SelectItem value="add">Add</SelectItem>
-							<SelectItem value="intersect">Intersect</SelectItem>
-							<SelectItem value="subtract">Subtract</SelectItem>
-							<SelectItem value="exclude">Exclude</SelectItem>
+							{isFirst ? <SelectItem value="base">基础蒙版</SelectItem> : null}
+							<SelectItem value="add">添加</SelectItem>
+							<SelectItem value="intersect">相交</SelectItem>
+							<SelectItem value="subtract">减去</SelectItem>
+							<SelectItem value="exclude">排除</SelectItem>
 						</SelectContent>
 					</Select>
 				</SectionField>
@@ -461,7 +459,7 @@ function MaskParamsFields({
 			{definition.features.hasPosition &&
 				"centerX" in mask.params &&
 				"centerY" in mask.params && (
-					<SectionField label="Position">
+					<SectionField label="位置">
 						<div className="flex items-center gap-2">
 							<MaskNumberField
 								className="flex-1"
@@ -498,7 +496,7 @@ function MaskParamsFields({
 			{definition.features.sizeMode === "width-height" &&
 				"width" in mask.params &&
 				"height" in mask.params && (
-					<SectionField label="Size">
+					<SectionField label="大小">
 						<div className="flex items-center gap-2">
 							<MaskNumberField
 								className="flex-1"
@@ -534,7 +532,7 @@ function MaskParamsFields({
 
 			{definition.features.sizeMode === "height-only" &&
 				"height" in mask.params && (
-					<SectionField label="Height">
+					<SectionField label="高度">
 						<MaskNumberField
 							icon="H"
 							param={getNumberParamDefinition({
@@ -553,7 +551,7 @@ function MaskParamsFields({
 
 			{definition.features.sizeMode === "width-only" &&
 				"width" in mask.params && (
-					<SectionField label="Width">
+					<SectionField label="宽度">
 						<MaskNumberField
 							icon="W"
 							param={getNumberParamDefinition({
@@ -571,7 +569,7 @@ function MaskParamsFields({
 				)}
 
 			{definition.features.sizeMode === "uniform" && "scale" in mask.params && (
-				<SectionField label="Scale">
+				<SectionField label="缩放">
 					<MaskNumberField
 						icon={
 							isTextMask(mask) ? <HugeiconsIcon icon={ArrowExpandIcon} /> : "S"
@@ -591,7 +589,7 @@ function MaskParamsFields({
 			)}
 
 			{definition.features.hasRotation && "rotation" in mask.params && (
-				<SectionField label="Rotation">
+				<SectionField label="旋转">
 					<MaskNumberField
 						icon={<HugeiconsIcon icon={RotateClockwiseIcon} />}
 						param={getNumberParamDefinition({
@@ -608,7 +606,7 @@ function MaskParamsFields({
 				</SectionField>
 			)}
 
-			<SectionField label="Feather">
+			<SectionField label="羽化">
 				<MaskNumberField
 					icon={<HugeiconsIcon icon={FeatherIcon} />}
 					param={featherParam}
@@ -621,7 +619,7 @@ function MaskParamsFields({
 				/>
 			</SectionField>
 
-			<SectionField label="Stroke">
+			<SectionField label="描边">
 				<div className="flex flex-col gap-2">
 					<div className="flex items-center gap-2">
 						<MaskNumberField
@@ -673,7 +671,7 @@ function MaskParamsFields({
 
 const LETTER_SPACING_PARAM: NumberParamDefinition = {
 	key: "letterSpacing",
-	label: "Letter spacing",
+	label: "字间距",
 	type: "number",
 	default: 0,
 	min: -100,
@@ -683,7 +681,7 @@ const LETTER_SPACING_PARAM: NumberParamDefinition = {
 
 const LINE_HEIGHT_PARAM: NumberParamDefinition = {
 	key: "lineHeight",
-	label: "Line height",
+	label: "行高",
 	type: "number",
 	default: 1.2,
 	min: 0.1,
@@ -714,7 +712,7 @@ function TextMaskFields({
 
 	return (
 		<>
-			<SectionField label="Content">
+			<SectionField label="内容">
 				<Textarea
 					value={content.displayValue}
 					className="min-h-20"
@@ -723,7 +721,7 @@ function TextMaskFields({
 					onBlur={content.onBlur}
 				/>
 			</SectionField>
-			<SectionField label="Font">
+			<SectionField label="字体">
 				<FontPicker
 					defaultValue={mask.params.fontFamily}
 					onValueChange={(value) => {
@@ -732,7 +730,7 @@ function TextMaskFields({
 					}}
 				/>
 			</SectionField>
-			<SectionField label="Size">
+			<SectionField label="大小">
 				<MaskNumberField
 					icon={<HugeiconsIcon icon={TextFontIcon} />}
 					param={fontSizeParam}
@@ -741,7 +739,7 @@ function TextMaskFields({
 					onCommit={onCommit}
 				/>
 			</SectionField>
-			<SectionField label="Spacing">
+			<SectionField label="间距">
 				<div className="flex items-start gap-2">
 					<MaskNumberField
 						className="w-1/2"
@@ -868,13 +866,13 @@ function EmptyView({ onAddMask }: EmptyViewProps) {
 		<div className="flex flex-col h-full items-center justify-center gap-4 text-center">
 			<OcShapesIcon className="size-10 text-muted-foreground" strokeWidth={1} />
 			<div className="flex flex-col gap-2">
-				<h3 className="font-medium text-foreground">No masks</h3>
+				<h3 className="font-medium text-foreground">暂无蒙版</h3>
 				<p className="text-muted-foreground text-sm text-balance max-w-40">
-					Add a mask to hide or reveal parts of this layer.
+					添加蒙版以隐藏或显示当前图层的局部区域。
 				</p>
 			</div>
 			<Button variant="default" size="sm" onClick={onAddMask}>
-				Add mask
+				添加蒙版
 			</Button>
 		</div>
 	);

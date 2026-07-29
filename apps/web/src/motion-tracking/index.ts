@@ -115,7 +115,7 @@ export function trackTemplateFrames({
 	const first = frames[0];
 	if (!first || first.width <= 0 || first.height <= 0) return [];
 	if (first.luma.length !== first.width * first.height) {
-		throw new Error("Tracking frame luma length does not match its dimensions");
+		throw new Error("跟踪画面的亮度数据长度与画面尺寸不匹配");
 	}
 
 	const width = clamp({
@@ -155,7 +155,7 @@ export function trackTemplateFrames({
 			frame.height !== first.height ||
 			frame.luma.length !== frame.width * frame.height
 		) {
-			throw new Error("Tracking frames must share valid dimensions");
+			throw new Error("跟踪画面必须具有一致且有效的尺寸");
 		}
 		let best = { left, top, confidence: -1 };
 		for (

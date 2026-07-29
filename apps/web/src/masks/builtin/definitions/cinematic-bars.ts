@@ -21,8 +21,7 @@ function getDefaultCinematicBarsMaskParams({
 		absWidth > 0 && absHeight > 0
 			? Math.sqrt(absWidth ** 2 + absHeight ** 2)
 			: 0;
-	const fullSpanWidth =
-		absWidth > 0 ? diagonal / absWidth : Math.SQRT2;
+	const fullSpanWidth = absWidth > 0 ? diagonal / absWidth : Math.SQRT2;
 
 	return {
 		...getDefaultBaseMaskParams(),
@@ -73,7 +72,7 @@ function buildBandPath({
 
 export const cinematicBarsMaskDefinition: MaskDefinition<"cinematic-bars"> = {
 	type: "cinematic-bars",
-	name: "Cinematic Bars",
+	name: "电影黑边",
 	features: {
 		hasPosition: true,
 		hasRotation: true,

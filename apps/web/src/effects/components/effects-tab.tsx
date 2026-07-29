@@ -67,7 +67,7 @@ export function StandaloneEffectTab({
 	return (
 		<div className="flex flex-col h-full">
 			<div className="border-b px-3.5 h-11 shrink-0 flex items-center">
-				<SectionTitle>Adjustment layer</SectionTitle>
+				<SectionTitle>调节图层</SectionTitle>
 			</div>
 			<EffectSection
 				effect={effect}
@@ -154,7 +154,7 @@ export function ClipEffectsTab({
 	return (
 		<div className="flex flex-col h-full">
 			<div className="border-b px-3.5 h-11 shrink-0 flex items-center">
-				<SectionTitle>Effects</SectionTitle>
+				<SectionTitle>特效</SectionTitle>
 			</div>
 			<EffectPresetLibrary
 				effects={effects}
@@ -235,8 +235,8 @@ function EffectPresetLibrary({
 	const importRef = useRef<HTMLInputElement>(null);
 	const [selectedId, setSelectedId] = useState(presets[0]?.id ?? "");
 	const selected = presets.find((preset) => preset.id === selectedId) ?? null;
-	const [name, setName] = useState(selected?.name ?? "My effect chain");
-	const [folder, setFolder] = useState(selected?.folder ?? "Custom");
+	const [name, setName] = useState(selected?.name ?? "我的特效组合");
+	const [folder, setFolder] = useState(selected?.folder ?? "自定义");
 
 	const savePresets = ({ next }: { next: EffectPreset[] }) => {
 		void editor.project.updateSettings({ settings: { effectPresets: next } });
@@ -248,7 +248,7 @@ function EffectPresetLibrary({
 	};
 	const createFromChain = () => {
 		if (effects.length === 0) {
-			toast.error("Add at least one effect before saving a preset");
+			toast.error("请先添加至少一个特效，再保存为预设");
 			return;
 		}
 		const preset = createEffectPreset({
@@ -263,11 +263,11 @@ function EffectPresetLibrary({
 		});
 		savePresets({ next: [...presets, preset] });
 		selectPreset({ preset });
-		toast.success(`Saved preset “${preset.name}”`);
+		toast.success(`已保存预设“${preset.name}”`);
 	};
 	const updateSelected = () => {
 		if (!selected) {
-			toast.error("Choose a preset first");
+			toast.error("请先选择一个预设");
 			return;
 		}
 		const updated = createEffectPreset({
@@ -289,11 +289,11 @@ function EffectPresetLibrary({
 			),
 		});
 		selectPreset({ preset: updated });
-		toast.success(`Updated preset “${updated.name}”`);
+		toast.success(`已更新预设“${updated.name}”`);
 	};
 	const applySelected = ({ mode }: { mode: "append" | "replace" }) => {
 		if (!selected) {
-			toast.error("Choose a preset first");
+			toast.error("请先选择一个预设");
 			return;
 		}
 		editor.timeline.updateElements({
@@ -313,7 +313,7 @@ function EffectPresetLibrary({
 			],
 		});
 		toast.success(
-			`${mode === "replace" ? "Replaced with" : "Applied"} “${selected.name}”`,
+			`${mode === "replace" ? "已替换为" : "已应用"}“${selected.name}”`,
 		);
 	};
 	const duplicateSelected = () => {
@@ -327,7 +327,7 @@ function EffectPresetLibrary({
 	};
 	const exportAll = () => {
 		if (presets.length === 0) {
-			toast.error("There are no effect presets to export");
+			toast.error("当前没有可导出的特效预设");
 			return;
 		}
 		const blob = new Blob([exportEffectPresets({ presets })], {
@@ -346,7 +346,7 @@ function EffectPresetLibrary({
 			for (const preset of imported) {
 				for (const effect of preset.effects) {
 					if (!effectsRegistry.has(effect.type)) {
-						throw new Error(`Unknown effect in preset: ${effect.type}`);
+						throw new Error(`预设中包含未知特效：${effect.type}`);
 					}
 				}
 			}
@@ -354,18 +354,16 @@ function EffectPresetLibrary({
 			for (const preset of imported) merged.set(preset.id, preset);
 			savePresets({ next: [...merged.values()] });
 			if (imported[0]) selectPreset({ preset: imported[0] });
-			toast.success(`Imported ${imported.length} effect presets`);
-		} catch (error) {
-			toast.error(
-				error instanceof Error ? error.message : "Could not import presets",
-			);
+			toast.success(`已导入 ${imported.length} 个特效预设`);
+		} catch {
+			toast.error("导入特效预设失败，请检查文件格式");
 		}
 	};
 
 	return (
 		<Section sectionKey="effect-presets">
 			<SectionHeader>
-				<SectionTitle>Effect presets</SectionTitle>
+				<SectionTitle>特效预设</SectionTitle>
 			</SectionHeader>
 			<SectionContent>
 				<SectionFields>
@@ -374,7 +372,7 @@ function EffectPresetLibrary({
 						type="file"
 						accept="application/json,.json"
 						className="hidden"
-						aria-label="Import effect presets"
+						aria-label="导入特效预设"
 						onChange={(event) => {
 							const file = event.target.files?.[0];
 							if (file) void importFile(file);
@@ -382,10 +380,10 @@ function EffectPresetLibrary({
 						}}
 					/>
 					<label className="flex flex-col gap-1 text-xs">
-						<span className="text-muted-foreground">Preset</span>
+						<span className="text-muted-foreground">预设</span>
 						<select
 							className="h-8 rounded-md border bg-background px-2 text-xs"
-							aria-label="Effect preset"
+							aria-label="特效预设"
 							value={selectedId}
 							onChange={(event) => {
 								const preset = presets.find(
@@ -394,7 +392,7 @@ function EffectPresetLibrary({
 								if (preset) selectPreset({ preset });
 							}}
 						>
-							<option value="">Choose preset</option>
+							<option value="">选择预设</option>
 							{presets.map((preset) => (
 								<option key={preset.id} value={preset.id}>
 									{preset.folder} / {preset.name}
@@ -404,38 +402,38 @@ function EffectPresetLibrary({
 					</label>
 					<input
 						className="h-8 rounded-md border bg-background px-2 text-xs"
-						aria-label="Effect preset name"
+						aria-label="特效预设名称"
 						value={name}
 						onChange={(event) => setName(event.target.value)}
-						placeholder="Preset name"
+						placeholder="预设名称"
 					/>
 					<input
 						className="h-8 rounded-md border bg-background px-2 text-xs"
-						aria-label="Effect preset folder"
+						aria-label="特效预设分组"
 						value={folder}
 						onChange={(event) => setFolder(event.target.value)}
-						placeholder="Folder"
+						placeholder="分组"
 					/>
 					<div className="grid grid-cols-2 gap-1.5">
 						<Button size="sm" onClick={createFromChain}>
-							Save chain
+							保存组合
 						</Button>
 						<Button size="sm" variant="outline" onClick={updateSelected}>
-							Update
+							更新
 						</Button>
 						<Button
 							size="sm"
 							variant="outline"
 							onClick={() => applySelected({ mode: "append" })}
 						>
-							Apply
+							追加应用
 						</Button>
 						<Button
 							size="sm"
 							variant="outline"
 							onClick={() => applySelected({ mode: "replace" })}
 						>
-							Replace
+							替换应用
 						</Button>
 						<Button
 							size="sm"
@@ -443,7 +441,7 @@ function EffectPresetLibrary({
 							disabled={!selected}
 							onClick={duplicateSelected}
 						>
-							Duplicate
+							复制
 						</Button>
 						<Button
 							size="sm"
@@ -457,17 +455,17 @@ function EffectPresetLibrary({
 								setSelectedId("");
 							}}
 						>
-							Delete
+							删除
 						</Button>
 						<Button size="sm" variant="ghost" onClick={exportAll}>
-							Export
+							导出
 						</Button>
 						<Button
 							size="sm"
 							variant="ghost"
 							onClick={() => importRef.current?.click()}
 						>
-							Import
+							导入
 						</Button>
 					</div>
 				</SectionFields>
@@ -487,9 +485,9 @@ function EmptyView() {
 				strokeWidth={1}
 			/>
 			<div className="flex flex-col gap-2">
-				<h3 className="font-medium text-foreground">No effects</h3>
+				<h3 className="font-medium text-foreground">暂无特效</h3>
 				<p className="text-muted-foreground text-sm text-balance max-w-44">
-					Add effects to this layer from the Assets panel.
+					从左侧特效库添加特效到当前图层。
 				</p>
 			</div>
 			<Button
@@ -497,7 +495,7 @@ function EmptyView() {
 				size="sm"
 				onClick={() => setActiveTab("effects")}
 			>
-				Open effects
+				打开特效库
 			</Button>
 		</div>
 	);
@@ -527,7 +525,7 @@ function EffectSection({
 		try {
 			lutTitle = parseCubeLut({ source: lutSource }).title;
 		} catch {
-			lutTitle = "Invalid LUT";
+			lutTitle = "无效的 LUT";
 		}
 	}
 
@@ -537,11 +535,9 @@ function EffectSection({
 			const lut = parseCubeLut({ source });
 			previewParam("lutSource")(source);
 			onCommit();
-			toast.success(`Imported LUT: ${lut.title}`);
-		} catch (error) {
-			toast.error(
-				error instanceof Error ? error.message : "Could not import LUT",
-			);
+			toast.success(`已导入 LUT：${lut.title}`);
+		} catch {
+			toast.error("无法导入 LUT，请检查 .cube 文件格式");
 		}
 	};
 
@@ -558,7 +554,7 @@ function EffectSection({
 							<Button
 								variant={effect.enabled ? "secondary" : "ghost"}
 								size="icon"
-								aria-label={`Toggle ${definition.name}`}
+								aria-label={`${effect.enabled ? "关闭" : "开启"}${definition.name}`}
 								onClick={onToggle}
 							>
 								<HugeiconsIcon
@@ -568,7 +564,7 @@ function EffectSection({
 							<Button
 								variant="ghost"
 								size="icon"
-								aria-label={`Remove ${definition.name}`}
+								aria-label={`移除${definition.name}`}
 								onClick={onRemove}
 							>
 								<HugeiconsIcon icon={Delete02Icon} />
@@ -589,21 +585,19 @@ function EffectSection({
 				<SectionFields>
 					{definition.type === "background-removal" ? (
 						<div className="border-b px-4 pb-3 text-xs">
-							<div className="font-medium text-emerald-600">
-								Live processing ready
-							</div>
+							<div className="font-medium text-emerald-600">实时处理已就绪</div>
 							<div className="text-muted-foreground">
-								Corner-sampled subject extraction · preview/export matched
+								主体提取已启用 · 预览与导出效果一致
 							</div>
 						</div>
 					) : null}
 					{definition.type === "chroma-key" ? (
 						<div className="border-b px-4 pb-3 text-xs">
 							<div className="font-medium text-emerald-600">
-								Live color key ready
+								实时色度抠图已就绪
 							</div>
 							<div className="text-muted-foreground">
-								Soft alpha edge and spill suppression enabled
+								已启用柔化边缘与溢色抑制
 							</div>
 						</div>
 					) : null}
@@ -614,7 +608,7 @@ function EffectSection({
 								type="file"
 								accept=".cube,text/plain"
 								className="hidden"
-								aria-label="Import LUT file"
+								aria-label="导入 LUT 文件"
 								onChange={(event) => {
 									const file = event.target.files?.[0];
 									if (file) void importLut(file);
@@ -622,7 +616,7 @@ function EffectSection({
 								}}
 							/>
 							<div className="text-muted-foreground text-xs">
-								{lutSource ? `LUT: ${lutTitle}` : "No LUT imported"}
+								{lutSource ? `LUT：${lutTitle}` : "尚未导入 LUT"}
 							</div>
 							<div className="grid grid-cols-2 gap-1.5">
 								<Button
@@ -631,7 +625,7 @@ function EffectSection({
 									variant="outline"
 									onClick={() => lutInputRef.current?.click()}
 								>
-									Import .cube
+									导入 .cube
 								</Button>
 								<Button
 									type="button"
@@ -643,7 +637,7 @@ function EffectSection({
 										onCommit();
 									}}
 								>
-									Remove LUT
+									移除 LUT
 								</Button>
 							</div>
 						</div>

@@ -15,12 +15,23 @@ function readNumber({
 
 export const colorGradeEffectDefinition: EffectDefinition = {
 	type: "color-grade",
-	name: "Color & Tone",
-	keywords: ["color", "grade", "exposure", "contrast", "lut", "tone"],
+	name: "色彩与影调",
+	keywords: [
+		"色彩",
+		"调色",
+		"曝光",
+		"对比度",
+		"color",
+		"grade",
+		"exposure",
+		"contrast",
+		"lut",
+		"tone",
+	],
 	params: [
 		{
 			key: "exposure",
-			label: "Exposure",
+			label: "曝光",
 			type: "number",
 			default: 0,
 			min: -3,
@@ -29,7 +40,7 @@ export const colorGradeEffectDefinition: EffectDefinition = {
 		},
 		{
 			key: "contrast",
-			label: "Contrast",
+			label: "对比度",
 			type: "number",
 			default: 0,
 			min: -100,
@@ -38,7 +49,7 @@ export const colorGradeEffectDefinition: EffectDefinition = {
 		},
 		{
 			key: "temperature",
-			label: "Temperature",
+			label: "色温",
 			type: "number",
 			default: 0,
 			min: -100,
@@ -47,7 +58,7 @@ export const colorGradeEffectDefinition: EffectDefinition = {
 		},
 		{
 			key: "saturation",
-			label: "Saturation",
+			label: "饱和度",
 			type: "number",
 			default: 0,
 			min: -100,
@@ -56,7 +67,7 @@ export const colorGradeEffectDefinition: EffectDefinition = {
 		},
 		{
 			key: "highlights",
-			label: "Highlights",
+			label: "高光",
 			type: "number",
 			default: 0,
 			min: -100,
@@ -65,7 +76,7 @@ export const colorGradeEffectDefinition: EffectDefinition = {
 		},
 		{
 			key: "shadows",
-			label: "Shadows",
+			label: "阴影",
 			type: "number",
 			default: 0,
 			min: -100,
@@ -74,7 +85,7 @@ export const colorGradeEffectDefinition: EffectDefinition = {
 		},
 		{
 			key: "curve",
-			label: "Tone Curve",
+			label: "影调曲线",
 			type: "number",
 			default: 0,
 			min: -100,
@@ -83,7 +94,7 @@ export const colorGradeEffectDefinition: EffectDefinition = {
 		},
 		{
 			key: "lutStrength",
-			label: "LUT Strength",
+			label: "LUT 强度",
 			type: "number",
 			default: 100,
 			min: 0,
@@ -92,7 +103,7 @@ export const colorGradeEffectDefinition: EffectDefinition = {
 		},
 		{
 			key: "lutSource",
-			label: "LUT Source",
+			label: "LUT 来源",
 			type: "text",
 			default: "",
 			keyframable: false,

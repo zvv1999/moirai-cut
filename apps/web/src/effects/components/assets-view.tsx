@@ -13,7 +13,7 @@ export function EffectsView() {
 	const effects = effectsRegistry.getAll();
 
 	return (
-		<PanelView title="Effects">
+		<PanelView title="特效">
 			<EffectsGrid effects={effects} />
 		</PanelView>
 	);

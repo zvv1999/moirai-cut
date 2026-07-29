@@ -22,13 +22,7 @@ function buildHeartPath({
 	halfHeight: number;
 	rotationRad: number;
 }): Path2D {
-	const toPoint = ({
-		localX,
-		localY,
-	}: {
-		localX: number;
-		localY: number;
-	}) =>
+	const toPoint = ({ localX, localY }: { localX: number; localY: number }) =>
 		rotatePoint({
 			x: centerX + localX,
 			y: centerY + localY,
@@ -80,7 +74,7 @@ function buildHeartPath({
 
 export const heartMaskDefinition: MaskDefinition<"heart"> = {
 	type: "heart",
-	name: "Heart",
+	name: "爱心",
 	features: {
 		hasPosition: true,
 		hasRotation: true,

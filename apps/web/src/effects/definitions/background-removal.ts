@@ -21,24 +21,32 @@ function qualityValue(params: ParamValues): "fast" | "balanced" | "precise" {
 
 export const backgroundRemovalEffectDefinition: EffectDefinition = {
 	type: "background-removal",
-	name: "Background Removal",
-	keywords: ["cutout", "subject", "remove background", "segmentation"],
+	name: "去除背景",
+	keywords: [
+		"去除背景",
+		"智能抠像",
+		"主体",
+		"cutout",
+		"subject",
+		"remove background",
+		"segmentation",
+	],
 	params: [
 		{
 			key: "quality",
-			label: "Quality",
+			label: "处理质量",
 			type: "select",
 			default: "balanced",
 			keyframable: false,
 			options: [
-				{ value: "fast", label: "Fast" },
-				{ value: "balanced", label: "Balanced" },
-				{ value: "precise", label: "Precise" },
+				{ value: "fast", label: "快速" },
+				{ value: "balanced", label: "均衡" },
+				{ value: "precise", label: "精细" },
 			],
 		},
 		{
 			key: "threshold",
-			label: "Background Range",
+			label: "背景识别范围",
 			type: "number",
 			default: 25,
 			min: 0,
@@ -47,7 +55,7 @@ export const backgroundRemovalEffectDefinition: EffectDefinition = {
 		},
 		{
 			key: "softness",
-			label: "Edge Softness",
+			label: "边缘柔化",
 			type: "number",
 			default: 5,
 			min: 0,
