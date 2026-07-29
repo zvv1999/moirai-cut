@@ -71,6 +71,7 @@ export type NativeTranscodeRunner = ({
 	temporaryOutputPath,
 	signal,
 	durationSeconds,
+	timeoutMs,
 	onProgress,
 }: {
 	args: string[];
@@ -78,6 +79,7 @@ export type NativeTranscodeRunner = ({
 	temporaryOutputPath: string;
 	signal: AbortSignal;
 	durationSeconds: number | null;
+	timeoutMs?: number;
 	onProgress: (update: {
 		progress: number;
 		processedSeconds: number;
@@ -371,6 +373,7 @@ export const runNativeTranscode: NativeTranscodeRunner = ({
 	args,
 	signal,
 	durationSeconds,
+	timeoutMs = 2 * 60 * 60 * 1000,
 	onProgress,
 }) =>
 	new Promise((resolve, reject) => {
@@ -381,10 +384,12 @@ export const runNativeTranscode: NativeTranscodeRunner = ({
 		let stderr = "";
 		let stdoutBuffer = "";
 		let settled = false;
-		const timeout = setTimeout(
-			() => child.kill("SIGKILL"),
-			2 * 60 * 60 * 1000,
-		);
+		let timedOut = false;
+		const boundedTimeoutMs = Math.max(1, timeoutMs);
+		const timeout = setTimeout(() => {
+			timedOut = true;
+			child.kill("SIGKILL");
+		}, boundedTimeoutMs);
 
 		const finish = ({
 			error,
@@ -448,7 +453,13 @@ export const runNativeTranscode: NativeTranscodeRunner = ({
 		});
 		child.on("error", (error) => finish({ error }));
 		child.on("close", (code) => {
-			if (signal.aborted) {
+			if (timedOut) {
+				finish({
+					error: new Error(
+						`Transcode timed out after ${boundedTimeoutMs} ms`,
+					),
+				});
+			} else if (signal.aborted) {
 				finish({
 					error: new DOMException("Transcode cancelled", "AbortError"),
 				});
@@ -549,6 +560,7 @@ export class NativeMediaJobService {
 		projectId: string;
 	}): Promise<Map<string, NativeMediaJob>> {
 		const projectJobs = new Map<string, NativeMediaJob>();
+		let recoveredInterruptedJob = false;
 		try {
 			const parsed: unknown = JSON.parse(
 				await readFile(
@@ -565,6 +577,7 @@ export class NativeMediaJobService {
 							job.status === "running"
 						) {
 							job.status = "failed";
+							recoveredInterruptedJob = true;
 							job.error = {
 								code: "interrupted",
 								message:
@@ -589,6 +602,9 @@ export class NativeMediaJobService {
 		}
 		this.jobs.set(projectId, projectJobs);
 		this.loadedProjects.add(projectId);
+		if (recoveredInterruptedJob) {
+			await this.persist({ projectId });
+		}
 		return projectJobs;
 	}
 

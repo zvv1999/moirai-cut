@@ -309,6 +309,36 @@ describe("proxy command construction", () => {
 			}
 		}
 	});
+
+	test("native runner terminates and identifies a bounded timeout", async () => {
+		const directory = await mkdtemp(
+			path.join(tmpdir(), "opencut-timeout-transcoder-"),
+		);
+		const binary = path.join(directory, "ffmpeg");
+		await writeFile(binary, "#!/bin/sh\nwhile true; do :; done\n");
+		await chmod(binary, 0o755);
+		const originalBinary = process.env.FFMPEG_BIN;
+		process.env.FFMPEG_BIN = binary;
+		try {
+			await expect(
+				runNativeTranscode({
+					args: [],
+					inputPath: "/tmp/source.mp4",
+					temporaryOutputPath: "/tmp/output.mp4",
+					signal: new AbortController().signal,
+					durationSeconds: 10,
+					timeoutMs: 20,
+					onProgress: () => undefined,
+				}),
+			).rejects.toThrow("timed out after 20 ms");
+		} finally {
+			if (originalBinary === undefined) {
+				delete process.env.FFMPEG_BIN;
+			} else {
+				process.env.FFMPEG_BIN = originalBinary;
+			}
+		}
+	});
 });
 
 describe("native media proxy jobs", () => {
@@ -463,6 +493,82 @@ describe("native media proxy jobs", () => {
 		expect(terminal.status).toBe("cancelled");
 		await expect(stat(temporaryOutputPath)).rejects.toMatchObject({
 			code: "ENOENT",
+		});
+	});
+
+	test("removes partial output when the disk write path fails", async () => {
+		const source = await fixture();
+		let temporaryOutputPath = "";
+		const service = new NativeMediaJobService({
+			projectsRoot: source.projectsRoot,
+			probeFile,
+			transcode: async ({ temporaryOutputPath: outputPath }) => {
+				temporaryOutputPath = outputPath;
+				await writeFile(outputPath, "partial");
+				throw new Error("No space left on device");
+			},
+		});
+		const queued = await service.ensureProxy({
+			projectId: source.projectId,
+			assetId: source.assetId,
+		});
+		const terminal = await service.waitForTerminal({
+			projectId: source.projectId,
+			jobId: queued.id,
+		});
+
+		expect(terminal).toMatchObject({
+			status: "failed",
+			error: { message: "No space left on device" },
+		});
+		await expect(stat(temporaryOutputPath)).rejects.toMatchObject({
+			code: "ENOENT",
+		});
+	});
+
+	test("recovers interrupted jobs and persists their terminal status", async () => {
+		const source = await fixture();
+		const jobsDirectory = path.join(
+			source.projectsRoot,
+			source.projectId,
+			"codec-jobs",
+		);
+		await mkdir(jobsDirectory, { recursive: true });
+		const jobsFile = path.join(jobsDirectory, "index.json");
+		await writeFile(
+			jobsFile,
+			JSON.stringify([
+				{
+					id: "interrupted-job",
+					kind: "proxy",
+					projectId: source.projectId,
+					assetId: source.assetId,
+					profile: "standard",
+					cacheKey: "hash:standard",
+					status: "running",
+					progress: 0.4,
+					processedSeconds: 4,
+					createdAt: "2026-07-29T00:00:00.000Z",
+					updatedAt: "2026-07-29T00:00:01.000Z",
+				},
+			]),
+		);
+		const service = new NativeMediaJobService({
+			projectsRoot: source.projectsRoot,
+			probeFile,
+		});
+
+		expect(await service.list({ projectId: source.projectId })).toMatchObject([
+			{
+				id: "interrupted-job",
+				status: "failed",
+				error: { code: "interrupted" },
+			},
+		]);
+		const persisted = JSON.parse(await readFile(jobsFile, "utf8"));
+		expect(persisted[0]).toMatchObject({
+			status: "failed",
+			error: { code: "interrupted" },
 		});
 	});
 
