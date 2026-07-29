@@ -6,6 +6,10 @@ const source = readFileSync(
 	fileURLToPath(new URL("../agent-badge.tsx", import.meta.url)),
 	"utf8",
 );
+const workbenchSource = readFileSync(
+	fileURLToPath(new URL("../agent-workbench.tsx", import.meta.url)),
+	"utf8",
+);
 
 describe("智能剪辑与工程历史分面", () => {
 	test("提供两个独立且可访问的入口，不再使用合并入口", () => {
@@ -33,5 +37,20 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(source).toContain(
 			'aria-pressed={openSurface === "project-history"}',
 		);
+	});
+
+	test("智能剪辑直接打开为可访问的对话框", () => {
+		expect(source).toContain('<Dialog open={openSurface === "smart-edit"}');
+		expect(source).toContain('aria-label="智能剪辑对话框"');
+		expect(workbenchSource).toContain('role="log"');
+		expect(workbenchSource).toContain('aria-label="智能剪辑对话记录"');
+		expect(workbenchSource).toContain('aria-label="发送智能剪辑需求"');
+	});
+
+	test("对话框提供时间轴与素材库两类上下文选择器", () => {
+		expect(workbenchSource).toContain('aria-label="添加上下文引用"');
+		expect(workbenchSource).toContain('aria-label="选择时间轴素材"');
+		expect(workbenchSource).toContain('aria-label="选择素材库元素"');
+		expect(workbenchSource).toContain("buildMediaContextReferences");
 	});
 });

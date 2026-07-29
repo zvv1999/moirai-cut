@@ -3,6 +3,7 @@ import type { ProjectStateSummary } from "../agent-manager";
 import {
 	buildAgentContextSnapshot,
 	buildElementContextReferences,
+	buildMediaContextReferences,
 	buildTimelineRangeReference,
 	parseAgentContextUri,
 	resolveAgentContextTarget,
@@ -25,7 +26,14 @@ const state = (): ProjectStateSummary => ({
 		background: "#000000",
 	},
 	loadedFileRevision: 12,
-	media: [],
+	media: [
+		{
+			id: "media/hero",
+			name: "主角源素材.mov",
+			type: "video",
+			durationSeconds: 8,
+		},
+	],
 	tracks: [
 		{
 			id: "video 1",
@@ -126,6 +134,37 @@ describe("Codex context references", () => {
 			{ trackId: "video 1", elementId: "clip-b" },
 			{ trackId: "captions", elementId: "caption-1" },
 		]);
+	});
+
+	test("builds Codex paths for assets picked directly from the media library", () => {
+		const references = buildMediaContextReferences({
+			state: state(),
+			mediaIds: ["media/hero", "missing", "media/hero"],
+		});
+
+		expect(references).toEqual([
+			expect.objectContaining({
+				kind: "media",
+				mediaId: "media/hero",
+				label: "主角源素材.mov",
+				mediaType: "video",
+				durationSeconds: 8,
+				uri: "opencut://project/project%20%2F%20reed/scene/scene%2Fmain/media/media%2Fhero",
+			}),
+		]);
+		expect(parseAgentContextUri(references[0].uri)).toEqual({
+			kind: "media",
+			projectId: "project / reed",
+			sceneId: "scene/main",
+			mediaId: "media/hero",
+		});
+		expect(
+			serializeAgentContext({
+				state: state(),
+				references,
+				playheadSeconds: 0,
+			}),
+		).toContain('<media path="');
 	});
 
 	test("serializes compact Codex-ready context instead of the whole project", () => {

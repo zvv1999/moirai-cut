@@ -31,3 +31,22 @@ test("media bins remain visible, nested, counted, and directly manageable", () =
 	expect(markup).toContain(">3<");
 	expect(markup).toContain(">1<");
 });
+
+test("unfiled is hidden until the first media folder exists", () => {
+	const markup = renderToStaticMarkup(
+		<MediaBinBrowserView
+			bins={[]}
+			assetBinIds={{}}
+			assetIds={["a", "b"]}
+			activeBinId="all"
+			onSelect={() => {}}
+			onCreate={() => {}}
+			onRename={() => {}}
+			onMove={() => {}}
+			onDelete={() => {}}
+		/>,
+	);
+
+	expect(markup).toContain('aria-label="查看全部素材"');
+	expect(markup).not.toContain('aria-label="查看未分类素材"');
+});
