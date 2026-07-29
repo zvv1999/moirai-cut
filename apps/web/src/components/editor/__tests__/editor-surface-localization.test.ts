@@ -76,4 +76,32 @@ describe("editor surface localization", () => {
 			expect(sources).not.toContain(englishLabel);
 		}
 	});
+
+	test("keeps the intelligent editing reliability tools Chinese", () => {
+		const sources = [
+			readSource("../agent-workbench.tsx"),
+			readSource("../reliability-workbench.tsx"),
+		].join("\n");
+
+		for (const translatedLabel of [
+			"工程健康",
+			"性能",
+			"后台任务",
+			"便携工程包",
+			"可寻址修正列表",
+		]) {
+			expect(sources).toContain(translatedLabel);
+		}
+
+		for (const englishLabel of [
+			"Project health",
+			"Performance",
+			"Background jobs",
+			"Portable project package",
+			"Addressable correction pass",
+			"Renders the opening",
+		]) {
+			expect(sources).not.toContain(englishLabel);
+		}
+	});
 });
