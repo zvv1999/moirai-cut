@@ -159,6 +159,71 @@ describe("Codex app-server JSON-RPC client", () => {
 			client.request({ method: "thread/start", params: {} }),
 		).rejects.toThrow("Codex app-server 未连接");
 	});
+
+	test("answers OpenCut MCP approval elicitations without blocking the turn", async () => {
+		const fake = appServerProcess();
+		new CodexAppServerRpcClient(fake.process);
+
+		fake.stdout.write(
+			`${JSON.stringify({
+				id: "elicitation-1",
+				method: "mcpServer/elicitation/request",
+				params: {
+					threadId: "thread-1",
+					turnId: "turn-1",
+					serverName: "opencut",
+					mode: "openai/form",
+					message: "Allow OpenCut to edit the project?",
+					requestedSchema: {},
+					_meta: {
+						codex_approval_kind: "mcp_tool_call",
+						persist: ["session"],
+					},
+				},
+			})}\n`,
+		);
+
+		await waitForWrite({ writes: fake.writes, count: 1 });
+		expect(fake.writes[0]).toEqual({
+			id: "elicitation-1",
+			result: {
+				action: "accept",
+				content: null,
+				_meta: { persist: "session" },
+			},
+		});
+	});
+
+	test("declines non-approval MCP elicitations instead of hanging", async () => {
+		const fake = appServerProcess();
+		new CodexAppServerRpcClient(fake.process);
+
+		fake.stdout.write(
+			`${JSON.stringify({
+				id: 17,
+				method: "mcpServer/elicitation/request",
+				params: {
+					threadId: "thread-1",
+					turnId: "turn-1",
+					serverName: "another-server",
+					mode: "form",
+					message: "Enter a secret",
+					requestedSchema: { type: "object" },
+					_meta: null,
+				},
+			})}\n`,
+		);
+
+		await waitForWrite({ writes: fake.writes, count: 1 });
+		expect(fake.writes[0]).toEqual({
+			id: 17,
+			result: {
+				action: "decline",
+				content: null,
+				_meta: null,
+			},
+		});
+	});
 });
 
 describe("Codex direct Smart Edit streaming chat", () => {
