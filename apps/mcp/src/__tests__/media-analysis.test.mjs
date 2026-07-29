@@ -4,8 +4,9 @@ import {
   buildMediaCatalog,
   planTimelineRangeInspection,
 } from "../media-analysis.mjs";
+import { TICKS_PER_SECOND } from "../document.mjs";
 
-const ticks = (seconds) => seconds * 60_000;
+const ticks = (seconds) => seconds * TICKS_PER_SECOND;
 
 function projectDocument() {
   return {
