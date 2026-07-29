@@ -36,6 +36,17 @@ test("scene-aware inspection samples the midpoint of each detected shot", () => 
   );
 });
 
+test("a long continuous shot still yields a temporal sequence, not one midpoint", () => {
+  assert.deepEqual(
+    planSceneInspectionTimes({
+      durationSeconds: 12,
+      sceneChanges: [],
+      maxScenes: 6,
+    }),
+    [1.5, 4.5, 7.5, 10.5],
+  );
+});
+
 test("explicit source times are preserved when they are decodable", () => {
   assert.deepEqual(
     planInspectionTimes({
