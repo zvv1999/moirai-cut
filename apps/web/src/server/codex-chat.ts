@@ -37,16 +37,12 @@ export type CodexChatEvent =
 		}
 	| { type: "done"; sessionId: string; message: string };
 
-export interface CodexChatStreamOptions {
-	signal?: AbortSignal;
-}
-
 export interface CodexAppServerSubscription extends AsyncIterable<unknown> {
 	close(): void;
 }
 
 export interface CodexAppServerConnection {
-	request(method: string, params: unknown): Promise<unknown>;
+	request(input: { method: string; params: unknown }): Promise<unknown>;
 	subscribe(threadId: string): CodexAppServerSubscription;
 }
 
@@ -55,10 +51,10 @@ export type CodexAppServerConnector = (
 ) => Promise<CodexAppServerConnection>;
 
 export interface CodexChatService {
-	stream(
-		input: CodexChatInput,
-		options?: CodexChatStreamOptions,
-	): AsyncIterable<CodexChatEvent>;
+	stream(input: {
+		input: CodexChatInput;
+		signal?: AbortSignal;
+	}): AsyncIterable<CodexChatEvent>;
 }
 
 export class CodexChatError extends Error {
@@ -256,30 +252,39 @@ class CodexAppServerRpcClient implements CodexAppServerConnection {
 	}
 
 	async initialize(): Promise<void> {
-		await this.request("initialize", {
-			clientInfo: {
-				name: "opencut_smart_edit",
-				title: "OpenCut 智能剪辑",
-				version: "1.0.0",
-			},
-			capabilities: {
-				experimentalApi: true,
-				requestAttestation: false,
-				optOutNotificationMethods: [
-					"turn/diff/updated",
-					"item/reasoning/summaryTextDelta",
-					"item/reasoning/summaryPartAdded",
-					"item/reasoning/textDelta",
-					"item/commandExecution/outputDelta",
-					"command/exec/outputDelta",
-					"process/outputDelta",
-				],
+		await this.request({
+			method: "initialize",
+			params: {
+				clientInfo: {
+					name: "opencut_smart_edit",
+					title: "OpenCut 智能剪辑",
+					version: "1.0.0",
+				},
+				capabilities: {
+					experimentalApi: true,
+					requestAttestation: false,
+					optOutNotificationMethods: [
+						"turn/diff/updated",
+						"item/reasoning/summaryTextDelta",
+						"item/reasoning/summaryPartAdded",
+						"item/reasoning/textDelta",
+						"item/commandExecution/outputDelta",
+						"command/exec/outputDelta",
+						"process/outputDelta",
+					],
+				},
 			},
 		});
-		this.notify("initialized");
+		this.notify({ method: "initialized" });
 	}
 
-	request(method: string, params: unknown): Promise<unknown> {
+	request({
+		method,
+		params,
+	}: {
+		method: string;
+		params: unknown;
+	}): Promise<unknown> {
 		if (!this.isOpen) {
 			return Promise.reject(new CodexChatError("Codex app-server 未连接。"));
 		}
@@ -306,7 +311,13 @@ class CodexAppServerRpcClient implements CodexAppServerConnection {
 		return subscription;
 	}
 
-	private notify(method: string, params?: unknown): void {
+	private notify({
+		method,
+		params,
+	}: {
+		method: string;
+		params?: unknown;
+	}): void {
 		this.write(params === undefined ? { method } : { method, params });
 	}
 
@@ -535,13 +546,13 @@ export function createCodexChatService({
 } = {}): CodexChatService {
 	const sessions = new Map<string, string>();
 	return {
-		async *stream(input, options = {}) {
+		async *stream({ input, signal }) {
 			const connection = await connect(runtime);
 			const requestedSessionId =
 				input.sessionId?.trim() || sessions.get(input.projectId);
-			const threadResponse = await connection.request(
-				requestedSessionId ? "thread/resume" : "thread/start",
-				requestedSessionId
+			const threadResponse = await connection.request({
+				method: requestedSessionId ? "thread/resume" : "thread/start",
+				params: requestedSessionId
 					? {
 							threadId: requestedSessionId,
 							cwd: runtime.repoRoot,
@@ -562,7 +573,7 @@ export function createCodexChatService({
 							approvalPolicy: "never",
 							sandbox: "read-only",
 						},
-			);
+			});
 			const sessionId = threadIdFromResponse(threadResponse);
 			sessions.set(input.projectId, sessionId);
 			const subscription = connection.subscribe(sessionId);
@@ -571,29 +582,35 @@ export function createCodexChatService({
 			const interrupt = () => {
 				if (!turnId) return;
 				void connection
-					.request("turn/interrupt", { threadId: sessionId, turnId })
+					.request({
+						method: "turn/interrupt",
+						params: { threadId: sessionId, turnId },
+					})
 					.catch(() => {});
 			};
-			options.signal?.addEventListener("abort", interrupt, { once: true });
+			signal?.addEventListener("abort", interrupt, { once: true });
 
 			try {
 				yield { type: "session", sessionId };
-				const turnResponse = await connection.request("turn/start", {
-					threadId: sessionId,
-					input: [
-						{
-							type: "text",
-							text: buildCodexPrompt(input),
-							text_elements: [],
-						},
-					],
+				const turnResponse = await connection.request({
+					method: "turn/start",
+					params: {
+						threadId: sessionId,
+						input: [
+							{
+								type: "text",
+								text: buildCodexPrompt(input),
+								text_elements: [],
+							},
+						],
+					},
 				});
 				turnId = turnIdFromResponse(turnResponse);
 				const deadline = Date.now() + TURN_TIMEOUT_MS;
 				let streamedMessage = "";
 
 				for (;;) {
-					if (options.signal?.aborted) {
+					if (signal?.aborted) {
 						throw new CodexChatError("Codex 会话已取消。");
 					}
 					const next = await nextWithDeadline({ iterator, deadline });
@@ -659,7 +676,7 @@ export function createCodexChatService({
 					return;
 				}
 			} finally {
-				options.signal?.removeEventListener("abort", interrupt);
+				signal?.removeEventListener("abort", interrupt);
 				subscription.close();
 			}
 		},

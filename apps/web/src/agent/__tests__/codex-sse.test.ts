@@ -10,7 +10,7 @@ describe("Codex SSE decoder", () => {
 		);
 		expect(
 			decoder.push(
-				'-1\"}\n\nevent: delta\r\ndata: {"delta":"你"}\r\n\r\nevent: del',
+				'-1"}\n\nevent: delta\r\ndata: {"delta":"你"}\r\n\r\nevent: del',
 			),
 		).toEqual([
 			{ event: "session", data: '{"sessionId":"thread-1"}' },

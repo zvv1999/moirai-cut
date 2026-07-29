@@ -12,7 +12,7 @@ describe("Codex Smart Edit SSE API", () => {
 			release = resolve;
 		});
 		const service: CodexChatApiService = {
-			stream: async function* (input) {
+			stream: async function* ({ input }) {
 				calls.push(input);
 				yield { type: "session", sessionId: "thread-1" };
 				await barrier;
@@ -104,6 +104,7 @@ describe("Codex Smart Edit SSE API", () => {
 		const service: CodexChatApiService = {
 			stream: async function* () {
 				calls += 1;
+				if (calls < 0) yield { type: "delta", delta: "unreachable" };
 			},
 		};
 		const { POST } = createCodexChatRouteHandlers({ service });

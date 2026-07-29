@@ -98,7 +98,8 @@ export function createCodexChatRouteHandlers({
 					controller.enqueue(encoder.encode(": connected\n\n"));
 					void (async () => {
 						try {
-							for await (const event of service.stream(input, {
+							for await (const event of service.stream({
+								input,
 								signal: abortController.signal,
 							})) {
 								controller.enqueue(

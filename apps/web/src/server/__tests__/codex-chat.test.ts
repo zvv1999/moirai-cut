@@ -16,10 +16,13 @@ const runtime: CodexRuntimeConfig = {
 	baseUrl: "http://127.0.0.1:3000",
 };
 
-function subscriptionOf(
-	notifications: unknown[],
-	onClose: () => void = () => {},
-): CodexAppServerSubscription {
+function subscriptionOf({
+	notifications,
+	onClose = () => {},
+}: {
+	notifications: unknown[];
+	onClose?: () => void;
+}): CodexAppServerSubscription {
 	return {
 		async *[Symbol.asyncIterator]() {
 			for (const notification of notifications) yield notification;
@@ -69,7 +72,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		const calls: Array<{ method: string; params: unknown }> = [];
 		let closed = false;
 		const connection: CodexAppServerConnection = {
-			request: async (method, params) => {
+			request: async ({ method, params }) => {
 				calls.push({ method, params });
 				if (method === "thread/start") {
 					return { thread: { id: "thread-project-1" } };
@@ -81,8 +84,8 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			},
 			subscribe: (threadId) => {
 				expect(threadId).toBe("thread-project-1");
-				return subscriptionOf(
-					[
+				return subscriptionOf({
+					notifications: [
 						{
 							method: "item/agentMessage/delta",
 							params: {
@@ -120,10 +123,10 @@ describe("Codex direct Smart Edit streaming chat", () => {
 							},
 						},
 					],
-					() => {
+					onClose: () => {
 						closed = true;
 					},
-				);
+				});
 			},
 		};
 		const service = createCodexChatService({
@@ -133,9 +136,11 @@ describe("Codex direct Smart Edit streaming chat", () => {
 
 		const events = [];
 		for await (const event of service.stream({
-			projectId: "project-1",
-			message: "统一字幕样式",
-			context: "引用 A",
+			input: {
+				projectId: "project-1",
+				message: "统一字幕样式",
+				context: "引用 A",
+			},
 		})) {
 			events.push(event);
 		}
@@ -162,7 +167,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 	test("resumes the exact browser-held Codex session instead of relying on server memory", async () => {
 		const calls: Array<{ method: string; params: unknown }> = [];
 		const connection: CodexAppServerConnection = {
-			request: async (method, params) => {
+			request: async ({ method, params }) => {
 				calls.push({ method, params });
 				if (method === "thread/resume") {
 					return { thread: { id: "thread-existing" } };
@@ -170,26 +175,28 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				return { turn: { id: "turn-2" } };
 			},
 			subscribe: (threadId) =>
-				subscriptionOf([
-					{
-						method: "turn/completed",
-						params: {
-							threadId,
-							turn: {
-								id: "turn-2",
-								status: "completed",
-								error: null,
-								items: [
-									{
-										type: "agentMessage",
-										id: "message-2",
-										text: "继续完成",
-									},
-								],
+				subscriptionOf({
+					notifications: [
+						{
+							method: "turn/completed",
+							params: {
+								threadId,
+								turn: {
+									id: "turn-2",
+									status: "completed",
+									error: null,
+									items: [
+										{
+											type: "agentMessage",
+											id: "message-2",
+											text: "继续完成",
+										},
+									],
+								},
 							},
 						},
-					},
-				]),
+					],
+				}),
 		};
 		const service = createCodexChatService({
 			runtime,
@@ -198,10 +205,12 @@ describe("Codex direct Smart Edit streaming chat", () => {
 
 		const events = [];
 		for await (const event of service.stream({
-			projectId: "project-1",
-			message: "继续",
-			context: "",
-			sessionId: "thread-existing",
+			input: {
+				projectId: "project-1",
+				message: "继续",
+				context: "",
+				sessionId: "thread-existing",
+			},
 		})) {
 			events.push(event);
 		}
@@ -219,25 +228,27 @@ describe("Codex direct Smart Edit streaming chat", () => {
 
 	test("surfaces a failed Codex turn without replacing it with local validation", async () => {
 		const connection: CodexAppServerConnection = {
-			request: async (method) =>
+			request: async ({ method }) =>
 				method === "thread/start"
 					? { thread: { id: "thread-1" } }
 					: { turn: { id: "turn-1" } },
 			subscribe: (threadId) =>
-				subscriptionOf([
-					{
-						method: "turn/completed",
-						params: {
-							threadId,
-							turn: {
-								id: "turn-1",
-								status: "failed",
-								error: { message: "Codex 上游不可用" },
-								items: [],
+				subscriptionOf({
+					notifications: [
+						{
+							method: "turn/completed",
+							params: {
+								threadId,
+								turn: {
+									id: "turn-1",
+									status: "failed",
+									error: { message: "Codex 上游不可用" },
+									items: [],
+								},
 							},
 						},
-					},
-				]),
+					],
+				}),
 		};
 		const service = createCodexChatService({
 			runtime,
@@ -246,9 +257,11 @@ describe("Codex direct Smart Edit streaming chat", () => {
 
 		const consume = async () => {
 			for await (const _event of service.stream({
-				projectId: "project-1",
-				message: "继续",
-				context: "",
+				input: {
+					projectId: "project-1",
+					message: "继续",
+					context: "",
+				},
 			})) {
 				// Consume the stream so the failed completion is observed.
 			}
