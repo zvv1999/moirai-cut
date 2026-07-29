@@ -57,7 +57,8 @@ test("the server exposes the agent tool surface", async () => {
   const server = createOpenCutMcpServer();
   const registered = Object.keys(server._registeredTools ?? {});
   for (const name of [
-    "status", "get_state", "list_operations", "apply_operation", "render_frames", "undo", "redo",
+    "status", "get_state", "get_context", "reveal_context",
+    "list_operations", "apply_operation", "render_frames", "undo", "redo",
     "list_projects", "read_project", "edit_project",
     "list_media", "import_media", "delete_media", "analyze_audio",
     "inspect_media", "lint_cut",
