@@ -1,7 +1,33 @@
 import { describe, expect, test } from "bun:test";
-import { requestMediaProbe } from "@/agent/media-codec";
+import {
+	checkBrowserDecodeSupport,
+	requestMediaProbe,
+} from "@/agent/media-codec";
 
 describe("agent media codec client", () => {
+	test("only asks the browser decoder about video assets", async () => {
+		let inspections = 0;
+		const inspectVideo = async () => {
+			inspections += 1;
+			return false;
+		};
+		const file = new File(["media"], "media.bin");
+
+		expect(
+			await checkBrowserDecodeSupport({
+				asset: { type: "audio", file },
+				inspectVideo,
+			}),
+		).toBeNull();
+		expect(
+			await checkBrowserDecodeSupport({
+				asset: { type: "video", file },
+				inspectVideo,
+			}),
+		).toBe(false);
+		expect(inspections).toBe(1);
+	});
+
 	test("encodes project/asset ids and forwards compatibility inputs", async () => {
 		let requestedUrl = "";
 		const fetcher = async (input: RequestInfo | URL) => {
