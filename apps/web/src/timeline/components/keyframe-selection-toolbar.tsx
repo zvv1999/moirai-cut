@@ -121,41 +121,40 @@ export function KeyframeSelectionToolbarView({
 		<div
 			className="bg-primary/5 flex h-8 shrink-0 items-center gap-1 rounded-md border px-1.5"
 			role="group"
-			aria-label="Selected keyframe actions"
+			aria-label="所选关键帧操作"
 		>
 			<span className="text-muted-foreground px-1 text-[11px]">
-				{selectedCount} {selectedCount === 1 ? "keyframe" : "keyframes"}{" "}
-				selected
+				已选 {selectedCount} 个关键帧
 			</span>
 			<KeyframeActionButton
-				label="Nudge selected keyframes backward one frame"
-				title="Nudge backward one frame (⌥←)"
+				label="将所选关键帧向前移动一帧"
+				title="向前移动一帧（⌥←）"
 				onClick={onNudgeBackward}
 				icon={ArrowLeft01Icon}
 			/>
 			<KeyframeActionButton
-				label="Nudge selected keyframes forward one frame"
-				title="Nudge forward one frame (⌥→)"
+				label="将所选关键帧向后移动一帧"
+				title="向后移动一帧（⌥→）"
 				onClick={onNudgeForward}
 				icon={ArrowRight01Icon}
 			/>
 			<KeyframeActionButton
-				label="Copy selected keyframes"
-				title="Copy selected keyframes"
+				label="复制所选关键帧"
+				title="复制所选关键帧"
 				onClick={onCopy}
 				icon={Copy01Icon}
 			/>
 			<KeyframeActionButton
-				label="Paste keyframes at playhead"
-				title="Paste keyframes at playhead"
+				label="在播放头处粘贴关键帧"
+				title="在播放头处粘贴关键帧"
 				onClick={onPaste}
 				icon={FilePasteIcon}
 				disabled={!canPaste}
 			/>
 			<select
 				className="border-input bg-background h-6 rounded border px-1 text-[11px]"
-				aria-label="Keyframe interpolation"
-				title="Keyframe interpolation"
+				aria-label="关键帧插值"
+				title="关键帧插值"
 				value={interpolation}
 				onChange={(event) => {
 					const nextInterpolation = event.target.value;
@@ -169,15 +168,15 @@ export function KeyframeSelectionToolbarView({
 				}}
 			>
 				{interpolation === "mixed" ? (
-					<option value="mixed">Mixed</option>
+					<option value="mixed">混合</option>
 				) : null}
-				<option value="linear">Linear</option>
-				<option value="hold">Hold</option>
-				<option value="bezier">Bezier</option>
+				<option value="linear">线性</option>
+				<option value="hold">定格</option>
+				<option value="bezier">贝塞尔</option>
 			</select>
 			<KeyframeActionButton
-				label="Delete selected keyframes"
-				title="Delete selected keyframes"
+				label="删除所选关键帧"
+				title="删除所选关键帧"
 				onClick={onDelete}
 				icon={Delete02Icon}
 			/>

@@ -529,7 +529,7 @@ function AnimatedVolumeEnvelope({
 							left: `${point.xPercent}%`,
 							top: `${point.yPercent}%`,
 						}}
-						aria-label={`Volume keyframe ${(point.time / TICKS_PER_SECOND).toFixed(2)} seconds, ${point.valueDb.toFixed(1)} dB`}
+						aria-label={`音量关键帧 ${(point.time / TICKS_PER_SECOND).toFixed(2)} 秒，${point.valueDb.toFixed(1)} dB`}
 						title="Drag volume envelope point · double-click line to add"
 						onPointerDown={(event) => {
 							if (event.button !== 0) return;

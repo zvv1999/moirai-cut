@@ -169,11 +169,11 @@ export function AgentBadge() {
 		const payload: unknown = await response.json().catch(() => ({}));
 		if (!response.ok) {
 			toast.error(
-				errorMessage({ value: payload, fallback: "Snapshot failed" }),
+				errorMessage({ value: payload, fallback: "保存快照失败" }),
 			);
 			return;
 		}
-		toast(`Saved snapshot at revision ${revisionOf(payload) ?? "unknown"}`);
+		toast(`快照已保存为版本 ${revisionOf(payload) ?? "未知"}`);
 		setSnapshotName("");
 		await refreshHistory();
 	};
@@ -189,7 +189,7 @@ export function AgentBadge() {
 			const payload: unknown = await response.json().catch(() => ({}));
 			if (!response.ok || !isProjectRevisionDiff(payload)) {
 				toast.error(
-					errorMessage({ value: payload, fallback: "Comparison failed" }),
+					errorMessage({ value: payload, fallback: "版本比较失败" }),
 				);
 				return;
 			}
@@ -212,13 +212,13 @@ export function AgentBadge() {
 		const payload: unknown = await response.json().catch(() => ({}));
 		if (response.ok) {
 			toast(
-				`Restored snapshot as revision ${revisionOf(payload) ?? "unknown"}`,
+				`快照已恢复为版本 ${revisionOf(payload) ?? "未知"}`,
 			);
 			setDiff(null);
 			setConfirmRevision(null);
 			await refreshHistory();
 		} else {
-			toast.error(errorMessage({ value: payload, fallback: "Restore failed" }));
+			toast.error(errorMessage({ value: payload, fallback: "恢复版本失败" }));
 		}
 	};
 
@@ -232,7 +232,7 @@ export function AgentBadge() {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body: JSON.stringify({
-						name: `${entry.name ?? "Project version"} · copy`,
+						name: `${entry.name ?? "工程版本"} · 副本`,
 					}),
 				},
 			);
@@ -245,20 +245,20 @@ export function AgentBadge() {
 				throw new Error(
 					isRecord(payload) && typeof payload.error === "string"
 						? payload.error
-						: "Version duplication failed",
+						: "复制版本失败",
 				);
 			}
 			const duplicatedName =
 				isRecord(payload) && typeof payload.name === "string"
 					? payload.name
-					: "version copy";
-			toast(`Created ${duplicatedName}`, {
-				description: `Independent project ${duplicatedProjectId.slice(0, 8)}…`,
+					: "版本副本";
+			toast(`已创建 ${duplicatedName}`, {
+				description: `独立工程 ${duplicatedProjectId.slice(0, 8)}…`,
 			});
 		} catch (error) {
-			toast.error("Could not duplicate this version", {
+			toast.error("无法复制此版本", {
 				description:
-					error instanceof Error ? error.message : "Please try again",
+					error instanceof Error ? error.message : "请重试",
 			});
 		} finally {
 			setDuplicatingRevision(null);
@@ -269,7 +269,7 @@ export function AgentBadge() {
 		if (!projectId) return;
 		const applied = await editor.project.applyExternalDocument();
 		if (!applied) {
-			toast.error("Could not load the disk version");
+			toast.error("无法加载磁盘版本");
 			return;
 		}
 		setConfirmDiscardLocal(false);
@@ -277,8 +277,8 @@ export function AgentBadge() {
 		if (revision !== null) {
 			acknowledgeProjectFileSync({ revision });
 		}
-		toast("Loaded the latest disk version", {
-			description: "Local pending changes were discarded by explicit choice.",
+		toast("已加载最新磁盘版本", {
+			description: "本地待保存改动已按你的确认丢弃。",
 		});
 		await refreshHistory();
 	};
@@ -292,15 +292,14 @@ export function AgentBadge() {
 					<div className="mb-3 flex items-start justify-between gap-3">
 						<div>
 							<div className="text-sm font-semibold">
-								Agent Studio & project history
+								智能剪辑与工程历史
 							</div>
 							<div className="text-[11px] opacity-60">
-								Current revision {currentRevision ?? "…"} · compare before
-								restore
+								当前版本 {currentRevision ?? "…"} · 恢复前请先比较
 							</div>
 						</div>
 						<span className="bg-muted rounded px-2 py-1 font-mono text-[10px]">
-							{revisions.length} saved
+							已保存 {revisions.length} 个
 						</span>
 					</div>
 
@@ -311,7 +310,7 @@ export function AgentBadge() {
 					<div className="mb-3 grid grid-cols-2 gap-2">
 						<div className="border-border bg-muted/20 rounded-md border p-2">
 							<div className="text-[10px] font-semibold tracking-wide uppercase opacity-50">
-								Continuous autosave
+								持续自动保存
 							</div>
 							<div className="mt-1 flex items-center gap-2 text-xs font-medium">
 								<span
@@ -324,20 +323,19 @@ export function AgentBadge() {
 									}`}
 								/>
 								{save.status === "saving"
-									? "Saving…"
+									? "保存中…"
 									: save.status === "error"
-										? "Save failed"
+										? "保存失败"
 										: save.pendingChanges
-											? "Changes queued"
+											? "改动等待保存"
 											: save.revision === null
-												? "Autosave ready"
-												: `Saved at revision ${save.revision}`}
+												? "自动保存已就绪"
+												: `已保存至版本 ${save.revision}`}
 							</div>
 							{fileConflictRevision !== null ? (
 								<div className="mt-1">
 									<div className="text-[10px] text-amber-600 dark:text-amber-400">
-										Disk is at revision {fileConflictRevision}; autosave is
-										paused.
+										磁盘版本已更新至 {fileConflictRevision}，自动保存已暂停。
 									</div>
 									{confirmDiscardLocal ? (
 										<div className="mt-1 flex gap-1">
@@ -346,14 +344,14 @@ export function AgentBadge() {
 												className="rounded px-1.5 py-0.5 text-[10px]"
 												onClick={() => setConfirmDiscardLocal(false)}
 											>
-												Cancel
+												取消
 											</button>
 											<button
 												type="button"
 												className="bg-destructive text-destructive-foreground rounded px-1.5 py-0.5 text-[10px]"
 												onClick={() => void loadDiskVersion()}
 											>
-												Confirm discard local
+												确认丢弃本地改动
 											</button>
 										</div>
 									) : (
@@ -362,7 +360,7 @@ export function AgentBadge() {
 											className="text-destructive mt-1 text-[10px] hover:underline"
 											onClick={() => setConfirmDiscardLocal(true)}
 										>
-											Load disk version…
+											加载磁盘版本…
 										</button>
 									)}
 								</div>
@@ -372,37 +370,37 @@ export function AgentBadge() {
 									className="text-destructive mt-1 text-[10px] hover:underline"
 									onClick={() => void editor.save.retry()}
 								>
-									Retry · {save.error}
+									重试 · {save.error}
 								</button>
 							) : null}
 						</div>
 						<div className="border-border bg-muted/20 rounded-md border p-2">
 							<div className="text-[10px] font-semibold tracking-wide uppercase opacity-50">
-								Shared command history
+								共享命令历史
 							</div>
 							<div className="mt-1 flex gap-1">
 								<button
 									type="button"
 									disabled={commandHistory.undoDepth === 0}
 									className="border-input flex-1 truncate rounded border px-2 py-1 text-[10px] disabled:opacity-35"
-									title={commandHistory.undoLabel ?? "Nothing to undo"}
+									title={commandHistory.undoLabel ?? "没有可撤销的操作"}
 									onClick={() => editor.command.undo()}
 								>
-									Undo {commandHistory.undoLabel ?? ""}
+									撤销 {commandHistory.undoLabel ?? ""}
 								</button>
 								<button
 									type="button"
 									disabled={commandHistory.redoDepth === 0}
 									className="border-input flex-1 truncate rounded border px-2 py-1 text-[10px] disabled:opacity-35"
-									title={commandHistory.redoLabel ?? "Nothing to redo"}
+									title={commandHistory.redoLabel ?? "没有可重做的操作"}
 									onClick={() => editor.command.redo()}
 								>
-									Redo {commandHistory.redoLabel ?? ""}
+									重做 {commandHistory.redoLabel ?? ""}
 								</button>
 							</div>
 							<div className="mt-1 font-mono text-[9px] opacity-45">
-								{commandHistory.undoDepth} undo · {commandHistory.redoDepth}{" "}
-								redo · human + agent
+								撤销 {commandHistory.undoDepth} · 重做 {commandHistory.redoDepth} ·
+								人工 + 智能体
 							</div>
 						</div>
 					</div>
@@ -410,8 +408,8 @@ export function AgentBadge() {
 					<div className="mb-3 flex gap-2">
 						<input
 							className="border-input bg-background min-w-0 flex-1 rounded-md border px-2 py-1.5 text-xs"
-							aria-label="Snapshot name"
-							placeholder="e.g. Approved rough cut"
+							aria-label="快照名称"
+							placeholder="例如：已确认粗剪"
 							value={snapshotName}
 							onChange={(event) => setSnapshotName(event.target.value)}
 						/>
@@ -421,16 +419,16 @@ export function AgentBadge() {
 							disabled={!snapshotName.trim() || currentRevision === null}
 							onClick={() => void createSnapshot()}
 						>
-							Save snapshot
+							保存快照
 						</button>
 					</div>
 
 					<div className="mb-1 text-xs font-medium opacity-70">
-						Timeline history
+						时间线历史
 					</div>
 					{revisions.length === 0 ? (
 						<div className="border-border rounded-md border border-dashed p-4 text-center text-xs opacity-50">
-							No snapshots yet
+							暂无快照
 						</div>
 					) : (
 						<ul className="flex max-h-56 flex-col gap-1 overflow-y-auto">
@@ -441,19 +439,19 @@ export function AgentBadge() {
 								>
 									<div className="min-w-0 flex-1">
 										<div className="truncate font-medium">
-											{entry.name ?? `Automatic revision ${entry.revision}`}
+											{entry.name ?? `自动版本 ${entry.revision}`}
 										</div>
 										<div className="font-mono text-[10px] opacity-50">
-											rev {entry.revision}
+											版本 {entry.revision}
 											{entry.summary?.elementCount !== undefined
-												? ` · ${entry.summary.elementCount} clips`
+												? ` · ${entry.summary.elementCount} 个素材`
 												: ""}
 											{" · "}
 											{entry.createdAt || entry.updatedAt
 												? new Date(
 														entry.createdAt ?? entry.updatedAt ?? "",
 													).toLocaleTimeString()
-												: "unknown time"}
+												: "时间未知"}
 										</div>
 									</div>
 									<div className="flex items-center">
@@ -464,8 +462,8 @@ export function AgentBadge() {
 											onClick={() => void compare(entry.revision)}
 										>
 											{loadingRevision === entry.revision
-												? "Comparing…"
-												: "Compare"}
+												? "比较中…"
+												: "比较"}
 										</button>
 										<button
 											type="button"
@@ -474,8 +472,8 @@ export function AgentBadge() {
 											onClick={() => void duplicate(entry)}
 										>
 											{duplicatingRevision === entry.revision
-												? "Copying…"
-												: "Duplicate"}
+												? "复制中…"
+												: "复制"}
 										</button>
 									</div>
 								</li>
@@ -487,7 +485,7 @@ export function AgentBadge() {
 						<div className="border-border bg-muted/20 mt-3 rounded-md border p-2">
 							<div className="flex items-center justify-between">
 								<strong className="text-xs">
-									Revision {diff.fromRevision} → {diff.toRevision}
+									版本 {diff.fromRevision} → {diff.toRevision}
 								</strong>
 								<button
 									type="button"
@@ -497,17 +495,17 @@ export function AgentBadge() {
 										setConfirmRevision(null);
 									}}
 								>
-									Close
+									关闭
 								</button>
 							</div>
 							<div className="my-2 grid grid-cols-5 gap-1 text-center text-[10px]">
 								{(
 									[
-										["Add", diff.summary.added],
-										["Remove", diff.summary.removed],
-										["Move", diff.summary.moved],
-										["Rename", diff.summary.renamed],
-										["Change", diff.summary.changed],
+										["新增", diff.summary.added],
+										["移除", diff.summary.removed],
+										["移动", diff.summary.moved],
+										["重命名", diff.summary.renamed],
+										["修改", diff.summary.changed],
 									] as const
 								).map(([label, value]) => (
 									<div key={label} className="bg-background rounded p-1">
@@ -518,7 +516,7 @@ export function AgentBadge() {
 							</div>
 							{diff.changes.length === 0 ? (
 								<p className="text-xs opacity-60">
-									No timeline differences. Restore is unnecessary.
+									时间线没有差异，无需恢复。
 								</p>
 							) : (
 								<ul className="mb-2 max-h-24 space-y-1 overflow-y-auto text-[10px]">
@@ -535,8 +533,7 @@ export function AgentBadge() {
 							{confirmRevision === diff.toRevision ? (
 								<div className="border-amber-500/30 bg-amber-500/10 rounded border p-2">
 									<p className="mb-2 text-[11px]">
-										Restore revision {diff.toRevision}? The current state is
-										saved as another revision first.
+										恢复版本 {diff.toRevision}？当前状态会先另存为一个版本。
 									</p>
 									<div className="flex justify-end gap-2">
 										<button
@@ -544,14 +541,14 @@ export function AgentBadge() {
 											className="rounded px-2 py-1 text-xs"
 											onClick={() => setConfirmRevision(null)}
 										>
-											Cancel
+											取消
 										</button>
 										<button
 											type="button"
 											className="bg-foreground text-background rounded px-2 py-1 text-xs"
 											onClick={() => void restore(diff.toRevision)}
 										>
-											Confirm restore
+											确认恢复
 										</button>
 									</div>
 								</div>
@@ -562,7 +559,7 @@ export function AgentBadge() {
 									disabled={diff.changes.length === 0}
 									onClick={() => setConfirmRevision(diff.toRevision)}
 								>
-									Restore this snapshot
+									恢复此快照
 								</button>
 							)}
 						</div>
@@ -571,10 +568,10 @@ export function AgentBadge() {
 					{agent.active || agent.events.length > 0 ? (
 						<div className="mt-3">
 							<div className="mb-1 text-xs font-medium opacity-70">
-								Recent agent activity
+								最近的智能体活动
 							</div>
 							{agent.events.length === 0 ? (
-								<div className="text-xs opacity-50">No activity yet</div>
+								<div className="text-xs opacity-50">暂无活动</div>
 							) : (
 								<ul className="flex max-h-24 flex-col gap-1 overflow-y-auto">
 									{[...agent.events].reverse().map((event) => (
@@ -593,7 +590,7 @@ export function AgentBadge() {
 			)}
 			<button
 				type="button"
-				aria-label="Open project snapshots and agent activity"
+				aria-label="打开工程快照和智能体活动"
 				onClick={() => {
 					const nextOpen = !open;
 					setOpen(nextOpen);
@@ -604,17 +601,17 @@ export function AgentBadge() {
 				{blockedByUnsavedChanges ? (
 					<>
 						<span className="h-2 w-2 rounded-full bg-amber-500" />
-						Disk moved ahead — save or discard to sync
+						磁盘版本已更新，请保存或丢弃本地改动后同步
 					</>
 				) : agent.active ? (
 					<>
 						<span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-						{agent.actor ?? "Agent"} connected
+						{agent.actor ?? "智能体"} 已连接
 					</>
 				) : (
 					<>
 						<span className="bg-primary h-2 w-2 rounded-full" />
-						Agent Studio
+						智能剪辑
 					</>
 				)}
 			</button>

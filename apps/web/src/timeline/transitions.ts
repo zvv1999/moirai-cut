@@ -75,13 +75,13 @@ export function planTimelineTransition({
 	}
 
 	if (selected.length !== 2) {
-		return unavailable("Select two adjacent visual clips");
+		return unavailable("请选择两个相邻的画面素材");
 	}
 	if (selected.some(({ element }) => !VISUAL_TYPES.has(element.type))) {
-		return unavailable("Transitions require two visual clips");
+		return unavailable("转场需要两个画面素材");
 	}
 	if (selected[0].track.id !== selected[1].track.id) {
-		return unavailable("Selected clips must share the same track");
+		return unavailable("所选素材必须位于同一轨道");
 	}
 
 	const [from, to] = [...selected].sort(
@@ -91,7 +91,7 @@ export function planTimelineTransition({
 	const fromEnd =
 		(from.element.startTime as number) + (from.element.duration as number);
 	if (fromEnd !== (to.element.startTime as number)) {
-		return unavailable("Selected clips must share one edit point without a gap");
+		return unavailable("所选素材必须首尾相接，共用一个剪辑点");
 	}
 	const maxDuration = getMaximumDuration({
 		from: from.element,
@@ -101,7 +101,7 @@ export function planTimelineTransition({
 		(duration as number) <= 0 ||
 		(duration as number) >= (maxDuration as number)
 	) {
-		return unavailable("Transition duration exceeds the available clip handles");
+		return unavailable("转场时长超出了素材可用余量");
 	}
 
 	return {

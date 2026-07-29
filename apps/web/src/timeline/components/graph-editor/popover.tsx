@@ -126,10 +126,10 @@ export function GraphEditorPopover({
 				<Tabs variant="underline" defaultValue="presets" className="flex flex-col gap-2">
 					<TabsList className="px-3">
 						<TabsTrigger value="presets" className="text-xs">
-							Presets
+							预设
 						</TabsTrigger>
 						<TabsTrigger value="saved" className="text-xs">
-							Saved
+							已保存
 						</TabsTrigger>
 					</TabsList>
 					<TabsContent value="presets" className="px-3 pb-0">
@@ -178,7 +178,7 @@ export function GraphEditorPopover({
 										className="size-3.5 opacity-40"
 									/>
 								</div>
-								<span className="text-[10px] leading-tight">Save</span>
+								<span className="text-[10px] leading-tight">保存</span>
 							</button>
 						</div>
 					</TabsContent>
@@ -321,7 +321,7 @@ function CurveThumb({ value }: { value: NormalizedCubicBezier }) {
 			height={THUMB_HEIGHT}
 			viewBox={`0 0 ${THUMB_WIDTH} ${THUMB_HEIGHT}`}
 		>
-			<title>Curve preset preview</title>
+			<title>曲线预设预览</title>
 			<path
 				d={`M${points.join("L")}`}
 				fill="none"

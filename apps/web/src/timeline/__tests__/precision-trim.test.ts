@@ -215,7 +215,7 @@ describe("precision trim planning", () => {
 			}),
 		).toEqual({
 			available: false,
-			reason: "Slide needs clips touching both sides",
+			reason: "滑动编辑需要素材两侧都有相接素材",
 		});
 		expect(
 			getPrecisionTrimModeAvailability({
@@ -225,7 +225,7 @@ describe("precision trim planning", () => {
 			}),
 		).toEqual({
 			available: false,
-			reason: "Slip is only meaningful for video or audio with source handles",
+			reason: "仅带有源素材余量的视频或音频可使用滑移编辑",
 		});
 	});
 

@@ -53,7 +53,7 @@ export function MarkerManagerPopover() {
 		const marker = createTimelineMarker({
 			id: generateUUID(),
 			time: currentTime,
-			name: `Marker ${markers.length + 1}`,
+			name: `标记 ${markers.length + 1}`,
 		});
 		editor.scenes.addBookmark({
 			bookmark: {
@@ -88,7 +88,7 @@ export function MarkerManagerPopover() {
 					variant="text"
 					size="icon"
 					className="relative rounded-sm"
-					aria-label={`Open marker manager (${markers.length})`}
+					aria-label={`打开标记管理器（${markers.length}）`}
 				>
 					<HugeiconsIcon icon={Bookmark02Icon} />
 					{markers.length > 0 ? (
@@ -104,14 +104,14 @@ export function MarkerManagerPopover() {
 				className="flex w-80 flex-col gap-3 p-3"
 			>
 				<div>
-					<p className="text-sm font-semibold">Markers & ranges</p>
+					<p className="text-sm font-semibold">标记与范围</p>
 					<p className="text-muted-foreground text-[11px]">
-						Named, coloured and addressable by stable ID.
+						支持命名、颜色标识和稳定 ID 定位。
 					</p>
 				</div>
 				<div className="grid grid-cols-2 gap-2">
 					<Button type="button" size="sm" onClick={addTimelineMarker}>
-						Add at playhead
+						在播放头处添加
 					</Button>
 					<Button
 						type="button"
@@ -120,7 +120,7 @@ export function MarkerManagerPopover() {
 						disabled={!selected}
 						onClick={addClipMarker}
 					>
-						Add clip range
+						添加素材范围
 					</Button>
 				</div>
 				<div className="grid grid-cols-2 gap-2">
@@ -131,7 +131,7 @@ export function MarkerManagerPopover() {
 						disabled={!previousMarker}
 						onClick={() => previousMarker && seekTo(previousMarker.time)}
 					>
-						Previous
+						上一个
 					</Button>
 					<Button
 						type="button"
@@ -140,13 +140,13 @@ export function MarkerManagerPopover() {
 						disabled={!nextMarker}
 						onClick={() => nextMarker && seekTo(nextMarker.time)}
 					>
-						Next
+						下一个
 					</Button>
 				</div>
 				<div className="max-h-64 space-y-1 overflow-y-auto">
 					{orderedMarkers.length === 0 ? (
 						<p className="text-muted-foreground rounded-md border border-dashed p-4 text-center text-xs">
-							No markers yet
+							暂无标记
 						</p>
 					) : (
 						orderedMarkers.map((marker) => (
@@ -161,15 +161,15 @@ export function MarkerManagerPopover() {
 								<button
 									type="button"
 									className="min-w-0 flex-1 text-left"
-									aria-label={`Go to marker ${marker.name ?? marker.id}`}
+									aria-label={`前往标记 ${marker.name ?? marker.id}`}
 									onClick={() => seekTo(marker.time)}
 								>
 									<span className="block truncate text-xs font-medium">
-										{marker.name ?? "Untitled marker"}
+										{marker.name ?? "未命名标记"}
 									</span>
 									<span className="text-muted-foreground block truncate font-mono text-[9px]">
-										{marker.scope === "clip" ? "CLIP" : "TIMELINE"} ·{" "}
-										{mediaTimeToSeconds({ time: marker.time }).toFixed(2)}s ·{" "}
+										{marker.scope === "clip" ? "素材" : "时间线"} ·{" "}
+										{mediaTimeToSeconds({ time: marker.time }).toFixed(2)} 秒 ·{" "}
 										{marker.id.slice(0, 8)}
 									</span>
 								</button>
@@ -178,7 +178,7 @@ export function MarkerManagerPopover() {
 									variant="text"
 									size="icon"
 									className="size-7 shrink-0"
-									aria-label={`Delete marker ${marker.name ?? marker.id}`}
+									aria-label={`删除标记 ${marker.name ?? marker.id}`}
 									onClick={() =>
 										editor.scenes.removeBookmark({ time: marker.time })
 									}

@@ -71,7 +71,7 @@ export function getPrecisionTrimModeAvailability({
 	}
 	const selected = elements.find((element) => element.id === elementId);
 	if (!selected) {
-		return { available: false, reason: "Select one timeline clip" };
+		return { available: false, reason: "请选择一个时间线素材" };
 	}
 
 	const { previous, next } = findTouchingNeighbours({
@@ -81,7 +81,7 @@ export function getPrecisionTrimModeAvailability({
 	if (mode === "roll") {
 		return previous || next
 			? { available: true }
-			: { available: false, reason: "Roll needs a touching clip at the cut" };
+			: { available: false, reason: "滚动编辑需要剪辑点旁有相接素材" };
 	}
 	if (mode === "slip") {
 		const hasSourceHandles =
@@ -93,15 +93,14 @@ export function getPrecisionTrimModeAvailability({
 			? { available: true }
 			: {
 					available: false,
-					reason:
-						"Slip is only meaningful for video or audio with source handles",
+					reason: "仅带有源素材余量的视频或音频可使用滑移编辑",
 				};
 	}
 	return previous && next
 		? { available: true }
 		: {
 				available: false,
-				reason: "Slide needs clips touching both sides",
+				reason: "滑动编辑需要素材两侧都有相接素材",
 			};
 }
 
@@ -112,15 +111,15 @@ export function getPrecisionTrimModeDescription({
 }): string {
 	switch (mode) {
 		case "standard":
-			return "Move one clip edge";
+			return "移动素材的一侧边缘";
 		case "ripple":
-			return "Trim and close or open downstream time";
+			return "修剪并收拢或展开后续时间";
 		case "roll":
-			return "Move a cut while preserving pair duration";
+			return "移动剪辑点，同时保持两侧素材总时长";
 		case "slip":
-			return "Change source in and out without moving the clip";
+			return "不移动素材位置，只改变源素材入点和出点";
 		case "slide":
-			return "Move a clip while rolling both neighbouring cuts";
+			return "移动素材，同时滚动调整两侧剪辑点";
 	}
 }
 

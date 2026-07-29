@@ -71,11 +71,11 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 				if (isNotFound) {
 					try {
 						const newProjectId = await editor.project.createNewProject({
-							name: "Untitled Project",
+							name: "未命名工程",
 						});
 						router.replace(`/editor/${newProjectId}`);
 					} catch (_createErr) {
-						setError("Failed to create project");
+						setError("创建工程失败");
 						setIsLoading(false);
 					}
 				} else {
@@ -86,7 +86,7 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 						setError(wasmPanic);
 					} else {
 						setError(
-							err instanceof Error ? err.message : "Failed to load project",
+							err instanceof Error ? err.message : "加载工程失败",
 						);
 					}
 					setIsLoading(false);
@@ -116,7 +116,7 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 			<div className="bg-background flex h-screen w-screen items-center justify-center">
 				<div className="flex flex-col items-center gap-4">
 					<Loader2 className="text-muted-foreground size-8 animate-spin" />
-					<p className="text-muted-foreground text-sm">Loading project...</p>
+					<p className="text-muted-foreground text-sm">正在加载工程…</p>
 				</div>
 			</div>
 		);
@@ -127,7 +127,7 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 			<div className="bg-background flex h-screen w-screen items-center justify-center">
 				<div className="flex flex-col items-center gap-4">
 					<Loader2 className="text-muted-foreground size-8 animate-spin" />
-					<p className="text-muted-foreground text-sm">Exiting project...</p>
+					<p className="text-muted-foreground text-sm">正在退出工程…</p>
 				</div>
 			</div>
 		);
@@ -251,7 +251,7 @@ function RecoverySessionGuard() {
 				!isRecord(current) ||
 				typeof current.revision !== "number"
 			) {
-				throw new Error("Could not read the current project revision");
+				throw new Error("无法读取当前工程版本");
 			}
 			const response = await fetch(
 				`/api/projects/${encodeURIComponent(candidate.projectId)}/restore/${candidate.openingRevision}`,
@@ -266,25 +266,25 @@ function RecoverySessionGuard() {
 				throw new Error(
 					isRecord(payload) && typeof payload.error === "string"
 						? payload.error
-						: "Recovery restore failed",
+						: "恢复工程失败",
 				);
 			}
 			const applied = await editor.project.applyExternalDocument();
 			if (!applied) {
-				throw new Error("The restored revision could not be loaded into the editor");
+				throw new Error("恢复的版本无法加载到编辑器");
 			}
 			setCandidate(null);
 			toast(
-				`Restored the pre-session version as revision ${
+				`已将会话前版本恢复为版本 ${
 					isRecord(payload) && typeof payload.revision === "number"
 						? payload.revision
-						: "new"
+						: "新版本"
 				}`,
 			);
 		} catch (error) {
-			toast.error("Recovery failed", {
+			toast.error("恢复失败", {
 				description:
-					error instanceof Error ? error.message : "Please try again",
+					error instanceof Error ? error.message : "请重试",
 			});
 		} finally {
 			setRestoring(false);
@@ -300,23 +300,21 @@ function RecoverySessionGuard() {
 		>
 			<div className="border-border bg-popover text-popover-foreground w-full max-w-lg rounded-xl border p-5 shadow-2xl">
 				<div className="mb-1 text-[11px] font-semibold tracking-[0.16em] text-amber-600 uppercase dark:text-amber-400">
-					Crash recovery
+					崩溃恢复
 				</div>
 				<h2 id="recovery-title" className="text-lg font-semibold">
-					Recovered work is available
+					发现可恢复的编辑内容
 				</h2>
 				<p className="text-muted-foreground mt-2 text-sm leading-6">
-					The previous editing session did not close cleanly. Continuous
-					autosave advanced this project from revision{" "}
-					<strong>{candidate.openingRevision}</strong> to{" "}
-					<strong>{candidate.recoveryRevision}</strong>.
+					上次编辑会话未正常关闭。持续自动保存已将工程从版本{" "}
+					<strong>{candidate.openingRevision}</strong> 推进到版本{" "}
+					<strong>{candidate.recoveryRevision}</strong>。
 				</p>
 				<div className="border-border bg-muted/30 mt-4 rounded-lg border p-3 text-xs">
-					<div className="font-medium">Choose what to open</div>
+					<div className="font-medium">选择要打开的版本</div>
 					<div className="text-muted-foreground mt-1">
-						Keep the latest recovered edits, or restore the exact version from
-						before the interrupted session. Restoring creates another revision,
-						so neither choice destroys history.
+						你可以保留最新恢复内容，也可以恢复到中断前的准确版本。恢复会新建一个版本，
+						两种选择都不会破坏历史记录。
 					</div>
 				</div>
 				<div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -327,15 +325,15 @@ function RecoverySessionGuard() {
 						onClick={() => void restoreOpeningRevision()}
 					>
 						{restoring
-							? "Restoring…"
-							: `Restore revision ${candidate.openingRevision}`}
+							? "恢复中…"
+							: `恢复版本 ${candidate.openingRevision}`}
 					</button>
 					<button
 						type="button"
 						className="bg-foreground text-background rounded-md px-3 py-2 text-sm font-medium"
 						onClick={() => setCandidate(null)}
 					>
-						Keep recovered revision {candidate.recoveryRevision}
+						保留恢复版本 {candidate.recoveryRevision}
 					</button>
 				</div>
 			</div>

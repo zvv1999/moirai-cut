@@ -96,7 +96,7 @@ export function buildVoiceOverFilename({
 		: mimeType.includes("mp4")
 			? "m4a"
 			: "webm";
-	return `Voice-over Take ${String(Math.max(1, takeNumber)).padStart(
+	return `配音片段-${String(Math.max(1, takeNumber)).padStart(
 		3,
 		"0",
 	)}.${extension}`;

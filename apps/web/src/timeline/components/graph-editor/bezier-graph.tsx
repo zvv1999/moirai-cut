@@ -164,7 +164,7 @@ export function BezierGraph({
 			onPointerUp={onPointerUp}
 			onPointerCancel={onPointerCancel}
 		>
-			<title>Bezier curve editor</title>
+			<title>贝塞尔曲线编辑器</title>
 			<line
 				x1={p0.x}
 				y1={p0.y}

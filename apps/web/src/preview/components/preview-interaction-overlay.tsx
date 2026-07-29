@@ -70,7 +70,7 @@ export function PreviewInteractionOverlay() {
 			<div
 				className="absolute inset-0 pointer-events-auto"
 				role="application"
-				aria-label="Preview canvas"
+				aria-label="预览画布"
 				style={{
 					cursor: viewport.isPanning
 						? "grabbing"

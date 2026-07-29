@@ -33,8 +33,8 @@ export function TimelineNavigationControls({
 				variant="text"
 				size="icon"
 				className="size-8"
-				aria-label="Fit entire timeline"
-				title="Fit entire timeline"
+				aria-label="适应整个时间线"
+				title="适应整个时间线"
 				onClick={onFitTimeline}
 			>
 				<HugeiconsIcon icon={FitToScreenIcon} />
@@ -43,8 +43,8 @@ export function TimelineNavigationControls({
 				variant="text"
 				size="icon"
 				className="size-8"
-				aria-label="Reveal playhead"
-				title="Reveal playhead"
+				aria-label="定位播放头"
+				title="定位播放头"
 				onClick={onRevealPlayhead}
 			>
 				<HugeiconsIcon icon={FocusPointIcon} />
@@ -96,7 +96,7 @@ export function TimelineOverview({
 		<div
 			className="border-border/80 bg-background flex h-8 shrink-0 items-center border-t px-2"
 			role="group"
-			aria-label="Timeline overview"
+			aria-label="时间线概览"
 		>
 			<TimelineNavigationControls
 				onFitTimeline={onFitTimeline}
@@ -109,8 +109,8 @@ export function TimelineOverview({
 					"bg-muted/45 ring-foreground/10 relative h-4 w-full cursor-pointer overflow-hidden rounded-sm ring-1",
 					isDragging && "cursor-grabbing",
 				)}
-				aria-label="Navigate timeline overview"
-				title="Click or drag to navigate the timeline"
+				aria-label="浏览时间线概览"
+				title="点击或拖动以浏览时间线"
 				onPointerDown={(event) => {
 					event.currentTarget.setPointerCapture(event.pointerId);
 					setIsDragging(true);
@@ -142,7 +142,7 @@ export function TimelineOverview({
 				))}
 				<span
 					role="img"
-					aria-label="Visible timeline viewport"
+					aria-label="当前可见时间线范围"
 					className="border-primary bg-primary/10 pointer-events-none absolute inset-y-0 rounded-[2px] border"
 					style={{
 						left: `${viewport.leftPercent}%`,

@@ -332,8 +332,10 @@ export function TimelineElement({
 		canToggleSourceAudio(element, mediaAsset);
 	const sourceAudioLabel =
 		element.type === "video"
-			? getSourceAudioActionLabel({ element })
-			: "Extract audio";
+			? getSourceAudioActionLabel({ element }) === "Recover audio"
+				? "恢复音频"
+				: "提取音频"
+			: "提取音频";
 	const isElementSourceAudioSeparated =
 		element.type === "video" && isSourceAudioSeparated({ element });
 	const hasKeyframes = elementKeyframes.length > 0;
@@ -418,7 +420,7 @@ export function TimelineElement({
 						action="split"
 						icon={<HugeiconsIcon icon={ScissorIcon} />}
 					>
-						Split
+						分割
 					</ActionMenuItem>
 					<CopyMenuItem />
 					{selectedElements.length === 1 && (
@@ -426,7 +428,7 @@ export function TimelineElement({
 							action="duplicate-selected"
 							icon={<HugeiconsIcon icon={Copy01Icon} />}
 						>
-							Duplicate
+							复制
 						</ActionMenuItem>
 					)}
 					{canElementHaveAudio(element) && hasAudio && (
@@ -468,7 +470,7 @@ export function TimelineElement({
 								toggleElementExpanded(element.id);
 							}}
 						>
-							{isExpanded ? "Collapse keyframes" : "Expand keyframes"}
+							{isExpanded ? "收起关键帧" : "展开关键帧"}
 						</ContextMenuItem>
 					)}
 					{selectedElements.length === 1 && hasMediaId(element) && (
@@ -479,13 +481,13 @@ export function TimelineElement({
 									handleRevealInMedia({ event })
 								}
 							>
-								Reveal media
+								在素材库中显示
 							</ContextMenuItem>
 							<ContextMenuItem
 								icon={<HugeiconsIcon icon={Exchange01Icon} />}
 								disabled
 							>
-								Replace media
+								替换素材
 							</ContextMenuItem>
 						</>
 					)}
@@ -575,7 +577,7 @@ function ElementInner({
 						baseTrackHeight={baseTrackHeight}
 						elementId={element.id}
 						trackId={track.id}
-						label={`Select clip ${element.name}`}
+						label={`选择素材 ${element.name}`}
 						isSelected={isSelected}
 						onClick={(event) => onElementClick({ event, element })}
 						onMouseDown={(event) => onElementMouseDown({ event, element })}
@@ -620,11 +622,11 @@ function ElementInner({
 						<span
 							className="bg-background/85 text-foreground pointer-events-none absolute top-1 right-1 rounded px-1 text-[9px] font-semibold shadow-sm"
 							aria-label={[
-								element.groupId ? "Grouped" : null,
-								element.linkGroupId ? "Linked" : null,
+								element.groupId ? "已成组" : null,
+								element.linkGroupId ? "已连接" : null,
 							]
 								.filter(Boolean)
-								.join(" and ")}
+								.join("、")}
 						>
 							{element.groupId ? "G" : ""}
 							{element.linkGroupId ? "L" : ""}
@@ -634,9 +636,9 @@ function ElementInner({
 						<span
 							className="bg-primary/90 text-primary-foreground pointer-events-none absolute top-1 left-1 rounded px-1.5 py-0.5 text-[9px] font-semibold shadow-sm"
 							data-transition-id={element.transitionIn.id}
-							aria-label={`${element.transitionIn.type === "cross-dissolve" ? "Cross dissolve" : "Fade through black"} transition, ${(
+							aria-label={`${element.transitionIn.type === "cross-dissolve" ? "交叉溶解" : "黑场淡化"}转场，${(
 								(element.transitionIn.duration as number) / TICKS_PER_SECOND
-							).toFixed(2)} seconds`}
+							).toFixed(2)} 秒`}
 						>
 							{element.transitionIn.type === "cross-dissolve" ? "X" : "FB"}{" "}
 							{(
@@ -649,7 +651,7 @@ function ElementInner({
 						<span
 							className="bg-background/90 text-foreground pointer-events-none absolute right-1 bottom-1 rounded px-1.5 py-0.5 text-[9px] font-semibold shadow-sm"
 							data-compound-id={element.compound.id}
-							aria-label={`Compound clip with ${element.compound.children.length} nested clips`}
+							aria-label={`复合素材，包含 ${element.compound.children.length} 个嵌套素材`}
 						>
 							▣ {element.compound.children.length}
 						</span>
@@ -703,7 +705,7 @@ function ResizeHandle({
 			)}
 			onMouseDown={(event) => onResizeStart({ event, element, track, side })}
 			onClick={(event) => event.stopPropagation()}
-			aria-label={`${isLeft ? "Left" : "Right"} resize handle`}
+			aria-label={`${isLeft ? "左侧" : "右侧"}修剪手柄`}
 		></button>
 	);
 }
@@ -776,7 +778,7 @@ function KeyframeIndicators({
 						indicatorTime: indicator.time,
 					})
 				}
-				aria-label="Select keyframe"
+				aria-label="选择关键帧"
 			>
 				<HugeiconsIcon
 					icon={KeyframeIcon}
@@ -929,7 +931,7 @@ function ExpandedKeyframeLanes({
 											indicatorTime: kf.time,
 										});
 									}}
-									aria-label="Select keyframe"
+									aria-label="选择关键帧"
 								>
 									<HugeiconsIcon
 										icon={KeyframeIcon}
@@ -1259,7 +1261,7 @@ function CopyMenuItem() {
 			action="copy-selected"
 			icon={<HugeiconsIcon icon={Copy01Icon} />}
 		>
-			Copy
+			复制
 		</ActionMenuItem>
 	);
 }
@@ -1286,7 +1288,7 @@ function MuteMenuItem({
 
 	return (
 		<ActionMenuItem action="toggle-elements-muted-selected" icon={getIcon()}>
-			{isMuted ? "Unmute" : "Mute"}
+			{isMuted ? "取消静音" : "静音"}
 		</ActionMenuItem>
 	);
 }

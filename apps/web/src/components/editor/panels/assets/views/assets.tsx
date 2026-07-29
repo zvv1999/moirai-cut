@@ -1758,7 +1758,7 @@ function MediaPreview({
 			<div className="relative size-full">
 				<MediaTypePlaceholder
 					icon={MusicNote03Icon}
-					label="Audio"
+					label="音频"
 					duration={item.duration}
 					variant="bordered"
 				/>
@@ -1772,7 +1772,7 @@ function MediaPreview({
 		<div className="relative size-full">
 			<MediaTypePlaceholder
 				icon={Image02Icon}
-				label="Unknown"
+				label="未知"
 				variant="muted"
 			/>
 			<MediaMetadataBadges metadata={metadata} />
@@ -1789,7 +1789,7 @@ function MediaProxyBadge({ item }: { item: MediaAsset }) {
 				"absolute top-1 left-1 rounded px-1 py-0.5 text-[9px] font-bold tracking-wide text-white shadow",
 				item.proxy.enabled ? "bg-sky-500" : "bg-slate-500",
 			)}
-			title={`${item.proxy.enabled ? "Proxy preview enabled" : "Proxy preview disabled"} · export uses original`}
+			title={`${item.proxy.enabled ? "代理预览已启用" : "代理预览已停用"} · 导出使用原始素材`}
 		>
 			P
 		</span>
@@ -1835,7 +1835,7 @@ function HoverScrubVideoPreview({
 				setIsHovering(false);
 				setScrubTime(0);
 			}}
-			title="Hover to scrub · double-click for source monitor"
+			title="悬停拖动预览 · 双击打开源监视器"
 		>
 			{isHovering && previewUrl ? (
 				<video
@@ -1859,14 +1859,14 @@ function HoverScrubVideoPreview({
 			) : (
 				<MediaTypePlaceholder
 					icon={Video01Icon}
-					label="Video"
+					label="视频"
 					duration={item.duration}
 					variant="muted"
 				/>
 			)}
 			{isHovering ? (
 				<span className="absolute inset-x-1 bottom-1 rounded bg-black/75 px-1 py-0.5 text-center text-[9px] text-white">
-					Scrub {formatDuration({ duration: scrubTime })} · double-click source
+					预览 {formatDuration({ duration: scrubTime })} · 双击查看源素材
 				</span>
 			) : showDurationBadge ? (
 				<MediaDurationBadge duration={item.duration} />
@@ -1893,8 +1893,8 @@ function MediaMetadataBadges({ metadata }: { metadata: MediaAssetMetadata }) {
 			{metadata.favorite ? (
 				<span
 					className="flex size-4 items-center justify-center rounded bg-black/70 text-[10px] text-amber-300"
-					aria-label="Favorite asset"
-					title="Favorite"
+					aria-label="已收藏素材"
+					title="已收藏"
 				>
 					★
 				</span>

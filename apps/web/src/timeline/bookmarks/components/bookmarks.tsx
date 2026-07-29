@@ -95,7 +95,7 @@ export function TimelineBookmarksRow({
 					height: TIMELINE_BOOKMARK_ROW_HEIGHT_PX,
 					width: `${dynamicTimelineWidth}px`,
 				}}
-				aria-label="Timeline ruler"
+				aria-label="时间线标尺"
 				onClick={(event) => {
 					if (!event.currentTarget.contains(event.target as Node)) return;
 					handleTimelineContentClick(event);

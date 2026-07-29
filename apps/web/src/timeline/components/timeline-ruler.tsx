@@ -99,7 +99,7 @@ export function TimelineRuler({
 		<div
 			role="slider"
 			tabIndex={0}
-			aria-label="Timeline ruler"
+			aria-label="时间线标尺"
 			aria-valuemin={0}
 			aria-valuemax={effectiveDurationSeconds}
 			aria-valuenow={0}

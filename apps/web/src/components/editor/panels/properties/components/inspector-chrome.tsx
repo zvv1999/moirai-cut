@@ -58,7 +58,7 @@ export function InspectorSelectionHeader({
 	return (
 		<section
 			className="sr-only"
-			aria-label={`Selected ${type}: ${name}`}
+			aria-label={`已选${ELEMENT_TYPE_LABELS[type]}：${name}`}
 			data-inspector-context="selected-clip"
 		>
 			<span>{ELEMENT_TYPE_LABELS[type]}</span>

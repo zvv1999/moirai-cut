@@ -149,7 +149,7 @@ export function ReliabilityWorkbench() {
 			"[data-media-preview-virtualized]",
 		).length;
 		const mountedTimelineElements = document.querySelectorAll(
-			'[aria-label^="Select clip "]',
+			'[aria-label^="选择素材 "]',
 		).length;
 		const waveformStats = waveformCache.getStats();
 		const thumbnailEntries = media.filter(

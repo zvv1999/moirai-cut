@@ -30,8 +30,8 @@ import {
 
 const DEFAULT_DURATION_SECONDS = 0.5;
 const TRANSITION_LABELS: Record<TimelineTransitionType, string> = {
-	"cross-dissolve": "Cross dissolve",
-	"fade-through-black": "Fade through black",
+	"cross-dissolve": "交叉溶解",
+	"fade-through-black": "黑场淡化",
 };
 
 export function TransitionManagerPopover() {
@@ -112,7 +112,7 @@ export function TransitionManagerPopover() {
 					variant="text"
 					size="icon"
 					className="relative rounded-sm"
-					aria-label={`Open transition manager (${transitionCount})`}
+					aria-label={`打开转场管理器（${transitionCount}）`}
 				>
 					<HugeiconsIcon icon={Exchange01Icon} />
 					{transitionCount > 0 ? (
@@ -128,10 +128,9 @@ export function TransitionManagerPopover() {
 				className="flex w-80 flex-col gap-4 p-3"
 			>
 				<div>
-					<p className="text-sm font-semibold">Edit-point transition</p>
+					<p className="text-sm font-semibold">剪辑点转场</p>
 					<p className="text-muted-foreground text-[11px]">
-						Select two adjacent clips to add, or select a transition clip to
-						replace or remove it.
+						选择两个相邻素材以添加转场，或选择已有转场进行替换或移除。
 					</p>
 				</div>
 
@@ -157,11 +156,11 @@ export function TransitionManagerPopover() {
 
 				<div className="space-y-2">
 					<div className="flex items-center justify-between text-xs">
-						<span>Duration handle</span>
-						<span className="font-mono">{durationSeconds.toFixed(2)}s</span>
+						<span>转场时长</span>
+						<span className="font-mono">{durationSeconds.toFixed(2)} 秒</span>
 					</div>
 					<Slider
-						aria-label="Transition duration"
+						aria-label="转场时长"
 						min={0.1}
 						max={Math.max(0.1, Math.min(3, maxDurationSeconds - 0.01))}
 						step={0.05}
@@ -183,7 +182,7 @@ export function TransitionManagerPopover() {
 								)
 							}
 						>
-							− 0.05s
+							− 0.05 秒
 						</Button>
 						<Button
 							type="button"
@@ -199,7 +198,7 @@ export function TransitionManagerPopover() {
 								)
 							}
 						>
-							+ 0.05s
+							+ 0.05 秒
 						</Button>
 					</div>
 				</div>
@@ -217,7 +216,7 @@ export function TransitionManagerPopover() {
 						disabled={!durationIsValid}
 						onClick={applyTransition}
 					>
-						{selectedTransition ? "Replace transition" : "Add transition"}
+						{selectedTransition ? "替换转场" : "添加转场"}
 					</Button>
 					<Button
 						type="button"
@@ -226,7 +225,7 @@ export function TransitionManagerPopover() {
 						disabled={!selectedTransition}
 						onClick={removeTransition}
 					>
-						Remove
+						移除
 					</Button>
 				</div>
 			</PopoverContent>
@@ -259,7 +258,7 @@ function TransitionFeedback({
 				className="border-destructive/30 bg-destructive/10 text-destructive rounded-md border p-2 text-xs"
 				role="status"
 			>
-				Transition duration exceeds the available clip handles.
+				转场时长超出了素材可用余量。
 			</p>
 		);
 	}
@@ -268,8 +267,8 @@ function TransitionFeedback({
 			className="border-border bg-muted/30 rounded-md border p-2 text-xs"
 			role="status"
 		>
-			{plan.action === "edit" ? "Editing" : "Valid cut"} ·{" "}
-			{mediaTimeToSeconds({ time: duration }).toFixed(2)}s ·{" "}
+			{plan.action === "edit" ? "正在编辑" : "剪辑点有效"} ·{" "}
+			{mediaTimeToSeconds({ time: duration }).toFixed(2)} 秒 ·{" "}
 			{plan.from.elementId.slice(0, 8)} → {plan.to.elementId.slice(0, 8)}
 		</p>
 	);

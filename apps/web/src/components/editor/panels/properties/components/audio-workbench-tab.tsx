@@ -192,7 +192,7 @@ export function AudioWorkbenchTab({
 				audioElement.sourceType === "library"
 			) {
 				const response = await fetch(audioElement.sourceUrl);
-				if (!response.ok) throw new Error("Could not fetch the audio source");
+				if (!response.ok) throw new Error("无法读取音频源");
 				const context = createAudioContext();
 				try {
 					buffer = await context.decodeAudioData(
@@ -202,7 +202,7 @@ export function AudioWorkbenchTab({
 					void context.close();
 				}
 			}
-			if (!buffer) throw new Error("No decodable audio is available");
+			if (!buffer) throw new Error("没有可解码的音频");
 			setAnalysis(
 				analyzeAudioBuffer({
 					audioBuffer: buffer,
@@ -214,7 +214,7 @@ export function AudioWorkbenchTab({
 		} catch (error) {
 			setAnalysisStatus("error");
 			setAnalysisError(
-				error instanceof Error ? error.message : "Audio analysis failed",
+				error instanceof Error ? error.message : "音频分析失败",
 			);
 		}
 	}, [audioElement, mediaAsset, targetLufs]);
@@ -269,27 +269,27 @@ export function AudioWorkbenchTab({
 				showTopBorder
 			>
 				<SectionHeader>
-					<SectionTitle>Audio analysis</SectionTitle>
+					<SectionTitle>音频分析</SectionTitle>
 				</SectionHeader>
 				<SectionContent className="pt-0">
 					<SectionFields>
 						<div className="grid grid-cols-2 gap-2">
 							<Metric
-								label="Integrated"
-								value={analysis ? formatLufs(analysis.integratedLufs) : "Not run"}
+								label="综合响度"
+								value={analysis ? formatLufs(analysis.integratedLufs) : "未分析"}
 							/>
 							<Metric
-								label="Peak"
-								value={analysis ? formatDb(analysis.peakDbfs) : "Not run"}
+								label="峰值"
+								value={analysis ? formatDb(analysis.peakDbfs) : "未分析"}
 								tone={analysis?.clippingDetected ? "warning" : "default"}
 							/>
 							<Metric
-								label="Clipped samples"
+								label="削波采样"
 								value={analysis ? String(analysis.clippedSampleCount) : "—"}
 								tone={analysis?.clippingDetected ? "warning" : "good"}
 							/>
 							<Metric
-								label="Suggested gain"
+								label="建议增益"
 								value={
 									analysis
 										? formatDb(analysis.normalizationGainDb)
@@ -298,7 +298,7 @@ export function AudioWorkbenchTab({
 							/>
 						</div>
 						<SectionField
-							label="Target loudness"
+							label="目标响度"
 							afterLabel={
 								<span className="text-muted-foreground text-xs">
 									{targetLufs} LUFS
@@ -306,7 +306,7 @@ export function AudioWorkbenchTab({
 							}
 						>
 							<Slider
-								aria-label="Target loudness"
+								aria-label="目标响度"
 								min={-24}
 								max={-9}
 								step={1}
@@ -319,8 +319,7 @@ export function AudioWorkbenchTab({
 								role="alert"
 								className="border-orange-500/40 bg-orange-500/10 rounded-md border px-3 py-2 text-xs leading-5 text-orange-600 dark:text-orange-300"
 							>
-								Source clipping detected. Normalization is non-destructive, but
-								cannot reconstruct already flattened peaks.
+								检测到源音频削波。标准化是非破坏性的，但无法还原已经压平的峰值。
 							</div>
 						) : null}
 						{analysisError ? (
@@ -334,7 +333,7 @@ export function AudioWorkbenchTab({
 								onClick={() => void runAnalysis()}
 								disabled={analysisStatus === "loading"}
 							>
-								{analysisStatus === "loading" ? "Analysing…" : "Analyse clip"}
+								{analysisStatus === "loading" ? "分析中…" : "分析素材"}
 							</Button>
 							<Button
 								className="w-full"
@@ -342,12 +341,11 @@ export function AudioWorkbenchTab({
 								onClick={normalize}
 								disabled={!analysis || analysisStatus === "loading"}
 							>
-								Normalize safely
+								安全标准化
 							</Button>
 						</div>
 						<p className="text-muted-foreground text-[11px] leading-4">
-							Estimated locally from decoded PCM. The source file is never
-							rewritten; Normalize creates one undoable volume change.
+							通过本地解码的 PCM 估算，不会重写源文件；标准化只会生成一次可撤销的音量调整。
 						</p>
 					</SectionFields>
 				</SectionContent>
@@ -360,21 +358,21 @@ export function AudioWorkbenchTab({
 					showTopBorder
 				>
 					<SectionHeader>
-						<SectionTitle>Source audio</SectionTitle>
+						<SectionTitle>源音频</SectionTitle>
 					</SectionHeader>
 					<SectionContent className="pt-0">
 						<SectionFields>
 							<div className="flex items-center justify-between rounded-md border px-3 py-2.5">
 								<div>
 									<div className="text-sm font-medium">
-										{sourceSeparated ? "Separated" : "Attached to video"}
+										{sourceSeparated ? "已分离" : "已附加到视频"}
 									</div>
 									<div className="text-muted-foreground mt-0.5 text-xs">
 										{sourceSeparated
 											? separatedCompanion
-												? "Generated companion found"
-												: "No generated companion found"
-											: "Video and source audio share timing"}
+												? "已找到生成的音频素材"
+												: "未找到生成的音频素材"
+											: "视频与源音频共用时序"}
 									</div>
 								</div>
 								<span
@@ -385,13 +383,12 @@ export function AudioWorkbenchTab({
 											: "bg-emerald-500/15 text-emerald-500",
 									)}
 								>
-									{sourceSeparated ? "Separate" : "Linked"}
+									{sourceSeparated ? "已分离" : "已连接"}
 								</span>
 							</div>
 							{recoveryPlan && !recoveryPlan.ok ? (
 								<div className="border-orange-500/40 bg-orange-500/10 rounded-md border px-3 py-2 text-xs leading-5 text-orange-600 dark:text-orange-300">
-									{recoveryPlan.reason}. This prevents drift or silent loss of
-									edits.
+									{recoveryPlan.reason}。为避免时序漂移或静默丢失编辑，当前操作已停用。
 								</div>
 							) : null}
 							<Button
@@ -406,8 +403,8 @@ export function AudioWorkbenchTab({
 								}
 							>
 								{sourceSeparated
-									? "Recover and remove companion"
-									: "Separate source audio"}
+									? "恢复并移除分离音频"
+									: "分离源音频"}
 							</Button>
 						</SectionFields>
 					</SectionContent>
@@ -420,28 +417,28 @@ export function AudioWorkbenchTab({
 				showTopBorder
 			>
 				<SectionHeader>
-					<SectionTitle>Processing chain</SectionTitle>
+					<SectionTitle>处理链</SectionTitle>
 				</SectionHeader>
 				<SectionContent className="pt-0">
 					<SectionFields>
 						<LabeledSwitch
-							label="Noise reduction"
-							description="Low-cut and gentle noise gate for room rumble."
+							label="降噪"
+							description="使用低切与柔和噪声门，减少房间低频杂声。"
 							checked={audioElement.params.audioNoiseReduction === true}
 							onCheckedChange={(checked) =>
 								updateParam("audioNoiseReduction", checked)
 							}
 						/>
 						<LabeledSwitch
-							label="Voice enhancement"
-							description="Adds vocal presence and controlled dynamics."
+							label="人声增强"
+							description="增强人声存在感并控制动态范围。"
 							checked={audioElement.params.audioVoiceEnhance === true}
 							onCheckedChange={(checked) =>
 								updateParam("audioVoiceEnhance", checked)
 							}
 						/>
 						<SectionField
-							label="Channel balance"
+							label="声道平衡"
 							afterLabel={
 								<span className="text-muted-foreground text-xs tabular-nums">
 									{Number(
@@ -451,7 +448,7 @@ export function AudioWorkbenchTab({
 							}
 						>
 							<Slider
-								aria-label="Channel balance"
+								aria-label="声道平衡"
 								min={-1}
 								max={1}
 								step={0.01}
@@ -463,9 +460,9 @@ export function AudioWorkbenchTab({
 								}
 							/>
 						</SectionField>
-						<SectionField label="Processing gain">
+						<SectionField label="处理增益">
 							<Input
-								aria-label="Processing gain"
+								aria-label="处理增益"
 								type="number"
 								size="sm"
 								min={-24}
@@ -495,11 +492,10 @@ export function AudioWorkbenchTab({
 								})
 							}
 						>
-							Reset processing
+							重置处理
 						</Button>
 						<p className="text-muted-foreground text-[11px] leading-4">
-							Preview and export use the same non-destructive chain. Every
-							change is undoable.
+							预览和导出使用同一套非破坏性处理链，所有改动均可撤销。
 						</p>
 					</SectionFields>
 				</SectionContent>
@@ -511,19 +507,19 @@ export function AudioWorkbenchTab({
 				showTopBorder
 			>
 				<SectionHeader>
-					<SectionTitle>Waveform performance</SectionTitle>
+					<SectionTitle>波形性能</SectionTitle>
 				</SectionHeader>
 				<SectionContent className="pt-0">
 					<div className="grid grid-cols-2 gap-2">
-						<Metric label="Cached sources" value={String(cacheStats.entries)} />
+						<Metric label="已缓存来源" value={String(cacheStats.entries)} />
 						<Metric
-							label="Cache reuse"
-							value={`${cacheStats.hits} hits`}
+							label="缓存复用"
+							value={`${cacheStats.hits} 次命中`}
 							tone={cacheStats.hits > 0 ? "good" : "default"}
 						/>
-						<Metric label="Builds" value={String(cacheStats.misses)} />
+						<Metric label="构建次数" value={String(cacheStats.misses)} />
 						<Metric
-							label="Errors"
+							label="错误"
 							value={String(cacheStats.errors)}
 							tone={cacheStats.errors > 0 ? "warning" : "good"}
 						/>
@@ -549,12 +545,11 @@ export function AudioWorkbenchTab({
 								setCacheStats(waveformCache.getStats());
 							}}
 						>
-							Rebuild selected waveform
+							重建所选波形
 						</Button>
 					</div>
 					<p className="text-muted-foreground mt-3 text-[11px] leading-4">
-						Long clips reuse one source summary and draw only the visible
-						timeline range.
+						长素材会复用同一份源摘要，并且只绘制时间线的可见范围。
 					</p>
 				</SectionContent>
 			</Section>
@@ -647,11 +642,11 @@ function VoiceOverRecorder() {
 	const placeTake = useCallback(
 		async ({ blob, mimeType }: { blob: Blob; mimeType: string }) => {
 			const activeProject = editor.project.getActive();
-			if (!activeProject) throw new Error("No active project");
+			if (!activeProject) throw new Error("没有打开的工程");
 			const takeNumber =
 				editor.media
 					.getAssets()
-					.filter((asset) => asset.name.startsWith("Voice-over Take")).length +
+					.filter((asset) => asset.name.startsWith("配音片段-")).length +
 				1;
 			const file = new File(
 				[blob],
@@ -660,7 +655,7 @@ function VoiceOverRecorder() {
 			);
 			const processed = await processMediaAssets({ files: [file] });
 			const asset = processed[0];
-			if (!asset) throw new Error("The recorded take could not be decoded");
+			if (!asset) throw new Error("无法解码录制的配音片段");
 
 			const addMedia = new AddMediaAssetCommand({
 				projectId: activeProject.metadata.id,
@@ -722,7 +717,7 @@ function VoiceOverRecorder() {
 							message:
 								error instanceof Error
 									? error.message
-									: "Could not place the recording",
+									: "无法放置录音",
 						}),
 					)
 					.finally(stopStream);
@@ -776,7 +771,7 @@ function VoiceOverRecorder() {
 	const arm = useCallback(async () => {
 		try {
 			if (!navigator.mediaDevices?.getUserMedia) {
-				throw new Error("Audio recording is unavailable in this browser");
+				throw new Error("当前浏览器不支持音频录制");
 			}
 			const stream = await navigator.mediaDevices.getUserMedia({
 				audio:
@@ -812,7 +807,7 @@ function VoiceOverRecorder() {
 				message:
 					error instanceof Error
 						? error.message
-						: "Microphone permission failed",
+						: "麦克风权限获取失败",
 			});
 			stopStream();
 		}
@@ -854,30 +849,30 @@ function VoiceOverRecorder() {
 			showBottomBorder={false}
 		>
 			<SectionHeader>
-				<SectionTitle>Voice-over recording</SectionTitle>
+				<SectionTitle>配音录制</SectionTitle>
 			</SectionHeader>
 			<SectionContent className="pt-0">
 				<SectionFields>
-					<SectionField label="Input">
+					<SectionField label="输入设备">
 						<select
-							aria-label="Voice-over input"
+							aria-label="配音输入设备"
 							className="bg-input border-border h-8 w-full rounded-md border px-2 text-sm"
 							value={deviceId}
 							disabled={busy}
 							onChange={(event) => setDeviceId(event.target.value)}
 						>
 							{devices.length === 0 ? (
-								<option value="default">Default microphone</option>
+								<option value="default">默认麦克风</option>
 							) : (
 								devices.map((device, index) => (
 									<option key={device.deviceId} value={device.deviceId}>
-										{device.label || `Microphone ${index + 1}`}
+										{device.label || `麦克风 ${index + 1}`}
 									</option>
 								))
 							)}
 						</select>
 					</SectionField>
-					<SectionField label="Count in">
+					<SectionField label="倒数">
 						<div className="grid grid-cols-3 gap-2">
 							{[0, 3, 5].map((seconds) => (
 								<Button
@@ -892,7 +887,7 @@ function VoiceOverRecorder() {
 										setState(createVoiceOverState({ countInSeconds: seconds }));
 									}}
 								>
-									{seconds === 0 ? "None" : `${seconds}s`}
+									{seconds === 0 ? "无" : `${seconds} 秒`}
 								</Button>
 							))}
 						</div>
@@ -901,14 +896,14 @@ function VoiceOverRecorder() {
 						<div className="flex items-center justify-between">
 							<div className="text-sm font-medium">
 								{state.phase === "ready"
-									? "Ready to record"
+									? "准备录制"
 									: state.phase === "counting"
-										? `Recording in ${state.countInRemaining}…`
+										? `${state.countInRemaining} 秒后录制…`
 										: state.phase === "recording"
-											? "Recording"
+											? "录制中"
 											: state.phase === "processing"
-												? "Placing take…"
-												: "Microphone error"}
+												? "正在放置录音…"
+												: "麦克风错误"}
 							</div>
 							<div className="font-mono text-xs tabular-nums">
 								{state.elapsedSeconds.toFixed(1)}s
@@ -916,7 +911,7 @@ function VoiceOverRecorder() {
 						</div>
 						<div className="bg-background mt-3 h-2 overflow-hidden rounded-full border">
 							<div
-								aria-label="Input level"
+								aria-label="输入电平"
 								className={cn(
 									"h-full origin-left transition-transform",
 									state.level > 0.9 ? "bg-orange-500" : "bg-emerald-500",
@@ -937,16 +932,15 @@ function VoiceOverRecorder() {
 							onClick={stop}
 							disabled={state.phase === "processing"}
 						>
-							{state.phase === "processing" ? "Processing…" : "Stop and place"}
+							{state.phase === "processing" ? "处理中…" : "停止并放置"}
 						</Button>
 					) : (
 						<Button size="sm" onClick={() => void arm()}>
-							Record at playhead
+							从播放头处录制
 						</Button>
 					)}
 					<p className="text-muted-foreground text-[11px] leading-4">
-						The level meter monitors input without speaker echo. Stopping creates
-						one named take and places it on an audio track; Undo removes both.
+						电平表只监听输入，不会从扬声器回放。停止后会创建一条命名录音并放到音频轨道；撤销可同时移除两者。
 					</p>
 				</SectionFields>
 			</SectionContent>

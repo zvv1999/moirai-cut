@@ -169,8 +169,8 @@ export function planElementRelationUpdate({
 			action,
 			reason:
 				kind === "group"
-					? "Select at least two clips"
-					: "Select overlapping visual and audio clips",
+					? "请至少选择两个素材"
+					: "请选择时间重叠的画面和音频素材",
 			updates: [],
 		};
 	}
@@ -195,7 +195,7 @@ export function planElementRelationUpdate({
 		return {
 			available: false,
 			action: "link",
-			reason: "Select overlapping visual and audio clips",
+			reason: "请选择时间重叠的画面和音频素材",
 			updates: [],
 		};
 	}

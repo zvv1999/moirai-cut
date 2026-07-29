@@ -57,8 +57,24 @@ function statusClass(status: "pass" | "warning" | "fail"): string {
 function formatRange(
 	range: { startSeconds: number; endSeconds: number } | null,
 ) {
-	if (!range) return "Project scope";
-	return `${range.startSeconds.toFixed(2)}s–${range.endSeconds.toFixed(2)}s`;
+	if (!range) return "工程范围";
+	return `${range.startSeconds.toFixed(2)} 秒–${range.endSeconds.toFixed(2)} 秒`;
+}
+
+const AGENT_REQUEST_PRESETS = [
+	{ label: "收紧这段剪辑", request: "tighten this section" },
+	{ label: "统一字幕样式", request: "unify captions" },
+	{
+		label: "将所选素材重命名为主角",
+		request: "rename selected clips to Hero",
+	},
+] as const;
+
+function compileRequestText(request: string): string {
+	return (
+		AGENT_REQUEST_PRESETS.find((preset) => preset.label === request)?.request ??
+		request
+	);
 }
 
 function contactSheet(render: RenderFramesResult): string | null {
@@ -83,7 +99,7 @@ export function AgentWorkbench() {
 	const selectedElements = useEditor((instance) =>
 		instance.selection.getSelectedElements(),
 	);
-	const [request, setRequest] = useState("tighten this section");
+	const [request, setRequest] = useState("收紧这段剪辑");
 	const [plan, setPlan] = useState<SemanticEditPlan | null>(null);
 	const [planDecision, setPlanDecision] = useState<
 		Record<string, PlanDecision>
@@ -123,12 +139,12 @@ export function AgentWorkbench() {
 
 	const selectedLabel =
 		selectedElements.length === 0
-			? "No clips selected"
-			: `${selectedElements.length} clip${selectedElements.length === 1 ? "" : "s"} selected`;
+			? "未选择素材"
+			: `已选 ${selectedElements.length} 个素材`;
 
 	const preview = (nextRequest = request) => {
 		const next = compileSemanticEdit({
-			request: nextRequest,
+			request: compileRequestText(nextRequest),
 			context: {
 				state: editor.agent.getState(),
 				selectedElements,
@@ -142,7 +158,7 @@ export function AgentWorkbench() {
 		setReview(null);
 		setReviewDecision({});
 		if (!next.valid) {
-			toast.error("Plan needs attention", { description: next.errors[0] });
+			toast.error("计划需要处理", { description: next.errors[0] });
 		}
 	};
 
@@ -152,7 +168,7 @@ export function AgentWorkbench() {
 			(group) => planDecision[group.id] !== "excluded",
 		);
 		if (groups.length === 0) {
-			toast.error("Every change group is excluded");
+			toast.error("所有改动组都已排除");
 			return;
 		}
 		const appliedPlan = { ...plan, groups };
@@ -179,22 +195,22 @@ export function AgentWorkbench() {
 				),
 			);
 			if (!result.applied || !nextReview.complete) {
-				toast.warning("Plan completed with review findings", {
+				toast.warning("计划已完成，但复核发现问题", {
 					description: result.noEffect
-						? "The command had no effect."
-						: "At least one declared property did not change.",
+						? "命令未产生效果。"
+						: "至少有一个声明的属性没有发生变化。",
 				});
 			} else {
-				toast.success(`Applied ${groups.length} reviewed change group(s)`, {
-					description: `Revision ${result.revision} · one shared undo entry`,
+				toast.success(`已应用 ${groups.length} 个复核通过的改动组`, {
+					description: `版本 ${result.revision} · 共用一个撤销记录`,
 				});
 			}
 		} catch (error) {
-			toast.error("Plan was not applied", {
+			toast.error("计划未应用", {
 				description:
 					error instanceof Error
 						? error.message
-						: "The project changed; preview again.",
+						: "工程已发生变化，请重新预览。",
 			});
 		} finally {
 			setExecuting(false);
@@ -230,7 +246,7 @@ export function AgentWorkbench() {
 					: {}),
 			});
 			if (!result.applied) {
-				toast.error("The inverse operation had no effect");
+				toast.error("反向操作未产生效果");
 				return;
 			}
 			setReviewDecision((current) => ({
@@ -239,14 +255,14 @@ export function AgentWorkbench() {
 			}));
 			toast.success(
 				decision === "rejected"
-					? "Group rejected and reversed"
-					: "Group reverted",
-				{ description: `Revision ${result.revision} · undo remains available` },
+					? "改动组已拒绝并撤回"
+					: "改动组已还原",
+				{ description: `版本 ${result.revision} · 仍可撤销` },
 			);
 		} catch (error) {
-			toast.error("Could not reverse this group", {
+			toast.error("无法撤回此改动组", {
 				description:
-					error instanceof Error ? error.message : "Preview the project again.",
+					error instanceof Error ? error.message : "请重新预览工程。",
 			});
 		}
 	};
@@ -379,9 +395,9 @@ export function AgentWorkbench() {
 				ranAt: new Date().toISOString(),
 			});
 		} catch (error) {
-			toast.error("Agent preflight failed", {
+			toast.error("智能体预检失败", {
 				description:
-					error instanceof Error ? error.message : "Could not render evidence.",
+					error instanceof Error ? error.message : "无法渲染验证材料。",
 			});
 		} finally {
 			setQcRunning(false);
@@ -393,80 +409,75 @@ export function AgentWorkbench() {
 	return (
 		<section
 			className="border-primary/20 bg-primary/[0.035] mb-3 rounded-lg border p-2.5"
-			aria-label="Agent editing studio"
+			aria-label="智能剪辑工作台"
 		>
 			<div className="mb-2 flex items-start justify-between gap-3">
 				<div>
-					<div className="text-xs font-semibold">Agent Studio</div>
+					<div className="text-xs font-semibold">智能剪辑</div>
 					<div className="text-[10px] opacity-55">
-						Plan → review → shared commands → visual proof
+						计划 → 复核 → 共享命令 → 画面验证
 					</div>
 				</div>
 				<div className="border-primary/20 bg-background rounded-full border px-2 py-0.5 font-mono text-[9px]">
-					rev {editor.agent.revision} · {selectedLabel}
+					版本 {editor.agent.revision} · {selectedLabel}
 				</div>
 			</div>
 
 			<div className="flex gap-1">
 				<input
-					aria-label="Describe an agent edit"
+					aria-label="描述智能剪辑需求"
 					className="border-input bg-background min-w-0 flex-1 rounded-md border px-2 py-1.5 text-xs"
 					value={request}
 					onChange={(event) => setRequest(event.target.value)}
 					onKeyDown={(event) => {
 						if (event.key === "Enter") preview();
 					}}
-					placeholder="e.g. tighten this section"
+					placeholder="例如：收紧这段剪辑"
 				/>
 				<button
 					type="button"
 					className="bg-primary text-primary-foreground rounded-md px-3 py-1.5 text-[11px] font-medium"
 					onClick={() => preview()}
 				>
-					Preview plan
+					预览计划
 				</button>
 			</div>
 			<div className="mt-1.5 flex flex-wrap gap-1">
-				{[
-					"tighten this section",
-					"unify captions",
-					"rename selected clips to Hero",
-				].map((preset) => (
+				{AGENT_REQUEST_PRESETS.map((preset) => (
 					<button
-						key={preset}
+						key={preset.request}
 						type="button"
 						className="border-border bg-background rounded border px-1.5 py-0.5 text-[9px] opacity-70 hover:opacity-100"
-						onClick={() => preview(preset)}
+						onClick={() => preview(preset.label)}
 					>
-						{preset}
+						{preset.label}
 					</button>
 				))}
 			</div>
 			<div className="border-border bg-background/60 mt-2 rounded-md border px-2 py-1.5">
 				<div className="flex items-center justify-between gap-2">
 					<span className="text-[9px] font-semibold tracking-wide uppercase opacity-50">
-						Semantic address space
+						语义寻址空间
 					</span>
 					<span className="font-mono text-[8px] opacity-45">
-						CAS · idempotent · no-effect verified
+						CAS · 幂等 · 无效果验证
 					</span>
 				</div>
 				<div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-[8px] opacity-70">
-					<span>{semanticState.media.length} media</span>
-					<span>{semanticState.tracks.length} tracks</span>
-					<span>{semanticElementCount} clips</span>
-					<span>{semanticTextCount} text</span>
-					<span>{semanticKeyframeCount} keyframes</span>
-					<span>{semanticState.bookmarks.length} markers</span>
+					<span>{semanticState.media.length} 个媒体</span>
+					<span>{semanticState.tracks.length} 条轨道</span>
+					<span>{semanticElementCount} 个素材</span>
+					<span>{semanticTextCount} 个文本</span>
+					<span>{semanticKeyframeCount} 个关键帧</span>
+					<span>{semanticState.bookmarks.length} 个标记</span>
 					<span>
 						{qc
-							? `${qc.summary.correctionPass.length} addressable issues`
-							: "issues after QC"}
+							? `${qc.summary.correctionPass.length} 个可寻址问题`
+							: "质检后显示问题"}
 					</span>
 				</div>
 				<div className="mt-1 text-[8px] opacity-45">
-					Every applied plan becomes one shared undo entry; rejected groups use
-					the same command gate.
+					每个已应用计划都会成为一条共享撤销记录；被拒绝的改动组使用同一命令入口。
 				</div>
 			</div>
 
@@ -476,12 +487,12 @@ export function AgentWorkbench() {
 						<div>
 							<div className="text-[11px] font-semibold">{plan.title}</div>
 							<div className="font-mono text-[9px] opacity-50">
-								base rev {plan.baseRevision} · {plan.groups.length} groups ·{" "}
+								基础版本 {plan.baseRevision} · {plan.groups.length} 个改动组 ·{" "}
 								{plan.groups.reduce(
 									(total, group) => total + group.targets.length,
 									0,
 								)}{" "}
-								targets
+								个目标
 							</div>
 						</div>
 						<span
@@ -491,7 +502,7 @@ export function AgentWorkbench() {
 									: "bg-red-500/10 text-red-600"
 							}`}
 						>
-							{plan.valid ? "VALIDATED" : "BLOCKED"}
+							{plan.valid ? "已验证" : "已阻止"}
 						</span>
 					</div>
 					<p className="mt-1.5 text-[10px] leading-relaxed">
@@ -500,7 +511,7 @@ export function AgentWorkbench() {
 					{plan.assumptions.length > 0 ? (
 						<div className="mt-1.5">
 							<div className="text-[9px] font-semibold tracking-wide uppercase opacity-45">
-								Assumptions
+								假设
 							</div>
 							<ul className="mt-0.5 space-y-0.5 text-[9px] opacity-70">
 								{plan.assumptions.map((assumption) => (
@@ -542,7 +553,7 @@ export function AgentWorkbench() {
 															}))
 														}
 													>
-														{decision === "included" ? "Exclude" : "Include"}
+														{decision === "included" ? "排除" : "纳入"}
 													</button>
 												</div>
 												<div className="mt-0.5 font-mono text-[8px] opacity-55">
@@ -568,7 +579,7 @@ export function AgentWorkbench() {
 					{plan.valid && !review ? (
 						<button
 							type="button"
-							aria-label="Apply reviewed agent plan"
+							aria-label="应用已复核的智能体计划"
 							className="bg-foreground text-background mt-2 w-full rounded-md px-3 py-1.5 text-[10px] font-semibold disabled:opacity-40"
 							disabled={
 								executing ||
@@ -579,8 +590,8 @@ export function AgentWorkbench() {
 							onClick={() => void executePlan()}
 						>
 							{executing
-								? "Applying through shared command history…"
-								: "Apply reviewed plan"}
+								? "正在通过共享命令历史应用…"
+								: "应用已复核计划"}
 						</button>
 					) : null}
 				</div>
@@ -589,14 +600,13 @@ export function AgentWorkbench() {
 			{review ? (
 				<div
 					className="border-border bg-background/70 mt-2 rounded-md border p-2"
-					aria-label="Agent change review"
+					aria-label="智能体改动复核"
 				>
 					<div className="flex items-center justify-between">
 						<div>
-							<div className="text-[11px] font-semibold">Change review</div>
+							<div className="text-[11px] font-semibold">改动复核</div>
 							<div className="font-mono text-[9px] opacity-50">
-								rev {review.fromRevision} → {review.toRevision} · every declared
-								property checked
+								版本 {review.fromRevision} → {review.toRevision} · 已检查所有声明属性
 							</div>
 						</div>
 						<span
@@ -606,7 +616,7 @@ export function AgentWorkbench() {
 									: "bg-amber-500/10 text-amber-600"
 							}`}
 						>
-							{review.complete ? "VERIFIED" : "CHECK"}
+							{review.complete ? "已验证" : "请检查"}
 						</span>
 					</div>
 					<ul className="mt-2 space-y-1.5">
@@ -639,7 +649,7 @@ export function AgentWorkbench() {
 										))}
 										{group.changes.length === 0 ? (
 											<li className="text-amber-600">
-												No declared property change was observed.
+												未观察到声明的属性改动。
 											</li>
 										) : null}
 									</ul>
@@ -650,7 +660,7 @@ export function AgentWorkbench() {
 											className="border-border flex-1 rounded border px-1 py-0.5 text-[9px] disabled:opacity-35"
 											onClick={() => acceptGroup(group.groupId)}
 										>
-											Accept
+											接受
 										</button>
 										<button
 											type="button"
@@ -663,7 +673,7 @@ export function AgentWorkbench() {
 												})
 											}
 										>
-											Reject + reverse
+											拒绝并撤回
 										</button>
 										<button
 											type="button"
@@ -676,7 +686,7 @@ export function AgentWorkbench() {
 												})
 											}
 										>
-											Revert
+											还原
 										</button>
 									</div>
 								</li>
@@ -690,10 +700,10 @@ export function AgentWorkbench() {
 				<div className="flex items-start justify-between gap-2">
 					<div>
 						<div className="text-[11px] font-semibold">
-							Agent preflight & visual QC
+							智能体预检与画面质检
 						</div>
 						<div className="text-[9px] opacity-55">
-							Structure · export-rendered frames · audio · encoder
+							结构 · 导出渲染帧 · 音频 · 编码器
 						</div>
 					</div>
 					<button
@@ -702,7 +712,7 @@ export function AgentWorkbench() {
 						disabled={qcRunning}
 						onClick={() => void runQc()}
 					>
-						{qcRunning ? "Rendering evidence…" : "Run QC"}
+						{qcRunning ? "正在渲染验证材料…" : "运行质检"}
 					</button>
 				</div>
 				{qc ? (
@@ -730,7 +740,7 @@ export function AgentWorkbench() {
 								{/* eslint-disable-next-line @next/next/no-img-element */}
 								<img
 									src={sheet}
-									alt={`Export renderer contact sheet for revision ${qc.summary.revision}`}
+									alt={`版本 ${qc.summary.revision} 的导出渲染器联系表`}
 									className="block h-auto w-full"
 								/>
 							</div>

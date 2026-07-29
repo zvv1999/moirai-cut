@@ -82,7 +82,7 @@ export function PropertiesPanel() {
 				<div
 					id={`inspector-panel-${activeTab.id}`}
 					role="tabpanel"
-					aria-label={`${activeTab.label} properties`}
+					aria-label={`${activeTab.label}属性`}
 				>
 					{activeTab.content({ trackId: track.id })}
 				</div>

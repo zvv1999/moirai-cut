@@ -168,7 +168,7 @@ export function useGraphEditorController() {
 		open,
 		onOpenChange: handleOpenChange,
 		canOpen: state.status === "ready",
-		tooltip: state.status === "ready" ? "Open graph editor" : state.message,
+		tooltip: state.status === "ready" ? "打开曲线编辑器" : state.message,
 		state,
 		onActiveComponentKeyChange: handleActiveComponentKeyChange,
 		onPreviewValue: handlePreviewValue,

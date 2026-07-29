@@ -231,8 +231,8 @@ function FadeHandle({
 				isDragging && "ring-primary ring-2",
 			)}
 			style={{ left: `${percent}%` }}
-			aria-label={`${side === "in" ? "Fade in" : "Fade out"} handle, ${seconds.toFixed(2)} seconds`}
-			title={`${side === "in" ? "Fade in" : "Fade out"} ${seconds.toFixed(2)}s`}
+			aria-label={`${side === "in" ? "淡入" : "淡出"}手柄，${seconds.toFixed(2)} 秒`}
+			title={`${side === "in" ? "淡入" : "淡出"} ${seconds.toFixed(2)} 秒`}
 			onPointerDown={(event) => onPointerDown({ event, side })}
 			onClick={(event) => event.stopPropagation()}
 		/>

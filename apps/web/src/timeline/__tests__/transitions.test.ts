@@ -98,7 +98,7 @@ describe("timeline transitions", () => {
 		).toEqual({
 			available: false,
 			action: "add",
-			reason: "Selected clips must share one edit point without a gap",
+			reason: "所选素材必须首尾相接，共用一个剪辑点",
 		});
 
 		expect(
@@ -112,7 +112,7 @@ describe("timeline transitions", () => {
 			}),
 		).toMatchObject({
 			available: false,
-			reason: "Transition duration exceeds the available clip handles",
+			reason: "转场时长超出了素材可用余量",
 		});
 	});
 

@@ -116,6 +116,6 @@ describe("voice-over state", () => {
 				takeNumber: 12,
 				mimeType: "audio/webm;codecs=opus",
 			}),
-		).toBe("Voice-over Take 012.webm");
+		).toBe("配音片段-012.webm");
 	});
 });

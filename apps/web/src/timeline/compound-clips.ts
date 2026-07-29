@@ -25,7 +25,7 @@ export function planCompoundClip({
 	selection: ElementRef[];
 }): CompoundClipPlan {
 	if (selection.length < 2) {
-		return { available: false, reason: "Select at least two visual clips" };
+		return { available: false, reason: "请至少选择两个画面素材" };
 	}
 	const selected = selection.flatMap((ref) => {
 		const track = allTracks(tracks).find((candidate) => candidate.id === ref.trackId);
@@ -43,11 +43,11 @@ export function planCompoundClip({
 	) {
 		return {
 			available: false,
-			reason: "Compound clips require visual clips on one track",
+			reason: "复合素材要求画面素材位于同一轨道",
 		};
 	}
 	if (selected[0].track.locked) {
-		return { available: false, reason: "Unlock the track before nesting clips" };
+		return { available: false, reason: "嵌套素材前请先解锁轨道" };
 	}
 
 	const ordered = [...selected].sort(

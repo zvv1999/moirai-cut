@@ -30,7 +30,7 @@ export function CompoundClipPopover() {
 		(currentEditor) => currentEditor.scenes.getActiveScene().tracks,
 	);
 	const { selectedElements } = useElementSelection();
-	const [name, setName] = useState("Compound clip");
+	const [name, setName] = useState("复合素材");
 	const selected =
 		selectedElements.length === 1
 			? (editor.timeline.getElementsWithTracks({
@@ -73,7 +73,7 @@ export function CompoundClipPopover() {
 				{
 					trackId: selected.track.id,
 					elementId: selected.element.id,
-					patch: { name: name.trim() || "Compound clip" },
+					patch: { name: name.trim() || "复合素材" },
 				},
 			],
 		});
@@ -124,7 +124,7 @@ export function CompoundClipPopover() {
 					variant="text"
 					size="icon"
 					className="relative rounded-sm"
-					aria-label={`Open compound clip manager (${compoundCount})`}
+					aria-label={`打开复合素材管理器（${compoundCount}）`}
 				>
 					<HugeiconsIcon icon={Layers01Icon} />
 					{compoundCount > 0 ? (
@@ -141,23 +141,23 @@ export function CompoundClipPopover() {
 			>
 				<div>
 					<p className="text-sm font-semibold">
-						{selectedCompound ? "Open compound clip" : "Create compound clip"}
+						{selectedCompound ? "编辑复合素材" : "创建复合素材"}
 					</p>
 					<p className="text-muted-foreground text-[11px]">
-						Children keep relative timing and their original media identity.
+						子素材会保留相对时序和原始媒体身份。
 					</p>
 				</div>
 
 				<div className="flex gap-2">
 					<input
 						className="border-input bg-background min-w-0 flex-1 rounded-md border px-2 py-1.5 text-xs"
-						aria-label="Compound clip name"
+						aria-label="复合素材名称"
 						value={name}
 						onChange={(event) => setName(event.target.value)}
 					/>
 					{selectedCompound ? (
 						<Button type="button" size="sm" onClick={rename}>
-							Rename
+							重命名
 						</Button>
 					) : (
 						<Button
@@ -166,7 +166,7 @@ export function CompoundClipPopover() {
 							disabled={!plan.available}
 							onClick={create}
 						>
-							Create
+							创建
 						</Button>
 					)}
 				</div>
@@ -174,12 +174,12 @@ export function CompoundClipPopover() {
 				{selectedCompound && selected ? (
 					<>
 						<div className="border-border bg-muted/25 rounded-md border p-2 text-xs">
-							<strong>{selectedCompound.children.length} nested clips</strong>
+							<strong>{selectedCompound.children.length} 个嵌套素材</strong>
 							<span className="text-muted-foreground ml-2">
 								{mediaTimeToSeconds({
 									time: selected.element.duration,
 								}).toFixed(2)}
-								s container
+								秒容器
 							</span>
 						</div>
 						<div className="max-h-64 space-y-2 overflow-y-auto">
@@ -198,7 +198,7 @@ export function CompoundClipPopover() {
 											</span>
 											<input
 												className="border-input bg-background min-w-0 flex-1 rounded border px-2 py-1 text-xs"
-												aria-label={`Rename nested clip ${child.element.name}`}
+												aria-label={`重命名嵌套素材 ${child.element.name}`}
 												defaultValue={child.element.name}
 												onBlur={(event) =>
 													updateChild({
@@ -208,7 +208,7 @@ export function CompoundClipPopover() {
 												}
 											/>
 											<span className="w-14 text-right font-mono text-[10px]">
-												{relativeSeconds.toFixed(2)}s
+												{relativeSeconds.toFixed(2)} 秒
 											</span>
 										</div>
 										<div className="mt-2 grid grid-cols-2 gap-2">
@@ -226,7 +226,7 @@ export function CompoundClipPopover() {
 													})
 												}
 											>
-												Earlier 0.1s
+												提前 0.1 秒
 											</Button>
 											<Button
 												type="button"
@@ -239,7 +239,7 @@ export function CompoundClipPopover() {
 													})
 												}
 											>
-												Later 0.1s
+												延后 0.1 秒
 											</Button>
 										</div>
 									</div>
@@ -252,7 +252,7 @@ export function CompoundClipPopover() {
 							variant="outline"
 							onClick={breakApart}
 						>
-							Break apart
+							拆分复合素材
 						</Button>
 					</>
 				) : (
@@ -265,7 +265,7 @@ export function CompoundClipPopover() {
 						role="status"
 					>
 						{plan.available
-							? `${plan.elementIds.length} clips · ${mediaTimeToSeconds({ time: plan.duration }).toFixed(2)}s nested span`
+							? `${plan.elementIds.length} 个素材 · ${mediaTimeToSeconds({ time: plan.duration }).toFixed(2)} 秒嵌套范围`
 							: plan.reason}
 					</p>
 				)}

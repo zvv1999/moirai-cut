@@ -101,7 +101,7 @@ describe("compound clips", () => {
 			}),
 		).toEqual({
 			available: false,
-			reason: "Compound clips require visual clips on one track",
+			reason: "复合素材要求画面素材位于同一轨道",
 		});
 	});
 

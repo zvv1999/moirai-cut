@@ -145,7 +145,7 @@ describe("timeline element groups and links", () => {
 		).toEqual({
 			available: false,
 			action: "link",
-			reason: "Select overlapping visual and audio clips",
+			reason: "请选择时间重叠的画面和音频素材",
 			updates: [],
 		});
 	});
