@@ -93,6 +93,7 @@ export type ParsedAgentContextReference =
 
 export interface AgentContextSnapshot {
 	revision: number;
+	fileRevision: number | null;
 	projectId: string;
 	sceneId: string;
 	playheadSeconds: number;
@@ -109,7 +110,10 @@ export interface AgentContextPacket {
 	project: {
 		id: string;
 		name: string | null;
+		/** File compare-and-swap revision used by read_project/edit_project. */
 		revision: number;
+		/** Live tab command revision used only by CDP/apply_operation. */
+		editorRevision: number;
 		sceneId: string;
 		sceneName: string | null;
 		playheadSeconds: number;
@@ -494,6 +498,7 @@ export function buildAgentContextSnapshot({
 	});
 	return {
 		revision: state.revision,
+		fileRevision: state.loadedFileRevision,
 		projectId,
 		sceneId,
 		playheadSeconds,
@@ -562,7 +567,8 @@ export function buildAgentContextPacket({
 		project: {
 			id: projectId,
 			name: state.projectName,
-			revision: state.revision,
+			revision: state.loadedFileRevision ?? state.revision,
+			editorRevision: state.revision,
 			sceneId,
 			sceneName: state.sceneName,
 			playheadSeconds,

@@ -203,7 +203,7 @@ function EditorRuntimeBindings() {
 				body: JSON.stringify({
 					projectId: activeProjectId,
 					sceneId: state.sceneId,
-					revision: state.revision,
+					revision: snapshot.context.project.revision,
 					context: snapshot.context,
 				}),
 				keepalive: true,
