@@ -35,7 +35,11 @@ import {
  */
 
 const readOnly = { readOnlyHint: true };
-const mutating = { readOnlyHint: false, destructiveHint: true };
+// These operations change state, but they are revisioned, atomic, undoable, or
+// limited to runtime jobs/tabs. Marking every mutation as destructive makes
+// Codex pause for an approval elicitation even when approval_policy="never".
+// Actual irreversible tools (delete_project/delete_media) override this below.
+const mutating = { readOnlyHint: false, destructiveHint: false };
 
 const projectId = z
   .string()
