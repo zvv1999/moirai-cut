@@ -41,6 +41,54 @@ describe("editor surface localization", () => {
 		}
 	});
 
+	test("keeps AI tracking and effect workflows fully Chinese", () => {
+		const sources = [
+			readSource("../../../motion-tracking/components/motion-tracking-tab.tsx"),
+			readSource("../../../effects/components/effects-tab.tsx"),
+			readSource("../../../effects/components/assets-view.tsx"),
+			readSource("../../../effects/definitions/background-removal.ts"),
+			readSource("../../../effects/definitions/blur.ts"),
+			readSource("../../../effects/definitions/chroma-key.ts"),
+			readSource("../../../effects/definitions/color-grade.ts"),
+		].join("\n");
+
+		for (const translatedLabel of [
+			"智能跟踪",
+			"跟踪区域",
+			"分析质量",
+			"置信度",
+			"应用结果",
+			"防抖",
+			"自动裁切边缘",
+			"特效预设",
+			"暂无特效",
+			"去除背景",
+			"色度抠图",
+			"色彩与影调",
+		]) {
+			expect(sources).toContain(translatedLabel);
+		}
+
+		for (const englishLabel of [
+			"<SectionTitle>Motion</SectionTitle>",
+			"<SectionTitle>Track region</SectionTitle>",
+			">Analysis quality<",
+			">Bind result<",
+			"<SectionTitle>Stabilization</SectionTitle>",
+			">Auto crop edges<",
+			"<SectionTitle>Effects</SectionTitle>",
+			"<SectionTitle>Effect presets</SectionTitle>",
+			">No effects<",
+			'title="Effects"',
+			'name: "Background Removal"',
+			'name: "Chroma Key"',
+			'name: "Color & Tone"',
+			'label: "Intensity"',
+		]) {
+			expect(sources).not.toContain(englishLabel);
+		}
+	});
+
 	test("localizes the persistent editor chrome and timeline controls", () => {
 		const sources = [
 			readSource("../agent-badge.tsx"),
