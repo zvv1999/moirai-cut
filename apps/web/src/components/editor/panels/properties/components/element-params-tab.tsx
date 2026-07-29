@@ -1,7 +1,13 @@
 "use client";
 
 import { resolveAnimationPathValueAtTime } from "@/animation";
-import { Section, SectionContent, SectionFields } from "@/components/section";
+import {
+	Section,
+	SectionContent,
+	SectionFields,
+	SectionHeader,
+	SectionTitle,
+} from "@/components/section";
 import { useElementPlayhead } from "@/components/editor/panels/properties/hooks/use-element-playhead";
 import { useKeyframedParamProperty } from "@/components/editor/panels/properties/hooks/use-keyframed-param-property";
 import { PropertyParamField } from "@/components/editor/panels/properties/components/property-param-field";
@@ -16,15 +22,24 @@ import type { TimelineElement } from "@/timeline";
 import { useElementPreview } from "@/timeline/hooks/use-element-preview";
 import type { MediaTime } from "@/wasm";
 
+export type ElementParamSection = {
+	id: string;
+	label: string;
+	paramKeys: readonly string[];
+	defaultOpen?: boolean;
+};
+
 export function ElementParamsTab({
 	element,
 	trackId,
 	paramKeys,
+	sections,
 	sectionKey,
 }: {
 	element: TimelineElement;
 	trackId: string;
 	paramKeys?: readonly string[];
+	sections?: readonly ElementParamSection[];
 	sectionKey: string;
 }) {
 	const { renderElement } = useElementPreview({
@@ -40,24 +55,62 @@ export function ElementParamsTab({
 		(param) => !paramKeys || paramKeys.includes(param.key),
 	);
 	const baseValues = buildValues({ element: renderElement, params });
+	const visibleParams = params.filter((param) =>
+		isVisible({ param, values: baseValues }),
+	);
+	const renderField = (param: ElementParamDefinition) => (
+		<ElementParamField
+			key={param.key}
+			element={renderElement}
+			trackId={trackId}
+			param={param}
+			baseValue={baseValues[param.key] ?? param.default}
+			localTime={localTime}
+			isPlayheadWithinElementRange={isPlayheadWithinElementRange}
+		/>
+	);
+
+	if (sections && sections.length > 0) {
+		return (
+			<div className="flex flex-col">
+				{sections.map((section) => {
+					const sectionParams = section.paramKeys
+						.map((key) => visibleParams.find((param) => param.key === key))
+						.filter(
+							(param): param is ElementParamDefinition => param !== undefined,
+						);
+					if (sectionParams.length === 0) return null;
+
+					return (
+						<Section
+							key={section.id}
+							sectionKey={`${renderElement.id}:${sectionKey}:${section.id}`}
+							collapsible
+							defaultOpen={section.defaultOpen ?? true}
+							showBottomBorder
+						>
+							<SectionHeader className="h-12 px-4">
+								<SectionTitle className="text-[13px] font-medium">
+									{section.label}
+								</SectionTitle>
+							</SectionHeader>
+							<SectionContent className="px-4 pb-4 pt-0">
+								<SectionFields className="gap-0.5">
+									{sectionParams.map(renderField)}
+								</SectionFields>
+							</SectionContent>
+						</Section>
+					);
+				})}
+			</div>
+		);
+	}
 
 	return (
 		<Section sectionKey={`${renderElement.id}:${sectionKey}`}>
 			<SectionContent className="pt-4">
-				<SectionFields>
-					{params
-						.filter((param) => isVisible({ param, values: baseValues }))
-						.map((param) => (
-							<ElementParamField
-								key={param.key}
-								element={renderElement}
-								trackId={trackId}
-								param={param}
-								baseValue={baseValues[param.key] ?? param.default}
-								localTime={localTime}
-								isPlayheadWithinElementRange={isPlayheadWithinElementRange}
-							/>
-						))}
+				<SectionFields className="gap-0.5">
+					{visibleParams.map(renderField)}
 				</SectionFields>
 			</SectionContent>
 		</Section>

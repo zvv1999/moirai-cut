@@ -28,24 +28,22 @@ export function KeyframeControls({
 	onToggle: () => void;
 	onNext: () => void;
 }) {
-	const normalizedLabel = label.toLocaleLowerCase();
-
 	return (
 		<div
-			className="flex shrink-0 items-center"
+			className="flex shrink-0 items-center gap-px"
 			role="group"
-			aria-label={`${label} keyframes`}
+			aria-label={`${label}关键帧`}
 		>
 			<Button
 				type="button"
 				variant="text"
 				size="icon"
-				className="size-5"
-				aria-label={`Previous ${normalizedLabel} keyframe`}
+				className="text-muted-foreground size-5 rounded-sm hover:text-foreground"
+				aria-label={`上一个${label}关键帧`}
 				title={
 					canGoPrevious
-						? `Go to previous ${normalizedLabel} keyframe`
-						: `No previous ${normalizedLabel} keyframe`
+						? `跳转到上一个${label}关键帧`
+						: `没有上一个${label}关键帧`
 				}
 				disabled={!canGoPrevious}
 				onClick={onPrevious}
@@ -56,13 +54,13 @@ export function KeyframeControls({
 				type="button"
 				variant="text"
 				size="icon"
-				className="size-5"
-				aria-label={`${isActive ? "Delete" : "Add"} ${normalizedLabel} keyframe at playhead`}
+				className="text-muted-foreground size-5 rounded-sm hover:text-foreground"
+				aria-label={`${isActive ? "删除" : "添加"}播放头处的${label}关键帧`}
 				aria-pressed={isActive}
 				title={
 					isDisabled
-						? "Move the playhead inside the clip to add a keyframe"
-						: `Toggle ${normalizedLabel} keyframe`
+						? "请将播放头移到素材范围内再添加关键帧"
+						: `在播放头处切换${label}关键帧`
 				}
 				disabled={isDisabled}
 				onClick={onToggle}
@@ -76,21 +74,17 @@ export function KeyframeControls({
 				type="button"
 				variant="text"
 				size="icon"
-				className="size-5"
-				aria-label={`Next ${normalizedLabel} keyframe`}
+				className="text-muted-foreground size-5 rounded-sm hover:text-foreground"
+				aria-label={`下一个${label}关键帧`}
 				title={
-					canGoNext
-						? `Go to next ${normalizedLabel} keyframe`
-						: `No next ${normalizedLabel} keyframe`
+					canGoNext ? `跳转到下一个${label}关键帧` : `没有下一个${label}关键帧`
 				}
 				disabled={!canGoNext}
 				onClick={onNext}
 			>
 				<HugeiconsIcon icon={ArrowRight01Icon} className="size-3" />
 			</Button>
-			<span className="sr-only">
-				{keyframeCount} {keyframeCount === 1 ? "keyframe" : "keyframes"}
-			</span>
+			<span className="sr-only">{keyframeCount} 个关键帧</span>
 		</div>
 	);
 }

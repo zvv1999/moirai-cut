@@ -188,7 +188,7 @@ export interface NumberParamDefinition<TKey extends string = string>
 	min: number;
 	max?: number;
 	step: number;
-	/** When set, min/max/step are in display space. display = stored * displayMultiplier. */
+	/** Optional presentation multiplier. min/max/step remain in stored space. */
 	displayMultiplier?: number;
 	/** Show as percentage of max. min/max/step/default stay in stored space. */
 	unit?: "percent";

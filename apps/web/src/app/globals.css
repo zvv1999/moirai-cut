@@ -177,6 +177,39 @@
   color-scheme: dark;
 }
 
+.editor-studio-shell .inspector-range {
+  height: 14px;
+  cursor: pointer;
+  appearance: none;
+  background: transparent;
+  accent-color: hsl(187 78% 53%);
+}
+
+.editor-studio-shell .inspector-range::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 999px;
+  background: hsl(225 7% 28%);
+}
+
+.editor-studio-shell .inspector-range::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  margin-top: -4.5px;
+  appearance: none;
+  border: 2px solid hsl(187 78% 53%);
+  border-radius: 999px;
+  background: hsl(210 12% 96%);
+  box-shadow: 0 0 0 3px hsl(187 78% 53% / 0.12);
+}
+
+.editor-studio-shell .inspector-range:focus-visible {
+  outline: none;
+}
+
+.editor-studio-shell .inspector-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px hsl(187 78% 53% / 0.22);
+}
+
 @layer base {
   /*
     The default border color has changed to `currentcolor` in Tailwind CSS v4,

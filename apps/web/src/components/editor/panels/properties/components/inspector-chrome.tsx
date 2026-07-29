@@ -13,13 +13,13 @@ export type InspectorTabItem = {
 };
 
 const ELEMENT_TYPE_LABELS: Record<TimelineElement["type"], string> = {
-	video: "Video clip",
-	image: "Image clip",
-	audio: "Audio clip",
-	text: "Text",
-	sticker: "Sticker",
-	graphic: "Graphic",
-	effect: "Effect",
+	video: "视频",
+	image: "图片",
+	audio: "音频",
+	text: "文本",
+	sticker: "贴纸",
+	graphic: "图形",
+	effect: "特效",
 };
 
 export function formatInspectorDuration({
@@ -57,30 +57,36 @@ export function InspectorSelectionHeader({
 }) {
 	return (
 		<section
-			className="border-b px-3 py-3"
+			className="border-b bg-background/72 px-4 py-2.5"
 			aria-label={`Selected ${type}: ${name}`}
+			data-inspector-context="selected-clip"
 		>
-			<div className="mb-2 flex items-center justify-between gap-2">
-				<p className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
-					Basic
-				</p>
-				<span className="bg-secondary text-secondary-foreground rounded px-1.5 py-0.5 text-[10px] font-semibold">
-					{ELEMENT_TYPE_LABELS[type]}
-				</span>
+			<div className="flex items-center justify-between gap-4">
+				<div className="min-w-0">
+					<p className="text-muted-foreground flex items-center gap-1.5 text-[10px] leading-none">
+						<span>基础信息</span>
+						<span aria-hidden="true">·</span>
+						<span className="text-primary/90">{ELEMENT_TYPE_LABELS[type]}</span>
+					</p>
+					<p className="mt-1.5 truncate text-xs font-medium" title={name}>
+						{name}
+					</p>
+				</div>
+				<dl className="grid shrink-0 grid-cols-2 gap-x-4 text-[10px]">
+					<div>
+						<dt className="text-muted-foreground">时长</dt>
+						<dd className="text-foreground mt-1 font-mono tabular-nums">
+							{formatInspectorDuration({ duration })}
+						</dd>
+					</div>
+					<div className="max-w-24">
+						<dt className="text-muted-foreground">轨道</dt>
+						<dd className="text-foreground mt-1 truncate" title={trackName}>
+							{trackName}
+						</dd>
+					</div>
+				</dl>
 			</div>
-			<p className="truncate text-sm font-semibold" title={name}>
-				{name}
-			</p>
-			<dl className="text-muted-foreground mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-[11px]">
-				<dt>Duration</dt>
-				<dd className="text-foreground text-right font-mono">
-					{formatInspectorDuration({ duration })}
-				</dd>
-				<dt>Track</dt>
-				<dd className="text-foreground truncate text-right" title={trackName}>
-					{trackName}
-				</dd>
-			</dl>
 		</section>
 	);
 }
@@ -97,8 +103,9 @@ export function InspectorTabNavigation({
 	return (
 		<div
 			role="tablist"
-			aria-label="Inspector sections"
-			className="scrollbar-hidden flex shrink-0 gap-1 overflow-x-auto border-b p-1.5"
+			aria-label="属性分类"
+			data-inspector-tabs="clip-properties"
+			className="scrollbar-hidden flex h-12 shrink-0 items-stretch gap-5 overflow-x-auto border-b px-4"
 		>
 			{tabs.map((tab) => {
 				const isActive = tab.id === activeTabId;
@@ -108,17 +115,23 @@ export function InspectorTabNavigation({
 						role="tab"
 						type="button"
 						size="sm"
-						variant={isActive ? "secondary" : "ghost"}
+						variant="ghost"
 						aria-selected={isActive}
 						aria-controls={`inspector-panel-${tab.id}`}
+						data-active={isActive}
 						title={tab.label}
 						onClick={() => onSelect(tab.id)}
 						className={cn(
-							"h-7 shrink-0 gap-1.5 px-2 text-xs",
-							!isActive && "text-muted-foreground",
+							"relative h-auto shrink-0 rounded-none border-0 px-0 text-[13px] font-medium hover:bg-transparent",
+							"after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:origin-center after:scale-x-0 after:rounded-full after:bg-primary after:transition-transform",
+							isActive
+								? "text-primary after:scale-x-100"
+								: "text-muted-foreground hover:text-foreground",
 						)}
 					>
-						{tab.icon}
+						<span className="sr-only" aria-hidden="true">
+							{tab.icon}
+						</span>
 						<span>{tab.label}</span>
 					</Button>
 				);

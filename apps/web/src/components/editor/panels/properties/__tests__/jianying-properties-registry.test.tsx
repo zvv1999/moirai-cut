@@ -25,9 +25,7 @@ describe("Jianying-style properties registry", () => {
 			mediaAssets: [],
 		});
 
-		expect(
-			config.tabs.map(({ id, label }) => ({ id, label })),
-		).toEqual([
+		expect(config.tabs.map(({ id, label }) => ({ id, label }))).toEqual([
 			{ id: "visual", label: "画面" },
 			{ id: "audio", label: "音频" },
 			{ id: "speed", label: "变速" },
@@ -53,14 +51,14 @@ describe("Jianying-style properties registry", () => {
 		expect(byKey["transform.scaleX"]).toMatchObject({
 			label: "缩放 X",
 			displayMultiplier: 100,
-			min: 1,
-			step: 1,
+			min: 0.01,
+			step: 0.01,
 		});
 		expect(byKey["transform.scaleY"]).toMatchObject({
 			label: "缩放 Y",
 			displayMultiplier: 100,
-			min: 1,
-			step: 1,
+			min: 0.01,
+			step: 0.01,
 		});
 		expect(byKey["transform.rotate"]).toMatchObject({
 			label: "旋转",
@@ -70,8 +68,8 @@ describe("Jianying-style properties registry", () => {
 			label: "不透明度",
 			displayMultiplier: 100,
 			min: 0,
-			max: 100,
-			step: 1,
+			max: 1,
+			step: 0.01,
 		});
 		expect(byKey.blendMode).toMatchObject({ label: "混合模式" });
 	});

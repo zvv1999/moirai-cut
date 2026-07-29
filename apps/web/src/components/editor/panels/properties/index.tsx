@@ -58,13 +58,10 @@ export function PropertiesPanel() {
 	if (!activeTab) return null;
 
 	return (
-		<div className="panel bg-background flex h-full flex-col overflow-hidden rounded-lg border">
-			<InspectorSelectionHeader
-				name={element.name}
-				type={element.type}
-				duration={element.duration}
-				trackName={track.name}
-			/>
+		<div
+			className="panel bg-background flex h-full flex-col overflow-hidden rounded-lg border"
+			data-testid="properties-panel"
+		>
 			<InspectorTabNavigation
 				tabs={visibleTabs}
 				activeTabId={activeTab.id}
@@ -74,6 +71,12 @@ export function PropertiesPanel() {
 						tabId,
 					})
 				}
+			/>
+			<InspectorSelectionHeader
+				name={element.name}
+				type={element.type}
+				duration={element.duration}
+				trackName={track.name}
 			/>
 			<ScrollArea className="flex-1 scrollbar-hidden">
 				<div

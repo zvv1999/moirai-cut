@@ -33,8 +33,8 @@ describe("PropertyParamField", () => {
 					type: "number",
 					default: 1,
 					min: 0,
-					max: 100,
-					step: 1,
+					max: 1,
+					step: 0.01,
 					displayMultiplier: 100,
 				}}
 				value={1}
@@ -64,8 +64,8 @@ describe("PropertyParamField", () => {
 					label: "缩放 X",
 					type: "number",
 					default: 1,
-					min: 1,
-					step: 1,
+					min: 0.01,
+					step: 0.01,
 					displayMultiplier: 100,
 					shortLabel: "X",
 				}}
@@ -76,7 +76,9 @@ describe("PropertyParamField", () => {
 		);
 
 		expect(html).toContain('aria-label="缩放 X滑杆"');
+		expect(html).toContain('min="1"');
 		expect(html).toContain('max="500"');
+		expect(html).toContain('step="1"');
 		expect(html).toContain('value="104"');
 	});
 });
