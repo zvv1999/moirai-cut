@@ -21,3 +21,10 @@ Each app is a frontend that calls into Rust. Logic is never duplicated between a
 
 - Read components before using them. They may already apply classes, which affects what you need to pass and how to override them.
 
+## Smart Edit and Codex
+
+Before controlling an OpenCut project, read
+[`docs/agent-smart-edit.md`](docs/agent-smart-edit.md). It defines the two Codex
+entry points, `opencut://` context schema, scene/time-sequence inspection,
+multimodal media catalog, revision/idempotency protocol, and the exact tool
+order for iterative human/Agent editing.

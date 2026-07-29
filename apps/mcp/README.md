@@ -3,6 +3,10 @@
 An MCP server that lets an agent edit OpenCut projects — normally by writing the
 **project file**, and optionally by driving a **live editor tab**.
 
+For the complete OpenCut ↔ Codex Smart Edit orchestration, context schemas,
+scene-aware multimodal workflow, and iterative editing protocol, read
+[`../../docs/agent-smart-edit.md`](../../docs/agent-smart-edit.md).
+
 ```
 agent → MCP → /api/projects → project.json          ← edits, no browser needed
                                     ↓ file watcher
@@ -57,7 +61,7 @@ provider, so it only exists once a project is actually open.
 {
   "mcpServers": {
     "opencut": {
-      "command": "node",
+      "command": "bun",
       "args": ["/absolute/path/to/opencut-classic/apps/mcp/src/server.mjs"]
     }
   }
@@ -81,6 +85,10 @@ need no browser at all. The open editor notices the file changed and follows it.
 | `import_media` | Copy a file from disk into the project. Probed with ffprobe. |
 | `delete_media` | Remove a media asset and report any timeline elements removed with it. |
 | `inspect_media` | Sample source footage into one labeled JPEG contact sheet. |
+| `inspect_media_scenes` | Detect shot boundaries and sample every scene or long-shot time sequence. |
+| `inspect_timeline_range` | Map a timeline interval through trims/retiming to source frames. |
+| `build_media_catalog` / `read_media_catalog` | Maintain compact Agent-readable metadata and timeline uses. |
+| `save_media_analysis` | Persist Codex multimodal observations for later turns. |
 | `analyze_audio` | Find silence and loudness intervals without opening the editor. |
 | `lint_cut` | Check timeline gaps, overlaps, slivers, missing media and duration drift. |
 
