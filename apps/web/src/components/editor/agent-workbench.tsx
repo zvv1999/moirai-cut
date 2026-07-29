@@ -746,13 +746,13 @@ export function AgentWorkbench() {
 							</div>
 						) : null}
 						<div className="mt-1 flex items-center justify-between font-mono text-[8px] opacity-50">
-							<span>evidence rev {qc.summary.revision}</span>
+							<span>验证版本 {qc.summary.revision}</span>
 							<span>{new Date(qc.ranAt).toLocaleTimeString()}</span>
 						</div>
 						{qc.summary.correctionPass.length > 0 ? (
 							<div className="mt-2">
 								<div className="text-[9px] font-semibold tracking-wide uppercase opacity-50">
-									Addressable correction pass
+									可寻址修正列表
 								</div>
 								<ul className="mt-1 max-h-28 space-y-0.5 overflow-y-auto text-[9px]">
 									{qc.summary.correctionPass.slice(0, 20).map((item) => (
@@ -766,7 +766,7 @@ export function AgentWorkbench() {
 											{item.message}
 											{item.atSeconds === undefined
 												? ""
-												: ` · ${item.atSeconds.toFixed(2)}s`}
+												: ` · ${item.atSeconds.toFixed(2)} 秒`}
 											{item.elementId ? ` · ${item.elementId}` : ""}
 										</li>
 									))}
@@ -774,14 +774,13 @@ export function AgentWorkbench() {
 							</div>
 						) : (
 							<p className="mt-2 text-[9px] text-emerald-600">
-								No correction pass required.
+								无需执行修正。
 							</p>
 						)}
 					</>
 				) : (
 					<p className="mt-2 text-[9px] leading-relaxed opacity-55">
-						Renders the opening, midpoint, and last frame through the exporter,
-						then binds every finding to this revision.
+						通过导出渲染器生成开头、中点和末帧，并将每条发现绑定到当前版本。
 					</p>
 				)}
 			</div>

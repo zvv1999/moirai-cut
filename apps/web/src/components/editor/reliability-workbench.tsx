@@ -49,6 +49,58 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+const PERFORMANCE_LABELS: Record<string, string> = {
+	"Mounted media cards": "已挂载素材卡片",
+	"Mounted timeline clips": "已挂载时间线素材",
+	"Waveform cache reuse": "波形缓存复用",
+	"Thumbnail cache reuse": "缩略图缓存复用",
+	"Last UI interaction": "最近一次界面交互",
+};
+
+const JOB_KIND_LABELS: Record<BackgroundJobState["kind"], string> = {
+	export: "导出",
+	proxy: "代理",
+	transcription: "转写",
+	analysis: "分析",
+};
+
+const JOB_STATUS_LABELS: Record<BackgroundJobState["status"], string> = {
+	running: "运行中",
+	completed: "已完成",
+	failed: "失败",
+	cancelled: "已取消",
+};
+
+function localizeHealthMessage(message: string): string {
+	if (message === "The project has no visual content to export.") {
+		return "工程中没有可导出的画面内容。";
+	}
+	const overlap = message.match(/^(.+) overlaps (.+) on (.+)\.$/);
+	if (overlap) {
+		return `${overlap[1]} 与 ${overlap[2]} 在 ${overlap[3]} 上发生重叠。`;
+	}
+	const emptyRange = message.match(
+		/^Nothing exists from (.+)s to (.+)s\.$/,
+	);
+	if (emptyRange) {
+		return `${emptyRange[1]} 秒到 ${emptyRange[2]} 秒之间没有内容。`;
+	}
+	return message
+		.replace(" is hidden but contains ", " 已隐藏，但仍包含 ")
+		.replace(" is muted but contains ", " 已静音，但仍包含 ")
+		.replace(" clip(s).", " 个素材。")
+		.replace(" and may read as a flash frame.", "，可能会呈现为闪帧。")
+		.replace(" references media that is not in the library.", " 引用了素材库中不存在的媒体。")
+		.replace(" extends past its source and may freeze or render black.", " 超出源素材范围，可能冻结或渲染黑屏。")
+		.replace(" gain and should be checked for clipping.", " 增益，请检查是否削波。")
+		.replace(" characters on one line.", " 个字符集中在一行。")
+		.replace(" is outside the title-safe vertical area.", " 超出了标题安全区的垂直范围。")
+		.replace(
+			" hole on the main track will export as black.",
+			" 秒的主轨空隙会导出为黑屏。",
+		);
+}
+
 export function ReliabilityWorkbench() {
 	const editor = useEditor();
 	const project = useEditor((instance) => instance.project.getActive());
@@ -124,11 +176,11 @@ export function ReliabilityWorkbench() {
 	const runHealth = () => {
 		backgroundJobs.start({
 			kind: "analysis",
-			label: "Project health check",
+			label: "工程健康检查",
 			run: async ({ update }) => {
-				update({ progress: 0.25, step: "Inspecting timeline structure" });
+				update({ progress: 0.25, step: "正在检查时间线结构" });
 				const result = runProjectHealthCheck(healthInput);
-				update({ progress: 0.8, step: "Checking export hazards" });
+				update({ progress: 0.8, step: "正在检查导出风险" });
 				setHealth(result);
 			},
 		});
@@ -176,9 +228,9 @@ export function ReliabilityWorkbench() {
 	const buildPackage = () => {
 		backgroundJobs.start({
 			kind: "export",
-			label: "Portable project package",
+			label: "便携工程包",
 			run: async ({ signal, update }) => {
-				update({ progress: 0.1, step: "Collecting project companions" });
+				update({ progress: 0.1, step: "正在收集工程关联文件" });
 				const response = await fetch(
 					`/api/project-packages/${encodeURIComponent(project.metadata.id)}`,
 					{
@@ -193,7 +245,7 @@ export function ReliabilityWorkbench() {
 					throw new Error(
 						isRecord(payload) && typeof payload.error === "string"
 							? payload.error
-							: "Package creation failed",
+							: "创建工程包失败",
 					);
 				}
 				const manifest = isRecord(payload.manifest) ? payload.manifest : null;
@@ -207,9 +259,9 @@ export function ReliabilityWorkbench() {
 					!Array.isArray(manifest.files) ||
 					typeof manifest.totalBytes !== "number"
 				) {
-					throw new Error("Package response was incomplete");
+					throw new Error("工程包响应不完整");
 				}
-				update({ progress: 0.9, step: "Validating portable manifest" });
+				update({ progress: 0.9, step: "正在校验便携清单" });
 				setPackageResult({
 					name: payload.name,
 					path: payload.path,
@@ -217,18 +269,18 @@ export function ReliabilityWorkbench() {
 					totalBytes: manifest.totalBytes,
 					validationOk: validation?.ok === true,
 				});
-				toast.success(`Built ${payload.name}`, {
-					description: `${manifest.files.length} files · import validation passed`,
+				toast.success(`已生成 ${payload.name}`, {
+					description: `${manifest.files.length} 个文件 · 导入校验通过`,
 				});
 			},
 		});
 	};
 
 	const tabs: Array<{ id: ReliabilityTab; label: string }> = [
-		{ id: "health", label: "Health" },
-		{ id: "performance", label: "Performance" },
-		{ id: "jobs", label: "Jobs" },
-		{ id: "package", label: "Package" },
+		{ id: "health", label: "健康" },
+		{ id: "performance", label: "性能" },
+		{ id: "jobs", label: "任务" },
+		{ id: "package", label: "工程包" },
 	];
 
 	return (
@@ -236,7 +288,7 @@ export function ReliabilityWorkbench() {
 			<div
 				className="mb-2 flex gap-1"
 				role="tablist"
-				aria-label="Reliability tools"
+				aria-label="可靠性工具"
 			>
 				{tabs.map((item) => (
 					<button
@@ -260,9 +312,9 @@ export function ReliabilityWorkbench() {
 				<div>
 					<div className="flex items-center justify-between">
 						<div>
-							<div className="text-xs font-semibold">Project health</div>
+							<div className="text-xs font-semibold">工程健康</div>
 							<div className="text-[10px] opacity-55">
-								Structure · media · audio · captions · export
+								结构 · 媒体 · 音频 · 字幕 · 导出
 							</div>
 						</div>
 						<button
@@ -270,28 +322,28 @@ export function ReliabilityWorkbench() {
 							className="border-input rounded border px-2 py-1 text-[10px]"
 							onClick={runHealth}
 						>
-							Run check
+							运行检查
 						</button>
 					</div>
 					{health ? (
 						<div className="mt-2">
 							<div className="mb-1 flex gap-1 text-[10px]">
 								<span className="rounded bg-red-500/10 px-1.5 py-0.5 text-red-600">
-									{health.counts.error} errors
+									{health.counts.error} 个错误
 								</span>
 								<span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-amber-600">
-									{health.counts.warning} warnings
+									{health.counts.warning} 个警告
 								</span>
 								<span className="rounded bg-sky-500/10 px-1.5 py-0.5 text-sky-600">
-									{health.counts.note} notes
+									{health.counts.note} 条提示
 								</span>
 								<span className="ml-auto font-medium">
-									{health.exportReady ? "Export-ready" : "Fix errors first"}
+									{health.exportReady ? "可导出" : "请先修复错误"}
 								</span>
 							</div>
 							{health.findings.length === 0 ? (
 								<div className="rounded border border-emerald-500/30 bg-emerald-500/10 p-2 text-[11px] text-emerald-700 dark:text-emerald-300">
-									No structural or export hazards found.
+									未发现结构或导出风险。
 								</div>
 							) : (
 								<ul className="max-h-32 space-y-1 overflow-y-auto">
@@ -311,7 +363,9 @@ export function ReliabilityWorkbench() {
 											>
 												●
 											</span>
-											<span className="min-w-0 flex-1">{finding.message}</span>
+											<span className="min-w-0 flex-1">
+												{localizeHealthMessage(finding.message)}
+											</span>
 											{finding.atSeconds !== undefined ? (
 												<button
 													type="button"
@@ -324,7 +378,7 @@ export function ReliabilityWorkbench() {
 														})
 													}
 												>
-													Go {finding.atSeconds.toFixed(2)}s
+													前往 {finding.atSeconds.toFixed(2)} 秒
 												</button>
 											) : null}
 										</li>
@@ -334,7 +388,7 @@ export function ReliabilityWorkbench() {
 						</div>
 					) : (
 						<p className="mt-2 text-[10px] opacity-55">
-							Run before export or after a large Agent edit.
+							建议在导出前或大规模智能剪辑后运行。
 						</p>
 					)}
 				</div>
@@ -344,9 +398,9 @@ export function ReliabilityWorkbench() {
 				<div>
 					<div className="flex items-center justify-between">
 						<div>
-							<div className="text-xs font-semibold">Large-project budgets</div>
+							<div className="text-xs font-semibold">大型工程性能预算</div>
 							<div className="text-[10px] opacity-55">
-								Viewport rendering · caches · 60 fps input budget
+								视口渲染 · 缓存 · 60 fps 输入预算
 							</div>
 						</div>
 						<button
@@ -354,7 +408,7 @@ export function ReliabilityWorkbench() {
 							className="border-input rounded border px-2 py-1 text-[10px]"
 							onClick={measurePerformance}
 						>
-							Measure
+							测量
 						</button>
 					</div>
 					{performanceBudgets.length > 0 ? (
@@ -365,7 +419,9 @@ export function ReliabilityWorkbench() {
 									className="border-border rounded border p-1.5 text-[10px]"
 								>
 									<div className="flex justify-between gap-2">
-										<span className="truncate opacity-60">{budget.label}</span>
+										<span className="truncate opacity-60">
+											{PERFORMANCE_LABELS[budget.label] ?? budget.label}
+										</span>
 										<span
 											className={
 												budget.status === "pass"
@@ -373,7 +429,7 @@ export function ReliabilityWorkbench() {
 													: "text-amber-600"
 											}
 										>
-											{budget.status.toUpperCase()}
+											{budget.status === "pass" ? "通过" : "警告"}
 										</span>
 									</div>
 									<div className="font-mono text-xs">
@@ -384,8 +440,7 @@ export function ReliabilityWorkbench() {
 						</ul>
 					) : (
 						<p className="mt-2 text-[10px] opacity-55">
-							Timeline clips use viewport overscan; libraries defer heavy
-							previews above 100 items.
+							时间线素材使用视口超扫描；素材库超过 100 项后会延迟加载高开销预览。
 						</p>
 					)}
 				</div>
@@ -393,13 +448,13 @@ export function ReliabilityWorkbench() {
 
 			{tab === "jobs" ? (
 				<div>
-					<div className="text-xs font-semibold">Background jobs</div>
+					<div className="text-xs font-semibold">后台任务</div>
 					<div className="text-[10px] opacity-55">
-						Export · proxy · transcription · analysis
+						导出 · 代理 · 转写 · 分析
 					</div>
 					{jobs.length === 0 ? (
 						<p className="mt-2 text-[10px] opacity-55">
-							No jobs in this editing session.
+							本次编辑会话暂无任务。
 						</p>
 					) : (
 						<ul className="mt-2 max-h-36 space-y-1 overflow-y-auto">
@@ -410,12 +465,12 @@ export function ReliabilityWorkbench() {
 								>
 									<div className="flex items-center gap-2">
 										<span className="rounded bg-muted px-1 font-mono uppercase">
-											{job.kind}
+											{JOB_KIND_LABELS[job.kind]}
 										</span>
 										<span className="min-w-0 flex-1 truncate font-medium">
 											{job.label}
 										</span>
-										<span>{job.status}</span>
+										<span>{JOB_STATUS_LABELS[job.status]}</span>
 									</div>
 									<div className="mt-1 flex items-center gap-2">
 										<div className="bg-muted h-1 flex-1 overflow-hidden rounded">
@@ -433,7 +488,7 @@ export function ReliabilityWorkbench() {
 													backgroundJobs.cancel({ jobId: job.jobId })
 												}
 											>
-												Cancel
+												取消
 											</button>
 										) : job.status === "failed" ||
 										  job.status === "cancelled" ? (
@@ -444,7 +499,7 @@ export function ReliabilityWorkbench() {
 													void backgroundJobs.retry({ jobId: job.jobId })
 												}
 											>
-												Retry
+												重试
 											</button>
 										) : null}
 									</div>
@@ -457,13 +512,13 @@ export function ReliabilityWorkbench() {
 
 			{tab === "package" ? (
 				<div>
-					<div className="text-xs font-semibold">Portable project package</div>
+					<div className="text-xs font-semibold">便携工程包</div>
 					<div className="text-[10px] opacity-55">
-						Project · media/proxies · captions · font manifest
+						工程 · 媒体/代理 · 字幕 · 字体清单
 					</div>
 					<div className="mt-2 flex gap-2">
 						<select
-							aria-label="Package media"
+							aria-label="工程包媒体"
 							className="border-input bg-background min-w-0 flex-1 rounded border px-2 py-1 text-[10px]"
 							value={mediaMode}
 							onChange={(event) => {
@@ -477,27 +532,27 @@ export function ReliabilityWorkbench() {
 								}
 							}}
 						>
-							<option value="originals-and-proxies">Originals + proxies</option>
-							<option value="originals">Originals only</option>
-							<option value="proxies">Proxies only</option>
+							<option value="originals-and-proxies">原始素材 + 代理</option>
+							<option value="originals">仅原始素材</option>
+							<option value="proxies">仅代理</option>
 						</select>
 						<button
 							type="button"
 							className="bg-foreground text-background rounded px-2 py-1 text-[10px] font-medium"
 							onClick={buildPackage}
 						>
-							Build package
+							生成工程包
 						</button>
 					</div>
 					{packageResult ? (
 						<div className="border-emerald-500/30 bg-emerald-500/10 mt-2 rounded border p-2 text-[10px]">
 							<div className="font-medium">{packageResult.name}</div>
 							<div className="mt-0.5 opacity-70">
-								{packageResult.fileCount} files ·{" "}
+								{packageResult.fileCount} 个文件 ·{" "}
 								{formatBytes(packageResult.totalBytes)} ·{" "}
 								{packageResult.validationOk
-									? "import validation passed"
-									: "validation failed"}
+									? "导入校验通过"
+									: "校验失败"}
 							</div>
 							<div className="mt-1 truncate font-mono opacity-50">
 								{packageResult.path}
@@ -505,8 +560,7 @@ export function ReliabilityWorkbench() {
 						</div>
 					) : (
 						<p className="mt-2 text-[10px] opacity-55">
-							Every package is validated against safe paths, required project
-							data, and exact byte totals before it is published.
+							发布前会校验每个工程包的安全路径、必需工程数据和准确字节总数。
 						</p>
 					)}
 				</div>

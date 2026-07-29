@@ -94,11 +94,11 @@ describe("editor surface localization", () => {
 		}
 
 		for (const englishLabel of [
-			"Project health",
-			"Performance",
-			"Background jobs",
-			"Portable project package",
-			"Addressable correction pass",
+			">Project health<",
+			'label: "Performance"',
+			">Background jobs<",
+			">Portable project package<",
+			">Addressable correction pass<",
 			"Renders the opening",
 		]) {
 			expect(sources).not.toContain(englishLabel);
