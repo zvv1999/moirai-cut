@@ -6,6 +6,7 @@ import {
 	getMediaAssetPlaybackSource,
 	getMediaProxyStorageId,
 	isMediaProxyStorageId,
+	shouldAutoGenerateProxy,
 } from "@/media/proxy";
 
 function videoAsset(): MediaAsset {
@@ -105,5 +106,44 @@ describe("media proxy workflow", () => {
 			{ assetId: "media-1", name: "Scene 007.mov" },
 			{ assetId: "media-2", name: "Scene 008.MOV" },
 		]);
+	});
+
+	test("automatically proxies only browser-incompatible video without a ready proxy", () => {
+		expect(
+			shouldAutoGenerateProxy({
+				asset: {
+					...videoAsset(),
+					proxy: undefined,
+					proxyFile: undefined,
+					browserCanDecode: false,
+				},
+			}),
+		).toBe(true);
+		expect(
+			shouldAutoGenerateProxy({
+				asset: { ...videoAsset(), browserCanDecode: false },
+			}),
+		).toBe(false);
+		expect(
+			shouldAutoGenerateProxy({
+				asset: {
+					...videoAsset(),
+					type: "audio",
+					proxy: undefined,
+					proxyFile: undefined,
+					browserCanDecode: false,
+				},
+			}),
+		).toBe(false);
+		expect(
+			shouldAutoGenerateProxy({
+				asset: {
+					...videoAsset(),
+					proxy: undefined,
+					proxyFile: undefined,
+					browserCanDecode: true,
+				},
+			}),
+		).toBe(false);
 	});
 });
