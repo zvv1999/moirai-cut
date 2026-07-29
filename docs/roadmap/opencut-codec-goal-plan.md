@@ -99,7 +99,7 @@ lowering the global budget.
 
 | Milestone | Exit condition | Status |
 | --- | --- | --- |
-| M0 Baseline | Plan, fixtures, benchmark harness, and current measurements exist | `BUILDING` |
+| M0 Baseline | Plan, fixtures, benchmark harness, and current measurements exist | `DONE` |
 | M1 Probe and compatibility | C01-C04 are done | `TODO` |
 | M2 Native jobs and proxies | P01-P07 are done | `TODO` |
 | M3 Preview and timing | V01-V06 are done | `TODO` |
@@ -112,9 +112,9 @@ lowering the global budget.
 
 | ID | Capability | Acceptance conditions | Status |
 | --- | --- | --- | --- |
-| C01 | FFprobe metadata | Container, streams, codec/profile, pixel format, bit depth, dimensions, SAR/DAR, rotation, rate mode, duration, audio layout, and colour tags are normalized | `TODO` |
-| C02 | Capability decision | Each asset reports `direct`, `proxy-recommended`, `proxy-required`, `audio-only`, or `unsupported` with stable reason codes | `TODO` |
-| C03 | Cache and invalidation | Probe results key on source size/mtime/hash and invalidate after relink or replacement | `TODO` |
+| C01 | FFprobe metadata | Container, streams, codec/profile, pixel format, bit depth, dimensions, SAR/DAR, rotation, rate mode, duration, audio layout, and colour tags are normalized | `GREEN` |
+| C02 | Capability decision | Each asset reports `direct`, `proxy-recommended`, `proxy-required`, `audio-only`, or `unsupported` with stable reason codes | `GREEN` |
+| C03 | Cache and invalidation | Probe results key on source size/mtime/hash and invalidate after relink or replacement | `GREEN` |
 | C04 | Human diagnostics | Media details show source facts, browser decode result, active playback source, and actionable errors in Chinese | `TODO` |
 
 ## Native jobs and proxy workflow
@@ -166,7 +166,7 @@ lowering the global budget.
 
 | ID | Capability | Acceptance conditions | Status |
 | --- | --- | --- | --- |
-| G01 | `media.probe` | Returns normalized metadata and compatibility without changing project state | `TODO` |
+| G01 | `media.probe` | Returns normalized metadata and compatibility without changing project state | `GREEN` |
 | G02 | `media.ensureProxy` | Idempotently starts or reuses a proxy job for one asset/profile | `TODO` |
 | G03 | `media.rebuildProxies` | Plans and starts bounded batch work with per-asset results | `TODO` |
 | G04 | `media.setProxyEnabled` | Uses the same media update command/storage path as the human UI | `TODO` |
@@ -194,3 +194,13 @@ After every GREEN checkpoint:
 4. update the HTML report data;
 5. update the Codex goal plan;
 6. continue to the next unfinished row without declaring the goal complete.
+
+## Checkpoints
+
+| Capability | RED commit | GREEN commit | Evidence |
+| --- | --- | --- | --- |
+| M0 | — | `0b8f0d4` | 16 deterministic media fixtures; probe P95 261.68 ms; 12.125× realtime proxy; SSIM 0.992342; PSNR 44.731 dB |
+| C01-C02 | `5b1477c` | `aa6c61f` | 6 tests; capability module 93.6% line coverage |
+| C03 | `541b08d` | `20d03ac` | 6 tests; probe module 93.1% line coverage; cache hit performs zero FFprobe calls |
+| G01 API | `bc0d6c2` | `f19432d` | 2 route tests; route 98.6% line coverage |
+| G01 Agent bridge | `c341fd4`, `a7839bb` | pending | Client validation and in-page bridge verification pending |

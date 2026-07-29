@@ -2,7 +2,9 @@ import type {
 	NormalizedMediaProbe,
 	PlaybackStrategy,
 } from "@/media/codec-capabilities";
+import type { MediaType } from "@/media/types";
 import type { ProjectMediaSource } from "@/server/media-probe";
+import { ALL_FORMATS, BlobSource, Input } from "mediabunny";
 
 export interface AgentMediaProbeResult {
 	source: ProjectMediaSource;
@@ -17,6 +19,41 @@ export type MediaProbeFetcher = (
 	input: RequestInfo | URL,
 	init?: RequestInit,
 ) => Promise<Response>;
+
+export type BrowserDecodeInspector = ({
+	file,
+}: {
+	file: File;
+}) => Promise<boolean>;
+
+async function inspectVideoDecodeSupport({
+	file,
+}: {
+	file: File;
+}): Promise<boolean> {
+	const input = new Input({
+		source: new BlobSource(file),
+		formats: ALL_FORMATS,
+	});
+	try {
+		const videoTrack = await input.getPrimaryVideoTrack();
+		return videoTrack ? await videoTrack.canDecode() : false;
+	} finally {
+		input.dispose();
+	}
+}
+
+export async function checkBrowserDecodeSupport({
+	asset,
+	inspectVideo = inspectVideoDecodeSupport,
+}: {
+	asset: { type: MediaType; file: File };
+	inspectVideo?: BrowserDecodeInspector;
+}): Promise<boolean | null> {
+	return asset.type === "video"
+		? inspectVideo({ file: asset.file })
+		: null;
+}
 
 function errorMessageFromBody({
 	body,

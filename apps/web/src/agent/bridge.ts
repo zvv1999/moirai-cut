@@ -20,6 +20,11 @@ import {
   startTranscribeJob,
   type TranscribeJobState,
 } from "./transcribe-jobs";
+import {
+  checkBrowserDecodeSupport,
+  requestMediaProbe,
+  type AgentMediaProbeResult,
+} from "./media-codec";
 
 /**
  * The out-of-page entry point.
@@ -72,6 +77,12 @@ export interface AgentBridge {
   cancelExport(request: { jobId: string }): BridgeResult<ExportJobState | null>;
   startTranscribe(request: { language?: string }): BridgeResult<TranscribeJobState>;
   getTranscribe(request: { jobId: string }): BridgeResult<TranscribeJobState | null>;
+  media: {
+    probe(request: {
+      assetId: string;
+      force?: boolean;
+    }): Promise<BridgeResult<AgentMediaProbeResult>>;
+  };
 }
 
 declare global {
@@ -153,6 +164,25 @@ export function installAgentBridge(): () => void {
     cancelExport: ({ jobId }) => guard(() => cancelExportJob({ jobId })),
     startTranscribe: ({ language }) => guard(() => startTranscribeJob({ language })),
     getTranscribe: ({ jobId }) => guard(() => getTranscribeJob({ jobId })),
+    media: {
+      probe: ({ assetId, force }) =>
+        guardAsync(async () => {
+          const editor = EditorCore.getInstance();
+          const projectId = editor.agent.getState().projectId;
+          if (!projectId) throw new Error("No project is open");
+          const asset = editor.media
+            .getAssets()
+            .find((candidate) => candidate.id === assetId);
+          if (!asset) throw new Error(`No media asset ${assetId}`);
+          const browserCanDecode = await checkBrowserDecodeSupport({ asset });
+          return requestMediaProbe({
+            projectId,
+            assetId,
+            browserCanDecode,
+            force,
+          });
+        }),
+    },
   };
 
   window.__opencutAgent = bridge;
