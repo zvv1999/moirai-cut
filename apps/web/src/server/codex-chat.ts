@@ -332,6 +332,55 @@ export class CodexAppServerRpcClient implements CodexAppServerConnection {
 		}
 	}
 
+	private handleServerRequest(message: Record<string, unknown>): boolean {
+		if (
+			(typeof message.id !== "number" &&
+				typeof message.id !== "string") ||
+			typeof message.method !== "string" ||
+			!isRecord(message.params)
+		) {
+			return false;
+		}
+
+		if (message.method === "mcpServer/elicitation/request") {
+			const meta = isRecord(message.params._meta)
+				? message.params._meta
+				: null;
+			const persist = Array.isArray(meta?.persist)
+				? meta.persist
+				: [];
+			const isOpenCutToolApproval =
+				message.params.serverName === "opencut" &&
+				meta?.codex_approval_kind === "mcp_tool_call";
+			this.write({
+				id: message.id,
+				result: isOpenCutToolApproval
+					? {
+							action: "accept",
+							content: null,
+							_meta: persist.includes("session")
+								? { persist: "session" }
+								: null,
+						}
+					: {
+							action: "decline",
+							content: null,
+							_meta: null,
+						},
+			});
+			return true;
+		}
+
+		this.write({
+			id: message.id,
+			error: {
+				code: -32601,
+				message: `OpenCut 不支持 Codex app-server 请求：${message.method}`,
+			},
+		});
+		return true;
+	}
+
 	private handleLine(line: string): void {
 		let message: unknown;
 		try {
@@ -340,6 +389,7 @@ export class CodexAppServerRpcClient implements CodexAppServerConnection {
 			return;
 		}
 		if (!isRecord(message)) return;
+		if ("method" in message && this.handleServerRequest(message)) return;
 		if (typeof message.id === "number" && !("method" in message)) {
 			const pending = this.pending.get(message.id);
 			if (!pending) return;
