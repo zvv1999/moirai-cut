@@ -25,6 +25,8 @@ interface RevisionEntry {
 	};
 }
 
+type AgentBadgeSurface = "smart-edit" | "project-history" | null;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -93,10 +95,9 @@ function isProjectRevisionDiff(value: unknown): value is ProjectRevisionDiff {
 }
 
 /**
- * Human history and agent activity in one persistent surface.
- *
- * Agent file edits are not in the current tab's command stack, so the timeline
- * needs a disk-backed, compare-before-restore path even when no agent is active.
+ * Two mutually-exclusive surfaces share one compact launcher area:
+ * smart editing owns agent context/activity, while project history owns
+ * autosave, snapshots, comparison, and recovery.
  */
 export function AgentBadge() {
 	const editor = useEditor();
@@ -111,7 +112,7 @@ export function AgentBadge() {
 	const [sync, setSync] = useState<ProjectFileSyncState>(
 		getProjectFileSyncState(),
 	);
-	const [open, setOpen] = useState(false);
+	const [openSurface, setOpenSurface] = useState<AgentBadgeSurface>(null);
 	const [revisions, setRevisions] = useState<RevisionEntry[]>([]);
 	const [currentRevision, setCurrentRevision] = useState<number | null>(null);
 	const [snapshotName, setSnapshotName] = useState("");
@@ -147,11 +148,17 @@ export function AgentBadge() {
 	}, [projectId]);
 
 	useEffect(() => {
-		if (!open || save.status !== "saved" || save.revision === null) return;
+		if (
+			openSurface !== "project-history" ||
+			save.status !== "saved" ||
+			save.revision === null
+		) {
+			return;
+		}
 		queueMicrotask(() => {
 			void refreshHistory();
 		});
-	}, [open, refreshHistory, save.revision, save.status]);
+	}, [openSurface, refreshHistory, save.revision, save.status]);
 
 	const createSnapshot = async () => {
 		if (!projectId || !snapshotName.trim()) return;
@@ -287,285 +294,310 @@ export function AgentBadge() {
 
 	return (
 		<div className="fixed right-4 bottom-4 z-50 flex flex-col items-end gap-2">
-			{open && (
-				<div className="bg-popover text-popover-foreground border-border max-h-[82vh] w-[34rem] overflow-y-auto rounded-lg border p-3 shadow-xl">
-					<div className="mb-3 flex items-start justify-between gap-3">
-						<div>
-							<div className="text-sm font-semibold">
-								智能剪辑与工程历史
-							</div>
-							<div className="text-[11px] opacity-60">
-								当前版本 {currentRevision ?? "…"} · 恢复前请先比较
-							</div>
-						</div>
-						<span className="bg-muted rounded px-2 py-1 font-mono text-[10px]">
-							已保存 {revisions.length} 个
-						</span>
-					</div>
-
-					<AgentWorkbench />
-
-					<ReliabilityWorkbench />
-
-					<div className="mb-3 grid grid-cols-2 gap-2">
-						<div className="border-border bg-muted/20 rounded-md border p-2">
-							<div className="text-[10px] font-semibold tracking-wide uppercase opacity-50">
-								持续自动保存
-							</div>
-							<div className="mt-1 flex items-center gap-2 text-xs font-medium">
-								<span
-									className={`size-2 rounded-full ${
-										save.status === "error"
-											? "bg-red-500"
-											: save.pendingChanges
-												? "bg-amber-500"
-												: "bg-emerald-500"
-									}`}
-								/>
-								{save.status === "saving"
-									? "保存中…"
-									: save.status === "error"
-										? "保存失败"
-										: save.pendingChanges
-											? "改动等待保存"
-											: save.revision === null
-												? "自动保存已就绪"
-												: `已保存至版本 ${save.revision}`}
-							</div>
-							{fileConflictRevision !== null ? (
-								<div className="mt-1">
-									<div className="text-[10px] text-amber-600 dark:text-amber-400">
-										磁盘版本已更新至 {fileConflictRevision}，自动保存已暂停。
+			{openSurface && (
+				<div
+					className={`bg-popover text-popover-foreground border-border max-h-[82vh] overflow-y-auto rounded-lg border p-3 shadow-xl ${
+						openSurface === "smart-edit" ? "w-[34rem]" : "w-[32rem]"
+					}`}
+					aria-label={
+						openSurface === "smart-edit" ? "智能剪辑面板" : "工程历史面板"
+					}
+				>
+					{openSurface === "smart-edit" ? (
+						<>
+							<div className="border-border mb-3 flex items-center justify-between border-b pb-2">
+								<div>
+									<div className="text-sm font-semibold">智能剪辑工作台</div>
+									<div className="text-[11px] opacity-55">
+										Codex 上下文 · 计划复核 · 画面质检
 									</div>
-									{confirmDiscardLocal ? (
-										<div className="mt-1 flex gap-1">
-											<button
-												type="button"
-												className="rounded px-1.5 py-0.5 text-[10px]"
-												onClick={() => setConfirmDiscardLocal(false)}
-											>
-												取消
-											</button>
-											<button
-												type="button"
-												className="bg-destructive text-destructive-foreground rounded px-1.5 py-0.5 text-[10px]"
-												onClick={() => void loadDiskVersion()}
-											>
-												确认丢弃本地改动
-											</button>
+								</div>
+								<span className="bg-cyan-500/10 text-cyan-600 rounded px-2 py-1 font-mono text-[10px] dark:text-cyan-300">
+									Agent v{editor.agent.revision}
+								</span>
+							</div>
+							<AgentWorkbench />
+							<ReliabilityWorkbench />
+						</>
+					) : (
+						<div className="border-border mb-3 flex items-start justify-between gap-3 border-b pb-2">
+							<div>
+								<div className="text-sm font-semibold">工程历史</div>
+								<div className="text-[11px] opacity-60">
+									当前版本 {currentRevision ?? "…"} · 恢复前请先比较
+								</div>
+							</div>
+							<span className="bg-muted rounded px-2 py-1 font-mono text-[10px]">
+								已保存 {revisions.length} 个
+							</span>
+						</div>
+					)}
+
+					{openSurface === "project-history" ? (
+						<>
+							<div className="mb-3 grid grid-cols-2 gap-2">
+								<div className="border-border bg-muted/20 rounded-md border p-2">
+									<div className="text-[10px] font-semibold tracking-wide uppercase opacity-50">
+										持续自动保存
+									</div>
+									<div className="mt-1 flex items-center gap-2 text-xs font-medium">
+										<span
+											className={`size-2 rounded-full ${
+												save.status === "error"
+													? "bg-red-500"
+													: save.pendingChanges
+														? "bg-amber-500"
+														: "bg-emerald-500"
+											}`}
+										/>
+										{save.status === "saving"
+											? "保存中…"
+											: save.status === "error"
+												? "保存失败"
+												: save.pendingChanges
+													? "改动等待保存"
+													: save.revision === null
+														? "自动保存已就绪"
+														: `已保存至版本 ${save.revision}`}
+									</div>
+									{fileConflictRevision !== null ? (
+										<div className="mt-1">
+											<div className="text-[10px] text-amber-600 dark:text-amber-400">
+												磁盘版本已更新至 {fileConflictRevision}
+												，自动保存已暂停。
+											</div>
+											{confirmDiscardLocal ? (
+												<div className="mt-1 flex gap-1">
+													<button
+														type="button"
+														className="rounded px-1.5 py-0.5 text-[10px]"
+														onClick={() => setConfirmDiscardLocal(false)}
+													>
+														取消
+													</button>
+													<button
+														type="button"
+														className="bg-destructive text-destructive-foreground rounded px-1.5 py-0.5 text-[10px]"
+														onClick={() => void loadDiskVersion()}
+													>
+														确认丢弃本地改动
+													</button>
+												</div>
+											) : (
+												<button
+													type="button"
+													className="text-destructive mt-1 text-[10px] hover:underline"
+													onClick={() => setConfirmDiscardLocal(true)}
+												>
+													加载磁盘版本…
+												</button>
+											)}
 										</div>
-									) : (
+									) : save.status === "error" ? (
 										<button
 											type="button"
 											className="text-destructive mt-1 text-[10px] hover:underline"
-											onClick={() => setConfirmDiscardLocal(true)}
+											onClick={() => void editor.save.retry()}
 										>
-											加载磁盘版本…
+											重试 · {save.error}
 										</button>
-									)}
+									) : null}
 								</div>
-							) : save.status === "error" ? (
-								<button
-									type="button"
-									className="text-destructive mt-1 text-[10px] hover:underline"
-									onClick={() => void editor.save.retry()}
-								>
-									重试 · {save.error}
-								</button>
-							) : null}
-						</div>
-						<div className="border-border bg-muted/20 rounded-md border p-2">
-							<div className="text-[10px] font-semibold tracking-wide uppercase opacity-50">
-								共享命令历史
-							</div>
-							<div className="mt-1 flex gap-1">
-								<button
-									type="button"
-									disabled={commandHistory.undoDepth === 0}
-									className="border-input flex-1 truncate rounded border px-2 py-1 text-[10px] disabled:opacity-35"
-									title={commandHistory.undoLabel ?? "没有可撤销的操作"}
-									onClick={() => editor.command.undo()}
-								>
-									撤销 {commandHistory.undoLabel ?? ""}
-								</button>
-								<button
-									type="button"
-									disabled={commandHistory.redoDepth === 0}
-									className="border-input flex-1 truncate rounded border px-2 py-1 text-[10px] disabled:opacity-35"
-									title={commandHistory.redoLabel ?? "没有可重做的操作"}
-									onClick={() => editor.command.redo()}
-								>
-									重做 {commandHistory.redoLabel ?? ""}
-								</button>
-							</div>
-							<div className="mt-1 font-mono text-[9px] opacity-45">
-								撤销 {commandHistory.undoDepth} · 重做 {commandHistory.redoDepth} ·
-								人工 + 智能体
-							</div>
-						</div>
-					</div>
-
-					<div className="mb-3 flex gap-2">
-						<input
-							className="border-input bg-background min-w-0 flex-1 rounded-md border px-2 py-1.5 text-xs"
-							aria-label="快照名称"
-							placeholder="例如：已确认粗剪"
-							value={snapshotName}
-							onChange={(event) => setSnapshotName(event.target.value)}
-						/>
-						<button
-							type="button"
-							className="bg-foreground text-background rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-40"
-							disabled={!snapshotName.trim() || currentRevision === null}
-							onClick={() => void createSnapshot()}
-						>
-							保存快照
-						</button>
-					</div>
-
-					<div className="mb-1 text-xs font-medium opacity-70">
-						时间线历史
-					</div>
-					{revisions.length === 0 ? (
-						<div className="border-border rounded-md border border-dashed p-4 text-center text-xs opacity-50">
-							暂无快照
-						</div>
-					) : (
-						<ul className="flex max-h-56 flex-col gap-1 overflow-y-auto">
-							{revisions.slice(0, 50).map((entry) => (
-								<li
-									key={entry.revision}
-									className="border-border flex items-center gap-2 rounded-md border p-2 text-xs"
-								>
-									<div className="min-w-0 flex-1">
-										<div className="truncate font-medium">
-											{entry.name ?? `自动版本 ${entry.revision}`}
-										</div>
-										<div className="font-mono text-[10px] opacity-50">
-											版本 {entry.revision}
-											{entry.summary?.elementCount !== undefined
-												? ` · ${entry.summary.elementCount} 个素材`
-												: ""}
-											{" · "}
-											{entry.createdAt || entry.updatedAt
-												? new Date(
-														entry.createdAt ?? entry.updatedAt ?? "",
-													).toLocaleTimeString()
-												: "时间未知"}
-										</div>
+								<div className="border-border bg-muted/20 rounded-md border p-2">
+									<div className="text-[10px] font-semibold tracking-wide uppercase opacity-50">
+										共享命令历史
 									</div>
-									<div className="flex items-center">
+									<div className="mt-1 flex gap-1">
 										<button
 											type="button"
-											className="text-primary rounded px-2 py-1 hover:underline"
-											disabled={loadingRevision === entry.revision}
-											onClick={() => void compare(entry.revision)}
+											disabled={commandHistory.undoDepth === 0}
+											className="border-input flex-1 truncate rounded border px-2 py-1 text-[10px] disabled:opacity-35"
+											title={commandHistory.undoLabel ?? "没有可撤销的操作"}
+											onClick={() => editor.command.undo()}
 										>
-											{loadingRevision === entry.revision
-												? "比较中…"
-												: "比较"}
+											撤销 {commandHistory.undoLabel ?? ""}
 										</button>
 										<button
 											type="button"
-											className="rounded px-2 py-1 opacity-60 hover:opacity-100"
-											disabled={duplicatingRevision === entry.revision}
-											onClick={() => void duplicate(entry)}
+											disabled={commandHistory.redoDepth === 0}
+											className="border-input flex-1 truncate rounded border px-2 py-1 text-[10px] disabled:opacity-35"
+											title={commandHistory.redoLabel ?? "没有可重做的操作"}
+											onClick={() => editor.command.redo()}
 										>
-											{duplicatingRevision === entry.revision
-												? "复制中…"
-												: "复制"}
+											重做 {commandHistory.redoLabel ?? ""}
 										</button>
 									</div>
-								</li>
-							))}
-						</ul>
-					)}
+									<div className="mt-1 font-mono text-[9px] opacity-45">
+										撤销 {commandHistory.undoDepth} · 重做{" "}
+										{commandHistory.redoDepth} · 人工 + 智能体
+									</div>
+								</div>
+							</div>
 
-					{diff ? (
-						<div className="border-border bg-muted/20 mt-3 rounded-md border p-2">
-							<div className="flex items-center justify-between">
-								<strong className="text-xs">
-									版本 {diff.fromRevision} → {diff.toRevision}
-								</strong>
+							<div className="mb-3 flex gap-2">
+								<input
+									className="border-input bg-background min-w-0 flex-1 rounded-md border px-2 py-1.5 text-xs"
+									aria-label="快照名称"
+									placeholder="例如：已确认粗剪"
+									value={snapshotName}
+									onChange={(event) => setSnapshotName(event.target.value)}
+								/>
 								<button
 									type="button"
-									className="text-xs opacity-60 hover:opacity-100"
-									onClick={() => {
-										setDiff(null);
-										setConfirmRevision(null);
-									}}
+									className="bg-foreground text-background rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-40"
+									disabled={!snapshotName.trim() || currentRevision === null}
+									onClick={() => void createSnapshot()}
 								>
-									关闭
+									保存快照
 								</button>
 							</div>
-							<div className="my-2 grid grid-cols-5 gap-1 text-center text-[10px]">
-								{(
-									[
-										["新增", diff.summary.added],
-										["移除", diff.summary.removed],
-										["移动", diff.summary.moved],
-										["重命名", diff.summary.renamed],
-										["修改", diff.summary.changed],
-									] as const
-								).map(([label, value]) => (
-									<div key={label} className="bg-background rounded p-1">
-										<strong className="block text-xs">{value}</strong>
-										{label}
-									</div>
-								))}
+
+							<div className="mb-1 text-xs font-medium opacity-70">
+								时间线历史
 							</div>
-							{diff.changes.length === 0 ? (
-								<p className="text-xs opacity-60">
-									时间线没有差异，无需恢复。
-								</p>
+							{revisions.length === 0 ? (
+								<div className="border-border rounded-md border border-dashed p-4 text-center text-xs opacity-50">
+									暂无快照
+								</div>
 							) : (
-								<ul className="mb-2 max-h-24 space-y-1 overflow-y-auto text-[10px]">
-									{diff.changes.slice(0, 12).map((change, index) => (
-										<li key={`${change.kind}-${change.elementId}-${index}`}>
-											<span className="font-mono uppercase opacity-50">
-												{change.kind}
-											</span>{" "}
-											{change.name} · {change.detail}
+								<ul className="flex max-h-56 flex-col gap-1 overflow-y-auto">
+									{revisions.slice(0, 50).map((entry) => (
+										<li
+											key={entry.revision}
+											className="border-border flex items-center gap-2 rounded-md border p-2 text-xs"
+										>
+											<div className="min-w-0 flex-1">
+												<div className="truncate font-medium">
+													{entry.name ?? `自动版本 ${entry.revision}`}
+												</div>
+												<div className="font-mono text-[10px] opacity-50">
+													版本 {entry.revision}
+													{entry.summary?.elementCount !== undefined
+														? ` · ${entry.summary.elementCount} 个素材`
+														: ""}
+													{" · "}
+													{entry.createdAt || entry.updatedAt
+														? new Date(
+																entry.createdAt ?? entry.updatedAt ?? "",
+															).toLocaleTimeString()
+														: "时间未知"}
+												</div>
+											</div>
+											<div className="flex items-center">
+												<button
+													type="button"
+													className="text-primary rounded px-2 py-1 hover:underline"
+													disabled={loadingRevision === entry.revision}
+													onClick={() => void compare(entry.revision)}
+												>
+													{loadingRevision === entry.revision
+														? "比较中…"
+														: "比较"}
+												</button>
+												<button
+													type="button"
+													className="rounded px-2 py-1 opacity-60 hover:opacity-100"
+													disabled={duplicatingRevision === entry.revision}
+													onClick={() => void duplicate(entry)}
+												>
+													{duplicatingRevision === entry.revision
+														? "复制中…"
+														: "复制"}
+												</button>
+											</div>
 										</li>
 									))}
 								</ul>
 							)}
-							{confirmRevision === diff.toRevision ? (
-								<div className="border-amber-500/30 bg-amber-500/10 rounded border p-2">
-									<p className="mb-2 text-[11px]">
-										恢复版本 {diff.toRevision}？当前状态会先另存为一个版本。
-									</p>
-									<div className="flex justify-end gap-2">
+
+							{diff ? (
+								<div className="border-border bg-muted/20 mt-3 rounded-md border p-2">
+									<div className="flex items-center justify-between">
+										<strong className="text-xs">
+											版本 {diff.fromRevision} → {diff.toRevision}
+										</strong>
 										<button
 											type="button"
-											className="rounded px-2 py-1 text-xs"
-											onClick={() => setConfirmRevision(null)}
+											className="text-xs opacity-60 hover:opacity-100"
+											onClick={() => {
+												setDiff(null);
+												setConfirmRevision(null);
+											}}
 										>
-											取消
-										</button>
-										<button
-											type="button"
-											className="bg-foreground text-background rounded px-2 py-1 text-xs"
-											onClick={() => void restore(diff.toRevision)}
-										>
-											确认恢复
+											关闭
 										</button>
 									</div>
+									<div className="my-2 grid grid-cols-5 gap-1 text-center text-[10px]">
+										{(
+											[
+												["新增", diff.summary.added],
+												["移除", diff.summary.removed],
+												["移动", diff.summary.moved],
+												["重命名", diff.summary.renamed],
+												["修改", diff.summary.changed],
+											] as const
+										).map(([label, value]) => (
+											<div key={label} className="bg-background rounded p-1">
+												<strong className="block text-xs">{value}</strong>
+												{label}
+											</div>
+										))}
+									</div>
+									{diff.changes.length === 0 ? (
+										<p className="text-xs opacity-60">
+											时间线没有差异，无需恢复。
+										</p>
+									) : (
+										<ul className="mb-2 max-h-24 space-y-1 overflow-y-auto text-[10px]">
+											{diff.changes.slice(0, 12).map((change, index) => (
+												<li key={`${change.kind}-${change.elementId}-${index}`}>
+													<span className="font-mono uppercase opacity-50">
+														{change.kind}
+													</span>{" "}
+													{change.name} · {change.detail}
+												</li>
+											))}
+										</ul>
+									)}
+									{confirmRevision === diff.toRevision ? (
+										<div className="border-amber-500/30 bg-amber-500/10 rounded border p-2">
+											<p className="mb-2 text-[11px]">
+												恢复版本 {diff.toRevision}？当前状态会先另存为一个版本。
+											</p>
+											<div className="flex justify-end gap-2">
+												<button
+													type="button"
+													className="rounded px-2 py-1 text-xs"
+													onClick={() => setConfirmRevision(null)}
+												>
+													取消
+												</button>
+												<button
+													type="button"
+													className="bg-foreground text-background rounded px-2 py-1 text-xs"
+													onClick={() => void restore(diff.toRevision)}
+												>
+													确认恢复
+												</button>
+											</div>
+										</div>
+									) : (
+										<button
+											type="button"
+											className="text-primary text-xs font-medium hover:underline disabled:opacity-40"
+											disabled={diff.changes.length === 0}
+											onClick={() => setConfirmRevision(diff.toRevision)}
+										>
+											恢复此快照
+										</button>
+									)}
 								</div>
-							) : (
-								<button
-									type="button"
-									className="text-primary text-xs font-medium hover:underline disabled:opacity-40"
-									disabled={diff.changes.length === 0}
-									onClick={() => setConfirmRevision(diff.toRevision)}
-								>
-									恢复此快照
-								</button>
-							)}
-						</div>
+							) : null}
+						</>
 					) : null}
 
-					{agent.active || agent.events.length > 0 ? (
+					{openSurface === "smart-edit" &&
+					(agent.active || agent.events.length > 0) ? (
 						<div className="mt-3">
 							<div className="mb-1 text-xs font-medium opacity-70">
 								最近的智能体活动
@@ -588,33 +620,63 @@ export function AgentBadge() {
 					) : null}
 				</div>
 			)}
-			<button
-				type="button"
-				aria-label="打开工程快照和智能体活动"
-				onClick={() => {
-					const nextOpen = !open;
-					setOpen(nextOpen);
-					if (nextOpen) void refreshHistory();
-				}}
-				className="bg-popover text-popover-foreground border-border flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs shadow-md"
-			>
-				{blockedByUnsavedChanges ? (
-					<>
-						<span className="h-2 w-2 rounded-full bg-amber-500" />
-						磁盘版本已更新，请保存或丢弃本地改动后同步
-					</>
-				) : agent.active ? (
-					<>
-						<span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-						{agent.actor ?? "智能体"} 已连接
-					</>
-				) : (
-					<>
-						<span className="bg-primary h-2 w-2 rounded-full" />
-						智能剪辑
-					</>
-				)}
-			</button>
+			<div className="border-border bg-background/85 flex items-center gap-1 rounded-full border p-1 shadow-lg backdrop-blur-md">
+				<button
+					type="button"
+					aria-label="打开工程历史"
+					aria-pressed={openSurface === "project-history"}
+					onClick={() => {
+						const nextOpen =
+							openSurface === "project-history" ? null : "project-history";
+						setOpenSurface(nextOpen);
+						if (nextOpen) void refreshHistory();
+					}}
+					className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] transition-colors ${
+						openSurface === "project-history"
+							? "bg-foreground text-background"
+							: "text-foreground/65 hover:bg-muted hover:text-foreground"
+					}`}
+				>
+					<span
+						className={`size-1.5 rounded-full ${
+							blockedByUnsavedChanges
+								? "bg-amber-500"
+								: save.status === "error"
+									? "bg-red-500"
+									: "bg-emerald-500"
+						}`}
+					/>
+					工程历史
+					{currentRevision !== null ? (
+						<span className="font-mono text-[9px] opacity-55">
+							{currentRevision}
+						</span>
+					) : null}
+				</button>
+				<div className="bg-border h-4 w-px" aria-hidden="true" />
+				<button
+					type="button"
+					aria-label="打开智能剪辑"
+					aria-pressed={openSurface === "smart-edit"}
+					onClick={() =>
+						setOpenSurface((current) =>
+							current === "smart-edit" ? null : "smart-edit",
+						)
+					}
+					className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+						openSurface === "smart-edit"
+							? "bg-cyan-500 text-slate-950"
+							: "text-foreground/75 hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-300"
+					}`}
+				>
+					<span
+						className={`size-1.5 rounded-full ${
+							agent.active ? "animate-pulse bg-emerald-500" : "bg-cyan-500"
+						}`}
+					/>
+					{agent.active ? `${agent.actor ?? "智能体"} 已连接` : "智能剪辑"}
+				</button>
+			</div>
 		</div>
 	);
 }
