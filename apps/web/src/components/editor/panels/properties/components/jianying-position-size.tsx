@@ -138,7 +138,7 @@ function InspectorNumberField({
 			icon={icon}
 			suffix={suffix}
 			suffixClassName="text-muted-foreground"
-			className={cn("h-7 rounded-[5px]", className)}
+			className={cn("text-foreground h-7 rounded-[5px]", className)}
 			value={Number.isInteger(displayValue) ? displayValue : displayValue.toFixed(2)}
 			dragSensitivity="slow"
 			onChange={(event) =>

@@ -290,7 +290,6 @@ function JianyingVisualBasicTab({
 	element: VisualElement;
 	trackId: string;
 }) {
-	const editor = useEditor();
 	const { renderElement } = useElementPreview({
 		trackId,
 		elementId: element.id,
