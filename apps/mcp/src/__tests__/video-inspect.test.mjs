@@ -1,12 +1,38 @@
 import { strict as assert } from "node:assert";
 import { writeFile } from "node:fs/promises";
 import test from "node:test";
-import { inspectMedia, planInspectionTimes } from "../video-inspect.mjs";
+import {
+  inspectMedia,
+  parseSceneChangeTimes,
+  planInspectionTimes,
+  planSceneInspectionTimes,
+} from "../video-inspect.mjs";
 
 test("uniform video samples use midpoints instead of risky endpoints", () => {
   assert.deepEqual(
     planInspectionTimes({ type: "video", durationSeconds: 8, count: 4 }),
     [1, 3, 5, 7],
+  );
+});
+
+test("ffmpeg scene-change output becomes stable unique cut times", () => {
+  const output = [
+    "[Parsed_showinfo_1] n: 0 pts: 120000 pts_time:2.000 pos:0",
+    "[Parsed_showinfo_1] n: 1 pts: 300000 pts_time:5 pos:1",
+    "[Parsed_showinfo_1] n: 2 pts: 300001 pts_time:5.0001 pos:2",
+    "unrelated warning",
+  ].join("\n");
+  assert.deepEqual(parseSceneChangeTimes(output), [2, 5]);
+});
+
+test("scene-aware inspection samples the midpoint of each detected shot", () => {
+  assert.deepEqual(
+    planSceneInspectionTimes({
+      durationSeconds: 8,
+      sceneChanges: [2, 5],
+      maxScenes: 12,
+    }),
+    [1, 3.5, 6.5],
   );
 });
 
