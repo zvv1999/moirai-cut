@@ -1,15 +1,11 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useEditor } from "@/editor/use-editor";
 import { NumberField } from "@/components/ui/number-field";
+import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { DashboardSpeed02Icon } from "@hugeicons/core-free-icons";
-import {
-	buildConstantRetime,
-	buildSpeedCurveRetime,
-	getRetimeBoundaryStatus,
-	getSourceTimeAtClipTime,
-} from "@/retime";
+import { ArrowDownIcon, ArrowUpIcon } from "@hugeicons/core-free-icons";
+import { buildConstantRetime, buildSpeedCurveRetime } from "@/retime";
 import {
 	DEFAULT_RETIME_RATE,
 	MIN_RETIME_RATE,
@@ -19,14 +15,6 @@ import {
 } from "@/retime/rate";
 import type { AudioElement, VideoElement } from "@/timeline";
 import type { RetimeConfig } from "@/timeline";
-import {
-	Section,
-	SectionContent,
-	SectionField,
-	SectionFields,
-	SectionHeader,
-	SectionTitle,
-} from "@/components/section";
 import { usePropertyDraft } from "@/components/editor/panels/properties/hooks/use-property-draft";
 import {
 	formatNumberForDisplay,
@@ -34,15 +22,12 @@ import {
 	snapToStep,
 } from "@/utils/math";
 import { Button } from "@/components/ui/button";
-import {
-	mediaTimeFromSeconds,
-	mediaTimeToSeconds,
-	roundMediaTime,
-	TICKS_PER_SECOND,
-} from "@/wasm";
+import { mediaTimeToSeconds, TICKS_PER_SECOND } from "@/wasm";
 
 const SPEED_STEP = 0.01;
+const DURATION_STEP = 0.1;
 const SPEED_FRACTION_DIGITS = getFractionDigitsForStep({ step: SPEED_STEP });
+const SPEED_SLIDER_TICKS = [0, 20, 40, 60, 80, 100] as const;
 
 export const JIANYING_SPEED_TABS = [
 	{ id: "constant", label: "常规变速" },
@@ -72,6 +57,40 @@ function parseSpeedInput({ input }: { input: string }): number | null {
 	});
 }
 
+function clampDuration({
+	duration,
+	sourceSeconds,
+}: {
+	duration: number;
+	sourceSeconds: number;
+}): number {
+	const minDuration = sourceSeconds / MAX_RETIME_RATE;
+	const maxDuration = sourceSeconds / MIN_RETIME_RATE;
+	return Math.min(maxDuration, Math.max(minDuration, duration));
+}
+
+function parseDurationInput({
+	input,
+	sourceSeconds,
+}: {
+	input: string;
+	sourceSeconds: number;
+}): number | null {
+	const parsed = parseFloat(input);
+	if (!Number.isFinite(parsed) || parsed <= 0 || sourceSeconds <= 0)
+		return null;
+	const duration = clampDuration({
+		duration: snapToStep({ value: parsed, step: DURATION_STEP }),
+		sourceSeconds,
+	});
+	return clampRetimeRate({
+		rate: snapToStep({
+			value: sourceSeconds / duration,
+			step: SPEED_STEP,
+		}),
+	});
+}
+
 function buildRetime({
 	rate,
 	maintainPitch,
@@ -90,13 +109,88 @@ function buildRetime({
 	};
 	if (
 		rate === DEFAULT_RETIME_RATE &&
-		!maintainPitch &&
+		maintainPitch &&
 		!constant.reverse &&
 		constant.freezeFrameAt === undefined
 	) {
 		return undefined;
 	}
 	return constant;
+}
+
+function JianyingStepperField({
+	"aria-label": ariaLabel,
+	value,
+	numericValue,
+	suffix,
+	step,
+	min,
+	max,
+	onFocus,
+	onChange,
+	onBlur,
+	onStep,
+}: {
+	"aria-label": string;
+	value: string;
+	numericValue: number;
+	suffix: string;
+	step: number;
+	min: number;
+	max: number;
+	onFocus: () => void;
+	onChange: React.ChangeEventHandler<HTMLInputElement>;
+	onBlur: React.FocusEventHandler<HTMLInputElement>;
+	onStep: (value: number) => void;
+}) {
+	const stepValue = (direction: 1 | -1) => {
+		onStep(
+			Math.min(
+				max,
+				Math.max(
+					min,
+					snapToStep({
+						value: numericValue + direction * step,
+						step,
+					}),
+				),
+			),
+		);
+	};
+
+	return (
+		<div className="flex h-9 w-[98px] shrink-0 overflow-hidden rounded-md">
+			<NumberField
+				aria-label={ariaLabel}
+				value={value}
+				suffix={suffix}
+				className="h-9 rounded-r-none border-r-0 bg-[#1b1b1b] px-2 text-center"
+				onFocus={onFocus}
+				onChange={onChange}
+				onBlur={onBlur}
+			/>
+			<div className="border-border flex w-7 shrink-0 flex-col border bg-[#3c3c3c]">
+				<button
+					type="button"
+					aria-label={`增加${ariaLabel}`}
+					className="hover:bg-accent flex min-h-0 flex-1 items-center justify-center"
+					onPointerDown={(event) => event.preventDefault()}
+					onClick={() => stepValue(1)}
+				>
+					<HugeiconsIcon icon={ArrowUpIcon} className="size-3.5" />
+				</button>
+				<button
+					type="button"
+					aria-label={`减少${ariaLabel}`}
+					className="border-border hover:bg-accent flex min-h-0 flex-1 items-center justify-center border-t"
+					onPointerDown={(event) => event.preventDefault()}
+					onClick={() => stepValue(-1)}
+				>
+					<HugeiconsIcon icon={ArrowDownIcon} className="size-3.5" />
+				</button>
+			</div>
+		</div>
+	);
 }
 
 export function SpeedTab({
@@ -111,8 +205,14 @@ export function SpeedTab({
 		rate: element.retime?.rate ?? DEFAULT_RETIME_RATE,
 	});
 	const isPitchPreserveAvailable = canMaintainPitch({ rate });
-	const maintainPitch = element.retime?.maintainPitch ?? false;
+	const maintainPitch = element.retime?.maintainPitch ?? true;
 	const pendingRateRef = useRef(rate);
+	const [ratePreview, setRatePreview] = useState({
+		sourceRate: rate,
+		value: rate,
+	});
+	const interactiveRate =
+		ratePreview.sourceRate === rate ? ratePreview.value : rate;
 	const currentTime = useEditor((e) => e.playback.getCurrentTime());
 	const mode = element.retime?.curve ? "curve" : "constant";
 	const sourceSpan = Math.max(
@@ -122,12 +222,14 @@ export function SpeedTab({
 			element.trimEnd,
 		element.duration * rate,
 	);
-	const boundary = getRetimeBoundaryStatus({
-		duration: element.duration,
-		sourceSpan,
-		retime: element.retime,
+	const sourceSeconds = sourceSpan / TICKS_PER_SECOND;
+	const resultDurationSeconds = mediaTimeToSeconds({
+		time: element.duration,
 	});
-	const boundarySeconds = (time: number) => time / TICKS_PER_SECOND;
+	const interactiveDurationSeconds =
+		interactiveRate === rate
+			? resultDurationSeconds
+			: sourceSeconds / interactiveRate;
 
 	const commitRetime = ({ retime }: { retime?: RetimeConfig }) => {
 		editor.timeline.updateElementRetime({
@@ -149,10 +251,43 @@ export function SpeedTab({
 	});
 
 	const speedDraft = usePropertyDraft({
-		displayValue: rateToDisplay({ rate }),
+		displayValue: rateToDisplay({ rate: interactiveRate }),
 		parse: (input) => parseSpeedInput({ input }),
 		onPreview: (nextRate) => {
 			pendingRateRef.current = nextRate;
+			setRatePreview({ sourceRate: rate, value: nextRate });
+			editor.timeline.previewElements({
+				updates: [
+					{
+						trackId,
+						elementId: element.id,
+						updates: {
+							retime: buildRetime({
+								rate: nextRate,
+								maintainPitch,
+								existing: element.retime,
+							}),
+						},
+					},
+				],
+			});
+		},
+		onCommit: () => {
+			commitRetime({
+				retime: buildRetime({
+					rate: pendingRateRef.current,
+					maintainPitch,
+					existing: element.retime,
+				}),
+			});
+		},
+	});
+	const durationDraft = usePropertyDraft({
+		displayValue: interactiveDurationSeconds.toFixed(1),
+		parse: (input) => parseDurationInput({ input, sourceSeconds }),
+		onPreview: (nextRate) => {
+			pendingRateRef.current = nextRate;
+			setRatePreview({ sourceRate: rate, value: nextRate });
 			editor.timeline.previewElements({
 				updates: [
 					{
@@ -239,216 +374,281 @@ export function SpeedTab({
 	};
 
 	return (
-		<div className="flex h-full flex-col">
-			<div
-				className="border-border/70 grid h-[50px] shrink-0 grid-cols-3 gap-1 border-b px-3 py-2"
-				role="tablist"
-				aria-label="变速模式"
-			>
-				{JIANYING_SPEED_TABS.map((tab) => {
-					const isActive = tab.id === mode;
-					const disabled =
-						tab.id === "beat" ||
-						(tab.id === "curve" && element.type === "audio");
-					return (
-						<Button
-							key={tab.id}
-							type="button"
-							role="tab"
-							size="sm"
-							variant="ghost"
-							aria-selected={isActive}
-							disabled={disabled}
-							title={
-								tab.id === "beat"
-									? "变速卡点尚未接入"
-									: disabled
-										? "音频素材暂不支持曲线变速"
-										: tab.label
-							}
-							className={
-								isActive ? "bg-accent text-foreground" : "text-muted-foreground"
-							}
-							onClick={() => {
-								if (tab.id === "constant") {
-									commitRetime({
-										retime: buildRetime({
-											rate,
-											maintainPitch,
-											existing: element.retime,
-										}),
-									});
-								} else if (tab.id === "curve") {
-									applyCurvePreset({ preset: "hero" });
+		<div className="flex h-full min-h-0 flex-col bg-[#242424] text-[#e8e8e8]">
+			<div className="border-border/70 shrink-0 border-b px-3 py-3">
+				<div
+					className="grid h-9 grid-cols-3 rounded-md bg-[#191919] p-0.5"
+					role="tablist"
+					aria-label="变速模式"
+				>
+					{JIANYING_SPEED_TABS.map((tab) => {
+						const isActive = tab.id === mode;
+						const disabled =
+							tab.id === "beat" ||
+							(tab.id === "curve" && element.type === "audio");
+						return (
+							<Button
+								key={tab.id}
+								type="button"
+								role="tab"
+								size="sm"
+								variant="ghost"
+								aria-selected={isActive}
+								disabled={disabled}
+								title={
+									tab.id === "beat"
+										? "变速卡点尚未接入"
+										: disabled
+											? "音频素材暂不支持曲线变速"
+											: tab.label
 								}
-							}}
-						>
-							{tab.label}
-						</Button>
-					);
-				})}
+								className={`h-8 rounded-[5px] text-xs ${
+									isActive
+										? "bg-[#3d3d3d] text-white hover:bg-[#3d3d3d]"
+										: "text-muted-foreground hover:bg-[#303030] hover:text-white"
+								}`}
+								onClick={() => {
+									if (tab.id === "constant") {
+										commitRetime({
+											retime: buildRetime({
+												rate,
+												maintainPitch,
+												existing: element.retime,
+											}),
+										});
+									} else if (tab.id === "curve") {
+										applyCurvePreset({ preset: "hero" });
+									}
+								}}
+							>
+								{tab.label}
+							</Button>
+						);
+					})}
+				</div>
 			</div>
-			<Section sectionKey={`${element.id}:speed`} showTopBorder={false}>
-				<SectionContent>
-					<SectionFields>
-						{mode === "constant" ? (
-							<>
-								<SectionField label="倍数">
-									<NumberField
-										icon={<HugeiconsIcon icon={DashboardSpeed02Icon} />}
+
+			<div className="min-h-0 flex-1 overflow-y-auto">
+				{mode === "constant" ? (
+					<div className="px-3 py-3">
+						<div className="border-border/70 flex flex-col gap-8 border-t pt-5">
+							<div className="flex flex-col gap-3">
+								<div className="text-sm font-medium">倍数</div>
+								<div className="flex items-center gap-3">
+									<div className="relative min-w-0 flex-1 py-3">
+										<div
+											className="pointer-events-none absolute inset-x-0 top-1/2 h-4 -translate-y-1/2"
+											aria-hidden="true"
+										>
+											{SPEED_SLIDER_TICKS.map((position) => (
+												<span
+													key={position}
+													className="bg-muted-foreground/70 absolute top-1/2 h-2 w-px -translate-x-1/2 -translate-y-1/2"
+													style={{ left: `${position}%` }}
+												/>
+											))}
+										</div>
+										<Slider
+											aria-label="倍数滑杆"
+											thumbAriaLabel="倍数滑杆"
+											min={MIN_RETIME_RATE}
+											max={MAX_RETIME_RATE}
+											step={SPEED_STEP}
+											value={[interactiveRate]}
+											className="relative z-10"
+											trackClassName="h-px overflow-visible rounded-none bg-[#606060]"
+											rangeClassName="bg-white"
+											thumbClassName="size-[17px] border-0 bg-white"
+											onValueChange={([nextRate]) => {
+												if (nextRate !== undefined) {
+													speedDraft.scrubTo(nextRate);
+												}
+											}}
+											onValueCommit={([nextRate]) => {
+												if (nextRate !== undefined) {
+													speedDraft.scrubTo(nextRate);
+													speedDraft.commitScrub();
+												}
+											}}
+										/>
+									</div>
+									<JianyingStepperField
+										aria-label="倍数"
 										value={speedDraft.displayValue}
+										numericValue={interactiveRate}
 										suffix="x"
-										scrubRanges={[
-											{ from: 0.01, to: 1, pixelsPerUnit: 160 },
-											{ from: 1, to: 5, pixelsPerUnit: 48 },
-										]}
-										scrubClamp={{
-											min: MIN_RETIME_RATE,
-											max: MAX_RETIME_RATE,
-										}}
+										step={SPEED_STEP}
+										min={MIN_RETIME_RATE}
+										max={MAX_RETIME_RATE}
 										onFocus={() => {
 											pendingRateRef.current = rate;
 											speedDraft.onFocus();
 										}}
 										onChange={speedDraft.onChange}
 										onBlur={speedDraft.onBlur}
-										onScrub={speedDraft.scrubTo}
-										onScrubEnd={speedDraft.commitScrub}
-										onReset={() =>
-											commitRetime({
-												retime: buildRetime({
-													rate: DEFAULT_RETIME_RATE,
-													maintainPitch,
-													existing: element.retime,
-												}),
-											})
-										}
-										isDefault={rate === DEFAULT_RETIME_RATE}
+										onStep={(nextRate) => {
+											speedDraft.scrubTo(nextRate);
+											speedDraft.commitScrub();
+										}}
 									/>
-								</SectionField>
-								<div className="grid grid-cols-[4rem_1fr] items-center gap-3 text-sm">
-									<span className="text-muted-foreground">时长</span>
-									<div className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2 text-xs">
-										<span>{boundarySeconds(sourceSpan).toFixed(1)}s</span>
-										<span className="text-muted-foreground">→</span>
-										<span>
-											{mediaTimeToSeconds({
-												time: element.duration,
-											}).toFixed(1)}
-											s
+								</div>
+							</div>
+
+							<div className="flex flex-col gap-2.5">
+								<div className="text-sm font-medium">时长</div>
+								<div className="flex items-center gap-3">
+									<span
+										className="w-[60px] shrink-0 text-sm tabular-nums"
+										aria-label="原始时长"
+									>
+										{sourceSeconds.toFixed(1)}s
+									</span>
+									<div className="relative min-w-6 flex-1 border-t-2 border-dashed border-[#4b4b4b]">
+										<span className="absolute -right-0.5 -top-[5px] size-0 border-y-[4px] border-l-[7px] border-y-transparent border-l-[#4b4b4b]" />
+									</div>
+									<JianyingStepperField
+										aria-label="结果时长"
+										value={durationDraft.displayValue}
+										numericValue={interactiveDurationSeconds}
+										suffix="s"
+										step={DURATION_STEP}
+										min={
+											sourceSeconds > 0
+												? sourceSeconds / MAX_RETIME_RATE
+												: DURATION_STEP
+										}
+										max={
+											sourceSeconds > 0
+												? sourceSeconds / MIN_RETIME_RATE
+												: DURATION_STEP
+										}
+										onFocus={() => {
+											pendingRateRef.current = rate;
+											durationDraft.onFocus();
+										}}
+										onChange={durationDraft.onChange}
+										onBlur={durationDraft.onBlur}
+										onStep={(nextDuration) => {
+											durationDraft.scrubTo(nextDuration);
+											durationDraft.commitScrub();
+										}}
+									/>
+								</div>
+							</div>
+
+							<div className="flex items-center justify-between">
+								<div className="text-sm font-medium">声音变调</div>
+								<Switch
+									aria-label="声音变调"
+									checked={!maintainPitch}
+									disabled={!isPitchPreserveAvailable}
+									onCheckedChange={(checked) =>
+										commitRetime({
+											retime: buildRetime({
+												rate,
+												maintainPitch: !checked,
+												existing: element.retime,
+											}),
+										})
+									}
+								/>
+							</div>
+
+							<div
+								className="flex items-center gap-2 text-xs text-[#777]"
+								aria-disabled="true"
+							>
+								<span className="size-4 shrink-0 rounded border border-[#555] bg-[#2a2a2a]" />
+								<span className="font-medium">智能补帧</span>
+								<span className="rounded bg-[#536163] px-1 py-0.5 text-[10px] text-[#b9c3c4]">
+									限免
+								</span>
+								<span>（仅对慢速片段补帧）</span>
+								<span className="ml-auto">⌄</span>
+							</div>
+						</div>
+					</div>
+				) : (
+					<div className="flex flex-col gap-4 px-3 py-4">
+						<div className="grid grid-cols-3 gap-1">
+							<Button
+								size="sm"
+								variant="outline"
+								onClick={() => applyCurvePreset({ preset: "ease-in" })}
+							>
+								渐入
+							</Button>
+							<Button
+								size="sm"
+								variant="outline"
+								onClick={() => applyCurvePreset({ preset: "ease-out" })}
+							>
+								渐出
+							</Button>
+							<Button
+								size="sm"
+								variant="outline"
+								onClick={() => applyCurvePreset({ preset: "hero" })}
+							>
+								英雄时刻
+							</Button>
+						</div>
+						{(element.retime?.curve?.points ?? []).map((point, index) => (
+							<div
+								key={`${point.time}:${index}`}
+								className="grid grid-cols-[1fr_1fr_auto] items-end gap-1.5"
+							>
+								<label className="flex flex-col gap-1 text-xs">
+									<span className="text-muted-foreground">时间</span>
+									<div className="relative">
+										<input
+											type="number"
+											min={0}
+											max={100}
+											step={1}
+											className="h-8 w-full rounded-md border bg-background px-2 pr-6"
+											defaultValue={Math.round(
+												(point.time / Math.max(1, element.duration)) * 100,
+											)}
+											onBlur={(event) =>
+												updateCurvePoint({
+													index,
+													time:
+														(Number(event.target.value) / 100) *
+														element.duration,
+												})
+											}
+										/>
+										<span className="text-muted-foreground absolute right-2 top-2">
+											%
 										</span>
 									</div>
-								</div>
-							</>
-						) : (
-							<div className="flex flex-col gap-2">
-								<div className="grid grid-cols-3 gap-1">
-									<Button
-										size="sm"
-										variant="outline"
-										onClick={() => applyCurvePreset({ preset: "ease-in" })}
-									>
-										渐入
-									</Button>
-									<Button
-										size="sm"
-										variant="outline"
-										onClick={() => applyCurvePreset({ preset: "ease-out" })}
-									>
-										渐出
-									</Button>
-									<Button
-										size="sm"
-										variant="outline"
-										onClick={() => applyCurvePreset({ preset: "hero" })}
-									>
-										英雄时刻
-									</Button>
-								</div>
-								{(element.retime?.curve?.points ?? []).map((point, index) => (
-									<div
-										key={`${point.time}:${index}`}
-										className="grid grid-cols-[1fr_1fr_auto] items-end gap-1.5"
-									>
-										<label className="flex flex-col gap-1 text-xs">
-											<span className="text-muted-foreground">时间</span>
-											<div className="relative">
-												<input
-													type="number"
-													min={0}
-													max={100}
-													step={1}
-													className="h-8 w-full rounded-md border bg-background px-2 pr-6"
-													defaultValue={Math.round(
-														(point.time / Math.max(1, element.duration)) * 100,
-													)}
-													onBlur={(event) =>
-														updateCurvePoint({
-															index,
-															time:
-																(Number(event.target.value) / 100) *
-																element.duration,
-														})
-													}
-												/>
-												<span className="text-muted-foreground absolute right-2 top-2">
-													%
-												</span>
-											</div>
-										</label>
-										<label className="flex flex-col gap-1 text-xs">
-											<span className="text-muted-foreground">倍数</span>
-											<input
-												type="number"
-												min={MIN_RETIME_RATE}
-												max={MAX_RETIME_RATE}
-												step={0.05}
-												className="h-8 rounded-md border bg-background px-2"
-												defaultValue={point.rate}
-												onBlur={(event) =>
-													updateCurvePoint({
-														index,
-														rate: Number(event.target.value),
-													})
-												}
-											/>
-										</label>
-										<Button
-											size="sm"
-											variant="ghost"
-											disabled={
-												(element.retime?.curve?.points.length ?? 0) <= 2
-											}
-											onClick={() => {
-												const points = (
-													element.retime?.curve?.points ?? []
-												).filter((_, pointIndex) => pointIndex !== index);
-												commitRetime({
-													retime: preserveDirectionAndHold({
-														retime: buildSpeedCurveRetime({
-															points,
-															maintainPitch,
-														}),
-													}),
-												});
-											}}
-										>
-											×
-										</Button>
-									</div>
-								))}
+								</label>
+								<label className="flex flex-col gap-1 text-xs">
+									<span className="text-muted-foreground">倍数</span>
+									<input
+										type="number"
+										min={MIN_RETIME_RATE}
+										max={MAX_RETIME_RATE}
+										step={0.05}
+										className="h-8 rounded-md border bg-background px-2"
+										defaultValue={point.rate}
+										onBlur={(event) =>
+											updateCurvePoint({
+												index,
+												rate: Number(event.target.value),
+											})
+										}
+									/>
+								</label>
 								<Button
 									size="sm"
 									variant="ghost"
+									disabled={(element.retime?.curve?.points.length ?? 0) <= 2}
 									onClick={() => {
-										const localTime = Math.min(
-											element.duration,
-											Math.max(0, currentTime - element.startTime),
+										const points = (element.retime?.curve?.points ?? []).filter(
+											(_, pointIndex) => pointIndex !== index,
 										);
-										const points = [
-											...(element.retime?.curve?.points ?? []),
-											{ time: localTime, rate },
-										];
 										commitRetime({
 											retime: preserveDirectionAndHold({
 												retime: buildSpeedCurveRetime({
@@ -459,162 +659,52 @@ export function SpeedTab({
 										});
 									}}
 								>
-									在播放头添加变速点
+									×
 								</Button>
 							</div>
-						)}
-						<div className="flex items-center justify-between">
-							<div>
-								<div className="text-sm">声音变调</div>
-								<div className="text-muted-foreground text-[10px]">
-									关闭后保持原始音高
-								</div>
-							</div>
-							<Switch
-								checked={!maintainPitch}
-								disabled={!isPitchPreserveAvailable || mode === "curve"}
-								onCheckedChange={(checked) =>
-									commitRetime({
-										retime: buildRetime({
-											rate,
-											maintainPitch: !checked,
-											existing: element.retime,
+						))}
+						<Button
+							size="sm"
+							variant="ghost"
+							onClick={() => {
+								const localTime = Math.min(
+									element.duration,
+									Math.max(0, currentTime - element.startTime),
+								);
+								const points = [
+									...(element.retime?.curve?.points ?? []),
+									{ time: localTime, rate },
+								];
+								commitRetime({
+									retime: preserveDirectionAndHold({
+										retime: buildSpeedCurveRetime({
+											points,
+											maintainPitch,
 										}),
-									})
-								}
-							/>
-						</div>
-						<div className="flex items-center justify-between">
-							<div>
-								<div className="text-sm">智能补帧</div>
-								<div className="text-muted-foreground text-[10px]">
-									仅对慢速片段有效 · 尚未接入
-								</div>
-							</div>
-							<Switch disabled checked={false} />
-						</div>
-					</SectionFields>
-				</SectionContent>
-			</Section>
-			{element.type === "video" ? (
-				<Section sectionKey={`${element.id}:direction`}>
-					<SectionHeader>
-						<SectionTitle>更多</SectionTitle>
-					</SectionHeader>
-					<SectionContent>
-						<SectionFields>
-							<div className="flex items-center justify-between">
-								<span className="text-sm">倒放</span>
-								<Switch
-									checked={element.retime?.reverse ?? false}
-									onCheckedChange={(reverse) =>
-										commitRetime({
-											retime: {
-												...(element.retime ?? { rate: 1 }),
-												reverse,
-											},
-										})
-									}
-								/>
-							</div>
-							<div className="flex items-center justify-between">
-								<div>
-									<div className="text-sm">定格</div>
-									<div className="text-muted-foreground text-[10px]">
-										定格当前源素材画面
-									</div>
-								</div>
-								<Switch
-									checked={element.retime?.freezeFrameAt !== undefined}
-									onCheckedChange={(checked) => {
-										const next = { ...(element.retime ?? { rate: 1 }) };
-										if (checked) {
-											delete next.freezeFrameAt;
-											next.freezeFrameAt = roundMediaTime({
-												time: getSourceTimeAtClipTime({
-													clipTime: Math.max(
-														0,
-														Math.min(
-															element.duration,
-															currentTime - element.startTime,
-														),
-													),
-													retime: next,
-													sourceSpan,
-												}),
-											});
-										} else {
-											delete next.freezeFrameAt;
-										}
-										commitRetime({ retime: next });
-									}}
-								/>
-							</div>
-							{element.retime?.freezeFrameAt !== undefined ? (
-								<SectionField label="定格时间">
-									<NumberField
-										value={mediaTimeToSeconds({
-											time: element.retime.freezeFrameAt,
-										}).toFixed(2)}
-										suffix="s"
-										onChange={() => {}}
-										onBlur={(event) => {
-											const seconds = Number(event.currentTarget.value);
-											if (!Number.isFinite(seconds)) return;
-											commitRetime({
-												retime: {
-													...(element.retime ?? { rate: 1 }),
-													freezeFrameAt: roundMediaTime({
-														time: Math.min(
-															sourceSpan,
-															mediaTimeFromSeconds({
-																seconds: Math.max(0, seconds),
-															}),
-														),
-													}),
-												},
-											});
-										}}
-										onScrub={() => {}}
-										onScrubEnd={() => {}}
-										onReset={() => {
-											const next = {
-												...(element.retime ?? { rate: 1 }),
-											};
-											delete next.freezeFrameAt;
-											commitRetime({ retime: next });
-										}}
-										isDefault={false}
-									/>
-								</SectionField>
-							) : null}
-						</SectionFields>
-					</SectionContent>
-				</Section>
-			) : null}
-			<Section sectionKey={`${element.id}:source-boundary`}>
-				<SectionHeader>
-					<SectionTitle>源素材边界</SectionTitle>
-				</SectionHeader>
-				<SectionContent>
-					<div
-						className={`rounded-md border p-2 text-xs ${
-							boundary.overrun ? "text-red-500" : "text-emerald-600"
-						}`}
-					>
-						<div className="font-medium">
-							{boundary.overrun
-								? "源素材时长不足"
-								: `还可延长 ${boundarySeconds(boundary.remainingSourceSpan).toFixed(2)} 秒`}
-						</div>
-						<div className="text-muted-foreground">
-							已使用 {boundarySeconds(boundary.usedSourceSpan).toFixed(2)} 秒
-							{" / "}
-							可用 {boundarySeconds(boundary.availableSourceSpan).toFixed(2)} 秒
-						</div>
+									}),
+								});
+							}}
+						>
+							在播放头添加变速点
+						</Button>
 					</div>
-				</SectionContent>
-			</Section>
+				)}
+			</div>
+
+			<div
+				data-speed-reset-footer
+				className="border-border/70 flex h-[58px] shrink-0 items-center justify-end border-t bg-[#2d2d2d] px-3"
+			>
+				<Button
+					type="button"
+					size="sm"
+					variant="secondary"
+					className="h-8 w-24 bg-[#585858] text-white hover:bg-[#666]"
+					onClick={() => commitRetime({ retime: undefined })}
+				>
+					重置
+				</Button>
+			</div>
 		</div>
 	);
 }

@@ -77,6 +77,17 @@ export function PropertiesPanel() {
 
 	if (!activeTab) return null;
 
+	const tabPanel = (
+		<div
+			id={`inspector-panel-${activeTab.id}`}
+			role="tabpanel"
+			aria-label={`${activeTab.label}属性`}
+			className={activeTab.id === "speed" ? "h-full" : undefined}
+		>
+			{activeTab.content({ trackId: track.id })}
+		</div>
+	);
+
 	return (
 		<div
 			className="panel bg-background flex h-full flex-col overflow-hidden rounded-lg border"
@@ -98,15 +109,21 @@ export function PropertiesPanel() {
 				duration={element.duration}
 				trackName={track.name}
 			/>
-			<ScrollArea className="flex-1 scrollbar-hidden">
+			{activeTab.id === "speed" ? (
 				<div
-					id={`inspector-panel-${activeTab.id}`}
-					role="tabpanel"
-					aria-label={`${activeTab.label}属性`}
+					key={`${element.id}:${activeTab.id}`}
+					className="min-h-0 flex-1 overflow-hidden"
 				>
-					{activeTab.content({ trackId: track.id })}
+					{tabPanel}
 				</div>
-			</ScrollArea>
+			) : (
+				<ScrollArea
+					key={`${element.id}:${activeTab.id}`}
+					className="flex-1 scrollbar-hidden"
+				>
+					{tabPanel}
+				</ScrollArea>
+			)}
 		</div>
 	);
 }

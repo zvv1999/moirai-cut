@@ -11,10 +11,11 @@ import {
 
 describe("Jianying speed and adjustment parity", () => {
 	const speedTabSource = readFileSync(
-		new URL(
-			"../../../../../speed/components/speed-tab.tsx",
-			import.meta.url,
-		),
+		new URL("../../../../../speed/components/speed-tab.tsx", import.meta.url),
+		"utf8",
+	);
+	const propertiesPanelSource = readFileSync(
+		new URL("../index.tsx", import.meta.url),
 		"utf8",
 	);
 
@@ -39,7 +40,22 @@ describe("Jianying speed and adjustment parity", () => {
 		expect(speedTabSource).toContain("仅对慢速片段补帧");
 		expect(speedTabSource).toContain("限免");
 		expect(speedTabSource).not.toContain("<SectionTitle>更多</SectionTitle>");
-		expect(speedTabSource).not.toContain("<SectionTitle>源素材边界</SectionTitle>");
+		expect(speedTabSource).not.toContain(
+			"<SectionTitle>源素材边界</SectionTitle>",
+		);
+	});
+
+	test("starts each inspector category at the top instead of reusing scroll position", () => {
+		expect(propertiesPanelSource).toContain(
+			"key={`${element.id}:${activeTab.id}`}",
+		);
+	});
+
+	test("lets the speed inspector own its scrolling so the reset footer stays fixed", () => {
+		expect(propertiesPanelSource).toContain('activeTab.id === "speed"');
+		expect(propertiesPanelSource).toContain(
+			'className="min-h-0 flex-1 overflow-hidden"',
+		);
 	});
 
 	test("matches Jianying's adjustment hierarchy and basic sections", () => {
