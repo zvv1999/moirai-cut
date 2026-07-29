@@ -69,20 +69,52 @@ export function planSceneInspectionTimes({
     )
     .sort((a, b) => a - b);
   const boundaries = [0, ...cuts, durationSeconds];
-  const midpoints = boundaries
-    .slice(0, -1)
-    .map((start, index) => (start + boundaries[index + 1]) / 2);
-  if (midpoints.length <= maxScenes) return midpoints;
-  return Array.from(
-    { length: maxScenes },
-    (_, index) =>
-      midpoints[
-        Math.min(
-          midpoints.length - 1,
-          Math.floor(((index + 0.5) * midpoints.length) / maxScenes),
-        )
-      ],
+  let intervals = boundaries.slice(0, -1).map((start, index) => ({
+    start,
+    end: boundaries[index + 1],
+    count: 1,
+  }));
+  if (intervals.length > maxScenes) {
+    intervals = Array.from(
+      { length: maxScenes },
+      (_, index) =>
+        intervals[
+          Math.min(
+            intervals.length - 1,
+            Math.floor(((index + 0.5) * intervals.length) / maxScenes),
+          )
+        ],
+    );
+  }
+
+  // A hard-cut detector reports shot BOUNDARIES, not everything that happens
+  // inside a long take. Allocate extra samples to long continuous shots at
+  // roughly one frame per three seconds, while keeping the global 25-cell cap.
+  const desiredCount = Math.min(
+    maxScenes,
+    Math.max(intervals.length, Math.ceil(durationSeconds / 3)),
   );
+  let allocated = intervals.length;
+  while (allocated < desiredCount) {
+    let best = intervals[0];
+    for (const interval of intervals.slice(1)) {
+      const spacing = (interval.end - interval.start) / interval.count;
+      const bestSpacing = (best.end - best.start) / best.count;
+      if (spacing > bestSpacing) best = interval;
+    }
+    best.count += 1;
+    allocated += 1;
+  }
+  return intervals
+    .flatMap((interval) =>
+      Array.from(
+        { length: interval.count },
+        (_, index) =>
+          interval.start +
+          ((index + 0.5) * (interval.end - interval.start)) / interval.count,
+      ),
+    )
+    .sort((a, b) => a - b);
 }
 
 export async function detectMediaScenes({
