@@ -32,6 +32,17 @@ const state = (): ProjectStateSummary => ({
 			name: "主角源素材.mov",
 			type: "video",
 			durationSeconds: 8,
+			width: 1920,
+			height: 1080,
+			fps: 29.97,
+			hasAudio: true,
+			browserCanDecode: true,
+			proxy: {
+				enabled: true,
+				width: 1280,
+				height: 720,
+				mimeType: "video/mp4",
+			},
 		},
 	],
 	tracks: [
@@ -50,6 +61,7 @@ const state = (): ProjectStateSummary => ({
 					endTimeSeconds: 4,
 					trimStartSeconds: 0,
 					trimEndSeconds: 0,
+					mediaId: "media/hero",
 				},
 				{
 					id: "clip-b",
@@ -60,6 +72,7 @@ const state = (): ProjectStateSummary => ({
 					endTimeSeconds: 8,
 					trimStartSeconds: 0,
 					trimEndSeconds: 0,
+					mediaId: "media/hero",
 				},
 				{
 					id: "clip-c",
@@ -70,6 +83,7 @@ const state = (): ProjectStateSummary => ({
 					endTimeSeconds: 12,
 					trimStartSeconds: 0,
 					trimEndSeconds: 0,
+					mediaId: "media/hero",
 				},
 			],
 		},
@@ -114,6 +128,9 @@ describe("Codex context references", () => {
 				elementId: "clip/a",
 				startSeconds: 0,
 				endSeconds: 4,
+				mediaId: "media/hero",
+				sourceStartSeconds: 0,
+				sourceEndSeconds: 4,
 				uri: "opencut://project/project%20%2F%20reed/scene/scene%2Fmain/track/video%201/element/clip%2Fa",
 			}),
 		);
@@ -134,6 +151,15 @@ describe("Codex context references", () => {
 			{ trackId: "video 1", elementId: "clip-b" },
 			{ trackId: "captions", elementId: "caption-1" },
 		]);
+		expect(reference.analysisRequest).toEqual({
+			tool: "inspect_timeline_range",
+			arguments: {
+				projectId: "project / reed",
+				sceneId: "scene/main",
+				startSeconds: 3,
+				endSeconds: 6,
+			},
+		});
 	});
 
 	test("builds Codex paths for assets picked directly from the media library", () => {
@@ -149,6 +175,17 @@ describe("Codex context references", () => {
 				label: "主角源素材.mov",
 				mediaType: "video",
 				durationSeconds: 8,
+				width: 1920,
+				height: 1080,
+				fps: 29.97,
+				hasAudio: true,
+				browserCanDecode: true,
+				proxy: {
+					enabled: true,
+					width: 1280,
+					height: 720,
+					mimeType: "video/mp4",
+				},
 				uri: "opencut://project/project%20%2F%20reed/scene/scene%2Fmain/media/media%2Fhero",
 			}),
 		]);
@@ -241,6 +278,19 @@ describe("Codex context references", () => {
 		);
 		expect(snapshot.promptContext).toContain(pinned.uri);
 		expect(snapshot.promptContext).not.toContain(snapshot.liveSelection[0].uri);
+		expect(snapshot.context.schemaVersion).toBe("opencut.agent-context.v1");
+		expect(snapshot.context.project).toEqual(
+			expect.objectContaining({
+				id: "project / reed",
+				revision: 12,
+				sceneId: "scene/main",
+				playheadSeconds: 10.5,
+			}),
+		);
+		expect(snapshot.context.references).toEqual([pinned]);
+		expect(JSON.parse(snapshot.contextJson)).toEqual(snapshot.context);
+		expect(snapshot.promptContext).toContain('"inspect_timeline_range"');
+		expect(snapshot.promptContext).not.toContain("thumbnailUrl");
 	});
 
 	test("rejects a path aimed at another project instead of revealing the wrong clip", () => {
