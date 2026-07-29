@@ -52,6 +52,9 @@ export function SourceMonitorDialog({
 	onInsert: (args: { range: SourceRange }) => void;
 	onOverwrite: (args: { range: SourceRange }) => void;
 }) {
+	const projectId = useEditor(
+		(editor) => editor.project.getActive().metadata.id,
+	);
 	if (!asset) return null;
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -62,6 +65,7 @@ export function SourceMonitorDialog({
 				<SourceMonitorView
 					key={asset.id}
 					asset={asset}
+					projectId={projectId}
 					overwriteTargetLabel={overwriteTargetLabel}
 					overwriteDisabledReason={overwriteDisabledReason}
 					onInsert={onInsert}
@@ -75,6 +79,7 @@ export function SourceMonitorDialog({
 
 export function SourceMonitorView({
 	asset,
+	projectId,
 	overwriteTargetLabel,
 	overwriteDisabledReason,
 	onInsert,
@@ -82,6 +87,7 @@ export function SourceMonitorView({
 	onClose,
 }: {
 	asset: MediaAsset;
+	projectId?: string;
 	overwriteTargetLabel: string | null;
 	overwriteDisabledReason: string | null;
 	onInsert: (args: { range: SourceRange }) => void;
@@ -89,9 +95,6 @@ export function SourceMonitorView({
 	onClose: () => void;
 }) {
 	const duration = getSourceDurationSeconds({ asset });
-	const projectId = useEditor(
-		(editor) => editor.project.getActive().metadata.id,
-	);
 	const [range, setRange] = useState<SourceRange>(() =>
 		getDefaultSourceRange({ asset }),
 	);
@@ -111,7 +114,7 @@ export function SourceMonitorView({
 	});
 
 	useEffect(() => {
-		if (asset.type === "image") {
+		if (asset.type === "image" || !projectId) {
 			return;
 		}
 		let active = true;

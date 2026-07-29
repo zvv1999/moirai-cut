@@ -54,7 +54,7 @@ import {
 import {
 	DELIVERY_PRESET_NAMES,
 	type DeliveryPresetName,
-} from "@/server/native-delivery";
+} from "@/export/native-delivery-contract";
 
 type ExportTab = "setup" | "preflight" | "components" | "queue" | "history";
 type DeliverySelection = "browser" | DeliveryPresetName;

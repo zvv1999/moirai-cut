@@ -42,7 +42,7 @@ import {
   startNativeDeliveryJob,
   type NativeDeliveryJobState,
 } from "./native-delivery-jobs";
-import type { DeliveryPresetName } from "@/server/native-delivery";
+import type { DeliveryPresetName } from "@/export/native-delivery-contract";
 
 /**
  * The out-of-page entry point.

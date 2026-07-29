@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import {
 	DELIVERY_PRESET_NAMES,
-	transcodeProjectExport,
 	type DeliveryPresetName,
 	type NativeDeliveryResult,
-} from "@/server/native-delivery";
+} from "@/export/native-delivery-contract";
+import { transcodeProjectExport } from "@/server/native-delivery";
 
 export const runtime = "nodejs";
 

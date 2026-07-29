@@ -28,13 +28,13 @@ test("track headers expose identity, compatibility, and direct controls", () => 
 	);
 
 	expect(markup).toContain("Dialogue");
-	expect(markup).toContain("Audio clips");
-	expect(markup).toContain('aria-label="Rename Dialogue"');
-	expect(markup).toContain('aria-label="Unlock Dialogue"');
-	expect(markup).toContain('aria-label="Disable solo for Dialogue"');
-	expect(markup).toContain('aria-label="Mute Dialogue"');
-	expect(markup).toContain('aria-label="Resize Dialogue"');
-	expect(markup).toContain('aria-label="Delete Dialogue"');
+	expect(markup).toContain("音频素材");
+	expect(markup).toContain('aria-label="重命名 Dialogue"');
+	expect(markup).toContain('aria-label="解锁 Dialogue"');
+	expect(markup).toContain('aria-label="取消独奏 Dialogue"');
+	expect(markup).toContain('aria-label="静音 Dialogue"');
+	expect(markup).toContain('aria-label="调整 Dialogue 高度"');
+	expect(markup).toContain('aria-label="删除 Dialogue"');
 	expect(markup).toContain('aria-pressed="true"');
 });
 
@@ -59,6 +59,6 @@ test("main track cannot be deleted and incompatible controls stay absent", () =>
 	);
 
 	expect(markup).toContain("Main");
-	expect(markup).toContain('aria-label="Hide Main story"');
-	expect(markup).not.toContain('aria-label="Delete Main story"');
+	expect(markup).toContain('aria-label="隐藏 Main story"');
+	expect(markup).not.toContain('aria-label="删除 Main story"');
 });

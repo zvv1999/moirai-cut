@@ -2,7 +2,7 @@ import type { MediaProbeFetcher } from "@/agent/media-codec";
 import type {
 	DeliveryPresetName,
 	NativeDeliveryResult,
-} from "@/server/native-delivery";
+} from "@/export/native-delivery-contract";
 
 export type NativeDeliveryJobStatus =
 	| "running"

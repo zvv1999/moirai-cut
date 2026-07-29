@@ -30,5 +30,5 @@ test("source monitor exposes playback, in/out, insert, and overwrite controls", 
 	expect(markup).toContain("Set Out");
 	expect(markup).toContain("Insert range");
 	expect(markup).toContain("Overwrite Main Track");
-	expect(markup).toContain("Source files remain unchanged");
+	expect(markup).toContain("原始素材不会被修改");
 });

@@ -13,6 +13,10 @@ import {
 	type NormalizedMediaProbe,
 	type RawFfprobeOutput,
 } from "@/media/codec-capabilities";
+import type {
+	DeliveryPresetName,
+	NativeDeliveryResult,
+} from "@/export/native-delivery-contract";
 import {
 	runNativeTranscode,
 	type NativeTranscodeRunner,
@@ -22,26 +26,11 @@ import { runFfprobe } from "@/server/media-probe";
 const SAFE_PROJECT_ID = /^[A-Za-z0-9_-]{1,128}$/;
 const SAFE_EXPORT_NAME = /^[\p{L}\p{N}_.-]{1,160}$/u;
 
-export const DELIVERY_PRESET_NAMES = [
-	"h264-mp4",
-	"hevc-mp4",
-	"hevc10-mp4",
-	"h264-mov",
-	"hevc-mov",
-	"hevc10-mov",
-	"h264-mov-pcm",
-	"hevc10-mov-pcm",
-	"vp9-webm",
-	"av1-webm",
-	"wav-pcm",
-	"m4a-aac",
-	"mp3",
-	"flac",
-	"ogg-opus",
-] as const;
-
-export type DeliveryPresetName =
-	(typeof DELIVERY_PRESET_NAMES)[number];
+export {
+	DELIVERY_PRESET_NAMES,
+	type DeliveryPresetName,
+	type NativeDeliveryResult,
+} from "@/export/native-delivery-contract";
 
 interface DeliveryPreset {
 	extension: string;
@@ -419,19 +408,6 @@ export type DeliveryDecode = ({
 }: {
 	filePath: string;
 }) => Promise<void>;
-
-export interface NativeDeliveryResult {
-	projectId: string;
-	sourceName: string;
-	outputName: string;
-	outputPath: string;
-	preset: DeliveryPresetName;
-	encoder: string;
-	hardwareAcceleration: "software";
-	sizeBytes: number;
-	probe: NormalizedMediaProbe;
-	validated: true;
-}
 
 function validateSafeProjectId({ projectId }: { projectId: string }): void {
 	if (!SAFE_PROJECT_ID.test(projectId)) {
