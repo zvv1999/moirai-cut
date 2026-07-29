@@ -4,6 +4,7 @@ import {
 	buildCodexPrompt,
 	createCodexChatService,
 	parseCodexJsonl,
+	runCodexProcess,
 	type CodexChatProcessRunner,
 	type CodexRuntimeConfig,
 } from "@/server/codex-chat";
@@ -116,5 +117,47 @@ describe("Codex direct Smart Edit chat", () => {
 		expect(calls[0]?.stdin).toContain("引用 A");
 		expect(calls[1]?.args.slice(0, 3)).toEqual(["exec", "resume", "--json"]);
 		expect(calls[1]?.args).toContain("thread-project-1");
+	});
+
+	test("writes the prompt to stdin and returns process output", async () => {
+		const result = await runCodexProcess({
+			binary: "/bin/sh",
+			args: ["-c", "cat"],
+			cwd: process.cwd(),
+			stdin: "直接交给 Codex",
+			env: { PATH: process.env.PATH },
+			timeoutMs: 1_000,
+		});
+
+		expect(result).toEqual({
+			stdout: "直接交给 Codex",
+			stderr: "",
+		});
+	});
+
+	test("surfaces the Codex process error instead of falling back to local validation", async () => {
+		expect(
+			runCodexProcess({
+				binary: "/bin/sh",
+				args: ["-c", "echo 'Codex 调用失败' >&2; exit 7"],
+				cwd: process.cwd(),
+				stdin: "",
+				env: { PATH: process.env.PATH },
+				timeoutMs: 1_000,
+			}),
+		).rejects.toThrow("Codex 调用失败");
+	});
+
+	test("terminates a stalled Codex process with a retryable timeout", async () => {
+		expect(
+			runCodexProcess({
+				binary: "/bin/sh",
+				args: ["-c", "sleep 1"],
+				cwd: process.cwd(),
+				stdin: "",
+				env: { PATH: process.env.PATH },
+				timeoutMs: 10,
+			}),
+		).rejects.toThrow("Codex 响应超时，请重试。");
 	});
 });
