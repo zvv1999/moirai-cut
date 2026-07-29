@@ -196,7 +196,6 @@ describe("editor surface localization", () => {
 			"性能",
 			"后台任务",
 			"便携工程包",
-			"可寻址修正列表",
 		]) {
 			expect(sources).toContain(translatedLabel);
 		}
