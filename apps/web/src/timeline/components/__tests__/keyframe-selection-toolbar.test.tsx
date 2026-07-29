@@ -18,21 +18,21 @@ describe("KeyframeSelectionToolbarView", () => {
 			/>,
 		);
 
-		expect(html).toContain("2 keyframes selected");
+		expect(html).toContain("已选 2 个关键帧");
 		expect(html).toContain(
-			'aria-label="Nudge selected keyframes backward one frame"',
+			'aria-label="将所选关键帧向前移动一帧"',
 		);
 		expect(html).toContain(
-			'aria-label="Nudge selected keyframes forward one frame"',
+			'aria-label="将所选关键帧向后移动一帧"',
 		);
-		expect(html).toContain('aria-label="Copy selected keyframes"');
-		expect(html).toContain('aria-label="Paste keyframes at playhead"');
-		expect(html).toContain('aria-label="Keyframe interpolation"');
+		expect(html).toContain('aria-label="复制所选关键帧"');
+		expect(html).toContain('aria-label="在播放头处粘贴关键帧"');
+		expect(html).toContain('aria-label="关键帧插值"');
 		expect(html).toContain(
-			'<option value="linear" selected="">Linear</option>',
+			'<option value="linear" selected="">线性</option>',
 		);
-		expect(html).toContain('<option value="hold">Hold</option>');
-		expect(html).toContain('<option value="bezier">Bezier</option>');
-		expect(html).toContain('aria-label="Delete selected keyframes"');
+		expect(html).toContain('<option value="hold">定格</option>');
+		expect(html).toContain('<option value="bezier">贝塞尔</option>');
+		expect(html).toContain('aria-label="删除所选关键帧"');
 	});
 });

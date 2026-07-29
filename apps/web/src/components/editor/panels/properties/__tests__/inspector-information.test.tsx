@@ -18,7 +18,7 @@ describe("InspectorSelectionHeader", () => {
 			/>,
 		);
 
-		expect(html).toContain('aria-label="Selected video: Interview.mov"');
+		expect(html).toContain('aria-label="已选视频：Interview.mov"');
 		expect(html).toContain("Interview.mov");
 		expect(html).toContain("视频");
 		expect(html).toContain("00:05.25");

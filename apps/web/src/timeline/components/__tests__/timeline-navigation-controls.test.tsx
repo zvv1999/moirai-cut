@@ -28,10 +28,10 @@ test("timeline navigation stays visible and named", () => {
 		</>,
 	);
 
-	expect(markup).toContain('aria-label="Fit entire timeline"');
-	expect(markup).toContain('aria-label="Reveal playhead"');
-	expect(markup).toContain('aria-label="Timeline overview"');
-	expect(markup).toContain('aria-label="Visible timeline viewport"');
+	expect(markup).toContain('aria-label="适应整个时间线"');
+	expect(markup).toContain('aria-label="定位播放头"');
+	expect(markup).toContain('aria-label="时间线概览"');
+	expect(markup).toContain('aria-label="当前可见时间线范围"');
 	expect(markup).toContain('data-overview-item="opening"');
 	expect(markup).toContain('data-overview-item="ending"');
 });
