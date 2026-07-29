@@ -74,3 +74,20 @@ test("the server exposes the agent tool surface", async () => {
     assert.ok(registered.includes(name), `missing tool: ${name}`);
   }
 });
+
+test("reversible project edits are not advertised as destructive", () => {
+  const server = createOpenCutMcpServer();
+  const editProject = server._registeredTools?.edit_project;
+
+  assert.equal(editProject?.annotations?.readOnlyHint, false);
+  assert.equal(
+    editProject?.annotations?.destructiveHint,
+    false,
+    "edit_project is revisioned, atomic, and recoverable, so Codex should not pause for destructive-tool approval",
+  );
+  assert.equal(
+    server._registeredTools?.delete_project?.annotations?.destructiveHint,
+    true,
+    "actual deletion must remain explicitly destructive",
+  );
+});
