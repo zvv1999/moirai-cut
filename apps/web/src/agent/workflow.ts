@@ -107,7 +107,7 @@ function failedPlan({
 		valid: false,
 		assumptions: [],
 		errors: [error],
-		expectedOutput: "No mutation will run.",
+		expectedOutput: "不会执行任何修改。",
 		groups: [],
 	};
 }
@@ -160,14 +160,13 @@ function compileTighten({
 	request: string;
 	context: SemanticEditContext;
 }): SemanticEditPlan {
-	const title = "Tighten selected section";
+	const title = "收紧所选片段";
 	if (context.selectedElements.length < 2) {
 		return failedPlan({
 			request,
 			context,
 			title,
-			error:
-				"Tighten needs at least two selected timeline clips. Select the intended section and preview again.",
+			error: "收紧片段至少需要选择两个时间线素材。请选择目标片段后重新预览。",
 		});
 	}
 	const indexed = elementIndex(context.state);
@@ -178,7 +177,7 @@ function compileTighten({
 		const resolved = indexed.get(`${ref.trackId}:${ref.elementId}`);
 		if (!resolved) {
 			throw new Error(
-				`Selected element ${ref.elementId} is no longer on track ${ref.trackId}.`,
+				`所选素材 ${ref.elementId} 已不在轨道 ${ref.trackId} 上。`,
 			);
 		}
 		return resolved;
@@ -231,7 +230,7 @@ function compileTighten({
 					});
 				if (blocking) {
 					throw new Error(
-						`Closing this gap would overlap unselected clip ${blocking.name}. Select the whole intended section or leave this gap unchanged.`,
+						`关闭此空隙会与未选素材 ${blocking.name} 重叠。请选择完整目标片段，或保留此空隙。`,
 					);
 				}
 				moves.push({
@@ -257,10 +256,10 @@ function compileTighten({
 		totalGap += trackGap;
 		groups.push({
 			id: `tighten-${slug(trackId)}`,
-			label: `Close ${trackGap.toFixed(2)}s gap on ${
+			label: `关闭 ${trackGap.toFixed(2)} 秒空隙（轨道：${
 				context.state.tracks.find((track) => track.id === trackId)?.name ??
 				trackId
-			}`,
+			}）`,
 			operation: { type: "element.move", moves },
 			inverseOperation: { type: "element.move", moves: inverseMoves },
 			targets,
@@ -269,7 +268,7 @@ function compileTighten({
 				startSeconds: rangeStart,
 				endSeconds: rangeEnd,
 			},
-			expectedEffect: `Move ${moves.length} clip(s) earlier without trimming or reordering them.`,
+			expectedEffect: `将 ${moves.length} 个素材前移，不修剪也不改变顺序。`,
 		});
 	}
 	if (groups.length === 0) {
@@ -277,19 +276,18 @@ function compileTighten({
 			request,
 			context,
 			title,
-			error:
-				"The selected clips contain no removable gap on the same track; the plan would have no effect.",
+			error: "所选素材在同一轨道上没有可移除的空隙，本计划不会产生变化。",
 		});
 	}
 	return {
 		...planShell({ request, context, title }),
 		valid: true,
 		assumptions: [
-			"Preserve clip order and remove only gaps inside each selected track.",
-			"Do not trim, overlap, ripple-delete, or move unselected clips.",
+			"保持素材顺序，仅移除各所选轨道内部的空隙。",
+			"不修剪、不制造重叠、不波纹删除，也不移动未选素材。",
 		],
 		errors: [],
-		expectedOutput: `Remove ${totalGap.toFixed(2)}s of selected-track whitespace across ${groups.length} change group(s).`,
+		expectedOutput: `将在 ${groups.length} 个改动组中移除共 ${totalGap.toFixed(2)} 秒的所选轨道空隙。`,
 		groups,
 	};
 }
@@ -309,7 +307,7 @@ function compileUnifyCaptions({
 	request: string;
 	context: SemanticEditContext;
 }): SemanticEditPlan {
-	const title = "Unify caption styling";
+	const title = "统一字幕样式";
 	const captions = context.state.tracks
 		.flatMap((track) =>
 			track.elements
@@ -327,8 +325,7 @@ function compileUnifyCaptions({
 			request,
 			context,
 			title,
-			error:
-				"Unify captions needs at least two caption elements. Caption text is never used as style evidence.",
+			error: "统一字幕至少需要两个字幕素材。字幕文字不会被用作样式依据。",
 		});
 	}
 	const canonical = captions[0];
@@ -348,8 +345,7 @@ function compileUnifyCaptions({
 			request,
 			context,
 			title,
-			error:
-				"The first caption has no addressable visual style. Set its typography first, then preview again.",
+			error: "第一个字幕没有可调整的视觉样式。请先设置其排版，再重新预览。",
 		});
 	}
 
@@ -384,7 +380,7 @@ function compileUnifyCaptions({
 		const end = candidate.element.endTimeSeconds;
 		groups.push({
 			id: `caption-style-${slug(candidate.element.id)}`,
-			label: `Match ${candidate.element.name} to ${canonical.element.name}`,
+			label: `将 ${candidate.element.name} 匹配至 ${canonical.element.name}`,
 			operation: {
 				type: "element.setParams",
 				trackId: candidate.trackId,
@@ -408,7 +404,7 @@ function compileUnifyCaptions({
 				finite(start) && finite(end)
 					? { startSeconds: start, endSeconds: end }
 					: null,
-			expectedEffect: `Copy ${Object.keys(changedStyle).join(", ")}; preserve caption wording and timing.`,
+			expectedEffect: `复制 ${Object.keys(changedStyle).join("、")}；保留字幕文字和时序。`,
 		});
 	}
 	if (groups.length === 0) {
@@ -416,7 +412,7 @@ function compileUnifyCaptions({
 			request,
 			context,
 			title,
-			error: "All captions already match the first caption's visual style.",
+			error: "所有字幕已与第一个字幕的视觉样式一致。",
 		});
 	}
 	return {
@@ -424,11 +420,11 @@ function compileUnifyCaptions({
 		valid: true,
 		assumptions: [
 			`${canonical.element.name} is the approved style reference because it is the first caption on the timeline.`,
-			"Preserve caption wording, timing, track placement, and language metadata.",
-			"Change only style keys already present on each target so every group has an exact inverse.",
+			"保留字幕文字、时序、轨道位置和语言元数据。",
+			"仅修改各目标已有的样式属性，确保每个改动组都能精确撤销。",
 		],
 		errors: [],
-		expectedOutput: `Match ${groups.length} caption(s) to ${canonical.element.name} without changing their text.`,
+		expectedOutput: `将 ${groups.length} 个字幕匹配至 ${canonical.element.name}，不修改字幕文字。`,
 		groups,
 	};
 }
@@ -442,7 +438,7 @@ function compileRename({
 	context: SemanticEditContext;
 	name: string;
 }): SemanticEditPlan {
-	const title = "Rename selected clips";
+	const title = "重命名所选素材";
 	const indexed = elementIndex(context.state);
 	const targets = context.selectedElements.flatMap((ref) => {
 		const match = indexed.get(`${ref.trackId}:${ref.elementId}`);
@@ -453,14 +449,14 @@ function compileRename({
 			request,
 			context,
 			title,
-			error: "Rename needs at least one selected timeline clip.",
+			error: "重命名至少需要选择一个时间线素材。",
 		});
 	}
 	const groups = targets
 		.filter((target) => target.element.name !== name)
 		.map((target) => ({
 			id: `rename-${slug(target.element.id)}`,
-			label: `Rename ${target.element.name}`,
+			label: `重命名 ${target.element.name}`,
 			operation: {
 				type: "element.rename",
 				elements: [
@@ -496,25 +492,25 @@ function compileRename({
 							endSeconds: target.element.endTimeSeconds,
 						}
 					: null,
-			expectedEffect: `Rename the clip to “${name}”; preserve media, timing, effects, and animation.`,
+			expectedEffect: `将素材重命名为“${name}”；保留媒体、时序、特效和动画。`,
 		}));
 	if (groups.length === 0) {
 		return failedPlan({
 			request,
 			context,
 			title,
-			error: `Every selected clip is already named “${name}”.`,
+			error: `所有所选素材已命名为“${name}”。`,
 		});
 	}
 	return {
 		...planShell({ request, context, title }),
 		valid: true,
 		assumptions: [
-			"Apply the requested name literally to every selected clip.",
-			"Do not rename source media or tracks.",
+			"将请求中的名称原样应用到每个所选素材。",
+			"不重命名源媒体或轨道。",
 		],
 		errors: [],
-		expectedOutput: `Rename ${groups.length} selected clip(s) to “${name}”.`,
+		expectedOutput: `将 ${groups.length} 个所选素材重命名为“${name}”。`,
 		groups,
 	};
 }
@@ -545,8 +541,8 @@ export function compileSemanticEdit({
 			return failedPlan({
 				request: normalized,
 				context,
-				title: "Tighten selected section",
-				error: error instanceof Error ? error.message : "Selection is stale.",
+				title: "收紧所选片段",
+				error: error instanceof Error ? error.message : "所选内容已失效。",
 			});
 		}
 	}
@@ -569,9 +565,9 @@ export function compileSemanticEdit({
 	return failedPlan({
 		request: normalized,
 		context,
-		title: "Unsupported semantic request",
+		title: "不支持的语义请求",
 		error:
-			"Supported requests: “tighten this section” (select 2+ clips), “unify captions”, or “rename selected clips to …”. No edit was made.",
+			"支持的请求：“收紧这段剪辑”（请选择至少 2 个素材）、“统一字幕样式”或“将所选素材重命名为……”。未执行任何编辑。",
 	});
 }
 
@@ -777,39 +773,39 @@ export function buildAgentQcSummary({
 	const checks: AgentQcCheck[] = [
 		{
 			id: "structural",
-			label: "Structural lint",
+			label: "结构检查",
 			status: qcStatus({
 				errors: health.counts.error,
 				warnings: health.counts.warning,
 			}),
-			summary: `${health.counts.error} errors · ${health.counts.warning} warnings · ${health.counts.note} notes`,
+			summary: `${health.counts.error} 个错误 · ${health.counts.warning} 个警告 · ${health.counts.note} 条提示`,
 			evidenceCount: health.findings.length,
 		},
 		{
 			id: "visual",
-			label: "Representative frames",
+			label: "代表帧",
 			status:
 				renderFailures.length > 0 || renderRevisionError ? "fail" : "pass",
 			summary: renderRevisionError
-				? `Evidence revision mismatch: expected ${revision}, rendered ${render.revision}${render.stable ? "" : " during an edit"}`
-				: `${successfulRenderSamples}/${renderSampleCount} samples rendered from revision ${render.revision}`,
+				? `证据版本不一致：预期 ${revision}，实际渲染 ${render.revision}${render.stable ? "" : "（编辑过程中）"}`
+				: `版本 ${render.revision} 已渲染 ${successfulRenderSamples}/${renderSampleCount} 个样本`,
 			evidenceCount: renderSampleCount,
 		},
 		{
 			id: "audio",
-			label: "Audio checks",
+			label: "音频检查",
 			status: audioWarnings > 0 ? "warning" : "pass",
-			summary: `${audio.checkedElements} audio-bearing clips · ${audio.hotElements.length} above 0 dB · ${audio.mutedTracksWithContent.length} muted tracks with content`,
+			summary: `${audio.checkedElements} 个含音频素材 · ${audio.hotElements.length} 个高于 0 dB · ${audio.mutedTracksWithContent.length} 条静音轨道仍有内容`,
 			evidenceCount: audio.checkedElements,
 		},
 		{
 			id: "export",
-			label: "Export verification",
+			label: "导出验证",
 			status: qcStatus({
 				errors: exportErrors.length,
 				warnings: exportWarnings.length,
 			}),
-			summary: `${exportVerification.checkedSamples} render samples · ${exportErrors.length} blocking · ${exportWarnings.length} warnings`,
+			summary: `${exportVerification.checkedSamples} 个渲染样本 · ${exportErrors.length} 个阻断问题 · ${exportWarnings.length} 个警告`,
 			evidenceCount: exportVerification.findings.length,
 		},
 	];
@@ -838,7 +834,7 @@ export function buildAgentQcSummary({
 						id: "visual:revision",
 						source: "visual" as const,
 						severity: "error" as const,
-						message: "Re-render after the timeline stops changing.",
+						message: "请在时间线停止变化后重新渲染。",
 					},
 				]
 			: []),
@@ -846,7 +842,7 @@ export function buildAgentQcSummary({
 			id: `audio:${element.elementId}`,
 			source: "audio" as const,
 			severity: "warning" as const,
-			message: `Gain is +${element.gainDb.toFixed(1)} dB; inspect peaks and clipping.`,
+			message: `增益为 +${element.gainDb.toFixed(1)} dB；请检查峰值和削波。`,
 			trackId: element.trackId,
 			elementId: element.elementId,
 		})),
@@ -854,7 +850,7 @@ export function buildAgentQcSummary({
 			id: `audio:muted:${track.trackId}`,
 			source: "audio" as const,
 			severity: "note" as const,
-			message: `Muted track contains ${track.elementCount} clip(s).`,
+			message: `静音轨道仍包含 ${track.elementCount} 个素材。`,
 			trackId: track.trackId,
 		})),
 		...exportVerification.findings

@@ -163,4 +163,82 @@ describe("editor surface localization", () => {
 			expect(sources).not.toContain(englishLabel);
 		}
 	});
+
+	test("localizes shared close controls and project information", () => {
+		const sources = [
+			readSource("../../ui/dialog.tsx"),
+			readSource("../../ui/sheet.tsx"),
+			readSource("../../ui/toast.tsx"),
+			readSource("../../header.tsx"),
+			readSource("../../../project/components/project-info-dialog.tsx"),
+			readSource("../../../utils/date.ts"),
+			readSource("../../../agent/workflow.ts"),
+		].join("\n");
+
+		for (const translatedLabel of [
+			'<span className="sr-only">关闭</span>',
+			'aria-label="关闭菜单"',
+			'label="时长"',
+			'label="创建时间"',
+			'label="修改时间"',
+			'label="工程 ID"',
+			">完成</Button>",
+			'"zh-CN"',
+			"`关闭 ${trackGap.toFixed(2)} 秒空隙",
+		]) {
+			expect(sources).toContain(translatedLabel);
+		}
+
+		for (const englishLabel of [
+			'<span className="sr-only">Close</span>',
+			'aria-label="Close menu"',
+			'label="Duration"',
+			'label="Created"',
+			'label="Modified"',
+			'label="Project ID"',
+			">Done</Button>",
+			'"en-US"',
+			"`Close ${trackGap.toFixed(2)}s gap",
+		]) {
+			expect(sources).not.toContain(englishLabel);
+		}
+	});
+
+	test("keeps the keyboard shortcut manager Chinese", () => {
+		const sources = [
+			readSource("../../../actions/components/shortcuts-dialog.tsx"),
+			readSource("../../../actions/definitions.ts"),
+		].join("\n");
+
+		for (const translatedLabel of [
+			">快捷键</DialogTitle>",
+			"条命令",
+			"自定义配置",
+			"默认配置",
+			"导入快捷键配置",
+			"搜索命令、分类、操作或按键",
+			"未分配",
+			"恢复默认设置",
+			'description: "播放/暂停"',
+			'description: "在播放头处分割素材"',
+			'description: "将所选关键帧向前移动一帧"',
+		]) {
+			expect(sources).toContain(translatedLabel);
+		}
+
+		for (const englishLabel of [
+			">Keyboard shortcuts</DialogTitle>",
+			"commands",
+			"Custom configuration",
+			"Import shortcut configuration",
+			"Search commands, categories, actions, or keys",
+			"Unassigned",
+			"Reset defaults",
+			'description: "Play/Pause"',
+			'description: "Split elements at playhead"',
+			'description: "Nudge selected keyframes forward one frame"',
+		]) {
+			expect(sources).not.toContain(englishLabel);
+		}
+	});
 });

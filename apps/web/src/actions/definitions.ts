@@ -23,136 +23,136 @@ export interface TActionDefinition extends TActionBaseDefinition {
 
 export const ACTIONS = {
 	"toggle-play": {
-		description: "Play/Pause",
+		description: "播放/暂停",
 		category: "playback",
 	},
 	"stop-playback": {
-		description: "Stop playback",
+		description: "停止播放",
 		category: "playback",
 	},
 	"seek-forward": {
-		description: "Seek forward 1 second",
+		description: "向前跳转 1 秒",
 		category: "playback",
 		args: { seconds: "number" },
 	},
 	"seek-backward": {
-		description: "Seek backward 1 second",
+		description: "向后跳转 1 秒",
 		category: "playback",
 		args: { seconds: "number" },
 	},
 	"frame-step-forward": {
-		description: "Frame step forward",
+		description: "前进一帧",
 		category: "navigation",
 	},
 	"frame-step-backward": {
-		description: "Frame step backward",
+		description: "后退一帧",
 		category: "navigation",
 	},
 	"jump-forward": {
-		description: "Jump forward 5 seconds",
+		description: "向前跳转 5 秒",
 		category: "navigation",
 		args: { seconds: "number" },
 	},
 	"jump-backward": {
-		description: "Jump backward 5 seconds",
+		description: "向后跳转 5 秒",
 		category: "navigation",
 		args: { seconds: "number" },
 	},
 	"goto-start": {
-		description: "Go to timeline start",
+		description: "前往时间线开头",
 		category: "navigation",
 	},
 	"goto-end": {
-		description: "Go to timeline end",
+		description: "前往时间线结尾",
 		category: "navigation",
 	},
 	split: {
-		description: "Split elements at playhead",
+		description: "在播放头处分割素材",
 		category: "editing",
 	},
 	"split-left": {
-		description: "Split and remove left",
+		description: "分割并删除左侧",
 		category: "editing",
 	},
 	"split-right": {
-		description: "Split and remove right",
+		description: "分割并删除右侧",
 		category: "editing",
 	},
 	"delete-selected": {
-		description: "Delete current selection",
+		description: "删除当前所选内容",
 		category: "editing",
 	},
 	"copy-selected": {
-		description: "Copy selected elements",
+		description: "复制所选素材",
 		category: "editing",
 	},
 	"paste-copied": {
-		description: "Paste elements at playhead",
+		description: "在播放头处粘贴素材",
 		category: "editing",
 	},
 	"toggle-snapping": {
-		description: "Toggle snapping",
+		description: "切换自动吸附",
 		category: "editing",
 	},
 	"toggle-ripple-editing": {
-		description: "Toggle ripple editing",
+		description: "切换联动编辑",
 		category: "editing",
 	},
 	"toggle-source-audio": {
-		description: "Extract or recover source audio",
+		description: "分离或恢复原声",
 		category: "editing",
 	},
 	"nudge-keyframes-backward": {
-		description: "Nudge selected keyframes backward one frame",
+		description: "将所选关键帧向后移动一帧",
 		category: "editing",
 	},
 	"nudge-keyframes-forward": {
-		description: "Nudge selected keyframes forward one frame",
+		description: "将所选关键帧向前移动一帧",
 		category: "editing",
 	},
 	"select-all": {
-		description: "Select all elements",
+		description: "选择全部素材",
 		category: "selection",
 	},
 	"cancel-interaction": {
-		description: "Cancel current interaction",
+		description: "取消当前操作",
 		category: "controls",
 	},
 	"deselect-all": {
-		description: "Deselect all elements",
+		description: "取消选择全部素材",
 		category: "selection",
 	},
 	"duplicate-selected": {
-		description: "Duplicate selected element",
+		description: "复制所选素材副本",
 		category: "selection",
 	},
 	"toggle-elements-muted-selected": {
-		description: "Mute/unmute selected elements",
+		description: "静音或取消静音所选素材",
 		category: "selection",
 	},
 	"toggle-elements-visibility-selected": {
-		description: "Show/hide selected elements",
+		description: "显示或隐藏所选素材",
 		category: "selection",
 	},
 	"toggle-bookmark": {
-		description: "Toggle bookmark at playhead",
+		description: "切换播放头处书签",
 		category: "timeline",
 	},
 	undo: {
-		description: "Undo",
+		description: "撤销",
 		category: "history",
 	},
 	redo: {
-		description: "Redo",
+		description: "重做",
 		category: "history",
 	},
 	"remove-media-asset": {
-		description: "Remove media asset",
+		description: "移除媒体素材",
 		category: "assets",
 		args: { projectId: "string", assetId: "string" },
 	},
 	"remove-media-assets": {
-		description: "Remove media assets",
+		description: "移除多个媒体素材",
 		category: "assets",
 		args: { projectId: "string", assetIds: "string[]" },
 	},

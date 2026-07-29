@@ -38,8 +38,11 @@ export function ProjectInfoDialog({
 	const durationSeconds = mediaTimeToSeconds({ time: project.duration });
 	const durationFormatted =
 		project.duration > 0
-		? (formatTimecode({ time: project.duration, format: durationSeconds >= 3600 ? "HH:MM:SS" : "MM:SS" }) ?? "")
-		: "0:00";
+			? (formatTimecode({
+					time: project.duration,
+					format: durationSeconds >= 3600 ? "HH:MM:SS" : "MM:SS",
+				}) ?? "")
+			: "0:00";
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -51,17 +54,17 @@ export function ProjectInfoDialog({
 				</DialogHeader>
 
 				<DialogBody className="flex flex-col">
-					<InfoRow label="Duration" value={durationFormatted} />
+					<InfoRow label="时长" value={durationFormatted} />
 					<InfoRow
-						label="Created"
+						label="创建时间"
 						value={formatDate({ date: project.createdAt })}
 					/>
 					<InfoRow
-						label="Modified"
+						label="修改时间"
 						value={formatDate({ date: project.updatedAt })}
 					/>
 					<InfoRow
-						label="Project ID"
+						label="工程 ID"
 						value={
 							<code className="text-xs bg-muted px-1.5 py-0.5 rounded">
 								{project.id.slice(0, 8)}
@@ -71,9 +74,9 @@ export function ProjectInfoDialog({
 				</DialogBody>
 				<DialogFooter>
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
-						Close
+						关闭
 					</Button>
-					<Button onClick={() => onOpenChange(false)}>Done</Button>
+					<Button onClick={() => onOpenChange(false)}>完成</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

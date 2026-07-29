@@ -6,13 +6,13 @@ describe("keyframe keyboard movement", () => {
 		expect(
 			getActionDefinition({ action: "nudge-keyframes-backward" }),
 		).toMatchObject({
-			description: "Nudge selected keyframes backward one frame",
+			description: "将所选关键帧向后移动一帧",
 			defaultShortcuts: ["alt+left"],
 		});
 		expect(
 			getActionDefinition({ action: "nudge-keyframes-forward" }),
 		).toMatchObject({
-			description: "Nudge selected keyframes forward one frame",
+			description: "将所选关键帧向前移动一帧",
 			defaultShortcuts: ["alt+right"],
 		});
 	});

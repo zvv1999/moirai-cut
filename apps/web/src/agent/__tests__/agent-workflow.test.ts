@@ -122,7 +122,7 @@ describe("semantic edit planning", () => {
 		expect(plan.valid).toBe(true);
 		expect(plan.baseRevision).toBe(8);
 		expect(plan.assumptions).toContain(
-			"Preserve clip order and remove only gaps inside each selected track.",
+			"保持素材顺序，仅移除各所选轨道内部的空隙。",
 		);
 		expect(plan.groups).toHaveLength(1);
 		expect(plan.groups[0].operation).toEqual({
@@ -149,7 +149,7 @@ describe("semantic edit planning", () => {
 			startSeconds: 4,
 			endSeconds: 8,
 		});
-		expect(plan.expectedOutput).toContain("2.00s");
+		expect(plan.expectedOutput).toContain("2.00 秒");
 	});
 
 	test("unify captions copies visual style without replacing caption text", () => {
@@ -192,7 +192,7 @@ describe("semantic edit planning", () => {
 
 		expect(plan.valid).toBe(false);
 		expect(plan.groups).toEqual([]);
-		expect(plan.errors[0]).toContain("Supported requests");
+		expect(plan.errors[0]).toContain("支持的请求");
 	});
 
 	test("tighten refuses to overlap an unselected clip inside the apparent gap", () => {
@@ -220,7 +220,7 @@ describe("semantic edit planning", () => {
 			context: withBlockingClip,
 		});
 		expect(plan.valid).toBe(false);
-		expect(plan.errors[0]).toContain("unselected clip Keep me");
+		expect(plan.errors[0]).toContain("未选素材 Keep me");
 	});
 });
 

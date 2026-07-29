@@ -11,6 +11,7 @@ import { useKeybindingsStore } from "@/actions/keybindings-store";
 import { filterKeyboardShortcuts } from "@/actions/shortcut-management";
 import { parseImportedKeybindings } from "@/actions/keybindings/persistence";
 import type { KeybindingConfig } from "@/actions/keybinding";
+import { ACTIONS } from "@/actions/definitions";
 import { downloadBlob } from "@/utils/browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,17 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+
+const CATEGORY_LABELS: Record<string, string> = {
+	assets: "素材",
+	controls: "操作",
+	editing: "编辑",
+	history: "历史",
+	navigation: "导航",
+	playback: "播放",
+	selection: "选择",
+	timeline: "时间线",
+};
 
 export function ShortcutsDialog({
 	isOpen,
@@ -73,7 +85,7 @@ export function ShortcutsDialog({
 				});
 				if (conflict) {
 					toast.error(
-						`Key "${keyString}" is already bound to "${conflict.existingAction}"`,
+						`按键“${keyString}”已被“${ACTIONS[conflict.existingAction].description}”占用`,
 					);
 					setIsRecording(false);
 					setRecordingShortcut(null);
@@ -130,7 +142,7 @@ export function ShortcutsDialog({
 			}),
 			filename: "opencut-shortcuts.json",
 		});
-		toast.success("Shortcut configuration exported");
+		toast.success("快捷键配置已导出");
 	};
 
 	const handleImport = async (file: File | undefined) => {
@@ -143,13 +155,9 @@ export function ShortcutsDialog({
 			// `parseImportedKeybindings` validates every runtime key and action.
 			const config = Object.fromEntries(parsed) as KeybindingConfig;
 			importKeybindings(config);
-			toast.success(`Imported ${parsed.size} shortcut bindings`);
-		} catch (error) {
-			toast.error(
-				error instanceof Error
-					? `Could not import shortcuts: ${error.message}`
-					: "Could not import shortcuts",
-			);
+			toast.success(`已导入 ${parsed.size} 个快捷键绑定`);
+		} catch {
+			toast.error("无法导入快捷键配置，请检查文件格式。");
 		} finally {
 			if (importInputRef.current) importInputRef.current.value = "";
 		}
@@ -159,7 +167,7 @@ export function ShortcutsDialog({
 		resetToDefaults();
 		setRecordingShortcut(null);
 		setIsRecording(false);
-		toast.success("Shortcuts reset to default");
+		toast.success("快捷键已恢复为默认设置");
 	};
 
 	return (
@@ -168,10 +176,10 @@ export function ShortcutsDialog({
 				<DialogHeader>
 					<div className="flex items-center justify-between gap-4 pr-8">
 						<div>
-							<DialogTitle>Keyboard shortcuts</DialogTitle>
+							<DialogTitle>快捷键</DialogTitle>
 							<p className="mt-1 text-xs text-muted-foreground">
-								{shortcuts.length} commands
-								{isCustomized ? " · Custom configuration" : " · Default"}
+								{shortcuts.length} 条命令
+								{isCustomized ? " · 自定义配置" : " · 默认配置"}
 							</p>
 						</div>
 						<div className="flex items-center gap-2">
@@ -181,11 +189,11 @@ export function ShortcutsDialog({
 								onClick={() => importInputRef.current?.click()}
 							>
 								<Upload />
-								Import
+								导入
 							</Button>
 							<Button variant="outline" size="sm" onClick={handleExport}>
 								<Download />
-								Export
+								导出
 							</Button>
 						</div>
 					</div>
@@ -194,7 +202,7 @@ export function ShortcutsDialog({
 						type="file"
 						accept="application/json,.json"
 						className="hidden"
-						aria-label="Import shortcut configuration"
+						aria-label="导入快捷键配置"
 						onChange={(event) => void handleImport(event.target.files?.[0])}
 					/>
 				</DialogHeader>
@@ -205,8 +213,8 @@ export function ShortcutsDialog({
 						<Input
 							value={query}
 							onChange={(event) => setQuery(event.target.value)}
-							placeholder="Search commands, categories, actions, or keys"
-							aria-label="Search keyboard shortcuts"
+							placeholder="搜索命令、分类、操作或按键"
+							aria-label="搜索快捷键"
 							className="pl-9"
 							showClearIcon
 							onClear={() => setQuery("")}
@@ -216,7 +224,7 @@ export function ShortcutsDialog({
 						{categories.map((category) => (
 							<div key={category} className="flex flex-col gap-1">
 								<h3 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-									{category}
+									{CATEGORY_LABELS[category] ?? category}
 								</h3>
 								<div className="flex flex-col gap-1">
 									{filteredShortcuts
@@ -236,21 +244,21 @@ export function ShortcutsDialog({
 						))}
 						{filteredShortcuts.length === 0 && (
 							<div className="py-12 text-center text-sm text-muted-foreground">
-								No shortcuts match “{query}”.
+								未找到与“{query}”匹配的快捷键。
 							</div>
 						)}
 					</div>
 				</DialogBody>
 				<DialogFooter>
 					<div className="mr-auto text-xs text-muted-foreground">
-						Click a key to record a replacement. Conflicts are rejected.
+						单击按键即可录入新快捷键；冲突设置不会保存。
 					</div>
 					<Button
 						variant="destructive-foreground"
 						onClick={handleReset}
 						disabled={!isCustomized}
 					>
-						Reset defaults
+						恢复默认设置
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -293,7 +301,7 @@ function ShortcutItem({
 						className="border-primary bg-primary/10 text-primary"
 						onClick={(event) => event.stopPropagation()}
 					>
-						Press shortcut…
+						请按下快捷键…
 					</Button>
 				) : displayKeys.length === 0 ? (
 					<Button
@@ -302,7 +310,7 @@ function ShortcutItem({
 						className="text-muted-foreground"
 						onClick={() => onStartRecording({ shortcut })}
 					>
-						Unassigned
+						未分配
 					</Button>
 				) : (
 					displayKeys.map((key: string, index: number) => (
@@ -322,7 +330,7 @@ function ShortcutItem({
 								})}
 							</div>
 							{index < displayKeys.length - 1 && (
-								<span className="text-muted-foreground text-xs">or</span>
+								<span className="text-muted-foreground text-xs">或</span>
 							)}
 						</div>
 					))
@@ -352,9 +360,7 @@ function EditableShortcutKey({
 			variant="outline"
 			size="sm"
 			onClick={handleClick}
-			title={
-				isRecording ? "Press any key combination..." : "Click to edit shortcut"
-			}
+			title={isRecording ? "请按下任意组合键…" : "单击编辑快捷键"}
 		>
 			{children}
 		</Button>
