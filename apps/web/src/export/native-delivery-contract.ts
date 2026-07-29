@@ -40,3 +40,15 @@ export interface NativeDeliveryResult {
 	probe: NormalizedMediaProbe;
 	validated: true;
 }
+
+export function formatNativeDeliveryResultSummary({
+	result,
+}: {
+	result: NativeDeliveryResult;
+}): string {
+	const acceleration =
+		result.hardwareAcceleration === "software"
+			? "软件编码"
+			: result.hardwareAcceleration;
+	return `${result.encoder} · ${acceleration} · 已完整解码验证`;
+}

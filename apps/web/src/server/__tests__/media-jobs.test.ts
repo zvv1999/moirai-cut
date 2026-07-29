@@ -326,6 +326,49 @@ describe("native media proxy jobs", () => {
 		expect(transcodes).toBe(1);
 	});
 
+	test("reports encoded display dimensions for rotated phone footage", async () => {
+		const source = await fixture();
+		const rotatedProbeFile: ProbeFile = async () => ({
+			format: { format_name: "mov", duration: "2.7" },
+			streams: [
+				{
+					index: 0,
+					codec_type: "video",
+					codec_name: "hevc",
+					profile: "Main 10",
+					pix_fmt: "yuv420p10le",
+					width: 1920,
+					height: 1080,
+					avg_frame_rate: "30/1",
+					r_frame_rate: "30/1",
+					side_data_list: [{ rotation: -90 }],
+				},
+			],
+		});
+		const service = new NativeMediaJobService({
+			projectsRoot: source.projectsRoot,
+			probeFile: rotatedProbeFile,
+			transcode: async ({ temporaryOutputPath }) => {
+				await writeFile(temporaryOutputPath, "portrait-proxy");
+			},
+		});
+
+		const queued = await service.ensureProxy({
+			projectId: source.projectId,
+			assetId: source.assetId,
+			profile: "standard",
+		});
+		const completed = await service.waitForTerminal({
+			projectId: source.projectId,
+			jobId: queued.id,
+		});
+
+		expect(completed.result?.proxy).toMatchObject({
+			width: 540,
+			height: 960,
+		});
+	});
+
 	test("cancels the worker and removes its temporary output", async () => {
 		const source = await fixture();
 		let temporaryOutputPath = "";

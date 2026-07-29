@@ -236,14 +236,21 @@ async function writeJsonAtomic({
 function proxyDimensions({
 	width,
 	height,
+	rotationDegrees = 0,
 	maxLongEdge,
 }: {
 	width: number;
 	height: number;
+	rotationDegrees?: number;
 	maxLongEdge: number;
 }): { width: number; height: number } {
-	const sourceWidth = Math.max(2, width);
-	const sourceHeight = Math.max(2, height);
+	const normalizedRotation =
+		((rotationDegrees % 360) + 360) % 360;
+	const swapsAxes =
+		Math.abs(normalizedRotation - 90) < 0.5 ||
+		Math.abs(normalizedRotation - 270) < 0.5;
+	const sourceWidth = Math.max(2, swapsAxes ? height : width);
+	const sourceHeight = Math.max(2, swapsAxes ? width : height);
 	const scale = Math.min(
 		1,
 		maxLongEdge / Math.max(sourceWidth, sourceHeight),
@@ -791,6 +798,7 @@ export class NativeMediaJobService {
 			const dimensions = proxyDimensions({
 				width: video?.width ?? 2,
 				height: video?.height ?? 2,
+				rotationDegrees: video?.rotationDegrees ?? 0,
 				maxLongEdge: PROXY_PROFILES[profile].maxLongEdge,
 			});
 			const mediaIndex = await readMediaIndex({ directory });

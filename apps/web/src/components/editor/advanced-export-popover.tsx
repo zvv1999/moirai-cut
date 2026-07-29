@@ -53,6 +53,7 @@ import {
 } from "@/agent/native-delivery-jobs";
 import {
 	DELIVERY_PRESET_NAMES,
+	formatNativeDeliveryResultSummary,
 	type DeliveryPresetName,
 } from "@/export/native-delivery-contract";
 
@@ -430,6 +431,7 @@ export function AdvancedExportPopover({
 		});
 		let completedBytes: number | null = null;
 		let completedDestinationName = destinationName;
+		let completedEncoderSummary = `浏览器编码 · ${requestDraft.hardwareAcceleration}`;
 		let completedError: string | null = null;
 		let cancelled = false;
 		const handle = backgroundJobs.start({
@@ -526,6 +528,10 @@ export function AdvancedExportPopover({
 						completedDestinationName =
 							delivered.result.outputName;
 						completedBytes = delivered.result.sizeBytes;
+						completedEncoderSummary =
+							formatNativeDeliveryResultSummary({
+								result: delivered.result,
+							});
 						const outputResponse = await fetch(
 							`/api/exports/${encodeURIComponent(project.metadata.id)}/${encodeURIComponent(delivered.result.outputName)}`,
 						);
@@ -570,7 +576,7 @@ export function AdvancedExportPopover({
 				error: null,
 			});
 			toast.success(`已导出 ${completedDestinationName}`, {
-				description: `${formatBytes(completedBytes ?? 0)} · browser download + project exports`,
+				description: `${formatBytes(completedBytes ?? 0)} · ${completedEncoderSummary}`,
 			});
 			await refreshAvailability({
 				expectedName: completedDestinationName,

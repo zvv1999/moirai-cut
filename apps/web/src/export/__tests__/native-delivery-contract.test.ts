@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import {
 	DELIVERY_PRESET_NAMES,
+	formatNativeDeliveryResultSummary,
 	type NativeDeliveryResult,
 } from "@/export/native-delivery-contract";
 
@@ -36,4 +37,7 @@ test("native delivery contract remains browser-safe and exhaustive", () => {
 	} satisfies NativeDeliveryResult;
 
 	expect(result.validated).toBe(true);
+	expect(formatNativeDeliveryResultSummary({ result })).toBe(
+		"libx264 · 软件编码 · 已完整解码验证",
+	);
 });
