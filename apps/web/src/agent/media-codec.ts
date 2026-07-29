@@ -4,6 +4,10 @@ import type {
 } from "@/media/codec-capabilities";
 import type { MediaType } from "@/media/types";
 import type { ProjectMediaSource } from "@/server/media-probe";
+import type {
+	NativeMediaJob,
+	ProxyProfileName,
+} from "@/server/media-jobs";
 import { ALL_FORMATS, BlobSource, Input } from "mediabunny";
 
 export interface AgentMediaProbeResult {
@@ -108,6 +112,61 @@ function isAgentMediaProbeResult(
 	);
 }
 
+function isNativeMediaJob(value: unknown): value is NativeMediaJob {
+	return (
+		isRecord(value) &&
+		typeof value.id === "string" &&
+		value.kind === "proxy" &&
+		typeof value.projectId === "string" &&
+		typeof value.assetId === "string" &&
+		typeof value.profile === "string" &&
+		typeof value.cacheKey === "string" &&
+		typeof value.status === "string" &&
+		typeof value.progress === "number" &&
+		typeof value.processedSeconds === "number" &&
+		typeof value.createdAt === "string" &&
+		typeof value.updatedAt === "string"
+	);
+}
+
+async function responseBody({
+	response,
+}: {
+	response: Response;
+}): Promise<unknown> {
+	const body: unknown = await response.json();
+	if (!response.ok) {
+		throw new Error(
+			errorMessageFromBody({
+				body,
+				fallback: `Media request failed with HTTP ${response.status}`,
+			}),
+		);
+	}
+	return body;
+}
+
+function jobFromBody({ body }: { body: unknown }): NativeMediaJob {
+	if (
+		!isRecord(body) ||
+		!isNativeMediaJob(body.data)
+	) {
+		throw new Error("Media job returned an invalid response");
+	}
+	return body.data;
+}
+
+function jobsFromBody({ body }: { body: unknown }): NativeMediaJob[] {
+	if (
+		!isRecord(body) ||
+		!Array.isArray(body.data) ||
+		!body.data.every(isNativeMediaJob)
+	) {
+		throw new Error("Media jobs returned an invalid response");
+	}
+	return body.data;
+}
+
 function dataFromBody({
 	body,
 }: {
@@ -153,4 +212,150 @@ export async function requestMediaProbe({
 		);
 	}
 	return dataFromBody({ body });
+}
+
+async function postMediaJobAction({
+	projectId,
+	body,
+	fetcher,
+}: {
+	projectId: string;
+	body: Record<string, unknown>;
+	fetcher: MediaProbeFetcher;
+}): Promise<NativeMediaJob> {
+	const response = await fetcher(
+		`/api/media-jobs/${encodeURIComponent(projectId)}`,
+		{
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify(body),
+		},
+	);
+	return jobFromBody({ body: await responseBody({ response }) });
+}
+
+export async function ensureNativeProxy({
+	projectId,
+	assetId,
+	profile = "standard",
+	force = false,
+	fetcher = fetch,
+}: {
+	projectId: string;
+	assetId: string;
+	profile?: ProxyProfileName;
+	force?: boolean;
+	fetcher?: MediaProbeFetcher;
+}): Promise<NativeMediaJob> {
+	return postMediaJobAction({
+		projectId,
+		body: {
+			action: "ensureProxy",
+			assetId,
+			profile,
+			force,
+		},
+		fetcher,
+	});
+}
+
+export async function listNativeMediaJobs({
+	projectId,
+	fetcher = fetch,
+}: {
+	projectId: string;
+	fetcher?: MediaProbeFetcher;
+}): Promise<NativeMediaJob[]> {
+	const response = await fetcher(
+		`/api/media-jobs/${encodeURIComponent(projectId)}`,
+	);
+	return jobsFromBody({ body: await responseBody({ response }) });
+}
+
+export async function getNativeMediaJob({
+	projectId,
+	jobId,
+	fetcher = fetch,
+}: {
+	projectId: string;
+	jobId: string;
+	fetcher?: MediaProbeFetcher;
+}): Promise<NativeMediaJob> {
+	const query = new URLSearchParams({ jobId });
+	const response = await fetcher(
+		`/api/media-jobs/${encodeURIComponent(projectId)}?${query.toString()}`,
+	);
+	return jobFromBody({ body: await responseBody({ response }) });
+}
+
+export async function cancelNativeMediaJob({
+	projectId,
+	jobId,
+	fetcher = fetch,
+}: {
+	projectId: string;
+	jobId: string;
+	fetcher?: MediaProbeFetcher;
+}): Promise<NativeMediaJob> {
+	return postMediaJobAction({
+		projectId,
+		body: { action: "cancel", jobId },
+		fetcher,
+	});
+}
+
+export async function retryNativeMediaJob({
+	projectId,
+	jobId,
+	fetcher = fetch,
+}: {
+	projectId: string;
+	jobId: string;
+	fetcher?: MediaProbeFetcher;
+}): Promise<NativeMediaJob> {
+	return postMediaJobAction({
+		projectId,
+		body: { action: "retry", jobId },
+		fetcher,
+	});
+}
+
+export async function waitForNativeMediaJob({
+	projectId,
+	jobId,
+	pollIntervalMs = 250,
+	timeoutMs = 2 * 60 * 60 * 1000,
+	signal,
+	onUpdate,
+	fetcher = fetch,
+}: {
+	projectId: string;
+	jobId: string;
+	pollIntervalMs?: number;
+	timeoutMs?: number;
+	signal?: AbortSignal;
+	onUpdate?: (job: NativeMediaJob) => void;
+	fetcher?: MediaProbeFetcher;
+}): Promise<NativeMediaJob> {
+	const deadline = Date.now() + timeoutMs;
+	while (Date.now() < deadline) {
+		if (signal?.aborted) {
+			throw new DOMException("Media job wait cancelled", "AbortError");
+		}
+		const job = await getNativeMediaJob({
+			projectId,
+			jobId,
+			fetcher,
+		});
+		onUpdate?.(job);
+		if (
+			job.status === "succeeded" ||
+			job.status === "failed" ||
+			job.status === "cancelled"
+		) {
+			return job;
+		}
+		await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+	}
+	throw new Error(`Timed out waiting for media job ${jobId}`);
 }

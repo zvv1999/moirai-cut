@@ -21,10 +21,20 @@ import {
   type TranscribeJobState,
 } from "./transcribe-jobs";
 import {
+  cancelNativeMediaJob,
   checkBrowserDecodeSupport,
+  ensureNativeProxy,
+  getNativeMediaJob,
+  listNativeMediaJobs,
   requestMediaProbe,
+  retryNativeMediaJob,
+  waitForNativeMediaJob,
   type AgentMediaProbeResult,
 } from "./media-codec";
+import type {
+  NativeMediaJob,
+  ProxyProfileName,
+} from "@/server/media-jobs";
 
 /**
  * The out-of-page entry point.
@@ -82,6 +92,30 @@ export interface AgentBridge {
       assetId: string;
       force?: boolean;
     }): Promise<BridgeResult<AgentMediaProbeResult>>;
+    ensureProxy(request: {
+      assetId: string;
+      profile?: ProxyProfileName;
+      force?: boolean;
+    }): Promise<BridgeResult<NativeMediaJob>>;
+    rebuildProxies(request: {
+      assetIds?: string[];
+      profile?: ProxyProfileName;
+      force?: boolean;
+    }): Promise<BridgeResult<NativeMediaJob[]>>;
+    setProxyEnabled(request: {
+      assetId: string;
+      enabled: boolean;
+    }): BridgeResult<{ assetId: string; enabled: boolean }>;
+    listJobs(): Promise<BridgeResult<NativeMediaJob[]>>;
+    getJob(request: {
+      jobId: string;
+    }): Promise<BridgeResult<NativeMediaJob>>;
+    cancelJob(request: {
+      jobId: string;
+    }): Promise<BridgeResult<NativeMediaJob>>;
+    retryJob(request: {
+      jobId: string;
+    }): Promise<BridgeResult<NativeMediaJob>>;
   };
 }
 
@@ -111,6 +145,46 @@ function errorCode(error: unknown): string {
   if (error instanceof UnresolvedReferenceError) return "unresolved_reference";
   if (error instanceof InvalidOperationError) return "invalid_operation";
   return "operation_failed";
+}
+
+function activeProjectId(): string {
+  const projectId = EditorCore.getInstance().agent.getState().projectId;
+  if (!projectId) throw new Error("No project is open");
+  return projectId;
+}
+
+async function ensureProxyAndRefresh({
+  assetId,
+  profile,
+  force,
+}: {
+  assetId: string;
+  profile?: ProxyProfileName;
+  force?: boolean;
+}): Promise<NativeMediaJob> {
+  const editor = EditorCore.getInstance();
+  const projectId = activeProjectId();
+  const asset = editor.media
+    .getAssets()
+    .find((candidate) => candidate.id === assetId);
+  if (!asset) throw new Error(`No media asset ${assetId}`);
+  if (asset.type !== "video") {
+    throw new Error(`Asset ${assetId} is not a video`);
+  }
+  const job = await ensureNativeProxy({
+    projectId,
+    assetId,
+    profile,
+    force,
+  });
+  void waitForNativeMediaJob({ projectId, jobId: job.id })
+    .then(async (completed) => {
+      if (completed.status === "succeeded") {
+        await editor.media.loadProjectMedia({ projectId });
+      }
+    })
+    .catch(() => undefined);
+  return job;
 }
 
 function guard<T>(fn: () => T): BridgeResult<T> {
@@ -168,8 +242,7 @@ export function installAgentBridge(): () => void {
       probe: ({ assetId, force }) =>
         guardAsync(async () => {
           const editor = EditorCore.getInstance();
-          const projectId = editor.agent.getState().projectId;
-          if (!projectId) throw new Error("No project is open");
+          const projectId = activeProjectId();
           const asset = editor.media
             .getAssets()
             .find((candidate) => candidate.id === assetId);
@@ -182,6 +255,79 @@ export function installAgentBridge(): () => void {
             force,
           });
         }),
+      ensureProxy: ({ assetId, profile, force }) =>
+        guardAsync(() => ensureProxyAndRefresh({ assetId, profile, force })),
+      rebuildProxies: ({ assetIds, profile, force }) =>
+        guardAsync(async () => {
+          const editor = EditorCore.getInstance();
+          const requested = assetIds ? new Set(assetIds) : null;
+          const candidates = editor.media
+            .getAssets()
+            .filter(
+              (asset) =>
+                asset.type === "video" &&
+                (!requested || requested.has(asset.id)),
+            );
+          const jobs: NativeMediaJob[] = [];
+          for (const asset of candidates) {
+            jobs.push(
+              await ensureProxyAndRefresh({
+                assetId: asset.id,
+                profile,
+                force,
+              }),
+            );
+          }
+          return jobs;
+        }),
+      setProxyEnabled: ({ assetId, enabled }) =>
+        guard(() => {
+          const editor = EditorCore.getInstance();
+          const projectId = activeProjectId();
+          const asset = editor.media
+            .getAssets()
+            .find((candidate) => candidate.id === assetId);
+          if (!asset?.proxy) {
+            throw new Error(`Asset ${assetId} has no proxy`);
+          }
+          editor.media.updateMediaAssets({
+            projectId,
+            updates: [
+              {
+                assetId,
+                update: (current) => ({
+                  ...current,
+                  proxy: current.proxy
+                    ? { ...current.proxy, enabled }
+                    : undefined,
+                }),
+              },
+            ],
+          });
+          return { assetId, enabled };
+        }),
+      listJobs: () =>
+        guardAsync(() =>
+          listNativeMediaJobs({ projectId: activeProjectId() }),
+        ),
+      getJob: ({ jobId }) =>
+        guardAsync(() =>
+          getNativeMediaJob({ projectId: activeProjectId(), jobId }),
+        ),
+      cancelJob: ({ jobId }) =>
+        guardAsync(() =>
+          cancelNativeMediaJob({
+            projectId: activeProjectId(),
+            jobId,
+          }),
+        ),
+      retryJob: ({ jobId }) =>
+        guardAsync(() =>
+          retryNativeMediaJob({
+            projectId: activeProjectId(),
+            jobId,
+          }),
+        ),
     },
   };
 

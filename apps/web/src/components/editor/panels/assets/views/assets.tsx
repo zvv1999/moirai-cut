@@ -109,6 +109,11 @@ import { useElementSelection } from "@/timeline/hooks/element/use-element-select
 import { generateMediaProxy } from "@/media/proxy";
 import { downloadBlob } from "@/utils/browser";
 import { backgroundJobs } from "@/project/background-jobs";
+import {
+	cancelNativeMediaJob,
+	ensureNativeProxy,
+	waitForNativeMediaJob,
+} from "@/agent/media-codec";
 
 export function MediaView() {
 	const editor = useEditor();
@@ -530,6 +535,7 @@ export function MediaView() {
 						assetId: string;
 						update: (asset: MediaAsset) => MediaAsset;
 					}> = [];
+					let readyCount = 0;
 					const failures: string[] = [];
 					for (let index = 0; index < candidates.length; index++) {
 						if (signal.aborted) return;
@@ -538,6 +544,49 @@ export function MediaView() {
 						setBatchStatus(step);
 						update({ step, progress: index / candidates.length });
 						try {
+							if (asset.type === "video") {
+								let nativeJob = await ensureNativeProxy({
+									projectId: activeProject.metadata.id,
+									assetId: asset.id,
+									profile: "standard",
+								});
+								try {
+									nativeJob = await waitForNativeMediaJob({
+										projectId: activeProject.metadata.id,
+										jobId: nativeJob.id,
+										signal,
+										onUpdate: (job) => {
+											const progress =
+												(index + job.progress) / candidates.length;
+											setBatchProgress(progress * 100);
+											update({
+												progress,
+												step: `${step} · ${Math.round(job.progress * 100)}%`,
+											});
+										},
+									});
+								} catch (error) {
+									if (signal.aborted) {
+										await cancelNativeMediaJob({
+											projectId: activeProject.metadata.id,
+											jobId: nativeJob.id,
+										}).catch(() => undefined);
+										return;
+									}
+									throw error;
+								}
+								if (nativeJob.status !== "succeeded") {
+									throw new Error(
+										nativeJob.error?.message ??
+											`Native proxy job ${nativeJob.status}`,
+									);
+								}
+								await editor.media.loadProjectMedia({
+									projectId: activeProject.metadata.id,
+								});
+								readyCount += 1;
+								continue;
+							}
 							const proxy = await generateMediaProxy({
 								asset,
 								onProgress: (itemProgress) => {
@@ -555,6 +604,7 @@ export function MediaView() {
 									proxyUrl: proxy.url,
 								}),
 							});
+							readyCount += 1;
 						} catch (error) {
 							console.error(
 								`Proxy generation failed for ${asset.name}:`,
@@ -570,10 +620,10 @@ export function MediaView() {
 					});
 					setBatchProgress(100);
 					setBatchStatus(
-						`${updates.length} proxies ready${failures.length > 0 ? ` · ${failures.length} failed` : ""}`,
+						`${readyCount} proxies ready${failures.length > 0 ? ` · ${failures.length} failed` : ""}`,
 					);
-					if (updates.length > 0) {
-						toast.success(`Generated ${updates.length} proxies`, {
+					if (readyCount > 0) {
+						toast.success(`Generated ${readyCount} proxies`, {
 							description:
 								"Preview uses proxies; final export remains original quality.",
 						});

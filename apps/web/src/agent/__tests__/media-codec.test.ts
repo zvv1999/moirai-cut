@@ -109,6 +109,7 @@ describe("agent media codec client", () => {
 			createdAt: "2026-07-29T00:00:00.000Z",
 			updatedAt: "2026-07-29T00:00:00.000Z",
 		};
+		// eslint-disable-next-line opencut/prefer-object-params -- fetch-compatible test double follows the platform signature.
 		const fetcher = async (
 			input: RequestInfo | URL,
 			init?: RequestInit,

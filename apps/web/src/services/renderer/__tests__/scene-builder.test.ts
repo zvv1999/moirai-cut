@@ -8,7 +8,7 @@ import { VideoNode } from "../nodes/video-node";
 function legacyTrimmedVideoTracks({
 	sourceDuration,
 }: {
-	sourceDuration?: number;
+	sourceDuration?: ReturnType<typeof mediaTimeFromSeconds>;
 } = {}): SceneTracks {
 	return {
 		overlay: [],

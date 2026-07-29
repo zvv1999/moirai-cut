@@ -681,6 +681,9 @@ export class NativeMediaJobService {
 				profile,
 				probe,
 			});
+			if (controller.signal.aborted) {
+				throw new DOMException("Transcode cancelled", "AbortError");
+			}
 			await this.transcode({
 				args,
 				inputPath,
@@ -860,11 +863,22 @@ export class NativeMediaJobService {
 				}
 			},
 		});
-		this.controllers
-			.get(this.controllerKey({ projectId, jobId }))
-			?.abort();
+		const key = this.controllerKey({ projectId, jobId });
+		const controller = this.controllers.get(key);
+		controller?.abort();
 		await this.persist({ projectId });
-		return cloneJob(job);
+		if (controller) {
+			const deadline = Date.now() + 2_000;
+			while (
+				this.controllers.has(key) &&
+				Date.now() < deadline
+			) {
+				await new Promise((resolve) => setTimeout(resolve, 5));
+			}
+		}
+		return cloneJob(
+			this.jobs.get(projectId)?.get(jobId) ?? job,
+		);
 	}
 
 	async retry({
