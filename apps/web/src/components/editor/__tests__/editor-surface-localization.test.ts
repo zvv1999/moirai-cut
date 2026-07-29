@@ -67,7 +67,7 @@ describe("editor surface localization", () => {
 			'"淡入" : "淡出"}手柄',
 			"选择轨道",
 			"代理预览已启用",
-			"在源监视器中打开",
+			"在播放器中预览",
 			"批量素材操作",
 			"检查重复素材",
 			"编辑素材信息",
@@ -169,6 +169,7 @@ describe("editor surface localization", () => {
 			readSource("../../ui/dialog.tsx"),
 			readSource("../../ui/sheet.tsx"),
 			readSource("../../ui/toast.tsx"),
+			readSource("../../ui/number-field.tsx"),
 			readSource("../../header.tsx"),
 			readSource("../../../project/components/project-info-dialog.tsx"),
 			readSource("../../../utils/date.ts"),
@@ -177,6 +178,7 @@ describe("editor surface localization", () => {
 
 		for (const translatedLabel of [
 			'<span className="sr-only">关闭</span>',
+			'aria-label="重置为默认值"',
 			'aria-label="关闭菜单"',
 			'label="时长"',
 			'label="创建时间"',
@@ -191,6 +193,7 @@ describe("editor surface localization", () => {
 
 		for (const englishLabel of [
 			'<span className="sr-only">Close</span>',
+			'aria-label="Reset to default"',
 			'aria-label="Close menu"',
 			'label="Duration"',
 			'label="Created"',

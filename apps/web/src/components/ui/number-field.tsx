@@ -304,7 +304,7 @@ function NumberField({
 					<Button
 						variant="text"
 						size="text"
-						aria-label="Reset to default"
+						aria-label="重置为默认值"
 						onClick={onReset}
 					>
 						<HugeiconsIcon icon={ArrowTurnBackwardIcon} className="size-3.5!" />

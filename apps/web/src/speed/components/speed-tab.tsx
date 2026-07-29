@@ -44,6 +44,19 @@ import {
 const SPEED_STEP = 0.01;
 const SPEED_FRACTION_DIGITS = getFractionDigitsForStep({ step: SPEED_STEP });
 
+export const JIANYING_SPEED_TABS = [
+	{ id: "constant", label: "常规变速" },
+	{ id: "curve", label: "曲线变速" },
+	{ id: "beat", label: "变速卡点" },
+] as const;
+
+export const JIANYING_SPEED_LABELS = [
+	"倍数",
+	"时长",
+	"声音变调",
+	"智能补帧",
+] as const;
+
 function rateToDisplay({ rate }: { rate: number }): string {
 	return formatNumberForDisplay({
 		value: rate,
@@ -107,6 +120,7 @@ export function SpeedTab({
 		(element.sourceDuration ?? element.duration) -
 			element.trimStart -
 			element.trimEnd,
+		element.duration * rate,
 	);
 	const boundary = getRetimeBoundaryStatus({
 		duration: element.duration,
@@ -226,71 +240,106 @@ export function SpeedTab({
 
 	return (
 		<div className="flex h-full flex-col">
-			<div className="border-b px-3.5 h-11 shrink-0 flex items-center">
-				<SectionTitle>Retime</SectionTitle>
-			</div>
-			<Section sectionKey={`${element.id}:speed`} showTopBorder={false}>
-				<SectionHeader>
-					<SectionTitle>Speed mode</SectionTitle>
-				</SectionHeader>
-				<SectionContent>
-					<SectionFields>
-						<div className="grid grid-cols-2 gap-1.5">
-							<Button
-								size="sm"
-								variant={mode === "constant" ? "default" : "outline"}
-								onClick={() =>
+			<div
+				className="border-border/70 grid h-[50px] shrink-0 grid-cols-3 gap-1 border-b px-3 py-2"
+				role="tablist"
+				aria-label="变速模式"
+			>
+				{JIANYING_SPEED_TABS.map((tab) => {
+					const isActive = tab.id === mode;
+					const disabled =
+						tab.id === "beat" ||
+						(tab.id === "curve" && element.type === "audio");
+					return (
+						<Button
+							key={tab.id}
+							type="button"
+							role="tab"
+							size="sm"
+							variant="ghost"
+							aria-selected={isActive}
+							disabled={disabled}
+							title={
+								tab.id === "beat"
+									? "变速卡点尚未接入"
+									: disabled
+										? "音频素材暂不支持曲线变速"
+										: tab.label
+							}
+							className={
+								isActive ? "bg-accent text-foreground" : "text-muted-foreground"
+							}
+							onClick={() => {
+								if (tab.id === "constant") {
 									commitRetime({
 										retime: buildRetime({
 											rate,
 											maintainPitch,
 											existing: element.retime,
 										}),
-									})
+									});
+								} else if (tab.id === "curve") {
+									applyCurvePreset({ preset: "hero" });
 								}
-							>
-								Constant
-							</Button>
-							<Button
-								size="sm"
-								variant={mode === "curve" ? "default" : "outline"}
-								disabled={element.type === "audio"}
-								onClick={() => applyCurvePreset({ preset: "hero" })}
-							>
-								Speed curve
-							</Button>
-						</div>
+							}}
+						>
+							{tab.label}
+						</Button>
+					);
+				})}
+			</div>
+			<Section sectionKey={`${element.id}:speed`} showTopBorder={false}>
+				<SectionContent>
+					<SectionFields>
 						{mode === "constant" ? (
-							<SectionField label="Speed">
-								<NumberField
-									icon={<HugeiconsIcon icon={DashboardSpeed02Icon} />}
-									value={speedDraft.displayValue}
-									suffix="x"
-									scrubRanges={[
-										{ from: 0.01, to: 1, pixelsPerUnit: 160 },
-										{ from: 1, to: 5, pixelsPerUnit: 48 },
-									]}
-									scrubClamp={{ min: MIN_RETIME_RATE, max: MAX_RETIME_RATE }}
-									onFocus={() => {
-										pendingRateRef.current = rate;
-										speedDraft.onFocus();
-									}}
-									onChange={speedDraft.onChange}
-									onBlur={speedDraft.onBlur}
-									onScrub={speedDraft.scrubTo}
-									onScrubEnd={speedDraft.commitScrub}
-									onReset={() =>
-										commitRetime({
-											retime: buildRetime({
-												rate: DEFAULT_RETIME_RATE,
-												maintainPitch,
-												existing: element.retime,
-											}),
-										})
-									}
-									isDefault={rate === DEFAULT_RETIME_RATE}
-								/>
-							</SectionField>
+							<>
+								<SectionField label="倍数">
+									<NumberField
+										icon={<HugeiconsIcon icon={DashboardSpeed02Icon} />}
+										value={speedDraft.displayValue}
+										suffix="x"
+										scrubRanges={[
+											{ from: 0.01, to: 1, pixelsPerUnit: 160 },
+											{ from: 1, to: 5, pixelsPerUnit: 48 },
+										]}
+										scrubClamp={{
+											min: MIN_RETIME_RATE,
+											max: MAX_RETIME_RATE,
+										}}
+										onFocus={() => {
+											pendingRateRef.current = rate;
+											speedDraft.onFocus();
+										}}
+										onChange={speedDraft.onChange}
+										onBlur={speedDraft.onBlur}
+										onScrub={speedDraft.scrubTo}
+										onScrubEnd={speedDraft.commitScrub}
+										onReset={() =>
+											commitRetime({
+												retime: buildRetime({
+													rate: DEFAULT_RETIME_RATE,
+													maintainPitch,
+													existing: element.retime,
+												}),
+											})
+										}
+										isDefault={rate === DEFAULT_RETIME_RATE}
+									/>
+								</SectionField>
+								<div className="grid grid-cols-[4rem_1fr] items-center gap-3 text-sm">
+									<span className="text-muted-foreground">时长</span>
+									<div className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2 text-xs">
+										<span>{boundarySeconds(sourceSpan).toFixed(1)}s</span>
+										<span className="text-muted-foreground">→</span>
+										<span>
+											{mediaTimeToSeconds({
+												time: element.duration,
+											}).toFixed(1)}
+											s
+										</span>
+									</div>
+								</div>
+							</>
 						) : (
 							<div className="flex flex-col gap-2">
 								<div className="grid grid-cols-3 gap-1">
@@ -299,21 +348,21 @@ export function SpeedTab({
 										variant="outline"
 										onClick={() => applyCurvePreset({ preset: "ease-in" })}
 									>
-										Ease in
+										渐入
 									</Button>
 									<Button
 										size="sm"
 										variant="outline"
 										onClick={() => applyCurvePreset({ preset: "ease-out" })}
 									>
-										Ease out
+										渐出
 									</Button>
 									<Button
 										size="sm"
 										variant="outline"
 										onClick={() => applyCurvePreset({ preset: "hero" })}
 									>
-										Hero
+										英雄时刻
 									</Button>
 								</div>
 								{(element.retime?.curve?.points ?? []).map((point, index) => (
@@ -322,7 +371,7 @@ export function SpeedTab({
 										className="grid grid-cols-[1fr_1fr_auto] items-end gap-1.5"
 									>
 										<label className="flex flex-col gap-1 text-xs">
-											<span className="text-muted-foreground">Time</span>
+											<span className="text-muted-foreground">时间</span>
 											<div className="relative">
 												<input
 													type="number"
@@ -348,7 +397,7 @@ export function SpeedTab({
 											</div>
 										</label>
 										<label className="flex flex-col gap-1 text-xs">
-											<span className="text-muted-foreground">Speed</span>
+											<span className="text-muted-foreground">倍数</span>
 											<input
 												type="number"
 												min={MIN_RETIME_RATE}
@@ -410,12 +459,17 @@ export function SpeedTab({
 										});
 									}}
 								>
-									Add point at playhead
+									在播放头添加变速点
 								</Button>
 							</div>
 						)}
 						<div className="flex items-center justify-between">
-							<span className="text-sm">Change pitch</span>
+							<div>
+								<div className="text-sm">声音变调</div>
+								<div className="text-muted-foreground text-[10px]">
+									关闭后保持原始音高
+								</div>
+							</div>
 							<Switch
 								checked={!maintainPitch}
 								disabled={!isPitchPreserveAvailable || mode === "curve"}
@@ -430,18 +484,27 @@ export function SpeedTab({
 								}
 							/>
 						</div>
+						<div className="flex items-center justify-between">
+							<div>
+								<div className="text-sm">智能补帧</div>
+								<div className="text-muted-foreground text-[10px]">
+									仅对慢速片段有效 · 尚未接入
+								</div>
+							</div>
+							<Switch disabled checked={false} />
+						</div>
 					</SectionFields>
 				</SectionContent>
 			</Section>
 			{element.type === "video" ? (
 				<Section sectionKey={`${element.id}:direction`}>
 					<SectionHeader>
-						<SectionTitle>Direction and hold</SectionTitle>
+						<SectionTitle>更多</SectionTitle>
 					</SectionHeader>
 					<SectionContent>
 						<SectionFields>
 							<div className="flex items-center justify-between">
-								<span className="text-sm">Reverse</span>
+								<span className="text-sm">倒放</span>
 								<Switch
 									checked={element.retime?.reverse ?? false}
 									onCheckedChange={(reverse) =>
@@ -456,9 +519,9 @@ export function SpeedTab({
 							</div>
 							<div className="flex items-center justify-between">
 								<div>
-									<div className="text-sm">Freeze frame</div>
+									<div className="text-sm">定格</div>
 									<div className="text-muted-foreground text-[10px]">
-										Hold current source frame
+										定格当前源素材画面
 									</div>
 								</div>
 								<Switch
@@ -488,7 +551,7 @@ export function SpeedTab({
 								/>
 							</div>
 							{element.retime?.freezeFrameAt !== undefined ? (
-								<SectionField label="Held source time">
+								<SectionField label="定格时间">
 									<NumberField
 										value={mediaTimeToSeconds({
 											time: element.retime.freezeFrameAt,
@@ -531,7 +594,7 @@ export function SpeedTab({
 			) : null}
 			<Section sectionKey={`${element.id}:source-boundary`}>
 				<SectionHeader>
-					<SectionTitle>Source boundary</SectionTitle>
+					<SectionTitle>源素材边界</SectionTitle>
 				</SectionHeader>
 				<SectionContent>
 					<div
@@ -541,13 +604,13 @@ export function SpeedTab({
 					>
 						<div className="font-medium">
 							{boundary.overrun
-								? "Source overrun"
-								: `${boundarySeconds(boundary.remainingSourceSpan).toFixed(2)}s source handle remains`}
+								? "源素材时长不足"
+								: `还可延长 ${boundarySeconds(boundary.remainingSourceSpan).toFixed(2)} 秒`}
 						</div>
 						<div className="text-muted-foreground">
-							Uses {boundarySeconds(boundary.usedSourceSpan).toFixed(2)}s{" / "}
-							{boundarySeconds(boundary.availableSourceSpan).toFixed(2)}s
-							available
+							已使用 {boundarySeconds(boundary.usedSourceSpan).toFixed(2)} 秒
+							{" / "}
+							可用 {boundarySeconds(boundary.availableSourceSpan).toFixed(2)} 秒
 						</div>
 					</div>
 				</SectionContent>

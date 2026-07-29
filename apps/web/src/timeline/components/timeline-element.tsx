@@ -223,6 +223,7 @@ export function TimelineElement({
 	const mediaAssets = useEditor((e) => e.media.getAssets());
 	const { selectedElements } = useElementSelection();
 	const requestRevealMedia = useAssetsPanelStore((s) => s.requestRevealMedia);
+	const closeSourcePreview = useAssetsPanelStore((s) => s.closeSourcePreview);
 	const { renderElement } = useElementPreview({
 		trackId: track.id,
 		elementId: element.id,
@@ -391,7 +392,10 @@ export function TimelineElement({
 							isExpanded={expandedRows.length > 0}
 							baseTrackHeight={baseTrackHeight}
 							expandedContent={expandedContent}
-							onElementClick={onElementClick}
+							onElementClick={(params) => {
+								closeSourcePreview();
+								onElementClick(params);
+							}}
 							onElementMouseDown={onElementMouseDown}
 							onResizeStart={onResizeStart}
 							isDropTarget={isDropTarget}
@@ -428,9 +432,10 @@ export function TimelineElement({
 							action="duplicate-selected"
 							icon={<HugeiconsIcon icon={Copy01Icon} />}
 						>
-							复制
+							创建副本
 						</ActionMenuItem>
 					)}
+					<ContextMenuSeparator />
 					{canElementHaveAudio(element) && hasAudio && (
 						<MuteMenuItem
 							isMultipleSelected={selectedElements.length > 1}
@@ -475,6 +480,7 @@ export function TimelineElement({
 					)}
 					{selectedElements.length === 1 && hasMediaId(element) && (
 						<>
+							<ContextMenuSeparator />
 							<ContextMenuItem
 								icon={<HugeiconsIcon icon={Search01Icon} />}
 								onClick={(event: React.MouseEvent) =>
@@ -605,10 +611,7 @@ function ElementInner({
 							className="group/audio pointer-events-none absolute inset-x-0 top-5 bottom-0 z-10 overflow-hidden"
 							data-audio-envelope-layer={visibleElement.id}
 						>
-							<AudioVolumeLine
-								element={visibleElement}
-								trackId={track.id}
-							/>
+							<AudioVolumeLine element={visibleElement} trackId={track.id} />
 						</div>
 					)}
 					{isSelected && canElementHaveAudio(visibleElement) && (
@@ -1320,7 +1323,7 @@ function VisibilityMenuItem({
 			action="toggle-elements-visibility-selected"
 			icon={getIcon()}
 		>
-			{isHidden ? "Show" : "Hide"}
+			{isHidden ? "显示（启用片段）" : "隐藏（停用片段）"}
 		</ActionMenuItem>
 	);
 }
@@ -1343,8 +1346,10 @@ function DeleteMenuItem({
 			icon={<HugeiconsIcon icon={Delete02Icon} />}
 		>
 			{isMultipleSelected && isCurrentElementSelected
-				? `Delete ${selectedCount} elements`
-				: `Delete ${elementType === "text" ? "text" : "clip"}`}
+				? `删除 ${selectedCount} 个素材`
+				: elementType === "text"
+					? "删除文本"
+					: "删除素材"}
 		</ActionMenuItem>
 	);
 }

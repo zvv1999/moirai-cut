@@ -11,7 +11,6 @@ import {
 	TextIcon,
 	Settings01Icon,
 	SlidersHorizontalIcon,
-	ColorsIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 
@@ -29,11 +28,13 @@ export const TAB_KEYS = [
 
 export type Tab = (typeof TAB_KEYS)[number];
 
-const createHugeiconsIcon =
-	({ icon }: { icon: IconSvgElement }) =>
-	({ className }: { className?: string }) => (
+const createHugeiconsIcon = ({ icon }: { icon: IconSvgElement }) => {
+	const AssetTabIcon = ({ className }: { className?: string }) => (
 		<HugeiconsIcon icon={icon} className={className} />
 	);
+	AssetTabIcon.displayName = "AssetTabIcon";
+	return AssetTabIcon;
+};
 
 export const tabs = {
 	media: {
@@ -93,6 +94,9 @@ interface AssetsPanelStore {
 	highlightMediaId: string | null;
 	requestRevealMedia: (mediaId: string) => void;
 	clearHighlight: () => void;
+	sourcePreviewAssetId: string | null;
+	openSourcePreview: (assetId: string) => void;
+	closeSourcePreview: () => void;
 
 	/* Media */
 	mediaViewMode: MediaViewMode;
@@ -111,6 +115,9 @@ export const useAssetsPanelStore = create<AssetsPanelStore>()(
 			requestRevealMedia: (mediaId) =>
 				set({ activeTab: "media", highlightMediaId: mediaId }),
 			clearHighlight: () => set({ highlightMediaId: null }),
+			sourcePreviewAssetId: null,
+			openSourcePreview: (assetId) => set({ sourcePreviewAssetId: assetId }),
+			closeSourcePreview: () => set({ sourcePreviewAssetId: null }),
 			mediaViewMode: "grid",
 			setMediaViewMode: (mode) => set({ mediaViewMode: mode }),
 			mediaSortBy: "name",

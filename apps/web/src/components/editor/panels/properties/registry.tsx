@@ -26,15 +26,13 @@ import {
 	VISUAL_PARAM_SECTIONS,
 	VISUAL_SUBTABS,
 } from "./components/visual-workbench-tab";
-import {
-	ClipEffectsTab,
-	StandaloneEffectTab,
-} from "@/effects/components/effects-tab";
+import { StandaloneEffectTab } from "@/effects/components/effects-tab";
 import { SpeedTab } from "@/speed/components/speed-tab";
 import { GraphicTab } from "@/graphics/components/graphic-tab";
 import { OcShapesIcon } from "@/components/icons";
 import { AudioWorkbenchTab } from "./components/audio-workbench-tab";
 import { MotionTrackingTab } from "@/motion-tracking/components/motion-tracking-tab";
+import { JianyingAdjustmentsTab } from "./components/jianying-adjustments-tab";
 
 export { VISUAL_PARAM_SECTIONS, VISUAL_SUBTABS };
 
@@ -165,7 +163,7 @@ function buildAdjustmentsTab({
 		label: "调整",
 		icon: <HugeiconsIcon icon={MagicWand05Icon} size={16} />,
 		content: ({ trackId }) => (
-			<ClipEffectsTab element={element} trackId={trackId} />
+			<JianyingAdjustmentsTab element={element} trackId={trackId} />
 		),
 	};
 }

@@ -7,11 +7,7 @@ import { useRafLoop } from "@/hooks/use-raf-loop";
 import { useContainerSize } from "@/hooks/use-container-size";
 import { useFullscreen } from "@/hooks/use-fullscreen";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
-import {
-	mediaTimeToSeconds,
-	TICKS_PER_SECOND,
-	ZERO_MEDIA_TIME,
-} from "@/wasm";
+import { mediaTimeToSeconds, TICKS_PER_SECOND, ZERO_MEDIA_TIME } from "@/wasm";
 import type { RootNode } from "@/services/renderer/nodes/root-node";
 import { buildScene } from "@/services/renderer/scene-builder";
 import { findActiveMissingVisualElements } from "@/media/missing-media";
@@ -40,6 +36,8 @@ import {
 } from "@/media/preview-prewarm";
 import { getMediaAssetPlaybackSource } from "@/media/proxy";
 import { videoCache } from "@/services/video-cache/service";
+import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
+import { SourcePreviewPanel } from "@/components/editor/panels/assets/views/source-monitor";
 
 function usePreviewSize() {
 	const canvasSize = useEditor(
@@ -86,11 +84,21 @@ export function PreviewPanel({
 }) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [container, setContainer] = useState<HTMLDivElement | null>(null);
+	const sourcePreviewAssetId = useAssetsPanelStore(
+		(state) => state.sourcePreviewAssetId,
+	);
+	const sourcePreviewAsset = useEditor((editor) =>
+		editor.media.getAssets().find((asset) => asset.id === sourcePreviewAssetId),
+	);
 	const { toggleFullscreen } = useFullscreen({ containerRef });
 	const handleContainerRef = useCallback((node: HTMLDivElement | null) => {
 		containerRef.current = node;
 		setContainer(node);
 	}, []);
+
+	if (sourcePreviewAsset) {
+		return <SourcePreviewPanel asset={sourcePreviewAsset} />;
+	}
 
 	return (
 		<div
@@ -232,9 +240,7 @@ function PreviewCanvas({
 			maxCandidates: 2,
 		});
 		for (const mediaId of mediaIds) {
-			const asset = mediaAssets.find(
-				(candidate) => candidate.id === mediaId,
-			);
+			const asset = mediaAssets.find((candidate) => candidate.id === mediaId);
 			if (!asset || asset.type !== "video") {
 				continue;
 			}

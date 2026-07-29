@@ -3,6 +3,7 @@
 import Image from "next/image";
 import {
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 	type KeyboardEvent as ReactKeyboardEvent,
@@ -23,10 +24,12 @@ import type { MediaAsset } from "@/media/types";
 import {
 	getDefaultSourceRange,
 	getSourceDurationSeconds,
+	buildElementFromSourceRange,
+	resolveSourceOverwriteTarget,
 	updateSourceRangePoint,
 	type SourceRange,
 } from "@/media/source-range";
-import { Pause, Play, RotateCcw } from "lucide-react";
+import { Pause, Play, RotateCcw, X } from "lucide-react";
 import {
 	checkBrowserDecodeSupport,
 	requestMediaProbe,
@@ -34,12 +37,118 @@ import {
 } from "@/agent/media-codec";
 import { useEditor } from "@/editor/use-editor";
 import { getMediaAssetPlaybackSource } from "@/media/proxy";
+import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
+import { useElementSelection } from "@/timeline/hooks/element/use-element-selection";
+import { toast } from "sonner";
+import { cn } from "@/utils/ui";
 
 function localizeOverwriteReason(reason: string | null): string | undefined {
 	if (!reason) return undefined;
-	const match = reason.match(/^Unlock a (video|audio) track before overwriting$/);
+	const match = reason.match(
+		/^Unlock a (video|audio) track before overwriting$/,
+	);
 	if (!match) return reason;
 	return `请先解锁一条${match[1] === "video" ? "视频" : "音频"}轨道再执行覆盖`;
+}
+
+export function SourcePreviewPanel({ asset }: { asset: MediaAsset }) {
+	const editor = useEditor();
+	const activeTracks = useEditor((e) => e.scenes.getActiveScene().tracks);
+	const projectId = useEditor((e) => e.project.getActive().metadata.id);
+	const { selectedElements } = useElementSelection();
+	const closeSourcePreview = useAssetsPanelStore(
+		(state) => state.closeSourcePreview,
+	);
+	const overwriteTarget = useMemo(
+		() =>
+			resolveSourceOverwriteTarget({
+				tracks: activeTracks,
+				selectedElements,
+				mediaType: asset.type,
+			}),
+		[activeTracks, asset.type, selectedElements],
+	);
+	const overwriteTrack =
+		overwriteTarget.trackId === null
+			? null
+			: editor.timeline.getTrackById({ trackId: overwriteTarget.trackId });
+	const mediaTypeLabel =
+		asset.type === "video" ? "视频" : asset.type === "audio" ? "音频" : "图片";
+
+	const insertSourceRange = ({ range }: { range: SourceRange }) => {
+		editor.timeline.insertElement({
+			element: buildElementFromSourceRange({
+				asset,
+				range,
+				startTime: editor.playback.getCurrentTime(),
+			}),
+			placement: { mode: "auto" },
+		});
+		toast.success("已插入源素材范围", {
+			description: `${asset.name} 已添加到播放头位置。`,
+		});
+	};
+
+	const overwriteSourceRange = ({ range }: { range: SourceRange }) => {
+		if (overwriteTarget.trackId === null) {
+			toast.error("无法覆盖源素材范围", {
+				description: overwriteTarget.reason ?? "请选择或解锁兼容的时间线轨道。",
+			});
+			return;
+		}
+		editor.timeline.overwriteElement({
+			element: buildElementFromSourceRange({
+				asset,
+				range,
+				startTime: editor.playback.getCurrentTime(),
+			}),
+			trackId: overwriteTarget.trackId,
+		});
+		toast.success("已覆盖时间线范围", {
+			description: `${asset.name} 已替换 ${overwriteTrack?.name ?? "目标轨道"} 上的对应区间。`,
+		});
+	};
+
+	return (
+		<div
+			className="panel bg-background flex size-full min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border"
+			data-source-preview="active"
+		>
+			<header className="border-border/70 flex h-11 shrink-0 items-center justify-between border-b px-3.5">
+				<div className="min-w-0">
+					<div className="truncate text-[13px] font-medium">
+						正在预览 — {mediaTypeLabel}
+					</div>
+					<div className="text-muted-foreground truncate text-[10px]">
+						{asset.name}
+					</div>
+				</div>
+				<Button
+					type="button"
+					size="icon"
+					variant="ghost"
+					aria-label="返回时间线预览"
+					title="返回时间线预览"
+					onClick={closeSourcePreview}
+				>
+					<X />
+				</Button>
+			</header>
+			<div className="min-h-0 flex-1 overflow-auto">
+				<SourceMonitorView
+					key={asset.id}
+					asset={asset}
+					projectId={projectId}
+					presentation="panel"
+					overwriteTargetLabel={overwriteTrack?.name ?? null}
+					overwriteDisabledReason={overwriteTarget.reason}
+					onInsert={insertSourceRange}
+					onOverwrite={overwriteSourceRange}
+					onClose={closeSourcePreview}
+				/>
+			</div>
+		</div>
+	);
 }
 
 export function SourceMonitorDialog({
@@ -87,6 +196,7 @@ export function SourceMonitorDialog({
 export function SourceMonitorView({
 	asset,
 	projectId,
+	presentation = "dialog",
 	overwriteTargetLabel,
 	overwriteDisabledReason,
 	onInsert,
@@ -95,6 +205,7 @@ export function SourceMonitorView({
 }: {
 	asset: MediaAsset;
 	projectId?: string;
+	presentation?: "dialog" | "panel";
 	overwriteTargetLabel: string | null;
 	overwriteDisabledReason: string | null;
 	onInsert: (args: { range: SourceRange }) => void;
@@ -107,11 +218,13 @@ export function SourceMonitorView({
 	);
 	const [currentTime, setCurrentTime] = useState(0);
 	const [isPlaying, setIsPlaying] = useState(false);
-	const [diagnostics, setDiagnostics] =
-		useState<AgentMediaProbeResult | null>(null);
-	const [diagnosticError, setDiagnosticError] = useState<string | null>(
+	const [showRangeControls, setShowRangeControls] = useState(
+		presentation === "dialog",
+	);
+	const [diagnostics, setDiagnostics] = useState<AgentMediaProbeResult | null>(
 		null,
 	);
+	const [diagnosticError, setDiagnosticError] = useState<string | null>(null);
 	const mediaRef = useRef<HTMLMediaElement | null>(null);
 	const canPlay = asset.type !== "image";
 	const rangeDuration = range.outPoint - range.inPoint;
@@ -142,9 +255,7 @@ export function SourceMonitorView({
 			} catch (error) {
 				if (active) {
 					setDiagnosticError(
-						error instanceof Error
-							? error.message
-							: String(error),
+						error instanceof Error ? error.message : String(error),
 					);
 				}
 			}
@@ -178,7 +289,10 @@ export function SourceMonitorView({
 			media.pause();
 			return;
 		}
-		if (media.currentTime >= range.outPoint || media.currentTime < range.inPoint) {
+		if (
+			media.currentTime >= range.outPoint ||
+			media.currentTime < range.inPoint
+		) {
 			seek({ time: range.inPoint });
 		}
 		try {
@@ -214,15 +328,26 @@ export function SourceMonitorView({
 			aria-label="源监视器"
 			tabIndex={0}
 			onKeyDown={handleKeyDown}
+			className={cn(
+				"min-h-0",
+				presentation === "panel" && "flex h-full flex-col",
+			)}
 		>
-			<DialogHeader className="pr-12">
-				<DialogTitle className="truncate">{asset.name}</DialogTitle>
-				<DialogDescription>
-					源监视器 · 精确设置入点和出点，原始素材不会被修改。
-				</DialogDescription>
-			</DialogHeader>
-			<DialogBody className="gap-4">
-				<div className="bg-black relative flex aspect-video max-h-[46vh] items-center justify-center overflow-hidden rounded-md">
+			{presentation === "dialog" ? (
+				<DialogHeader className="pr-12">
+					<DialogTitle className="truncate">{asset.name}</DialogTitle>
+					<DialogDescription>
+						源监视器 · 精确设置入点和出点，原始素材不会被修改。
+					</DialogDescription>
+				</DialogHeader>
+			) : null}
+			<DialogBody
+				className={cn(
+					"gap-4",
+					presentation === "panel" && "min-h-0 flex-1 overflow-auto p-3",
+				)}
+			>
+				<div className="bg-black relative flex aspect-video max-h-[46vh] min-h-44 items-center justify-center overflow-hidden rounded-md">
 					{asset.type === "video" ? (
 						<>
 							{/* Imported sources do not necessarily include caption tracks. */}
@@ -299,7 +424,7 @@ export function SourceMonitorView({
 					</div>
 				</div>
 
-				{asset.type !== "image" ? (
+				{asset.type !== "image" && presentation === "dialog" ? (
 					<MediaCodecDiagnostics
 						asset={asset}
 						diagnostics={diagnostics}
@@ -343,30 +468,41 @@ export function SourceMonitorView({
 						</Button>
 					</div>
 
-					<div className="grid gap-2 sm:grid-cols-2">
-						<SourcePointControl
-							label="入点"
-							shortcut="I"
-							value={range.inPoint}
-							max={Math.max(0, range.outPoint)}
-							onValueChange={({ value }) =>
-								setPoint({ point: "in", time: value })
-							}
-							onSet={() => setPoint({ point: "in", time: currentTime })}
-							onGo={() => seek({ time: range.inPoint })}
-						/>
-						<SourcePointControl
-							label="出点"
-							shortcut="O"
-							value={range.outPoint}
-							max={duration}
-							onValueChange={({ value }) =>
-								setPoint({ point: "out", time: value })
-							}
-							onSet={() => setPoint({ point: "out", time: currentTime })}
-							onGo={() => seek({ time: range.outPoint })}
-						/>
-					</div>
+					{showRangeControls ? (
+						<div className="grid gap-2 sm:grid-cols-2">
+							<SourcePointControl
+								label="入点"
+								shortcut="I"
+								value={range.inPoint}
+								max={Math.max(0, range.outPoint)}
+								onValueChange={({ value }) =>
+									setPoint({ point: "in", time: value })
+								}
+								onSet={() => setPoint({ point: "in", time: currentTime })}
+								onGo={() => seek({ time: range.inPoint })}
+							/>
+							<SourcePointControl
+								label="出点"
+								shortcut="O"
+								value={range.outPoint}
+								max={duration}
+								onValueChange={({ value }) =>
+									setPoint({ point: "out", time: value })
+								}
+								onSet={() => setPoint({ point: "out", time: currentTime })}
+								onGo={() => seek({ time: range.outPoint })}
+							/>
+						</div>
+					) : (
+						<Button
+							type="button"
+							size="sm"
+							variant="ghost"
+							onClick={() => setShowRangeControls(true)}
+						>
+							设置入点 / 出点
+						</Button>
+					)}
 					<div className="text-muted-foreground flex items-center justify-between text-xs">
 						<span>已选源素材范围</span>
 						<strong className="text-foreground">
@@ -375,10 +511,22 @@ export function SourceMonitorView({
 					</div>
 				</div>
 			</DialogBody>
-			<DialogFooter className="items-center sm:justify-between">
-				<Button type="button" variant="ghost" onClick={onClose}>
-					关闭
-				</Button>
+			<DialogFooter
+				className={cn(
+					"items-center sm:justify-between",
+					presentation === "panel" &&
+						"border-border/70 sticky bottom-0 border-t bg-background px-3 py-2",
+				)}
+			>
+				{presentation === "dialog" ? (
+					<Button type="button" variant="ghost" onClick={onClose}>
+						关闭
+					</Button>
+				) : (
+					<span className="text-muted-foreground text-[10px]">
+						I / O 设置范围 · 空格播放
+					</span>
+				)}
 				<div className="flex flex-wrap justify-end gap-2">
 					<Button
 						type="button"
@@ -438,16 +586,11 @@ function MediaCodecDiagnostics({
 					<div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
 						<CodecFact
 							label="策略"
-							value={
-								strategyLabels[diagnostics.compatibility.kind]
-							}
+							value={strategyLabels[diagnostics.compatibility.kind]}
 						/>
 						<CodecFact
 							label="封装"
-							value={
-								diagnostics.probe.container.formatNames[0] ??
-								"未知"
-							}
+							value={diagnostics.probe.container.formatNames[0] ?? "未知"}
 						/>
 						<CodecFact
 							label="视频"
@@ -508,9 +651,7 @@ function MediaCodecDiagnostics({
 					) : null}
 				</>
 			) : error ? (
-				<p className="text-amber-600">
-					无法读取编解码信息：{error}
-				</p>
+				<p className="text-amber-600">无法读取编解码信息：{error}</p>
 			) : (
 				<p className="text-muted-foreground">正在检测媒体信息…</p>
 			)}
@@ -518,13 +659,7 @@ function MediaCodecDiagnostics({
 	);
 }
 
-function CodecFact({
-	label,
-	value,
-}: {
-	label: string;
-	value: string;
-}) {
+function CodecFact({ label, value }: { label: string; value: string }) {
 	return (
 		<div className="min-w-0">
 			<div className="text-muted-foreground">{label}</div>

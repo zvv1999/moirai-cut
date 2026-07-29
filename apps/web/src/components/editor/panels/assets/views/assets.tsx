@@ -97,15 +97,8 @@ import {
 } from "@/media/organization";
 import { MediaBinBrowserView } from "./media-bin-browser";
 import { MediaMetadataEditorDialog } from "./media-metadata-editor";
-import { SourceMonitorDialog } from "./source-monitor";
 import { MediaBatchOperationsDialog } from "./media-batch-operations-dialog";
 import { MediaDuplicateReviewDialog } from "./media-duplicate-review-dialog";
-import {
-	buildElementFromSourceRange,
-	resolveSourceOverwriteTarget,
-	type SourceRange,
-} from "@/media/source-range";
-import { useElementSelection } from "@/timeline/hooks/element/use-element-selection";
 import { generateMediaProxy } from "@/media/proxy";
 import { downloadBlob } from "@/utils/browser";
 import { backgroundJobs } from "@/project/background-jobs";
@@ -153,6 +146,7 @@ export function MediaView() {
 		mediaSortBy,
 		mediaSortOrder,
 		setMediaSort,
+		openSourcePreview,
 	} = useAssetsPanelStore();
 
 	const [isProcessing, setIsProcessing] = useState(false);
@@ -167,9 +161,6 @@ export function MediaView() {
 	const [metadataEditorAssetIds, setMetadataEditorAssetIds] = useState<
 		string[]
 	>([]);
-	const [sourceMonitorAssetId, setSourceMonitorAssetId] = useState<
-		string | null
-	>(null);
 	const [batchOperationAssetIds, setBatchOperationAssetIds] = useState<
 		string[]
 	>([]);
@@ -178,7 +169,6 @@ export function MediaView() {
 	const [duplicateReviewOpen, setDuplicateReviewOpen] = useState(false);
 	const relinkInputRef = useRef<HTMLInputElement>(null);
 	const relinkTargetIdsRef = useRef<string[]>([]);
-	const { selectedElements: selectedTimelineElements } = useElementSelection();
 	const mediaOrganization = useMemo(
 		() =>
 			normalizeMediaOrganization({
@@ -226,28 +216,9 @@ export function MediaView() {
 			}),
 		[activeTracks, mediaFiles],
 	);
-	const sourceMonitorAsset =
-		mediaFiles.find((asset) => asset.id === sourceMonitorAssetId) ?? null;
 	const batchOperationAssets = mediaFiles.filter((asset) =>
 		batchOperationAssetIds.includes(asset.id),
 	);
-	const sourceOverwriteTarget = useMemo(
-		() =>
-			sourceMonitorAsset
-				? resolveSourceOverwriteTarget({
-						tracks: activeTracks,
-						selectedElements: selectedTimelineElements,
-						mediaType: sourceMonitorAsset.type,
-					})
-				: { trackId: null, reason: null },
-		[activeTracks, selectedTimelineElements, sourceMonitorAsset],
-	);
-	const sourceOverwriteTrack =
-		sourceOverwriteTarget.trackId === null
-			? null
-			: editor.timeline.getTrackById({
-					trackId: sourceOverwriteTarget.trackId,
-				});
 
 	const processFiles = async ({ files }: { files: File[] }) => {
 		if (!files || files.length === 0) return;
@@ -333,9 +304,7 @@ export function MediaView() {
 				if (fileType !== reference.type) {
 					toast.error(`请选择${MEDIA_TYPE_LABELS[reference.type]}文件`, {
 						description: `${file.name} 是${
-							fileType
-								? `${MEDIA_TYPE_LABELS[fileType]}文件`
-								: "不支持的文件"
+							fileType ? `${MEDIA_TYPE_LABELS[fileType]}文件` : "不支持的文件"
 						}。`,
 					});
 					return;
@@ -382,10 +351,9 @@ export function MediaView() {
 			});
 
 			if (items.length > 0) {
-				toast.success(
-					`已重新链接 ${items.length} 个丢失文件`,
-					{ description: "时间线编辑保持不变。" },
-				);
+				toast.success(`已重新链接 ${items.length} 个丢失文件`, {
+					description: "时间线编辑保持不变。",
+				});
 			}
 			if (
 				matching.unmatchedReferences.length > 0 ||
@@ -429,10 +397,9 @@ export function MediaView() {
 			assetIds: batchOperationAssetIds,
 		});
 		setBatchOperationAssetIds([]);
-		toast.success(
-			`已移除 ${batchOperationAssetIds.length} 个素材`,
-			{ description: "撤销可恢复源素材及其时间线用法。" },
-		);
+		toast.success(`已移除 ${batchOperationAssetIds.length} 个素材`, {
+			description: "撤销可恢复源素材及其时间线用法。",
+		});
 	};
 
 	const handleBatchRename = ({
@@ -490,9 +457,7 @@ export function MediaView() {
 		}
 
 		setIsProcessing(true);
-		setBatchStatus(
-			matchByName ? "正在按文件名重新链接…" : "正在替换源文件…",
-		);
+		setBatchStatus(matchByName ? "正在按文件名重新链接…" : "正在替换源文件…");
 		setBatchProgress(0);
 		try {
 			const processed = await processMediaAssets({
@@ -638,8 +603,7 @@ export function MediaView() {
 					);
 					if (readyCount > 0) {
 						toast.success(`已生成 ${readyCount} 个代理`, {
-							description:
-								"预览使用代理，最终导出仍保持原始画质。",
+							description: "预览使用代理，最终导出仍保持原始画质。",
 						});
 					}
 					if (failures.length > 0) {
@@ -670,9 +634,7 @@ export function MediaView() {
 				}),
 			})),
 		});
-		setBatchStatus(
-			`${proxyAssets.length} 个代理已${enable ? "启用" : "停用"}`,
-		);
+		setBatchStatus(`${proxyAssets.length} 个代理已${enable ? "启用" : "停用"}`);
 		setBatchProgress(100);
 	};
 
@@ -804,12 +766,9 @@ export function MediaView() {
 						: "unfiled",
 				);
 			}
-			toast.success(
-				`已删除 ${result.deletedBinIds.length} 个素材文件夹`,
-				{
-					description: `已保留并重新归类 ${result.rehomedAssetIds.length} 个素材，可通过撤销恢复。`,
-				},
-			);
+			toast.success(`已删除 ${result.deletedBinIds.length} 个素材文件夹`, {
+				description: `已保留并重新归类 ${result.rehomedAssetIds.length} 个素材，可通过撤销恢复。`,
+			});
 		} catch (error) {
 			toast.error("无法删除素材文件夹", {
 				description: error instanceof Error ? error.message : undefined,
@@ -832,10 +791,9 @@ export function MediaView() {
 					binId,
 				}),
 			});
-			toast.success(
-				`已移动 ${assetIds.length} 个素材`,
-				{ description: "仅分类发生变化，源素材保持不变。" },
-			);
+			toast.success(`已移动 ${assetIds.length} 个素材`, {
+				description: "仅分类发生变化，源素材保持不变。",
+			});
 		} catch (error) {
 			toast.error("无法整理素材", {
 				description: error instanceof Error ? error.message : undefined,
@@ -862,47 +820,8 @@ export function MediaView() {
 				patch: { addTags, removeTags, favorite, colorLabel },
 			}),
 		});
-		toast.success(
-			`已更新 ${metadataEditorAssetIds.length} 个素材`,
-			{ description: "标签、收藏和颜色标记均可撤销。" },
-		);
-	};
-
-	const handleInsertSourceRange = ({ range }: { range: SourceRange }) => {
-		if (!sourceMonitorAsset) return;
-		const startTime = editor.playback.getCurrentTime();
-		editor.timeline.insertElement({
-			element: buildElementFromSourceRange({
-				asset: sourceMonitorAsset,
-				range,
-				startTime,
-			}),
-			placement: { mode: "auto" },
-		});
-		toast.success("已插入源素材范围", {
-			description: `${sourceMonitorAsset.name} 已添加到播放头位置。`,
-		});
-	};
-
-	const handleOverwriteSourceRange = ({ range }: { range: SourceRange }) => {
-		if (!sourceMonitorAsset || sourceOverwriteTarget.trackId === null) {
-			toast.error("无法覆盖源素材范围", {
-				description:
-					sourceOverwriteTarget.reason ??
-					"请选择或解锁兼容的时间线轨道。",
-			});
-			return;
-		}
-		editor.timeline.overwriteElement({
-			element: buildElementFromSourceRange({
-				asset: sourceMonitorAsset,
-				range,
-				startTime: editor.playback.getCurrentTime(),
-			}),
-			trackId: sourceOverwriteTarget.trackId,
-		});
-		toast.success("已覆盖时间线范围", {
-			description: `${sourceMonitorAsset.name} 已替换 ${sourceOverwriteTrack?.name ?? "目标轨道"} 上的对应区间。`,
+		toast.success(`已更新 ${metadataEditorAssetIds.length} 个素材`, {
+			description: "标签、收藏和颜色标记均可撤销。",
 		});
 	};
 
@@ -1058,17 +977,6 @@ export function MediaView() {
 
 	return (
 		<>
-			<SourceMonitorDialog
-				open={sourceMonitorAsset !== null}
-				asset={sourceMonitorAsset}
-				overwriteTargetLabel={sourceOverwriteTrack?.name ?? null}
-				overwriteDisabledReason={sourceOverwriteTarget.reason}
-				onOpenChange={(open) => {
-					if (!open) setSourceMonitorAssetId(null);
-				}}
-				onInsert={handleInsertSourceRange}
-				onOverwrite={handleOverwriteSourceRange}
-			/>
 			<MediaMetadataEditorDialog
 				open={metadataEditorAssetIds.length > 0}
 				assetCount={metadataEditorAssetIds.length}
@@ -1113,10 +1021,9 @@ export function MediaView() {
 						projectId: activeProject.metadata.id,
 						assetIds,
 					});
-					toast.success(
-						`已移除 ${assetIds.length} 个已确认的重复素材`,
-						{ description: "撤销可恢复素材及其时间线用法。" },
-					);
+					toast.success(`已移除 ${assetIds.length} 个已确认的重复素材`, {
+						description: "撤销可恢复素材及其时间线用法。",
+					});
 				}}
 			/>
 			<input {...fileInputProps} />
@@ -1244,9 +1151,7 @@ export function MediaView() {
 									mode={mediaViewMode}
 									bins={mediaOrganization.bins}
 									organization={mediaOrganization}
-									onOpenSource={({ assetId }) =>
-										setSourceMonitorAssetId(assetId)
-									}
+									onOpenSource={({ assetId }) => openSourcePreview(assetId)}
 									onEditMetadata={({ assetIds }) =>
 										setMetadataEditorAssetIds(assetIds)
 									}
@@ -1300,9 +1205,7 @@ function MediaLibraryEmptySearch({
 			<Button size="sm" variant="outline" onClick={onClear}>
 				{hasActiveFilters ? "清除筛选" : "查看全部素材"}
 			</Button>
-			<span className="sr-only">
-				没有素材匹配{query || "所选媒体类型"}
-			</span>
+			<span className="sr-only">没有素材匹配{query || "所选媒体类型"}</span>
 		</div>
 	);
 }
@@ -1471,7 +1374,7 @@ function MediaItemWithContextMenu({
 			<ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
 			<ContextMenuContent>
 				<ContextMenuItem onSelect={() => onOpenSource({ assetId: item.id })}>
-					在源监视器中打开
+					在播放器中预览
 				</ContextMenuItem>
 				<ContextMenuItem
 					onSelect={() => onBatchOperations({ assetIds: idsToDelete })}
@@ -1769,11 +1672,7 @@ function MediaPreview({
 
 	return (
 		<div className="relative size-full">
-			<MediaTypePlaceholder
-				icon={Image02Icon}
-				label="未知"
-				variant="muted"
-			/>
+			<MediaTypePlaceholder icon={Image02Icon} label="未知" variant="muted" />
 			<MediaMetadataBadges metadata={metadata} />
 			<MediaProxyBadge item={item} />
 		</div>
@@ -1834,7 +1733,7 @@ function HoverScrubVideoPreview({
 				setIsHovering(false);
 				setScrubTime(0);
 			}}
-			title="悬停拖动预览 · 双击打开源监视器"
+			title="悬停拖动预览 · 双击在播放器中预览"
 		>
 			{isHovering && previewUrl ? (
 				<video
