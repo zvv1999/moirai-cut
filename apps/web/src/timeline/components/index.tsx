@@ -89,9 +89,7 @@ import {
 	type TimelineOverviewItem,
 } from "./timeline-navigation";
 import { getRevealPlayheadScrollLeft } from "@/timeline/navigation";
-import { TimelineModeStatus } from "./timeline-mode-status";
 import { TrackControlRowView } from "./track-control-row";
-import { PrecisionTrimModeSelector } from "./precision-trim-mode-selector";
 import { DirectManipulationHud } from "./direct-manipulation-hud";
 
 const TRACKS_CONTAINER_MAX_HEIGHT = 800;
@@ -522,9 +520,8 @@ export function Timeline() {
 
 	return (
 		<section
-			className={
-				"panel bg-background relative flex h-full flex-col overflow-hidden rounded-lg border"
-			}
+			className="panel bg-background relative flex h-full flex-col overflow-hidden rounded-md border"
+			data-timeline-chrome="single-row"
 			{...dragProps}
 			aria-label="时间线"
 		>
@@ -533,8 +530,6 @@ export function Timeline() {
 				minZoom={minZoomLevel}
 				setZoomLevel={({ zoom }) => setZoomLevel(zoom)}
 			/>
-			<TimelineModeStatus />
-			<PrecisionTrimModeSelector />
 
 			<div className="relative flex flex-1 overflow-hidden" ref={timelineRef}>
 				<TrackLabelsPanel

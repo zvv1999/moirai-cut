@@ -31,8 +31,8 @@ import { SpeedTab } from "@/speed/components/speed-tab";
 import { GraphicTab } from "@/graphics/components/graphic-tab";
 import { OcShapesIcon } from "@/components/icons";
 import { AudioWorkbenchTab } from "./components/audio-workbench-tab";
-import { MotionTrackingTab } from "@/motion-tracking/components/motion-tracking-tab";
 import { JianyingAdjustmentsTab } from "./components/jianying-adjustments-tab";
+import { JianyingAiEffectsTab } from "./components/jianying-ai-effects-tab";
 
 export { VISUAL_PARAM_SECTIONS, VISUAL_SUBTABS };
 
@@ -177,15 +177,9 @@ function buildAiEffectsTab({
 		id: "effects",
 		label: "AI效果",
 		icon: <HugeiconsIcon icon={MagicWand05Icon} size={16} />,
-		content: ({ trackId }) =>
-			element.type === "video" ? (
-				<MotionTrackingTab element={element} trackId={trackId} />
-			) : (
-				<InspectorFeatureSummary
-					title="AI效果尚未接入"
-					description="当前素材类型没有可用的 AI 处理能力；不会用静态样式伪造处理结果。"
-				/>
-			),
+		content: ({ trackId }) => (
+			<JianyingAiEffectsTab element={element} trackId={trackId} />
+		),
 	};
 }
 

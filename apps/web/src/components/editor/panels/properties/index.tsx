@@ -40,7 +40,7 @@ export function PropertiesPanel() {
 
 	if (selectedElements.length === 0) {
 		return (
-			<div className="panel bg-background flex h-full flex-col items-center justify-center overflow-hidden rounded-lg border">
+			<div className="panel bg-background flex h-full flex-col items-center justify-center overflow-hidden rounded-md border">
 				<EmptyView />
 			</div>
 		);
@@ -48,7 +48,7 @@ export function PropertiesPanel() {
 
 	if (selectedElements.length > 1) {
 		return (
-			<div className="panel bg-background flex h-full flex-col items-center justify-center overflow-hidden rounded-lg border">
+			<div className="panel bg-background flex h-full flex-col items-center justify-center overflow-hidden rounded-md border">
 				<p className="text-muted-foreground text-sm">
 					已选择 {selectedElements.length} 个素材
 				</p>
@@ -90,7 +90,7 @@ export function PropertiesPanel() {
 
 	return (
 		<div
-			className="panel bg-background flex h-full flex-col overflow-hidden rounded-lg border"
+			className="panel bg-background flex h-full flex-col overflow-hidden rounded-md border"
 			data-testid="properties-panel"
 		>
 			<InspectorTabNavigation
@@ -141,7 +141,7 @@ function SourcePreviewInspector({
 
 	return (
 		<div
-			className="panel bg-background flex h-full flex-col overflow-hidden rounded-lg border"
+			className="panel bg-background flex h-full flex-col overflow-hidden rounded-md border"
 			data-source-preview-inspector="active"
 		>
 			<header className="border-border/70 flex h-[54px] shrink-0 items-center border-b px-4">

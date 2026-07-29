@@ -36,8 +36,8 @@ import {
 } from "@/timeline/bookmarks/index";
 
 export default function Editor() {
-	const params = useParams();
-	const projectId = params.project_id as string;
+	const params = useParams<{ project_id: string }>();
+	const projectId = params.project_id;
 
 	return (
 		<MobileGate>
@@ -129,6 +129,7 @@ function EditorLayout() {
 		<ResizablePanelGroup
 			direction="vertical"
 			className="size-full gap-1"
+			data-workbench-layout="jianying"
 			onLayout={(sizes) => {
 				setPanel({
 					panel: "mainContent",
@@ -148,7 +149,7 @@ function EditorLayout() {
 			>
 				<ResizablePanelGroup
 					direction="horizontal"
-					className="size-full gap-1 px-3"
+					className="size-full gap-1 px-1"
 					onLayout={(sizes) => {
 						setPanel({ panel: "tools", size: sizes[0] ?? panels.tools });
 						setPanel({ panel: "preview", size: sizes[1] ?? panels.preview });
@@ -200,7 +201,7 @@ function EditorLayout() {
 				defaultSize={panels.timeline}
 				minSize={15}
 				maxSize={70}
-				className="min-h-0 px-3 pb-3"
+				className="min-h-0 px-1 pb-1"
 			>
 				<Timeline />
 			</ResizablePanel>

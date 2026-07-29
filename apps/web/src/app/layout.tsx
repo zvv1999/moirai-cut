@@ -2,14 +2,10 @@ import { ThemeProvider } from "next-themes";
 import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "../components/ui/sonner";
-import { ChangelogNotification } from "@/changelog/components/changelog-notification";
 import { TooltipProvider } from "../components/ui/tooltip";
 import { baseMetaData } from "./metadata";
 import { BotIdClient } from "botid/client";
 import { webEnv } from "@/env/web";
-import { Inter } from "next/font/google";
-
-const siteFont = Inter({ subsets: ["latin"] });
 
 export const metadata = baseMetaData;
 
@@ -26,20 +22,11 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="en" suppressHydrationWarning>
+		<html lang="zh-CN" suppressHydrationWarning>
 			<head>
 				<BotIdClient protect={protectedRoutes} />
-				{false && (
-					<>
-						<Script
-							src="//unpkg.com/react-scan/dist/auto.global.js"
-							crossOrigin="anonymous"
-							strategy="beforeInteractive"
-						/>
-					</>
-				)}
 			</head>
-			<body className={`${siteFont.className} font-sans antialiased`}>
+			<body className="font-sans antialiased">
 				<ThemeProvider
 					attribute="class"
 					defaultTheme="system"

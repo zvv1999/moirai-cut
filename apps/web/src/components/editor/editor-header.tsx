@@ -29,7 +29,7 @@ import { AlertCircle, Check, Cloud, Loader2 } from "lucide-react";
 
 export function EditorHeader() {
 	return (
-		<header className="editor-studio-header flex h-12 shrink-0 items-center justify-between border-b px-3">
+		<header className="editor-studio-header flex h-10 shrink-0 items-center justify-between border-b px-2">
 			<div className="flex min-w-0 items-center gap-1">
 				<ProjectDropdown />
 				<span className="mx-1 h-4 w-px bg-white/10" aria-hidden="true" />

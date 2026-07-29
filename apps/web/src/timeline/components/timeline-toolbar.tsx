@@ -48,6 +48,14 @@ import { planElementRelationUpdate } from "@/timeline/element-groups";
 import { generateUUID } from "@/utils/id";
 import { getSourceTimeAtClipTime } from "@/retime";
 import { roundMediaTime } from "@/wasm";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger as EditModePopoverTrigger,
+} from "@/components/ui/popover";
+import { TimelineModeStatus } from "./timeline-mode-status";
+import { PrecisionTrimModeSelector } from "./precision-trim-mode-selector";
+import { SlidersHorizontal } from "lucide-react";
 
 export { TimelineToolbarButton } from "./timeline-toolbar-button";
 
@@ -70,10 +78,13 @@ export function TimelineToolbar({
 
 	return (
 		<ScrollArea className="scrollbar-hidden">
-			<div className="flex h-10 items-center justify-between border-b px-2 py-1">
+			<div className="flex h-10 items-center justify-between border-b px-1.5 py-1">
 				<ToolbarLeftSection />
 
-				<SceneSelector />
+				<div className="flex items-center gap-1">
+					<TimelineEditModeCluster />
+					<SceneSelector />
+				</div>
 
 				<ToolbarRightSection
 					zoomLevel={zoomLevel}
@@ -83,6 +94,41 @@ export function TimelineToolbar({
 				/>
 			</div>
 		</ScrollArea>
+	);
+}
+
+function TimelineEditModeCluster() {
+	return (
+		<Popover>
+			<EditModePopoverTrigger asChild>
+				<Button
+					type="button"
+					variant="text"
+					size="sm"
+					className="text-muted-foreground h-8 gap-1.5 px-2 text-[11px]"
+					aria-label="时间线编辑模式"
+					title="吸附、联动、原声与精确修剪"
+				>
+					<SlidersHorizontal className="size-3.5" />
+					<span className="hidden 2xl:inline">编辑模式</span>
+				</Button>
+			</EditModePopoverTrigger>
+			<PopoverContent
+				align="center"
+				side="top"
+				sideOffset={8}
+				className="w-[min(52rem,calc(100vw-2rem))] overflow-hidden p-0"
+			>
+				<div className="border-border border-b px-3 py-2">
+					<p className="text-[12px] font-medium">时间线编辑模式</p>
+					<p className="text-muted-foreground mt-0.5 text-[10px]">
+						将低频模式集中在弹层中，保持剪映式单行工具栏。
+					</p>
+				</div>
+				<TimelineModeStatus />
+				<PrecisionTrimModeSelector />
+			</PopoverContent>
+		</Popover>
 	);
 }
 

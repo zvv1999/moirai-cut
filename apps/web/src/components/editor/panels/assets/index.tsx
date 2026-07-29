@@ -1,6 +1,5 @@
 "use client";
 
-import { Separator } from "@/components/ui/separator";
 import {
 	type Tab,
 	useAssetsPanelStore,
@@ -34,9 +33,11 @@ export function AssetsPanel() {
 	};
 
 	return (
-		<div className="panel bg-background flex h-full overflow-hidden rounded-lg border">
+		<div
+			className="panel bg-background flex h-full flex-col overflow-hidden rounded-md border"
+			data-workbench-panel="assets"
+		>
 			<TabBar />
-			<Separator orientation="vertical" />
 			<div className="flex-1 overflow-hidden">{viewMap[activeTab]}</div>
 		</div>
 	);

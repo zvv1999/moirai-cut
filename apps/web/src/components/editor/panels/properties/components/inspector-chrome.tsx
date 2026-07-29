@@ -91,7 +91,7 @@ export function InspectorTabNavigation({
 			role="tablist"
 			aria-label="属性分类"
 			data-inspector-tabs="clip-properties"
-			className="scrollbar-hidden border-border/70 flex h-[54px] shrink-0 items-stretch justify-between gap-1 overflow-x-auto border-b px-4"
+			className="scrollbar-hidden border-border/70 flex h-[50px] shrink-0 items-stretch justify-between gap-1 overflow-x-auto border-b px-3"
 		>
 			{tabs.map((tab) => {
 				const isActive = tab.id === activeTabId;

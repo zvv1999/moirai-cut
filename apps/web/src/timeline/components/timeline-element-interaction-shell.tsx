@@ -20,13 +20,14 @@ export function TimelineElementInteractionShell({
 	trackId?: string;
 	label?: string;
 	isSelected?: boolean;
-	onClick: MouseEventHandler<HTMLButtonElement>;
-	onMouseDown: MouseEventHandler<HTMLButtonElement>;
+	onClick: MouseEventHandler<HTMLDivElement>;
+	onMouseDown: MouseEventHandler<HTMLDivElement>;
 }) {
 	return (
 		<>
-			<button
-				type="button"
+			{/* eslint-disable-next-line jsx-a11y/click-events-have-key-events -- the clip surface is selected by pointer; keyboard editing is provided by global timeline shortcuts. A non-button surface permits dedicated controls inside the clip. */}
+			<div
+				role="button"
 				tabIndex={-1}
 				aria-label={label}
 				aria-pressed={isSelected}
@@ -38,7 +39,7 @@ export function TimelineElementInteractionShell({
 				onMouseDown={onMouseDown}
 			>
 				{clipContent}
-			</button>
+			</div>
 			{expandedContent && (
 				<div
 					className="absolute inset-x-0 bottom-0 z-20"
