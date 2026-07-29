@@ -32,11 +32,11 @@ describe("native delivery presets", () => {
 			},
 			{
 				preset: "vp9-webm" as const,
-				contains: ["libvpx-vp9", "libopus"],
+				contains: ["libvpx-vp9", "libopus", "yuv420p"],
 			},
 			{
 				preset: "av1-webm" as const,
-				contains: ["libaom-av1", "libopus"],
+				contains: ["libaom-av1", "libopus", "yuv420p"],
 			},
 			{ preset: "wav-pcm" as const, contains: ["pcm_s24le", "-vn"] },
 			{ preset: "m4a-aac" as const, contains: ["aac", "-vn"] },
