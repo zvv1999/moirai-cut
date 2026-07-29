@@ -8,7 +8,7 @@ describe("PropertyParamField", () => {
 			<PropertyParamField
 				param={{
 					key: "muted",
-					label: "Muted",
+					label: "静音",
 					type: "boolean",
 					default: false,
 					keyframable: false,
@@ -54,5 +54,29 @@ describe("PropertyParamField", () => {
 		expect(html).toContain('aria-label="不透明度滑杆"');
 		expect(html).toContain('value="100"');
 		expect(html).toContain("%");
+	});
+
+	test("keeps a soft scale slider without limiting typed scale values", () => {
+		const html = renderToStaticMarkup(
+			<PropertyParamField
+				param={{
+					key: "transform.scaleX",
+					label: "缩放 X",
+					type: "number",
+					default: 1,
+					min: 1,
+					step: 1,
+					displayMultiplier: 100,
+					shortLabel: "X",
+				}}
+				value={1.04}
+				onPreview={() => undefined}
+				onCommit={() => undefined}
+			/>,
+		);
+
+		expect(html).toContain('aria-label="缩放 X滑杆"');
+		expect(html).toContain('max="500"');
+		expect(html).toContain('value="104"');
 	});
 });
