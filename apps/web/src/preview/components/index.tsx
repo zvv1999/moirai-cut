@@ -34,7 +34,10 @@ import { getPreviewFrameStep } from "@/playback/transport";
 import { getPreviewVisualState } from "@/preview/visual-state";
 import { Button } from "@/components/ui/button";
 import { Film, RotateCcw } from "lucide-react";
-import { selectVideoPrewarmCandidates } from "@/media/preview-prewarm";
+import {
+	selectVideoPrewarmCandidates,
+	type PreviewPrewarmElement,
+} from "@/media/preview-prewarm";
 import { getMediaAssetPlaybackSource } from "@/media/proxy";
 import { videoCache } from "@/services/video-cache/service";
 
@@ -194,25 +197,34 @@ function PreviewCanvas({
 	const { canPan, panByScreenDelta, scaleZoom } = viewport;
 
 	useEffect(() => {
-		const elements = [
-			...previewTracks.overlay.flatMap((track) => track.elements),
-			...previewTracks.main.elements,
-		].flatMap((element) =>
-			"mediaId" in element
-				? [
-						{
-							type: element.type,
-							mediaId: element.mediaId,
-							startSeconds: mediaTimeToSeconds({
-								time: element.startTime,
-							}),
-							durationSeconds: mediaTimeToSeconds({
-								time: element.duration,
-							}),
-						},
-					]
-				: [],
-		);
+		const rawElements: unknown[] = [];
+		for (const track of previewTracks.overlay) {
+			rawElements.push(...track.elements);
+		}
+		rawElements.push(...previewTracks.main.elements);
+		const elements: PreviewPrewarmElement[] = [];
+		for (const value of rawElements) {
+			if (
+				!value ||
+				typeof value !== "object" ||
+				!("mediaId" in value) ||
+				typeof value.mediaId !== "string" ||
+				!("type" in value) ||
+				typeof value.type !== "string" ||
+				!("startTime" in value) ||
+				typeof value.startTime !== "number" ||
+				!("duration" in value) ||
+				typeof value.duration !== "number"
+			) {
+				continue;
+			}
+			elements.push({
+				type: value.type,
+				mediaId: value.mediaId,
+				startSeconds: value.startTime / TICKS_PER_SECOND,
+				durationSeconds: value.duration / TICKS_PER_SECOND,
+			});
+		}
 		const mediaIds = selectVideoPrewarmCandidates({
 			elements,
 			currentTime: mediaTimeToSeconds({ time: currentTime }),

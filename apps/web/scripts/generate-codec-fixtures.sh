@@ -34,6 +34,18 @@ encode_av "$output_dir/hevc-main10-aac.mp4" \
 	-x265-params log-level=error -tag:v hvc1 \
 	-c:a aac -b:a 160k -movflags +faststart
 
+encode_av "$output_dir/hevc-main10-pq-aac.mp4" \
+	-c:v libx265 -preset ultrafast -crf 22 -pix_fmt yuv420p10le \
+	-x265-params log-level=error -tag:v hvc1 \
+	-color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc \
+	-color_range tv -c:a aac -b:a 160k -movflags +faststart
+
+encode_av "$output_dir/hevc-main10-hlg-aac.mp4" \
+	-c:v libx265 -preset ultrafast -crf 22 -pix_fmt yuv420p10le \
+	-x265-params log-level=error -tag:v hvc1 \
+	-color_primaries bt2020 -color_trc arib-std-b67 -colorspace bt2020nc \
+	-color_range tv -c:a aac -b:a 160k -movflags +faststart
+
 encode_av "$output_dir/vp9-opus.webm" \
 	-c:v libvpx-vp9 -deadline realtime -cpu-used 8 -crf 30 -b:v 0 -g 30 \
 	-c:a libopus -b:a 160k

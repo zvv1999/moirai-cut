@@ -268,8 +268,17 @@ function proxyVideoFilter({
 		`scale=w=if(gte(iw\\,ih)\\,min(${longEdge}\\,iw)\\,-2):h=if(gte(iw\\,ih)\\,-2\\,min(${longEdge}\\,ih)):force_divisible_by=2`,
 	];
 	const video = probe.probe.videoStreams[0];
-	if ((video?.averageFrameRate ?? 0) > profile.maxFps) {
-		filters.push(`fps=${profile.maxFps}`);
+	const sourceFps =
+		video?.averageFrameRate ?? video?.nominalFrameRate ?? null;
+	if (
+		video?.frameRateMode === "variable" ||
+		(sourceFps ?? 0) > profile.maxFps
+	) {
+		const targetFps = Math.min(
+			profile.maxFps,
+			Math.max(1, Math.round(sourceFps ?? profile.maxFps)),
+		);
+		filters.push(`fps=${targetFps}`);
 	}
 	if (video?.hdr) {
 		filters.push(
