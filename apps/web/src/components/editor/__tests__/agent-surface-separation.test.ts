@@ -107,9 +107,8 @@ describe("智能剪辑与工程历史分面", () => {
 
 	test("对话框展示可配置的 Codex Path 连接状态", () => {
 		expect(workbenchSource).toContain('fetch("/api/codex/config")');
-		expect(workbenchSource).toContain('aria-label="配置 Codex 连接"');
+		expect(workbenchSource).toContain('aria-label="打开智能剪辑设置"');
 		expect(workbenchSource).toContain('aria-label="Codex Path"');
-		expect(workbenchSource).toContain("API 模式");
 		expect(envExampleSource).toContain(
 			"CODEX_BIN=/Applications/ChatGPT.app/Contents/Resources/codex",
 		);
@@ -117,7 +116,6 @@ describe("智能剪辑与工程历史分面", () => {
 
 	test("每条智能剪辑消息直接进入 Codex，不再经过本地计划和质检", () => {
 		expect(workbenchSource).toContain('fetch("/api/codex/chat"');
-		expect(workbenchSource).toContain("本会话由 Codex 直接处理");
 		expect(workbenchSource).toContain("response.body.getReader()");
 		expect(workbenchSource).toContain('event.event === "delta"');
 		expect(workbenchSource).toContain('event.event === "protocol"');
@@ -170,7 +168,7 @@ describe("智能剪辑与工程历史分面", () => {
 	test("展示工程内的不同会话并可选择原上下文继续对话", () => {
 		expect(conversationSource).toContain("CodexConversationThread");
 		expect(conversationSource).toContain("conversationId");
-		expect(workbenchSource).toContain('aria-label="智能剪辑会话记录"');
+		expect(workbenchSource).toContain('aria-label="切换智能剪辑会话"');
 		expect(workbenchSource).toContain('aria-label="新建智能剪辑会话"');
 		expect(workbenchSource).toContain("createConversation");
 		expect(workbenchSource).toContain("selectConversation");
@@ -209,5 +207,20 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain("自动识别选区画面");
 		expect(workbenchSource).toContain("修改后自动复核");
 		expect(workbenchSource).toContain("验证证据");
+	});
+
+	test("默认界面对齐 Codex App 的单栏对话层级", () => {
+		expect(workbenchSource).toContain('aria-label="切换智能剪辑会话"');
+		expect(workbenchSource).toContain('aria-label="打开智能剪辑设置"');
+		expect(workbenchSource).toContain('aria-label="智能剪辑设置"');
+		expect(workbenchSource).toContain("absolute right-3 top-13 z-20");
+		expect(workbenchSource).toContain("messages.length === 0");
+		expect(workbenchSource).toContain(">高级设置<");
+		expect(workbenchSource).not.toContain('aria-label="智能剪辑会话记录"');
+		expect(workbenchSource).not.toContain("semanticTextCount");
+		expect(workbenchSource).not.toContain("semanticKeyframeCount");
+		expect(workbenchSource).not.toContain("API 模式");
+		expect(source).toContain("max-w-[640px]");
+		expect(source).toContain("w-[min(640px,calc(100vw-2rem))]");
 	});
 });
