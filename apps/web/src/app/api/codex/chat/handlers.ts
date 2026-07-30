@@ -19,6 +19,7 @@ export type CodexChatApiService = Pick<CodexChatService, "stream"> &
 	Partial<Pick<CodexChatService, "steer" | "interrupt" | "compact">>;
 
 const EFFORTS = new Set(["low", "medium", "high", "xhigh", "max", "ultra"]);
+const SSE_HEARTBEAT_INTERVAL_MS = 15_000;
 
 function isMode(value: unknown): value is CodexCollaborationMode {
 	return value === "default" || value === "plan";
@@ -156,17 +157,22 @@ function runStreamResponse({
 	runId,
 	afterSequence,
 	signal,
+	heartbeatIntervalMs,
 }: {
 	manager: CodexRunManager;
 	runId: string;
 	afterSequence: number;
 	signal: AbortSignal;
+	heartbeatIntervalMs: number;
 }): Response {
 	const encoder = new TextEncoder();
 	const subscriptionController = new AbortController();
+	let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 	let cancelled = signal.aborted;
 	const abortSubscription = () => {
 		cancelled = true;
+		if (heartbeatTimer) clearInterval(heartbeatTimer);
+		heartbeatTimer = null;
 		subscriptionController.abort();
 	};
 	if (signal.aborted) {
@@ -185,6 +191,11 @@ function runStreamResponse({
 						data: snapshot,
 					}),
 				);
+			}
+			if (heartbeatIntervalMs > 0) {
+				heartbeatTimer = setInterval(() => {
+					controller.enqueue(encoder.encode(": heartbeat\n\n"));
+				}, heartbeatIntervalMs);
 			}
 			void (async () => {
 				try {
@@ -216,6 +227,8 @@ function runStreamResponse({
 						);
 					}
 				} finally {
+					if (heartbeatTimer) clearInterval(heartbeatTimer);
+					heartbeatTimer = null;
 					signal.removeEventListener("abort", abortSubscription);
 					if (!cancelled) controller.close();
 				}
@@ -291,9 +304,11 @@ function actionInput(value: unknown):
 export function createCodexChatRouteHandlers({
 	service,
 	manager = createCodexRunManager({ service: asRunService(service) }),
+	heartbeatIntervalMs = SSE_HEARTBEAT_INTERVAL_MS,
 }: {
 	service: CodexChatApiService;
 	manager?: CodexRunManager;
+	heartbeatIntervalMs?: number;
 }) {
 	return {
 		POST: async (request: Request) => {
@@ -319,6 +334,7 @@ export function createCodexChatRouteHandlers({
 				runId: run.runId,
 				afterSequence: 0,
 				signal: request.signal,
+				heartbeatIntervalMs,
 			});
 		},
 		GET: async (request: Request) => {
@@ -343,6 +359,7 @@ export function createCodexChatRouteHandlers({
 				runId,
 				afterSequence,
 				signal: request.signal,
+				heartbeatIntervalMs,
 			});
 		},
 		PUT: async (request: Request) => {

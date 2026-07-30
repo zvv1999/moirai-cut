@@ -1568,6 +1568,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(calls.map((call) => call.method)).toEqual([
 			"thread/start",
 			"mcpServerStatus/list",
+			"mcpServer/tool/call",
 		]);
 	});
 

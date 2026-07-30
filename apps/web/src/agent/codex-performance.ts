@@ -7,7 +7,7 @@ export interface CodexPerformancePreset {
 	id: CodexPerformanceMode;
 	label: string;
 	description: string;
-	effort: "medium" | "high" | "xhigh";
+	effort: "low" | "medium" | "xhigh";
 	toolProfile: CodexToolProfile;
 	visualMode: CodexVisualMode;
 	verificationMode: CodexVerificationMode;
@@ -20,7 +20,7 @@ export const CODEX_PERFORMANCE_PRESETS: readonly CodexPerformancePreset[] = [
 		id: "fast",
 		label: "快速",
 		description: "更快响应，关闭自动画面识别和结果复核。",
-		effort: "medium",
+		effort: "low",
 		toolProfile: "edit",
 		visualMode: "off",
 		verificationMode: "off",
@@ -29,7 +29,7 @@ export const CODEX_PERFORMANCE_PRESETS: readonly CodexPerformancePreset[] = [
 		id: "balanced",
 		label: "均衡",
 		description: "日常剪辑默认档，只做轻量工程变更复核。",
-		effort: "high",
+		effort: "medium",
 		toolProfile: "edit",
 		visualMode: "off",
 		verificationMode: "basic",

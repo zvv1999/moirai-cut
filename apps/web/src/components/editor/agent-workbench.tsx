@@ -134,6 +134,12 @@ function timestampNow(): number {
 	return Date.now();
 }
 
+function shouldFollowConversationTail(element: HTMLElement): boolean {
+	return (
+		element.scrollHeight - element.clientHeight - element.scrollTop <= 96
+	);
+}
+
 function isCodexConnection(value: unknown): value is CodexConnection {
 	return (
 		typeof value === "object" &&
@@ -735,6 +741,8 @@ export function AgentWorkbench() {
 	const reconnectingRunId = useRef<string | null>(null);
 	const conversationRevision = useRef(-1);
 	const conversationChannel = useRef<BroadcastChannel | null>(null);
+	const conversationLogRef = useRef<HTMLDivElement | null>(null);
+	const followConversationTail = useRef(true);
 	const conversationHydratedRef = useRef(false);
 	const activeConversationIdRef = useRef<string | null>(null);
 	const latestConversation = useRef<{
@@ -880,12 +888,24 @@ export function AgentWorkbench() {
 				return false;
 			}
 		};
+		let nativeRefreshInFlight: Promise<boolean> | null = null;
 		const hydrateConversation = async ({
 			synchronizeNative = true,
 		}: {
 			synchronizeNative?: boolean;
 		} = {}) => {
-			if ((await refreshConversation({ synchronizeNative })) && active) {
+			const refresh =
+				synchronizeNative && nativeRefreshInFlight
+					? nativeRefreshInFlight
+					: refreshConversation({ synchronizeNative });
+			if (synchronizeNative && !nativeRefreshInFlight) {
+				nativeRefreshInFlight = refresh;
+			}
+			const refreshed = await refresh;
+			if (synchronizeNative && nativeRefreshInFlight === refresh) {
+				nativeRefreshInFlight = null;
+			}
+			if (refreshed && active) {
 				setHydratedConversationProjectId(projectId);
 			}
 		};
@@ -912,7 +932,9 @@ export function AgentWorkbench() {
 		}, 15_000);
 		document.addEventListener("visibilitychange", refreshWhenVisible);
 		window.addEventListener("focus", refreshWhenVisible);
-		void hydrateConversation();
+		void hydrateConversation({ synchronizeNative: false }).then(() => {
+			if (active) void hydrateConversation();
+		});
 
 		return () => {
 			active = false;
@@ -937,6 +959,17 @@ export function AgentWorkbench() {
 			}
 		};
 	}, [projectId]);
+	useEffect(() => {
+		const log = conversationLogRef.current;
+		if (!log || !followConversationTail.current) return;
+		const frame = requestAnimationFrame(() => {
+			log.scrollTo({
+				top: log.scrollHeight,
+				behavior: sending ? "auto" : "smooth",
+			});
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [messages, sending]);
 	useEffect(() => {
 		if (!projectId || !activeConversationId || !conversationHydrated) return;
 		const controller = new AbortController();
@@ -1121,6 +1154,7 @@ export function AgentWorkbench() {
 	const selectConversation = (conversation: CodexConversationThread) => {
 		if (sending || conversation.id === activeConversationId) return;
 		persistCurrentConversation();
+		followConversationTail.current = true;
 		activeConversationIdRef.current = conversation.id;
 		latestConversation.current = {
 			conversationId: conversation.id,
@@ -1139,6 +1173,7 @@ export function AgentWorkbench() {
 	const createConversation = (): string | null => {
 		if (!conversationHydrated || sending) return null;
 		persistCurrentConversation();
+		followConversationTail.current = true;
 		const conversationId = crypto.randomUUID();
 		const now = timestampNow();
 		const conversation: CodexConversationThread = {
@@ -1307,6 +1342,7 @@ export function AgentWorkbench() {
 	const submitToCodex = async (nextRequest = request) => {
 		const normalizedRequest = nextRequest.trim();
 		if (!normalizedRequest) return;
+		followConversationTail.current = true;
 		if (!conversationHydrated) {
 			toast("正在同步智能剪辑历史，请稍候");
 			return;
@@ -1999,9 +2035,15 @@ export function AgentWorkbench() {
 			) : null}
 
 			<div
+				ref={conversationLogRef}
 				role="log"
 				aria-label="智能剪辑对话记录"
 				aria-live="polite"
+				onScroll={(event) => {
+					followConversationTail.current = shouldFollowConversationTail(
+						event.currentTarget,
+					);
+				}}
 				className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5"
 			>
 				{!conversationHydrated ? (

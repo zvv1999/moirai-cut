@@ -11,6 +11,7 @@ const REQUEST_TIMEOUT_MS = 30_000;
 const MCP_REQUEST_TIMEOUT_MS = 120_000;
 const TURN_IDLE_TIMEOUT_MS = 6 * 60 * 1_000;
 const TURN_RECONCILE_INTERVAL_MS = 15_000;
+const CAPABILITIES_CACHE_TTL_MS = 5 * 60 * 1_000;
 const MAX_STDERR_CHARS = 16_384;
 const MAX_PROTOCOL_DETAIL_CHARS = 8_000;
 const MAX_PROJECT_SNAPSHOT_CHARS = 120_000;
@@ -2199,15 +2200,32 @@ async function bindOpenCutSession({
 	knownTools?: string[];
 }): Promise<OpenCutSessionBinding> {
 	let tools = knownTools;
-	if (!tools) {
-		const statusResponse = await connection.request({
-			method: "mcpServerStatus/list",
+	const statusRequest = tools
+		? null
+		: connection.request({
+				method: "mcpServerStatus/list",
+				params: {
+					threadId,
+					detail: "toolsAndAuthOnly",
+					limit: 100,
+				},
+			});
+	const projectRequest = connection
+		.request({
+			method: "mcpServer/tool/call",
 			params: {
 				threadId,
-				detail: "toolsAndAuthOnly",
-				limit: 100,
+				server: "opencut",
+				tool: "read_project",
+				arguments: { projectId, detail: "summary" },
 			},
-		});
+		})
+		.then(
+			(response) => ({ response, error: null }),
+			(error: unknown) => ({ response: null, error }),
+		);
+	if (statusRequest) {
+		const statusResponse = await statusRequest;
 		const servers =
 			isRecord(statusResponse) && Array.isArray(statusResponse.data)
 				? statusResponse.data.filter(isRecord)
@@ -2228,16 +2246,13 @@ async function bindOpenCutSession({
 			);
 		}
 	}
+	if (!tools) {
+		throw new CodexChatError("OpenCut MCP 未就绪：无法读取工具目录。");
+	}
 
-	const projectResponse = await connection.request({
-		method: "mcpServer/tool/call",
-		params: {
-			threadId,
-			server: "opencut",
-			tool: "read_project",
-			arguments: { projectId, detail: "summary" },
-		},
-	});
+	const projectResult = await projectRequest;
+	if (projectResult.error) throw projectResult.error;
+	const projectResponse = projectResult.response;
 	const projectSnapshot = projectSnapshotFromToolResponse(projectResponse);
 	return {
 		tools,
@@ -2364,15 +2379,25 @@ export function createCodexChatService({
 	connect = connectSharedAppServer,
 	syncThreadToDesktop,
 	turnReconcileIntervalMs = TURN_RECONCILE_INTERVAL_MS,
+	capabilitiesCacheTtlMs = CAPABILITIES_CACHE_TTL_MS,
 }: {
 	runtime?: CodexRuntimeConfig;
 	connect?: CodexAppServerConnector;
 	syncThreadToDesktop?: CodexDesktopThreadSync;
 	turnReconcileIntervalMs?: number;
+	capabilitiesCacheTtlMs?: number;
 } = {}): CodexChatService {
 	const sessions = new Map<string, string>();
 	const validatedTools = new Map<string, string[]>();
 	const visibleThreadNames = new Map<string, string>();
+	const capabilitiesCache = new Map<
+		CodexToolProfile,
+		{ expiresAt: number; value: CodexCapabilities }
+	>();
+	const capabilitiesInFlight = new Map<
+		CodexToolProfile,
+		Promise<CodexCapabilities>
+	>();
 	const sessionCacheKey = (input: CodexChatInput) => {
 		const conversationId = input.conversationId?.trim();
 		return conversationId
@@ -2381,31 +2406,50 @@ export function createCodexChatService({
 	};
 	return {
 		async capabilities({ toolProfile = "edit" } = {}) {
-			const connection = await connect({ runtime, toolProfile });
-			const [modelsResponse, modesResponse, skillsResponse] = await Promise.all(
-				[
-					connection.request({
-						method: "model/list",
-						params: { limit: 50, includeHidden: false },
-					}),
-					connection.request({
-						method: "collaborationMode/list",
-						params: {},
-					}),
-					connection.request({
-						method: "skills/list",
-						params: {
-							cwds: [runtime.repoRoot],
-							forceReload: false,
-						},
-					}),
-				],
-			);
-			return capabilitiesFromResponses({
-				modelsResponse,
-				modesResponse,
-				skillsResponse,
-			});
+			const cached = capabilitiesCache.get(toolProfile);
+			if (cached && cached.expiresAt > Date.now()) return cached.value;
+			const pending = capabilitiesInFlight.get(toolProfile);
+			if (pending) return pending;
+			const discovery = (async () => {
+				const connection = await connect({ runtime, toolProfile });
+				const [modelsResponse, modesResponse, skillsResponse] = await Promise.all(
+					[
+						connection.request({
+							method: "model/list",
+							params: { limit: 50, includeHidden: false },
+						}),
+						connection.request({
+							method: "collaborationMode/list",
+							params: {},
+						}),
+						connection.request({
+							method: "skills/list",
+							params: {
+								cwds: [runtime.repoRoot],
+								forceReload: false,
+							},
+						}),
+					],
+				);
+				const value = capabilitiesFromResponses({
+					modelsResponse,
+					modesResponse,
+					skillsResponse,
+				});
+				capabilitiesCache.set(toolProfile, {
+					expiresAt: Date.now() + capabilitiesCacheTtlMs,
+					value,
+				});
+				return value;
+			})();
+			capabilitiesInFlight.set(toolProfile, discovery);
+			try {
+				return await discovery;
+			} finally {
+				if (capabilitiesInFlight.get(toolProfile) === discovery) {
+					capabilitiesInFlight.delete(toolProfile);
+				}
+			}
 		},
 		async steer({ sessionId, turnId, message, toolProfile = "edit" }) {
 			const connection = await connect({ runtime, toolProfile });
@@ -2542,14 +2586,20 @@ export function createCodexChatService({
 					binding.projectName || `OpenCut · ${input.projectId}`,
 				);
 				if (visibleThreadNames.get(sessionId) !== nextThreadName) {
-					await connection.request({
-						method: "thread/name/set",
-						params: {
-							threadId: sessionId,
-							name: nextThreadName,
-						},
-					});
 					visibleThreadNames.set(sessionId, nextThreadName);
+					void connection
+						.request({
+							method: "thread/name/set",
+							params: {
+								threadId: sessionId,
+								name: nextThreadName,
+							},
+						})
+						.catch(() => {
+							if (visibleThreadNames.get(sessionId) === nextThreadName) {
+								visibleThreadNames.delete(sessionId);
+							}
+						});
 				}
 				yield {
 					type: "protocol",

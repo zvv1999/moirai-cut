@@ -181,7 +181,7 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain("conversationLogRef");
 		expect(workbenchSource).toContain("shouldFollowConversationTail");
 		expect(workbenchSource).toContain("scrollTo({");
-		expect(workbenchSource).toContain('behavior: "smooth"');
+		expect(workbenchSource).toContain('sending ? "auto" : "smooth"');
 		expect(workbenchSource).not.toContain(
 			"if (!conversationHydrated || sending) return;\n\t\tif (!conversationHydrated || sending) return;",
 		);
