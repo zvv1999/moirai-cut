@@ -1,0 +1,88 @@
+import { NextResponse } from "next/server";
+import { getCodexConversationStore } from "@/server/codex-conversation";
+
+export const dynamic = "force-dynamic";
+
+interface RouteContext {
+	params: Promise<{ projectId: string }>;
+}
+
+function json({
+	value,
+	status = 200,
+}: {
+	value: unknown;
+	status?: number;
+}): NextResponse {
+	return NextResponse.json(value, {
+		status,
+		headers: { "cache-control": "no-store" },
+	});
+}
+
+function messageOf(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
+
+function isClientError(message: string): boolean {
+	return (
+		message.includes("Unsafe project id") ||
+		message.includes("messages") ||
+		message.includes("message ") ||
+		message.includes("protocol ") ||
+		message.includes("session id")
+	);
+}
+
+// Next route handlers must use the framework's positional request/context API.
+// eslint-disable-next-line opencut/prefer-object-params
+export async function GET(_request: Request, { params }: RouteContext) {
+	const { projectId } = await params;
+	try {
+		return json({
+			value: await getCodexConversationStore().read(projectId),
+		});
+	} catch (error) {
+		const message = messageOf(error);
+		return json({
+			value: { error: message },
+			status: isClientError(message) ? 400 : 500,
+		});
+	}
+}
+
+// Next route handlers must use the framework's positional request/context API.
+// eslint-disable-next-line opencut/prefer-object-params
+export async function POST(request: Request, { params }: RouteContext) {
+	const { projectId } = await params;
+	try {
+		const body: unknown = await request.json();
+		if (!body || typeof body !== "object" || Array.isArray(body)) {
+			throw new Error("messages payload is invalid");
+		}
+		if (!("messages" in body) || !Array.isArray(body.messages)) {
+			throw new Error("messages must be an array");
+		}
+		let sessionId: string | null | undefined;
+		if ("sessionId" in body) {
+			const candidate = body.sessionId;
+			if (candidate !== null && typeof candidate !== "string") {
+				throw new Error("session id is invalid");
+			}
+			sessionId = candidate;
+		}
+		return json({
+			value: await getCodexConversationStore().merge({
+				projectId,
+				...(sessionId !== undefined ? { sessionId } : {}),
+				messages: body.messages,
+			}),
+		});
+	} catch (error) {
+		const message = messageOf(error);
+		return json({
+			value: { error: message },
+			status: isClientError(message) ? 400 : 500,
+		});
+	}
+}

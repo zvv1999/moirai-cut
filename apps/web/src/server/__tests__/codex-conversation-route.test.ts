@@ -83,8 +83,17 @@ describe("Codex project conversation API", () => {
 			}),
 			{ params: Promise.resolve({ projectId }) },
 		);
+		const invalidSession = await POST(
+			new Request(`http://localhost/api/codex/history/${projectId}`, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ sessionId: 42, messages: [] }),
+			}),
+			{ params: Promise.resolve({ projectId }) },
+		);
 
 		expect(unsafe.status).toBe(400);
 		expect(invalid.status).toBe(400);
+		expect(invalidSession.status).toBe(400);
 	});
 });

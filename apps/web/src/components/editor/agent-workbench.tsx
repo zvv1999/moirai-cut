@@ -10,6 +10,14 @@ import {
 	resolveAgentContextTarget,
 } from "@/agent/context-references";
 import { useAgentContextStore } from "@/agent/context-store";
+import {
+	fetchCodexConversation,
+	mergeCodexConversationMessages,
+	persistCodexConversation,
+	type CodexConversationMessage as ChatMessage,
+	type CodexProtocolFrame,
+	type CodexProtocolStatus,
+} from "@/agent/codex-conversation";
 import { CodexSseDecoder } from "@/agent/codex-sse";
 import { toMediaTime, toSeconds } from "@/agent/time";
 import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
@@ -30,46 +38,18 @@ interface CodexChatResult {
 	message: string;
 }
 
-type CodexProtocolStatus =
-	| "started"
-	| "streaming"
-	| "completed"
-	| "failed"
-	| "info";
-
-interface CodexProtocolFrame {
-	id: string;
-	method: string;
-	threadId: string;
-	turnId?: string;
-	itemId?: string;
-	itemType?: string;
-	status: CodexProtocolStatus;
-	title: string;
-	detail?: string;
-	append?: boolean;
-}
-
-interface ChatMessage {
-	id: string;
-	role: "user" | "assistant" | "error";
-	content: string;
-	referenceCount?: number;
-	streaming?: boolean;
-	protocol?: CodexProtocolFrame[];
-}
-
 const AGENT_REQUEST_PRESETS = [
 	"收紧这段剪辑",
 	"统一字幕样式",
 	"将所选素材重命名为主角",
 ] as const;
 
-let messageSequence = 0;
-
 function nextMessageId(): string {
-	messageSequence += 1;
-	return `codex-message-${messageSequence}`;
+	return crypto.randomUUID();
+}
+
+function timestampNow(): number {
+	return Date.now();
 }
 
 function isCodexConnection(value: unknown): value is CodexConnection {
@@ -323,6 +303,8 @@ async function sendCodexTurn({
 
 export function AgentWorkbench() {
 	const editor = useEditor();
+	const semanticState = editor.agent.getState();
+	const projectId = semanticState.projectId;
 	const selectedElements = useEditor((instance) =>
 		instance.selection.getSelectedElements(),
 	);
@@ -348,6 +330,10 @@ export function AgentWorkbench() {
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [sending, setSending] = useState(false);
 	const [sessionId, setSessionId] = useState<string | null>(null);
+	const [hydratedConversationProjectId, setHydratedConversationProjectId] =
+		useState<string | null>(null);
+	const conversationHydrated =
+		hydratedConversationProjectId === semanticState.projectId;
 	const [codexConnection, setCodexConnection] =
 		useState<CodexConnection | null>(null);
 	const [codexSettingsOpen, setCodexSettingsOpen] = useState(false);
@@ -361,6 +347,13 @@ export function AgentWorkbench() {
 	const [rangeStartInput, setRangeStartInput] = useState("");
 	const [rangeEndInput, setRangeEndInput] = useState("");
 	const followedSelectionKey = useRef("");
+	const conversationRevision = useRef(-1);
+	const conversationChannel = useRef<BroadcastChannel | null>(null);
+	const conversationHydratedRef = useRef(false);
+	const latestConversation = useRef<{
+		sessionId: string | null;
+		messages: ChatMessage[];
+	}>({ sessionId: null, messages: [] });
 
 	const refreshCodexConnection = useCallback(async () => {
 		setCodexChecking(true);
@@ -390,7 +383,132 @@ export function AgentWorkbench() {
 		};
 	}, []);
 
-	const semanticState = editor.agent.getState();
+	useEffect(() => {
+		latestConversation.current = { sessionId, messages };
+	}, [messages, sessionId]);
+	useEffect(() => {
+		conversationHydratedRef.current = conversationHydrated;
+	}, [conversationHydrated]);
+	useEffect(() => {
+		if (!projectId) return;
+
+		let active = true;
+		const controller = new AbortController();
+		conversationRevision.current = -1;
+		conversationHydratedRef.current = false;
+
+		const applyConversation = (
+			conversation: Awaited<ReturnType<typeof fetchCodexConversation>>,
+		) => {
+			const initialConversation = conversationRevision.current < 0;
+			if (
+				!active ||
+				(!initialConversation &&
+					conversation.revision <= conversationRevision.current)
+			) {
+				return;
+			}
+			conversationRevision.current = conversation.revision;
+			setMessages((current) =>
+				initialConversation
+					? conversation.messages
+					: mergeCodexConversationMessages({
+							current,
+							incoming: conversation.messages,
+						}),
+			);
+			setSessionId(conversation.sessionId);
+		};
+		const refreshConversation = async (): Promise<boolean> => {
+			try {
+				applyConversation(
+					await fetchCodexConversation({
+						projectId,
+						signal: controller.signal,
+					}),
+				);
+				return true;
+			} catch (error) {
+				if (!controller.signal.aborted) {
+					console.error("Failed to refresh Codex conversation", error);
+				}
+				return false;
+			}
+		};
+		const hydrateConversation = async () => {
+			if ((await refreshConversation()) && active) {
+				setHydratedConversationProjectId(projectId);
+			}
+		};
+
+		const channel =
+			typeof BroadcastChannel === "undefined"
+				? null
+				: new BroadcastChannel(`opencut:codex-conversation:${projectId}`);
+		conversationChannel.current = channel;
+		if (channel) {
+			channel.onmessage = () => {
+				void hydrateConversation();
+			};
+		}
+		const timer = setInterval(hydrateConversation, 1_000);
+		void hydrateConversation();
+
+		return () => {
+			active = false;
+			clearInterval(timer);
+			controller.abort();
+			channel?.close();
+			if (conversationChannel.current === channel) {
+				conversationChannel.current = null;
+			}
+			if (conversationHydratedRef.current) {
+				const latest = latestConversation.current;
+				void persistCodexConversation({
+					projectId,
+					sessionId: latest.sessionId,
+					messages: latest.messages,
+				}).catch(() => {});
+			}
+		};
+	}, [projectId]);
+	useEffect(() => {
+		if (!projectId || !conversationHydrated) return;
+		const controller = new AbortController();
+		const timer = setTimeout(() => {
+			void persistCodexConversation({
+				projectId,
+				sessionId,
+				messages,
+				signal: controller.signal,
+			})
+				.then((conversation) => {
+					conversationRevision.current = Math.max(
+						conversationRevision.current,
+						conversation.revision,
+					);
+					setMessages((current) =>
+						mergeCodexConversationMessages({
+							current,
+							incoming: conversation.messages,
+						}),
+					);
+					setSessionId(conversation.sessionId);
+					conversationChannel.current?.postMessage({
+						revision: conversation.revision,
+					});
+				})
+				.catch((error) => {
+					if (!controller.signal.aborted) {
+						console.error("Failed to persist Codex conversation", error);
+					}
+				});
+		}, 120);
+		return () => {
+			clearTimeout(timer);
+			controller.abort();
+		};
+	}, [conversationHydrated, messages, projectId, sessionId]);
 	const visibleReferences = pinnedReferences.filter(
 		(reference) =>
 			reference.projectId === semanticState.projectId &&
@@ -508,11 +626,16 @@ export function AgentWorkbench() {
 	const submitToCodex = async (nextRequest = request) => {
 		const normalizedRequest = nextRequest.trim();
 		if (!normalizedRequest || sending) return;
+		if (!conversationHydrated) {
+			toast("正在同步智能剪辑历史，请稍候");
+			return;
+		}
 		if (!semanticState.projectId) {
 			toast.error("当前没有可交给 Codex 的工程");
 			return;
 		}
 		const referenceCount = contextSnapshot.references.length;
+		const createdAt = timestampNow();
 		const assistantMessageId = nextMessageId();
 		setMessages((current) => [
 			...current,
@@ -521,6 +644,8 @@ export function AgentWorkbench() {
 				role: "user",
 				content: normalizedRequest,
 				...(referenceCount > 0 ? { referenceCount } : {}),
+				createdAt,
+				updatedAt: createdAt,
 			},
 			{
 				id: assistantMessageId,
@@ -528,6 +653,8 @@ export function AgentWorkbench() {
 				content: "",
 				streaming: true,
 				protocol: [],
+				createdAt: createdAt + 1,
+				updatedAt: createdAt + 1,
 			},
 		]);
 		setRequest("");
@@ -543,7 +670,14 @@ export function AgentWorkbench() {
 					setMessages((current) =>
 						current.map((message) =>
 							message.id === assistantMessageId
-								? { ...message, content: `${message.content}${delta}` }
+								? {
+										...message,
+										content: `${message.content}${delta}`,
+										updatedAt: Math.max(
+											timestampNow(),
+											message.updatedAt + 1,
+										),
+									}
 								: message,
 						),
 					);
@@ -558,6 +692,10 @@ export function AgentWorkbench() {
 											frames: message.protocol,
 											incoming: frame,
 										}),
+										updatedAt: Math.max(
+											timestampNow(),
+											message.updatedAt + 1,
+										),
 									}
 								: message,
 						),
@@ -572,6 +710,10 @@ export function AgentWorkbench() {
 								...message,
 								content: result.message,
 								streaming: false,
+								updatedAt: Math.max(
+									timestampNow(),
+									message.updatedAt + 1,
+								),
 							}
 						: message,
 				),
@@ -587,6 +729,7 @@ export function AgentWorkbench() {
 								role: "error",
 								content: message,
 								streaming: false,
+								updatedAt: Math.max(timestampNow(), item.updatedAt + 1),
 							}
 						: item,
 				),
@@ -930,7 +1073,7 @@ export function AgentWorkbench() {
 								<button
 									key={preset}
 									type="button"
-									disabled={sending}
+									disabled={sending || !conversationHydrated}
 									className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-300 disabled:opacity-40"
 									onClick={() => void submitToCodex(preset)}
 								>
@@ -1016,7 +1159,13 @@ export function AgentWorkbench() {
 					<span>{semanticState.bookmarks.length} 个标记</span>
 				</div>
 
-				{messages.map((message) =>
+				{!conversationHydrated ? (
+					<div className="ml-8 flex max-w-[84%] items-center gap-2 rounded-xl border border-white/7 bg-white/[0.025] px-3 py-2 text-[9px] text-slate-500">
+						<span className="size-1.5 animate-pulse rounded-full bg-cyan-300" />
+						正在同步工程会话…
+					</div>
+				) : (
+					messages.map((message) =>
 					message.role === "user" ? (
 						<div
 							key={message.id}
@@ -1144,7 +1293,8 @@ export function AgentWorkbench() {
 								) : null}
 							</div>
 						</div>
-					),
+						),
+					)
 				)}
 			</div>
 
@@ -1416,7 +1566,7 @@ export function AgentWorkbench() {
 						className="max-h-28 min-h-8 flex-1 resize-none bg-transparent px-1 py-1.5 text-xs leading-relaxed text-slate-100 outline-none placeholder:text-slate-600"
 						value={request}
 						rows={1}
-						disabled={sending}
+						disabled={sending || !conversationHydrated}
 						onChange={(event) => setRequest(event.target.value)}
 						onKeyDown={(event) => {
 							if (event.key === "Enter" && !event.shiftKey) {
@@ -1424,12 +1574,18 @@ export function AgentWorkbench() {
 								void submitToCodex();
 							}
 						}}
-						placeholder={sending ? "回复生成中…" : "描述你想要的剪辑效果…"}
+						placeholder={
+							!conversationHydrated
+								? "正在同步工程会话…"
+								: sending
+									? "回复生成中…"
+									: "描述你想要的剪辑效果…"
+						}
 					/>
 					<button
 						type="submit"
 						aria-label="发送智能剪辑需求"
-						disabled={!request.trim() || sending}
+						disabled={!conversationHydrated || !request.trim() || sending}
 						className="flex h-8 shrink-0 items-center rounded-lg bg-cyan-400 px-3 text-[10px] font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-30"
 					>
 						{sending ? "处理中" : "发送"}

@@ -10,6 +10,12 @@ const workbenchSource = readFileSync(
 	fileURLToPath(new URL("../agent-workbench.tsx", import.meta.url)),
 	"utf8",
 );
+const conversationSource = readFileSync(
+	fileURLToPath(
+		new URL("../../../agent/codex-conversation.ts", import.meta.url),
+	),
+	"utf8",
+);
 const dialogSource = readFileSync(
 	fileURLToPath(new URL("../../ui/dialog.tsx", import.meta.url)),
 	"utf8",
@@ -124,7 +130,7 @@ describe("智能剪辑与工程历史分面", () => {
 	test("智能剪辑保留实时处理轨迹，但不向用户暴露原生协议术语", () => {
 		expect(workbenchSource).toContain('aria-label="智能剪辑处理过程"');
 		expect(workbenchSource).toContain("CodexProtocolFrame");
-		expect(workbenchSource).toContain("protocol?:");
+		expect(conversationSource).toContain("protocol?:");
 		expect(workbenchSource).toContain("处理过程");
 		expect(workbenchSource).toContain("查看执行详情");
 		expect(workbenchSource).toContain("正在准备工程上下文…");
@@ -136,12 +142,18 @@ describe("智能剪辑与工程历史分面", () => {
 	});
 
 	test("同一工程在关闭重开、刷新和不同页面中恢复同一份会话", () => {
-		expect(workbenchSource).toContain("/api/codex/history/");
+		expect(conversationSource).toContain("/api/codex/history/");
 		expect(workbenchSource).toContain("fetchCodexConversation");
 		expect(workbenchSource).toContain("persistCodexConversation");
 		expect(workbenchSource).toContain("BroadcastChannel");
-		expect(workbenchSource).toContain("setInterval(refreshConversation");
+		expect(workbenchSource).toContain("setInterval(hydrateConversation");
 		expect(workbenchSource).toContain("conversationHydrated");
 		expect(workbenchSource).toContain("crypto.randomUUID()");
+		expect(workbenchSource).toContain(
+			"const hydrateConversation = async () =>",
+		);
+		expect(workbenchSource).not.toContain(
+			"void refreshConversation().finally",
+		);
 	});
 });

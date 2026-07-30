@@ -255,6 +255,19 @@ MCP 工具审批，并只在当前会话持久化；其他服务器或普通表�
 前端必须逐条消费 `delta`，不能等待 `done` 后一次性替换内容。传回 `sessionId` 可让
 用户在同一个智能剪辑对话中继续要求二次修改。
 
+### 工程级会话一致性
+
+同一个 `projectId` 只有一份权威智能剪辑会话。服务端将 `sessionId`、用户消息、
+Codex 回复和处理步骤原子写入工程目录的
+`agent/codex-conversation.json`。智能剪辑入口打开时通过
+`GET /api/codex/history/:projectId` 恢复，流式变化通过
+`POST /api/codex/history/:projectId` 合并保存。
+
+同源页面使用 `BroadcastChannel` 即时通知，另以一秒轮询作为跨窗口、跨浏览器和通知
+丢失时的兜底。消息 ID 必须使用 UUID，按 `updatedAt` 合并，禁止页面用自己的完整
+快照覆盖其他页面的新消息。关闭面板、刷新页面或重新打开工程后，消息、处理步骤和
+Codex `sessionId` 必须保持一致。
+
 ## 8. 二次编辑范式
 
 用户和 Agent 可以按以下方式交替工作：
