@@ -1204,6 +1204,75 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(closed).toBe(true);
 	});
 
+	test("recovers a completed native turn when the shared event stream misses its reply", async () => {
+		const calls: string[] = [];
+		const connection: CodexAppServerConnection = {
+			request: async ({ method }) => {
+				calls.push(method);
+				if (method === "thread/start") {
+					return { thread: { id: "thread-reconciled" } };
+				}
+				if (method === "thread/name/set") return {};
+				if (method === "mcpServerStatus/list") return readyOpenCutStatus();
+				if (method === "mcpServer/tool/call") return projectSummary();
+				if (method === "turn/start") {
+					return { turn: { id: "turn-reconciled" } };
+				}
+				if (method === "thread/read") {
+					return {
+						thread: {
+							id: "thread-reconciled",
+							turns: [
+								{
+									id: "turn-reconciled",
+									status: "completed",
+									error: null,
+									items: [
+										{
+											type: "agentMessage",
+											id: "message-reconciled",
+											text: "已从原生任务恢复",
+										},
+									],
+								},
+							],
+						},
+					};
+				}
+				throw new Error(`unexpected method ${method}`);
+			},
+			subscribe: () => ({
+				async *[Symbol.asyncIterator]() {
+					await new Promise(() => {});
+				},
+				close() {},
+			}),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+			turnReconcileIntervalMs: 1,
+		});
+
+		const events = [];
+		for await (const event of service.stream({
+			input: {
+				projectId: "project-1",
+				message: "恢复遗漏事件",
+				context: "",
+			},
+		})) {
+			events.push(event);
+		}
+
+		expect(calls).toContain("thread/read");
+		expect(events.at(-1)).toEqual({
+			type: "done",
+			sessionId: "thread-reconciled",
+			message: "已从原生任务恢复",
+		});
+	});
+
 	test("uses the configured App workspace cwd while keeping OpenCut roots available", async () => {
 		const calls: Array<{ method: string; params: unknown }> = [];
 		const groupedRuntime = {
