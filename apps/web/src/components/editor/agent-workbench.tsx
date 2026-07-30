@@ -168,14 +168,6 @@ function upsertProtocolFrame({
 	return next;
 }
 
-function protocolStatusLabel(status: CodexProtocolStatus): string {
-	if (status === "started") return "进行中";
-	if (status === "streaming") return "生成中";
-	if (status === "completed") return "完成";
-	if (status === "failed") return "失败";
-	return "信息";
-}
-
 function protocolStatusClass(status: CodexProtocolStatus): string {
 	if (status === "failed") return "bg-red-400";
 	if (status === "completed") return "bg-emerald-400";
@@ -183,21 +175,116 @@ function protocolStatusClass(status: CodexProtocolStatus): string {
 	return "bg-cyan-300";
 }
 
-function protocolKindLabel(itemType: string | undefined): string {
-	if (itemType === "reasoning") return "分析";
-	if (itemType === "plan") return "计划";
-	if (itemType === "mcpToolCall") return "工具";
-	if (itemType === "commandExecution") return "执行";
-	if (itemType === "fileChange") return "修改";
-	if (itemType === "approval") return "确认";
-	return "步骤";
+function protocolActivityLabel(frame: CodexProtocolFrame): string {
+	const active = frame.status === "started" || frame.status === "streaming";
+	if (frame.status === "failed") return "处理遇到问题";
+	if (
+		frame.itemType === "reasoning" ||
+		frame.method.includes("reasoning")
+	) {
+		return active ? "正在理解剪辑需求" : "已理解剪辑需求";
+	}
+	if (frame.itemType === "plan" || frame.method.includes("plan")) {
+		return active ? "正在规划剪辑步骤" : "已规划剪辑步骤";
+	}
+	if (
+		frame.itemType === "mcpToolCall" ||
+		frame.method.includes("mcpServer")
+	) {
+		return active ? "正在处理当前工程" : "已处理当前工程";
+	}
+	if (frame.itemType === "commandExecution") {
+		return active ? "正在执行剪辑操作" : "已执行剪辑操作";
+	}
+	if (frame.itemType === "fileChange") {
+		return active ? "正在应用工程修改" : "已应用工程修改";
+	}
+	if (frame.itemType === "approval") {
+		return active ? "正在确认操作权限" : "操作权限已确认";
+	}
+	if (frame.itemType === "agentMessage") {
+		return active ? "正在生成回复" : "回复已生成";
+	}
+	if (frame.itemType === "userMessage") return "已接收剪辑需求";
+	if (
+		frame.title === "Codex 会话已恢复" ||
+		frame.title === "Codex 会话已连接"
+	) {
+		return "智能剪辑已连接";
+	}
+	if (frame.title === "OpenCut MCP 已就绪") return "工程工具已就绪";
+	return frame.title.replaceAll("Codex", "智能剪辑");
 }
 
-function isNarrativeProtocolFrame(frame: CodexProtocolFrame): boolean {
+function CodexActivityLine({
+	frames,
+}: {
+	frames: CodexProtocolFrame[];
+}) {
+	const latestFrame = frames.at(-1);
+	if (!latestFrame) return null;
+	const previousFrames = frames.slice(-6, -1);
+	const active =
+		latestFrame.status === "started" || latestFrame.status === "streaming";
+	const line = (
+		<div
+			key={`${latestFrame.id}:${latestFrame.status}:${latestFrame.title}`}
+			className="flex min-w-0 items-center gap-2 py-1.5 text-[10px] text-slate-400 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-200"
+			aria-live="polite"
+		>
+			<span className="relative flex size-3 shrink-0 items-center justify-center">
+				{active ? (
+					<span className="size-3 animate-spin rounded-full border border-white/15 border-t-cyan-300" />
+				) : (
+					<>
+						<span
+							className={`absolute size-2 rounded-full opacity-20 ${protocolStatusClass(latestFrame.status)}`}
+						/>
+						<span
+							className={`relative size-1.5 rounded-full ${protocolStatusClass(latestFrame.status)}`}
+						/>
+					</>
+				)}
+			</span>
+			<span className="min-w-0 flex-1 truncate">
+				{protocolActivityLabel(latestFrame)}
+			</span>
+		</div>
+	);
+
 	return (
-		frame.itemType === "reasoning" ||
-		frame.itemType === "plan" ||
-		frame.method === "item/reasoning/summaryTextDelta"
+		<section aria-label="智能剪辑处理过程" className="mb-2">
+			{previousFrames.length === 0 ? (
+				line
+			) : (
+				<details className="group">
+					<summary
+						aria-label="查看之前的处理步骤"
+						className="flex cursor-pointer list-none items-center gap-1 rounded-md outline-none transition hover:bg-white/[0.025] focus-visible:ring-1 focus-visible:ring-cyan-400/35 [&::-webkit-details-marker]:hidden"
+					>
+						<div className="min-w-0 flex-1">{line}</div>
+						<span className="mr-1 text-[8px] text-slate-600 transition group-open:rotate-180">
+							⌄
+						</span>
+					</summary>
+					<ol className="ml-1.5 border-l border-white/7 py-1 pl-3">
+						{previousFrames.map((frame) => (
+							<li
+								key={frame.id}
+								className="flex min-w-0 items-center gap-2 py-1 text-[9px] text-slate-600"
+							>
+								<span
+									className={`size-1 shrink-0 rounded-full ${protocolStatusClass(frame.status)}`}
+								/>
+								<span className="truncate">
+									{protocolActivityLabel(frame)}
+								</span>
+							</li>
+						))}
+					</ol>
+				</details>
+			)}
+		</section>
 	);
 }
 
@@ -1200,80 +1287,7 @@ export function AgentWorkbench() {
 								}`}
 							>
 								{message.protocol && message.protocol.length > 0 ? (
-									<section
-										aria-label="智能剪辑处理过程"
-										className="mb-2.5 overflow-hidden rounded-xl border border-white/8 bg-black/20"
-									>
-										<div className="flex items-center justify-between border-b border-white/7 px-2.5 py-1.5">
-											<span className="flex items-center gap-1.5 text-[9px] font-semibold text-slate-300">
-												<span className="font-mono text-cyan-300">{"{ }"}</span>
-												处理过程
-												<span className="rounded bg-cyan-400/8 px-1.5 py-0.5 font-mono text-[7px] font-normal text-cyan-300">
-													实时
-												</span>
-											</span>
-											<span className="font-mono text-[7px] text-slate-600">
-												{message.protocol.length} 个步骤
-											</span>
-										</div>
-										<ol className="divide-y divide-white/5">
-											{message.protocol.map((frame) => (
-												<li key={frame.id} className="px-2.5 py-2">
-													<div className="flex min-w-0 items-start gap-2">
-														<span className="relative mt-1 flex size-2 shrink-0 items-center justify-center">
-															{frame.status === "started" ||
-															frame.status === "streaming" ? (
-																<span
-																	className={`absolute size-2 animate-ping rounded-full opacity-40 ${protocolStatusClass(frame.status)}`}
-																/>
-															) : null}
-															<span
-																className={`relative size-1.5 rounded-full ${protocolStatusClass(frame.status)}`}
-															/>
-														</span>
-														<div className="min-w-0 flex-1">
-															<div className="flex min-w-0 items-center gap-1.5">
-																<span className="shrink-0 rounded bg-white/5 px-1 py-0.5 text-[7px] text-slate-500">
-																	{protocolKindLabel(frame.itemType)}
-																</span>
-																<span className="truncate text-[9px] font-medium text-slate-200">
-																	{frame.title}
-																</span>
-																<span className="ml-auto shrink-0 text-[7px] text-slate-600">
-																	{protocolStatusLabel(frame.status)}
-																</span>
-															</div>
-															<div
-																className="mt-0.5 truncate font-mono text-[7px] text-slate-600"
-																title={frame.method}
-															>
-																{frame.method}
-															</div>
-															{frame.detail ? (
-																isNarrativeProtocolFrame(frame) ? (
-																	<pre className="mt-1.5 max-h-32 overflow-auto whitespace-pre-wrap rounded-md bg-white/[0.025] px-2 py-1.5 font-sans text-[9px] leading-relaxed text-slate-400">
-																		{frame.detail}
-																	</pre>
-																) : (
-																	<details className="mt-1 text-[8px] text-slate-500">
-																		<summary
-																			aria-label={`查看 ${frame.title} 执行详情`}
-																			className="cursor-pointer select-none hover:text-slate-300"
-																		>
-																			查看执行详情
-																		</summary>
-																		<pre className="mt-1.5 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md bg-black/25 px-2 py-1.5 font-mono text-[8px] leading-relaxed text-slate-400">
-																			{frame.detail}
-																		</pre>
-																	</details>
-																)
-															) : null}
-														</div>
-													</div>
-												</li>
-											))}
-										</ol>
-									</section>
+									<CodexActivityLine frames={message.protocol} />
 								) : message.streaming ? (
 									<div className="mb-2 flex items-center gap-2 rounded-lg border border-white/7 bg-black/20 px-2.5 py-2 text-[9px] text-slate-500">
 										<span className="size-1.5 animate-pulse rounded-full bg-cyan-300" />
