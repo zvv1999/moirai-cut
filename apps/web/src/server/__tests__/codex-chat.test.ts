@@ -631,7 +631,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		]);
 	});
 
-	test("starts OpenCut capability validation and project preload concurrently", async () => {
+	test("uses the direct project preload instead of blocking on full MCP inventory", async () => {
 		const calls: string[] = [];
 		let releaseStatus = () => {};
 		const statusBarrier = new Promise<void>((resolve) => {
@@ -686,26 +686,26 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			runtime,
 			connect: async () => connection,
 		});
-		const iterator = service
-			.stream({
+		const consuming = (async () => {
+			for await (const _event of service.stream({
 				input: {
 					projectId: "project-1",
-					message: "并行准备",
+					message: "快速准备",
 					context: "",
 				},
-			})
-			[Symbol.asyncIterator]();
+			})) {
+				// consume
+			}
+		})();
 
-		await iterator.next();
-		await iterator.next();
-		const binding = iterator.next();
-		await Bun.sleep(1);
-		expect(calls).toContain("mcpServerStatus/list");
-		expect(calls).toContain("mcpServer/tool/call:read_project");
-		releaseStatus();
-		await binding;
-		while (!(await iterator.next()).done) {
-			// consume
+		try {
+			await Bun.sleep(5);
+			expect(calls).toContain("mcpServer/tool/call:read_project");
+			expect(calls).not.toContain("mcpServerStatus/list");
+			expect(calls).toContain("turn/start");
+		} finally {
+			releaseStatus();
+			await consuming;
 		}
 	});
 
