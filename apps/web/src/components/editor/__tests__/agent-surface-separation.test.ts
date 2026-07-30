@@ -135,6 +135,14 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain("const latestFrame = frames.at(-1)");
 		expect(workbenchSource).toContain("frames.slice(-6, -1)");
 		expect(workbenchSource).toContain('aria-label="查看之前的处理步骤"');
+		expect(workbenchSource).toContain(
+			'frame.itemType === "agentMessage"',
+		);
+		expect(workbenchSource).toContain('"回复已生成"');
+		expect(workbenchSource).toContain(
+			'frame.itemType === "userMessage"',
+		);
+		expect(workbenchSource).toContain('"已接收剪辑需求"');
 		expect(workbenchSource).toContain("正在准备工程上下文…");
 		expect(workbenchSource).not.toContain("查看执行详情");
 		expect(workbenchSource).not.toContain("{frame.method}");
