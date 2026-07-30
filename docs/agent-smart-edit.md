@@ -43,9 +43,17 @@ flowchart LR
 4. 把工程摘要与 `opencut.agent-context.v1` 一起放入本轮输入，再调用
    `turn/start`。
 
-任一步失败都在模型开始回复前终止并显示具体错误。服务启动时会禁用用户全局配置中的
-其他 MCP，只为内置智能剪辑显式启用 `opencut`，因此不会误入 LocalCut 或把启动时间
-消耗在无关工具上。
+任一步失败都在模型开始回复前终止并显示具体错误。内置智能剪辑始终显式启用
+`opencut`、始终禁用 `localcut`，其他能力由工具档位决定：
+
+- **专注剪辑**：只开放 OpenCut；
+- **剪辑与验收**：增加 Node REPL、桌面/浏览器验收和 OpenAI 官方文档能力；
+- **完整能力**：保留 Codex App 已配置的其他 MCP，仍强制禁用 LocalCut。
+
+三个档位各自维护一个长驻 app-server 连接，避免工具权限不同的 thread 互相污染。
+模型、推理强度、执行/规划模式、技能目录均由 app-server 的原生
+`model/list`、`collaborationMode/list`、`skills/list` 返回，不在前端硬编码成一套
+弱化能力。
 
 ## 2. Codex App 配置
 
@@ -124,36 +132,36 @@ opencut://project/<projectId>/media/<mediaId>
 
 ```json
 {
-  "id": "media-id",
-  "name": "shot.mov",
-  "type": "video",
-  "uri": "opencut://project/project-id/media/media-id",
-  "technical": {
-    "durationSeconds": 24.7,
-    "width": 1080,
-    "height": 1920,
-    "fps": 30,
-    "hasAudio": true,
-    "sizeBytes": 12345678
-  },
-  "timelineUses": [
-    {
-      "sceneId": "scene-id",
-      "trackId": "track-id",
-      "elementId": "element-id",
-      "timelineStartSeconds": 1,
-      "timelineEndSeconds": 4,
-      "sourceStartSeconds": 8,
-      "sourceEndSeconds": 11
-    }
-  ],
-  "analysis": {
-    "status": "ready",
-    "provider": "codex-multimodal",
-    "summary": "画面摘要",
-    "tags": ["室内", "人物"],
-    "scenes": []
-  }
+	"id": "media-id",
+	"name": "shot.mov",
+	"type": "video",
+	"uri": "opencut://project/project-id/media/media-id",
+	"technical": {
+		"durationSeconds": 24.7,
+		"width": 1080,
+		"height": 1920,
+		"fps": 30,
+		"hasAudio": true,
+		"sizeBytes": 12345678
+	},
+	"timelineUses": [
+		{
+			"sceneId": "scene-id",
+			"trackId": "track-id",
+			"elementId": "element-id",
+			"timelineStartSeconds": 1,
+			"timelineEndSeconds": 4,
+			"sourceStartSeconds": 8,
+			"sourceEndSeconds": 11
+		}
+	],
+	"analysis": {
+		"status": "ready",
+		"provider": "codex-multimodal",
+		"summary": "画面摘要",
+		"tags": ["室内", "人物"],
+		"scenes": []
+	}
 }
 ```
 
@@ -236,16 +244,25 @@ MCP 工具审批，并只在当前会话持久化；其他服务器或普通表�
 
 ```json
 {
-  "projectId": "project-id",
-  "message": "把这段收紧并统一字幕",
-  "context": "<opencut-context>...</opencut-context>",
-  "sessionId": "可选，继续同一 Codex 会话"
+	"projectId": "project-id",
+	"message": "把这段收紧并统一字幕",
+	"context": "<opencut-context>...</opencut-context>",
+	"conversationId": "工程内的会话 ID",
+	"sessionId": "可选，继续同一 Codex thread",
+	"model": "gpt-5.6-sol",
+	"effort": "xhigh",
+	"mode": "default",
+	"toolProfile": "verify",
+	"visualMode": "auto",
+	"verificationMode": "full"
 }
 ```
 
 响应为 `text/event-stream`：
 
+- `run`：可重连后台任务 ID、状态和最新事件序号；
 - `session`：Codex thread/session ID；
+- `turn`：当前原生 turn ID，供追加与停止使用；
 - `delta`：模型文本增量；
 - `protocol`：Codex/app-server 的实时执行步骤；内置智能剪辑将其渲染为面向用户的
   单行处理状态，默认只显示最新动作，可展开最近的用户可读步骤；方法名、内部类型和
@@ -255,6 +272,44 @@ MCP 工具审批，并只在当前会话持久化；其他服务器或普通表�
 
 前端必须逐条消费 `delta`，不能等待 `done` 后一次性替换内容。传回 `sessionId` 可让
 用户在同一个智能剪辑对话中继续要求二次修改。
+
+### 原生 App 能力与控制
+
+`GET /api/codex/capabilities` 返回当前桌面 Codex 实际可用的模型、推理强度、协作
+模式、技能和工具档位。前端选择会直接进入 `thread/start` / `thread/resume` 和
+`turn/start`，不是只改变界面文案：
+
+- `mode: "default"` 为执行模式，允许通过 `edit_project` 落回工程；
+- `mode: "plan"` 为规划模式，只读取和分析，不修改工程；
+- `visualMode: "auto"` 会优先识别显式时间段、所选时间线元素或首个视觉素材，把
+  `inspect_timeline_range` / `inspect_media_scenes` 返回的联系表转换成 app-server
+  原生 `image` 输入；
+- `verificationMode: "full"` 会在 turn 完成后回读 revision、等待编辑器同步，并在
+  支持时调用 `render_frames` 生成关键画面证据。验证失败只标记证据失败，不覆盖
+  Codex 已完成的回复。
+
+处理中不锁死输入框。以下操作走 app-server 原生协议：
+
+```text
+PUT /api/codex/chat { action: "steer", runId, message }     -> turn/steer
+PUT /api/codex/chat { action: "interrupt", runId }          -> turn/interrupt
+PUT /api/codex/chat { action: "compact", runId|sessionId }  -> thread/compact/start
+```
+
+追加指令进入正在运行的同一 turn；停止只终止该 turn，不删除 thread 和工程历史。
+
+### 可重连后台任务
+
+浏览器连接和 Codex 执行生命周期已经分离。`POST` 创建后台 `runId` 后，关闭面板、
+刷新页面或 SSE 断线不会中断 App turn。服务端为每个运行保留带序号的最近 2000 个
+事件；前端把 `runId`、`turnId`、`runSequence` 随流式消息写入工程会话文件，并通过：
+
+```text
+GET /api/codex/chat?runId=<runId>&after=<runSequence>
+```
+
+从最后一个已保存事件继续。已结束任务保留两小时供页面恢复；订阅者断开只结束本次
+SSE 消费，不会对 Codex 发送 interrupt。
 
 ### 工程级会话一致性
 
@@ -272,8 +327,8 @@ MCP 工具审批，并只在当前会话持久化；其他服务器或普通表�
 同源页面使用 `BroadcastChannel` 即时通知，另以一秒轮询作为跨窗口、跨浏览器和通知
 丢失时的兜底。消息 ID 必须使用 UUID，按 `updatedAt` 合并，禁止页面用自己的完整
 快照覆盖其他页面的新消息。关闭面板、刷新页面或重新打开工程后，会话列表、每条会话
-的消息、处理步骤和 Codex `sessionId` 必须保持一致；当前选中哪条会话属于页面交互
-状态，不强制其他标签页同步切换。
+的消息、处理步骤、Codex `sessionId` 和仍在运行的 `runId/runSequence` 必须保持
+一致；当前选中哪条会话属于页面交互状态，不强制其他标签页同步切换。
 
 ## 8. 二次编辑范式
 
@@ -305,15 +360,18 @@ OpenCut 内置智能剪辑已经随消息携带上下文，Codex App 则通过 P
 
 ## 10. 故障排查
 
-| 现象 | 处理 |
-| --- | --- |
-| `get_active_project` 没有结果 | 确认工程页已打开，等待下一次 5 秒心跳，并检查 `/api/editor-presence`。 |
-| `fetch is not defined` | MCP 被旧 Node 启动；改用项目配置中的 `bun`。 |
-| `edit_project` 一直 started | 检查 app-server 客户端是否响应 `mcpServer/elicitation/request`。 |
-| `revision_conflict` | 重新 `read_project`，重新生成操作，不要盲重试。 |
-| `noEffect: true` | 操作执行了但被编辑器规则抵消；检查轨道/元素组合。 |
-| 时间轴画面识别错位 | 使用 `inspect_timeline_range`，不要把 timeline time 直接当 source time。 |
-| 素材目录仍是未处理 | 取帧并完成多模态判断后调用 `save_media_analysis`。 |
+| 现象                          | 处理                                                                                         |
+| ----------------------------- | -------------------------------------------------------------------------------------------- |
+| `get_active_project` 没有结果 | 确认工程页已打开，等待下一次 5 秒心跳，并检查 `/api/editor-presence`。                       |
+| `fetch is not defined`        | MCP 被旧 Node 启动；改用项目配置中的 `bun`。                                                 |
+| `edit_project` 一直 started   | 检查 app-server 客户端是否响应 `mcpServer/elicitation/request`。                             |
+| 页面刷新后仍显示处理中        | 检查消息是否保存 `runId/runSequence`，再调用重连接口；不要新开 turn。                        |
+| 选区没有作为图片输入          | 确认开启“自动识别选区画面”，且 MCP 暴露 `inspect_timeline_range` 或 `inspect_media_scenes`。 |
+| 完整能力仍缺少某个工具        | 先查看 `~/.codex/config.toml` 是否配置该 MCP；工具档位不会凭空安装服务。                     |
+| `revision_conflict`           | 重新 `read_project`，重新生成操作，不要盲重试。                                              |
+| `noEffect: true`              | 操作执行了但被编辑器规则抵消；检查轨道/元素组合。                                            |
+| 时间轴画面识别错位            | 使用 `inspect_timeline_range`，不要把 timeline time 直接当 source time。                     |
+| 素材目录仍是未处理            | 取帧并完成多模态判断后调用 `save_media_analysis`。                                           |
 
 ## 11. 验证命令
 
@@ -321,7 +379,10 @@ OpenCut 内置智能剪辑已经随消息携带上下文，Codex App 则通过 P
 bun test apps/web/src/agent/__tests__
 bun test apps/web/src/components/editor/__tests__/agent-surface-separation.test.ts
 bun test apps/web/src/server/__tests__/codex-chat.test.ts
+bun test apps/web/src/server/__tests__/codex-run-manager.test.ts
+bun test apps/web/src/server/__tests__/codex-chat-route.test.ts
 node --test apps/mcp/src/__tests__/*.test.mjs
+bun run build:web
 ```
 
 真实 E2E 应使用专门的临时工程完成：

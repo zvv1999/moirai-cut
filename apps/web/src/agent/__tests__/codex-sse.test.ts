@@ -5,7 +5,7 @@ describe("Codex SSE decoder", () => {
 	test("reassembles JSON events split across arbitrary network chunks", () => {
 		const decoder = new CodexSseDecoder();
 
-		expect(decoder.push("event: session\ndata: {\"sessionId\":\"thread")).toEqual(
+		expect(decoder.push('event: session\ndata: {"sessionId":"thread')).toEqual(
 			[],
 		);
 		expect(
@@ -25,7 +25,23 @@ describe("Codex SSE decoder", () => {
 		const decoder = new CodexSseDecoder();
 
 		expect(
-			decoder.push(": connected\n\nevent: error\ndata: line 1\ndata: line 2\n\n"),
+			decoder.push(
+				": connected\n\nevent: error\ndata: line 1\ndata: line 2\n\n",
+			),
 		).toEqual([{ event: "error", data: "line 1\nline 2" }]);
+	});
+
+	test("retains SSE event ids so reconnect can continue after the last sequence", () => {
+		const decoder = new CodexSseDecoder();
+
+		expect(
+			decoder.push('id: 42\nevent: delta\ndata: {"delta":"继续"}\n\n'),
+		).toEqual([
+			{
+				event: "delta",
+				data: '{"delta":"继续"}',
+				id: "42",
+			},
+		]);
 	});
 });

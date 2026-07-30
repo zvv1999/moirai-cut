@@ -5,11 +5,22 @@ import { createInterface } from "node:readline";
 import { configuredCodexBinary } from "@/server/codex-config";
 
 const REQUEST_TIMEOUT_MS = 30_000;
-const TURN_TIMEOUT_MS = 6 * 60 * 1_000;
+const TURN_IDLE_TIMEOUT_MS = 6 * 60 * 1_000;
 const MAX_STDERR_CHARS = 16_384;
 const MAX_PROTOCOL_DETAIL_CHARS = 8_000;
 const MAX_PROJECT_SNAPSHOT_CHARS = 120_000;
 const REQUIRED_OPENCUT_TOOLS = ["read_project", "edit_project"] as const;
+const BLOCKED_MCP_SERVERS = new Set(["localcut"]);
+const VERIFY_MCP_SERVERS = new Set([
+	"node_repl",
+	"computer-use",
+	"openaiDeveloperDocs",
+]);
+
+export type CodexToolProfile = "edit" | "verify" | "full";
+export type CodexVisualMode = "off" | "auto";
+export type CodexVerificationMode = "off" | "full";
+export type CodexCollaborationMode = "default" | "plan";
 
 export interface CodexRuntimeConfig {
 	binary: string;
@@ -25,6 +36,13 @@ export interface CodexChatInput {
 	message: string;
 	context: string;
 	sessionId?: string;
+	conversationId?: string;
+	model?: string;
+	effort?: string;
+	mode?: CodexCollaborationMode;
+	toolProfile?: CodexToolProfile;
+	visualMode?: CodexVisualMode;
+	verificationMode?: CodexVerificationMode;
 }
 
 export type CodexProtocolStatus =
@@ -49,9 +67,46 @@ export interface CodexProtocolFrame {
 
 export type CodexChatEvent =
 	| { type: "session"; sessionId: string }
+	| { type: "turn"; sessionId: string; turnId: string }
 	| { type: "delta"; delta: string }
 	| ({ type: "protocol" } & CodexProtocolFrame)
+	| { type: "error"; message: string }
 	| { type: "done"; sessionId: string; message: string };
+
+export interface CodexModelCapability {
+	id: string;
+	label: string;
+	description: string | null;
+	efforts: string[];
+	defaultEffort: string | null;
+	inputModalities: string[];
+	isDefault: boolean;
+}
+
+export interface CodexModeCapability {
+	id: CodexCollaborationMode;
+	label: string;
+	defaultEffort: string | null;
+}
+
+export interface CodexSkillCapability {
+	name: string;
+	description: string | null;
+	enabled: boolean;
+}
+
+export interface CodexToolProfileCapability {
+	id: CodexToolProfile;
+	label: string;
+	description: string;
+}
+
+export interface CodexCapabilities {
+	models: CodexModelCapability[];
+	modes: CodexModeCapability[];
+	skills: CodexSkillCapability[];
+	toolProfiles: CodexToolProfileCapability[];
+}
 
 export interface CodexAppServerSubscription extends AsyncIterable<unknown> {
 	close(): void;
@@ -62,15 +117,34 @@ export interface CodexAppServerConnection {
 	subscribe(threadId: string): CodexAppServerSubscription;
 }
 
-export type CodexAppServerConnector = (
-	runtime: CodexRuntimeConfig,
-) => Promise<CodexAppServerConnection>;
+export type CodexAppServerConnector = (input: {
+	runtime: CodexRuntimeConfig;
+	toolProfile?: CodexToolProfile;
+}) => Promise<CodexAppServerConnection>;
 
 export interface CodexChatService {
 	stream(input: {
 		input: CodexChatInput;
 		signal?: AbortSignal;
 	}): AsyncIterable<CodexChatEvent>;
+	capabilities(input?: {
+		toolProfile?: CodexToolProfile;
+	}): Promise<CodexCapabilities>;
+	steer(input: {
+		sessionId: string;
+		turnId: string;
+		message: string;
+		toolProfile?: CodexToolProfile;
+	}): Promise<void>;
+	interrupt(input: {
+		sessionId: string;
+		turnId: string;
+		toolProfile?: CodexToolProfile;
+	}): Promise<void>;
+	compact(input: {
+		sessionId: string;
+		toolProfile?: CodexToolProfile;
+	}): Promise<void>;
 }
 
 export class CodexChatError extends Error {
@@ -88,11 +162,33 @@ function tomlString(value: string): string {
 	return JSON.stringify(value);
 }
 
-function commonCodexConfigArgs(runtime: CodexRuntimeConfig): string[] {
-	const disabledMcpArgs = Array.from(new Set(runtime.disabledMcpServers ?? []))
+function mcpServerAllowed({
+	serverName,
+	toolProfile,
+}: {
+	serverName: string;
+	toolProfile: CodexToolProfile;
+}): boolean {
+	if (serverName === "opencut") return true;
+	if (BLOCKED_MCP_SERVERS.has(serverName)) return false;
+	if (toolProfile === "full") return true;
+	return toolProfile === "verify" && VERIFY_MCP_SERVERS.has(serverName);
+}
+
+function commonCodexConfigArgs({
+	runtime,
+	toolProfile,
+}: {
+	runtime: CodexRuntimeConfig;
+	toolProfile: CodexToolProfile;
+}): string[] {
+	const configuredNames = new Set(runtime.disabledMcpServers ?? []);
+	configuredNames.add("localcut");
+	const disabledMcpArgs = Array.from(configuredNames)
 		.filter(
 			(serverName) =>
-				serverName !== "opencut" && /^[A-Za-z0-9_-]+$/.test(serverName),
+				/^[A-Za-z0-9_-]+$/.test(serverName) &&
+				!mcpServerAllowed({ serverName, toolProfile }),
 		)
 		.flatMap((serverName) => ["-c", `mcp_servers.${serverName}.enabled=false`]);
 	return [
@@ -100,8 +196,6 @@ function commonCodexConfigArgs(runtime: CodexRuntimeConfig): string[] {
 		'approval_policy="never"',
 		"-c",
 		'sandbox_mode="read-only"',
-		"-c",
-		"mcp_servers={}",
 		...disabledMcpArgs,
 		"-c",
 		"mcp_servers.opencut.enabled=true",
@@ -118,8 +212,18 @@ function commonCodexConfigArgs(runtime: CodexRuntimeConfig): string[] {
 	];
 }
 
-export function buildCodexAppServerArgs(runtime: CodexRuntimeConfig): string[] {
-	return ["app-server", "--stdio", ...commonCodexConfigArgs(runtime)];
+export function buildCodexAppServerArgs({
+	runtime,
+	toolProfile = "edit",
+}: {
+	runtime: CodexRuntimeConfig;
+	toolProfile?: CodexToolProfile;
+}): string[] {
+	return [
+		"app-server",
+		"--stdio",
+		...commonCodexConfigArgs({ runtime, toolProfile }),
+	];
 }
 
 export function buildCodexPrompt({
@@ -127,7 +231,10 @@ export function buildCodexPrompt({
 	message,
 	context,
 	projectSnapshot = "",
+	mode = "default",
+	verificationMode = "off",
 }: CodexChatInput & { projectSnapshot?: string }): string {
+	const planning = mode === "plan";
 	return [
 		"你正在 OpenCut 编辑器的“智能剪辑”直接 Codex 会话中。",
 		`唯一允许操作的工程 ID：${projectId}`,
@@ -138,16 +245,20 @@ export function buildCodexPrompt({
 		"- 不要声称没有 OpenCut 工具、正在连接或正在查找 OpenCut MCP；不要自行连接或启动 MCP。若后续调用失败，只报告具体调用错误。",
 		"",
 		"工作方式：",
-		"- 这是执行型会话。用户提出明确的剪辑要求时，直接执行，不要只给计划。",
+		planning
+			? "- 这是规划型会话。读取和分析工程后给出可执行计划，不要调用 edit_project 修改工程。"
+			: "- 这是执行型会话。用户提出明确的剪辑要求时，直接执行，不要只给计划。",
 		"- 任何工程读取和改动都必须使用 opencut MCP；不要修改 OpenCut 源码仓库。",
 		"- 这是 OpenCut 工程，不是 LocalCut 任务。不要读取、调用或套用 LocalCut、localcut-native-video 技能、MCP、运行时或工作流。",
 		"- 当前运行在内置浏览器，使用 read_project 和 edit_project 这组文件工具读取及修改工程。",
 		"- 不要调用 status、get_context、open_editor、reveal_context 等依赖 Chrome 9222 的标签页工具；引用上下文已随本消息提供。",
 		"- 若上下文包含时间段且任务需要理解画面，调用 inspect_timeline_range；若要先理解某个完整源视频，调用 inspect_media_scenes。",
 		"- 你能直接看上述工具返回的联系表图片并做多模态判断。可复用的素材理解结果用 save_media_analysis 写入素材 JSON 目录。",
-		"- 不要运行 lint_cut、render_frames、导出质检、字幕数量校验或其他额外检查，除非用户明确要求。",
+		verificationMode === "full"
+			? "- 系统会在本轮完成后自动核对工程 revision、等待编辑器同步并渲染关键画面；你仍应在修改前后正确处理 revision 冲突和工具报错。"
+			: "- 按任务风险使用必要的读取与验证工具；不要为了展示过程执行无关检查。",
 		"- 不要套用本地模板或最低素材数量规则。信息足够时自主判断并完成。",
-		"- 只处理下面这条用户消息。完成后用简洁中文说明实际做了什么；若未改动，明确说明原因。",
+		"- 当前回合可能收到用户追加指令，始终以最新指令为准。完成后用简洁中文说明实际做了什么；若未改动，明确说明原因。",
 		"",
 		"当前编辑器上下文：",
 		context.trim() || "未附加素材或时间轴引用；可通过 read_project 读取工程。",
@@ -475,35 +586,51 @@ export class CodexAppServerRpcClient implements CodexAppServerConnection {
 	}
 }
 
-let sharedConnectionPromise: Promise<CodexAppServerRpcClient> | null = null;
+const sharedConnectionPromises = new Map<
+	CodexToolProfile,
+	Promise<CodexAppServerRpcClient>
+>();
 
-async function createAppServerConnection(
-	runtime: CodexRuntimeConfig,
-): Promise<CodexAppServerRpcClient> {
-	const child = spawn(runtime.binary, buildCodexAppServerArgs(runtime), {
-		cwd: runtime.repoRoot,
-		env: passthroughEnvironment(runtime),
-		shell: false,
-		stdio: ["pipe", "pipe", "pipe"],
-	});
+async function createAppServerConnection({
+	runtime,
+	toolProfile,
+}: {
+	runtime: CodexRuntimeConfig;
+	toolProfile: CodexToolProfile;
+}): Promise<CodexAppServerRpcClient> {
+	const child = spawn(
+		runtime.binary,
+		buildCodexAppServerArgs({ runtime, toolProfile }),
+		{
+			cwd: runtime.repoRoot,
+			env: passthroughEnvironment(runtime),
+			shell: false,
+			stdio: ["pipe", "pipe", "pipe"],
+		},
+	);
 	const connection = new CodexAppServerRpcClient(child);
 	await connection.initialize();
 	return connection;
 }
 
-const connectSharedAppServer: CodexAppServerConnector = async (runtime) => {
-	if (!sharedConnectionPromise) {
-		sharedConnectionPromise = createAppServerConnection(runtime).catch(
+const connectSharedAppServer: CodexAppServerConnector = async ({
+	runtime,
+	toolProfile = "edit",
+}) => {
+	let pending = sharedConnectionPromises.get(toolProfile);
+	if (!pending) {
+		pending = createAppServerConnection({ runtime, toolProfile }).catch(
 			(error) => {
-				sharedConnectionPromise = null;
+				sharedConnectionPromises.delete(toolProfile);
 				throw error;
 			},
 		);
+		sharedConnectionPromises.set(toolProfile, pending);
 	}
-	const connection = await sharedConnectionPromise;
+	const connection = await pending;
 	if (connection.isOpen) return connection;
-	sharedConnectionPromise = null;
-	return connectSharedAppServer(runtime);
+	sharedConnectionPromises.delete(toolProfile);
+	return connectSharedAppServer({ runtime, toolProfile });
 };
 
 function configuredMcpServerNames(): string[] {
@@ -975,25 +1102,24 @@ function protocolFrameFromNotification(
 	return null;
 }
 
-async function nextWithDeadline({
+async function nextWithIdleTimeout({
 	iterator,
-	deadline,
 }: {
 	iterator: AsyncIterator<unknown>;
-	deadline: number;
 }): Promise<IteratorResult<unknown>> {
-	const remaining = deadline - Date.now();
-	if (remaining <= 0) {
-		throw new CodexChatError("Codex 响应超时，请重试。");
-	}
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	try {
 		return await Promise.race([
 			iterator.next(),
 			new Promise<IteratorResult<unknown>>((_, reject) => {
 				timer = setTimeout(
-					() => reject(new CodexChatError("Codex 响应超时，请重试。")),
-					remaining,
+					() =>
+						reject(
+							new CodexChatError(
+								"Codex 长时间没有返回新进度，可重新连接此任务。",
+							),
+						),
+					TURN_IDLE_TIMEOUT_MS,
 				);
 			}),
 		]);
@@ -1046,6 +1172,347 @@ function revisionFromProjectSnapshot(snapshot: string): number | null {
 	} catch {
 		return null;
 	}
+}
+
+interface NativeVisualInput {
+	type: "image";
+	url: string;
+}
+
+interface VisualInspection {
+	tool: "inspect_timeline_range" | "inspect_media_scenes";
+	arguments: Record<string, unknown>;
+}
+
+function agentContextPacket(context: string): Record<string, unknown> | null {
+	const startMarker = "<opencut-agent-context-json>";
+	const endMarker = "</opencut-agent-context-json>";
+	const start = context.indexOf(startMarker);
+	const end = context.indexOf(endMarker);
+	if (start < 0 || end <= start) return null;
+	try {
+		const value: unknown = JSON.parse(
+			context.slice(start + startMarker.length, end).trim(),
+		);
+		return isRecord(value) ? value : null;
+	} catch {
+		return null;
+	}
+}
+
+function numericField({
+	record,
+	key,
+}: {
+	record: Record<string, unknown>;
+	key: string;
+}): number | null {
+	const value = record[key];
+	return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function visualInspectionFromContext({
+	context,
+	projectId,
+	tools,
+}: {
+	context: string;
+	projectId: string;
+	tools: string[];
+}): VisualInspection | null {
+	const packet = agentContextPacket(context);
+	if (!packet) return null;
+	const project = isRecord(packet.project) ? packet.project : null;
+	const sceneId =
+		project && typeof project.sceneId === "string"
+			? project.sceneId
+			: undefined;
+	const references = Array.isArray(packet.references)
+		? packet.references.filter(isRecord)
+		: [];
+	const range = references.find(
+		(reference) =>
+			reference.kind === "range" &&
+			numericField({ record: reference, key: "startSeconds" }) !== null &&
+			numericField({ record: reference, key: "endSeconds" }) !== null,
+	);
+	if (range && tools.includes("inspect_timeline_range")) {
+		return {
+			tool: "inspect_timeline_range",
+			arguments: {
+				projectId,
+				...(sceneId ? { sceneId } : {}),
+				startSeconds: numericField({
+					record: range,
+					key: "startSeconds",
+				}),
+				endSeconds: numericField({
+					record: range,
+					key: "endSeconds",
+				}),
+			},
+		};
+	}
+	const timelineElements = Array.isArray(packet.timelineElements)
+		? packet.timelineElements.filter(isRecord)
+		: [];
+	const starts = timelineElements
+		.map((element) => numericField({ record: element, key: "startSeconds" }))
+		.filter((value): value is number => value !== null);
+	const ends = timelineElements
+		.map((element) => numericField({ record: element, key: "endSeconds" }))
+		.filter((value): value is number => value !== null);
+	if (
+		starts.length > 0 &&
+		ends.length > 0 &&
+		tools.includes("inspect_timeline_range")
+	) {
+		return {
+			tool: "inspect_timeline_range",
+			arguments: {
+				projectId,
+				...(sceneId ? { sceneId } : {}),
+				startSeconds: Math.min(...starts),
+				endSeconds: Math.max(...ends),
+			},
+		};
+	}
+	const media = Array.isArray(packet.media)
+		? packet.media.filter(isRecord)
+		: [];
+	const firstVisualMedia = media.find(
+		(asset) =>
+			typeof asset.mediaId === "string" &&
+			(asset.mediaType === "video" || asset.mediaType === "image"),
+	);
+	if (firstVisualMedia && tools.includes("inspect_media_scenes")) {
+		return {
+			tool: "inspect_media_scenes",
+			arguments: {
+				projectId,
+				assetId: firstVisualMedia.mediaId,
+			},
+		};
+	}
+	return null;
+}
+
+function nativeImagesFromMcpResponse(response: unknown): NativeVisualInput[] {
+	if (!isRecord(response) || !Array.isArray(response.content)) return [];
+	return response.content
+		.filter(isRecord)
+		.flatMap((item): NativeVisualInput[] => {
+			if (
+				item.type !== "image" ||
+				typeof item.data !== "string" ||
+				typeof item.mimeType !== "string" ||
+				!item.mimeType.startsWith("image/")
+			) {
+				return [];
+			}
+			return [
+				{
+					type: "image",
+					url: `data:${item.mimeType};base64,${item.data}`,
+				},
+			];
+		})
+		.slice(0, 4);
+}
+
+function textFromMcpResponse(response: unknown): string {
+	if (!isRecord(response) || !Array.isArray(response.content)) return "";
+	return response.content
+		.filter(isRecord)
+		.map((item) => (typeof item.text === "string" ? item.text : ""))
+		.filter(Boolean)
+		.join("\n");
+}
+
+function renderTimesFromContext(context: string): number[] {
+	const packet = agentContextPacket(context);
+	if (!packet) return [0];
+	const references = Array.isArray(packet.references)
+		? packet.references.filter(isRecord)
+		: [];
+	const range = references.find((reference) => reference.kind === "range");
+	const start = range
+		? numericField({ record: range, key: "startSeconds" })
+		: null;
+	const end = range ? numericField({ record: range, key: "endSeconds" }) : null;
+	if (start !== null && end !== null && end > start) {
+		return [start, start + (end - start) / 2, Math.max(start, end - 0.001)];
+	}
+	const project = isRecord(packet.project) ? packet.project : null;
+	const playhead = project
+		? numericField({ record: project, key: "playheadSeconds" })
+		: null;
+	return [Math.max(0, playhead ?? 0)];
+}
+
+async function visualInputsForTurn({
+	connection,
+	threadId,
+	projectId,
+	context,
+	tools,
+}: {
+	connection: CodexAppServerConnection;
+	threadId: string;
+	projectId: string;
+	context: string;
+	tools: string[];
+}): Promise<{
+	inputs: NativeVisualInput[];
+	inspection: VisualInspection | null;
+	detail: string;
+}> {
+	const inspection = visualInspectionFromContext({
+		context,
+		projectId,
+		tools,
+	});
+	if (!inspection) return { inputs: [], inspection: null, detail: "" };
+	const response = await connection.request({
+		method: "mcpServer/tool/call",
+		params: {
+			threadId,
+			server: "opencut",
+			tool: inspection.tool,
+			arguments: inspection.arguments,
+		},
+	});
+	if (isRecord(response) && response.isError === true) {
+		return {
+			inputs: [],
+			inspection,
+			detail: textFromMcpResponse(response) || "选区画面识别失败。",
+		};
+	}
+	return {
+		inputs: nativeImagesFromMcpResponse(response),
+		inspection,
+		detail: textFromMcpResponse(response),
+	};
+}
+
+async function verificationFrames({
+	connection,
+	threadId,
+	projectId,
+	context,
+	beforeRevision,
+	tools,
+}: {
+	connection: CodexAppServerConnection;
+	threadId: string;
+	projectId: string;
+	context: string;
+	beforeRevision: number | null;
+	tools: string[];
+}): Promise<CodexProtocolFrame[]> {
+	const response = await connection.request({
+		method: "mcpServer/tool/call",
+		params: {
+			threadId,
+			server: "opencut",
+			tool: "read_project",
+			arguments: { projectId, detail: "summary" },
+		},
+	});
+	const snapshot = projectSnapshotFromToolResponse(response);
+	const revision = revisionFromProjectSnapshot(snapshot);
+	if (
+		beforeRevision === null ||
+		revision === null ||
+		revision <= beforeRevision
+	) {
+		return [
+			{
+				id: `verification:${threadId}`,
+				method: "opencut/verification",
+				threadId,
+				itemType: "verification",
+				status: "info",
+				title: "结果复核完成",
+				detail: "本轮工程版本未发生变化。",
+			},
+		];
+	}
+	const frames: CodexProtocolFrame[] = [
+		{
+			id: `verification:${threadId}:revision`,
+			method: "opencut/verification",
+			threadId,
+			itemType: "verification",
+			status: "completed",
+			title: "工程修改已确认",
+			detail: `revision ${beforeRevision} → ${revision}`,
+		},
+	];
+	if (tools.includes("wait_for_sync")) {
+		const sync = await connection.request({
+			method: "mcpServer/tool/call",
+			params: {
+				threadId,
+				server: "opencut",
+				tool: "wait_for_sync",
+				arguments: { projectId, revision, timeoutSeconds: 45 },
+			},
+		});
+		frames.push({
+			id: `verification:${threadId}:sync`,
+			method: "opencut/verification",
+			threadId,
+			itemType: "verification",
+			status: isRecord(sync) && sync.isError === true ? "failed" : "completed",
+			title:
+				isRecord(sync) && sync.isError === true
+					? "编辑器同步失败"
+					: "编辑器已同步",
+			detail: truncated(textFromMcpResponse(sync)),
+		});
+	}
+	if (tools.includes("render_frames")) {
+		const rendered = await connection.request({
+			method: "mcpServer/tool/call",
+			params: {
+				threadId,
+				server: "opencut",
+				tool: "render_frames",
+				arguments: {
+					projectId,
+					atSeconds: renderTimesFromContext(context),
+					tile: true,
+					maxDim: 320,
+				},
+			},
+		});
+		const images = nativeImagesFromMcpResponse(rendered);
+		frames.push({
+			id: `verification:${threadId}:frames`,
+			method: "opencut/verification",
+			threadId,
+			itemType: "verification",
+			status:
+				isRecord(rendered) && rendered.isError === true
+					? "failed"
+					: "completed",
+			title:
+				isRecord(rendered) && rendered.isError === true
+					? "画面验证失败"
+					: "验证证据已生成",
+			detail: truncated(
+				[
+					textFromMcpResponse(rendered),
+					images.length > 0 ? `${images.length} 张画面证据` : "",
+				]
+					.filter(Boolean)
+					.join("\n"),
+			),
+		});
+	}
+	return frames;
 }
 
 async function bindOpenCutSession({
@@ -1102,6 +1569,118 @@ async function bindOpenCutSession({
 	};
 }
 
+const TOOL_PROFILES: CodexToolProfileCapability[] = [
+	{
+		id: "edit",
+		label: "专注剪辑",
+		description: "只开放 OpenCut 工程工具，适合日常剪辑。",
+	},
+	{
+		id: "verify",
+		label: "剪辑与验收",
+		description: "增加浏览器与桌面验收能力，仍禁用 LocalCut。",
+	},
+	{
+		id: "full",
+		label: "完整能力",
+		description: "开放已配置的 Codex 工具，始终禁用 LocalCut。",
+	},
+];
+
+function capabilitiesFromResponses({
+	modelsResponse,
+	modesResponse,
+	skillsResponse,
+}: {
+	modelsResponse: unknown;
+	modesResponse: unknown;
+	skillsResponse: unknown;
+}): CodexCapabilities {
+	const modelRows =
+		isRecord(modelsResponse) && Array.isArray(modelsResponse.data)
+			? modelsResponse.data.filter(isRecord)
+			: [];
+	const models = modelRows.flatMap((model): CodexModelCapability[] => {
+		const id =
+			typeof model.id === "string"
+				? model.id
+				: typeof model.model === "string"
+					? model.model
+					: null;
+		if (!id) return [];
+		const supported = Array.isArray(model.supportedReasoningEfforts)
+			? model.supportedReasoningEfforts.filter(isRecord)
+			: [];
+		return [
+			{
+				id,
+				label: typeof model.displayName === "string" ? model.displayName : id,
+				description:
+					typeof model.description === "string" ? model.description : null,
+				efforts: supported
+					.map((entry) =>
+						typeof entry.reasoningEffort === "string"
+							? entry.reasoningEffort
+							: null,
+					)
+					.filter((value): value is string => value !== null),
+				defaultEffort:
+					typeof model.defaultReasoningEffort === "string"
+						? model.defaultReasoningEffort
+						: null,
+				inputModalities: Array.isArray(model.inputModalities)
+					? model.inputModalities.filter(
+							(value): value is string => typeof value === "string",
+						)
+					: ["text", "image"],
+				isDefault: model.isDefault === true,
+			},
+		];
+	});
+	const modeRows =
+		isRecord(modesResponse) && Array.isArray(modesResponse.data)
+			? modesResponse.data.filter(isRecord)
+			: [];
+	const modes = modeRows.flatMap((mode): CodexModeCapability[] => {
+		if (mode.mode !== "default" && mode.mode !== "plan") return [];
+		return [
+			{
+				id: mode.mode,
+				label: typeof mode.name === "string" ? mode.name : mode.mode,
+				defaultEffort:
+					typeof mode.reasoning_effort === "string"
+						? mode.reasoning_effort
+						: null,
+			},
+		];
+	});
+	const skillGroups =
+		isRecord(skillsResponse) && Array.isArray(skillsResponse.data)
+			? skillsResponse.data.filter(isRecord)
+			: [];
+	const skills = skillGroups
+		.flatMap((group) =>
+			Array.isArray(group.skills) ? group.skills.filter(isRecord) : [],
+		)
+		.flatMap((skill): CodexSkillCapability[] => {
+			if (typeof skill.name !== "string") return [];
+			return [
+				{
+					name: skill.name,
+					description:
+						typeof skill.description === "string" ? skill.description : null,
+					enabled: skill.enabled !== false,
+				},
+			];
+		});
+	return {
+		models,
+		modes,
+		skills,
+		toolProfiles: TOOL_PROFILES,
+	};
+}
+
 export function createCodexChatService({
 	runtime = resolveCodexRuntimeConfig(),
 	connect = connectSharedAppServer,
@@ -1111,8 +1690,61 @@ export function createCodexChatService({
 } = {}): CodexChatService {
 	const sessions = new Map<string, string>();
 	return {
+		async capabilities({ toolProfile = "edit" } = {}) {
+			const connection = await connect({ runtime, toolProfile });
+			const [modelsResponse, modesResponse, skillsResponse] = await Promise.all(
+				[
+					connection.request({
+						method: "model/list",
+						params: { limit: 50, includeHidden: false },
+					}),
+					connection.request({
+						method: "collaborationMode/list",
+						params: {},
+					}),
+					connection.request({
+						method: "skills/list",
+						params: {
+							cwds: [runtime.repoRoot],
+							forceReload: false,
+						},
+					}),
+				],
+			);
+			return capabilitiesFromResponses({
+				modelsResponse,
+				modesResponse,
+				skillsResponse,
+			});
+		},
+		async steer({ sessionId, turnId, message, toolProfile = "edit" }) {
+			const connection = await connect({ runtime, toolProfile });
+			await connection.request({
+				method: "turn/steer",
+				params: {
+					threadId: sessionId,
+					expectedTurnId: turnId,
+					input: [{ type: "text", text: message }],
+				},
+			});
+		},
+		async interrupt({ sessionId, turnId, toolProfile = "edit" }) {
+			const connection = await connect({ runtime, toolProfile });
+			await connection.request({
+				method: "turn/interrupt",
+				params: { threadId: sessionId, turnId },
+			});
+		},
+		async compact({ sessionId, toolProfile = "edit" }) {
+			const connection = await connect({ runtime, toolProfile });
+			await connection.request({
+				method: "thread/compact/start",
+				params: { threadId: sessionId },
+			});
+		},
 		async *stream({ input, signal }) {
-			const connection = await connect(runtime);
+			const toolProfile = input.toolProfile ?? "edit";
+			const connection = await connect({ runtime, toolProfile });
 			const requestedSessionId =
 				input.sessionId?.trim() || sessions.get(input.projectId);
 			const threadResponse = await connection.request({
@@ -1128,6 +1760,7 @@ export function createCodexChatService({
 							approvalPolicy: "never",
 							sandbox: "read-only",
 							excludeTurns: true,
+							...(input.model ? { model: input.model } : {}),
 						}
 					: {
 							cwd: runtime.repoRoot,
@@ -1137,6 +1770,8 @@ export function createCodexChatService({
 							],
 							approvalPolicy: "never",
 							sandbox: "read-only",
+							serviceName: "opencut_smart_edit",
+							...(input.model ? { model: input.model } : {}),
 						},
 			});
 			const sessionId = threadIdFromResponse(threadResponse);
@@ -1195,10 +1830,76 @@ export function createCodexChatService({
 						.filter((part): part is string => Boolean(part))
 						.join(" · "),
 				};
+				let visual: Awaited<ReturnType<typeof visualInputsForTurn>> = {
+					inputs: [],
+					inspection: null,
+					detail: "",
+				};
+				if (input.visualMode === "auto") {
+					try {
+						visual = await visualInputsForTurn({
+							connection,
+							threadId: sessionId,
+							projectId: input.projectId,
+							context: input.context,
+							tools: binding.tools,
+						});
+					} catch (error) {
+						yield {
+							type: "protocol",
+							id: `visual:${sessionId}:failed`,
+							method: "opencut/visual-context",
+							threadId: sessionId,
+							itemType: "mcpToolCall",
+							status: "failed",
+							title: "选区画面识别失败，继续使用结构化上下文",
+							detail:
+								error instanceof Error
+									? error.message
+									: "画面识别工具返回异常。",
+						};
+					}
+				}
+				if (visual.inspection) {
+					yield {
+						type: "protocol",
+						id: `visual:${sessionId}`,
+						method: "opencut/visual-context",
+						threadId: sessionId,
+						itemType: "mcpToolCall",
+						status: visual.inputs.length > 0 ? "completed" : "failed",
+						title:
+							visual.inputs.length > 0
+								? "选区画面已作为多模态上下文载入"
+								: "选区画面识别失败",
+						detail: truncated(
+							[
+								`${visual.inspection.tool} · ${visual.inputs.length} 张联系表`,
+								visual.detail,
+							]
+								.filter(Boolean)
+								.join("\n"),
+						),
+					};
+				}
 				const turnResponse = await connection.request({
 					method: "turn/start",
 					params: {
 						threadId: sessionId,
+						...(input.model ? { model: input.model } : {}),
+						...(input.effort ? { effort: input.effort } : {}),
+						...(input.mode
+							? {
+									collaborationMode: {
+										mode: input.mode,
+										settings: {
+											model: input.model ?? null,
+											reasoning_effort: input.effort ?? null,
+											developer_instructions: null,
+										},
+									},
+								}
+							: {}),
 						input: [
 							{
 								type: "text",
@@ -1208,10 +1909,12 @@ export function createCodexChatService({
 								}),
 								text_elements: [],
 							},
+							...visual.inputs,
 						],
 					},
 				});
 				turnId = turnIdFromResponse(turnResponse);
+				yield { type: "turn", sessionId, turnId };
 				yield {
 					type: "protocol",
 					id: `turn:${turnId}`,
@@ -1221,14 +1924,13 @@ export function createCodexChatService({
 					status: "started",
 					title: "开始处理",
 				};
-				const deadline = Date.now() + TURN_TIMEOUT_MS;
 				let streamedMessage = "";
 
 				for (;;) {
 					if (signal?.aborted) {
 						throw new CodexChatError("Codex 会话已取消。");
 					}
-					const next = await nextWithDeadline({ iterator, deadline });
+					const next = await nextWithIdleTimeout({ iterator });
 					if (next.done) {
 						throw new CodexChatError("Codex 事件流提前结束。");
 					}
@@ -1274,6 +1976,33 @@ export function createCodexChatService({
 						finalMessageFromTurn(completedTurn) ||
 						streamedMessage.trim() ||
 						"Codex 已完成处理。";
+					if (input.verificationMode === "full") {
+						try {
+							for (const frame of await verificationFrames({
+								connection,
+								threadId: sessionId,
+								projectId: input.projectId,
+								context: input.context,
+								beforeRevision: binding.revision,
+								tools: binding.tools,
+							})) {
+								yield { type: "protocol", ...frame };
+							}
+						} catch (error) {
+							yield {
+								type: "protocol",
+								id: `verification:${sessionId}:failed`,
+								method: "opencut/verification",
+								threadId: sessionId,
+								turnId,
+								itemType: "verification",
+								status: "failed",
+								title: "自动复核未完成",
+								detail:
+									error instanceof Error ? error.message : "验证工具返回异常。",
+							};
+						}
+					}
 					yield { type: "done", sessionId, message };
 					return;
 				}

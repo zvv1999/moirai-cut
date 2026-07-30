@@ -27,6 +27,10 @@ const runtime: CodexRuntimeConfig = {
 	],
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
 function readyOpenCutStatus(): unknown {
 	return {
 		data: [
@@ -310,7 +314,7 @@ describe("Codex app-server JSON-RPC client", () => {
 
 describe("Codex direct Smart Edit streaming chat", () => {
 	test("starts Codex app-server so agent message deltas are available", () => {
-		const args = buildCodexAppServerArgs(runtime);
+		const args = buildCodexAppServerArgs({ runtime });
 
 		expect(args.slice(0, 2)).toEqual(["app-server", "--stdio"]);
 		expect(args).toContain('approval_policy="never"');
@@ -330,12 +334,20 @@ describe("Codex direct Smart Edit streaming chat", () => {
 	});
 
 	test("offers focused, verification, and full App tool profiles without ever enabling LocalCut", () => {
-		const verificationArgs = buildCodexAppServerArgs(runtime, "verify");
-		const fullArgs = buildCodexAppServerArgs(runtime, "full");
+		const verificationArgs = buildCodexAppServerArgs({
+			runtime,
+			toolProfile: "verify",
+		});
+		const fullArgs = buildCodexAppServerArgs({
+			runtime,
+			toolProfile: "full",
+		});
 
 		expect(verificationArgs).toContain("mcp_servers.localcut.enabled=false");
 		expect(verificationArgs).toContain("mcp_servers.chanjing.enabled=false");
-		expect(verificationArgs).not.toContain("mcp_servers.node_repl.enabled=false");
+		expect(verificationArgs).not.toContain(
+			"mcp_servers.node_repl.enabled=false",
+		);
 		expect(verificationArgs).not.toContain(
 			"mcp_servers.computer-use.enabled=false",
 		);
@@ -347,12 +359,13 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(fullArgs).not.toContain("mcp_servers.node_repl.enabled=false");
 	});
 
-	test("prompts Codex to execute through OpenCut without automatic lint or quality checks", () => {
+	test("prompts Codex to execute or plan through OpenCut with native verification semantics", () => {
 		const prompt = buildCodexPrompt({
 			projectId: "project-1",
 			message: "统一字幕样式",
 			context: "opencut://project/project-1/scene/main/track/text",
 			projectSnapshot: '{"projectId":"project-1","revision":7}',
+			verificationMode: "full",
 		});
 
 		expect(prompt).toContain("project-1");
@@ -361,7 +374,8 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			"opencut://project/project-1/scene/main/track/text",
 		);
 		expect(prompt).toContain("直接执行");
-		expect(prompt).toContain("不要运行 lint_cut、render_frames");
+		expect(prompt).toContain("系统会在本轮完成后自动核对工程 revision");
+		expect(prompt).toContain("当前回合可能收到用户追加指令");
 		expect(prompt).toContain("使用 read_project 和 edit_project");
 		expect(prompt).toContain("inspect_timeline_range");
 		expect(prompt).toContain("inspect_media_scenes");
@@ -379,6 +393,15 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(prompt).toContain("不要自行连接或启动 MCP");
 		expect(prompt).not.toContain("优先使用 get_context");
 		expect(prompt).not.toContain("至少需要两个字幕素材");
+		expect(
+			buildCodexPrompt({
+				projectId: "project-1",
+				message: "先给方案",
+				context: "",
+				projectSnapshot: "{}",
+				mode: "plan",
+			}),
+		).toContain("不要调用 edit_project 修改工程");
 	});
 
 	test("discovers the native model, effort, collaboration mode, and skill catalog", async () => {
@@ -493,12 +516,9 @@ describe("Codex direct Smart Edit streaming chat", () => {
 					return readyOpenCutStatus();
 				}
 				if (method === "mcpServer/tool/call") {
-					const request = params as {
-						tool: string;
-						arguments: Record<string, unknown>;
-					};
-					if (request.tool === "read_project") return projectSummary();
-					if (request.tool === "inspect_timeline_range") {
+					if (!isRecord(params)) throw new Error("invalid MCP request");
+					if (params.tool === "read_project") return projectSummary();
+					if (params.tool === "inspect_timeline_range") {
 						return {
 							content: [
 								{ type: "text", text: '{"samples":[1,2,3]}' },
@@ -583,7 +603,8 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		const inspection = calls.find(
 			(call) =>
 				call.method === "mcpServer/tool/call" &&
-				(call.params as { tool?: string }).tool === "inspect_timeline_range",
+				isRecord(call.params) &&
+				call.params.tool === "inspect_timeline_range",
 		);
 		expect(inspection?.params).toMatchObject({
 			server: "opencut",
@@ -609,9 +630,11 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				},
 			},
 		});
-		expect(
-			(turnStart?.params as { input: unknown[] }).input,
-		).toEqual(
+		const turnInput =
+			isRecord(turnStart?.params) && Array.isArray(turnStart.params.input)
+				? turnStart.params.input
+				: [];
+		expect(turnInput).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
 					type: "image",
@@ -784,6 +807,11 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				status: "completed",
 				title: "当前工程上下文已载入",
 				detail: "project-1 · revision 7",
+			},
+			{
+				type: "turn",
+				sessionId: "thread-project-1",
+				turnId: "turn-1",
 			},
 			{
 				type: "protocol",

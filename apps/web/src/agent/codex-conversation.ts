@@ -25,6 +25,9 @@ export interface CodexConversationMessage {
 	referenceCount?: number;
 	streaming?: boolean;
 	protocol?: CodexProtocolFrame[];
+	runId?: string;
+	turnId?: string;
+	runSequence?: number;
 	createdAt: number;
 	updatedAt: number;
 }
@@ -109,7 +112,14 @@ function isConversationMessage(
 				Number.isInteger(value.referenceCount))) &&
 		(value.streaming === undefined || typeof value.streaming === "boolean") &&
 		(value.protocol === undefined ||
-			(Array.isArray(value.protocol) && value.protocol.every(isProtocolFrame))) &&
+			(Array.isArray(value.protocol) &&
+				value.protocol.every(isProtocolFrame))) &&
+		(value.runId === undefined || typeof value.runId === "string") &&
+		(value.turnId === undefined || typeof value.turnId === "string") &&
+		(value.runSequence === undefined ||
+			(typeof value.runSequence === "number" &&
+				Number.isInteger(value.runSequence) &&
+				value.runSequence >= 0)) &&
 		typeof value.createdAt === "number" &&
 		Number.isFinite(value.createdAt) &&
 		typeof value.updatedAt === "number" &&
@@ -117,7 +127,9 @@ function isConversationMessage(
 	);
 }
 
-function isConversationThread(value: unknown): value is CodexConversationThread {
+function isConversationThread(
+	value: unknown,
+): value is CodexConversationThread {
 	if (!isRecord(value)) return false;
 	return (
 		typeof value.id === "string" &&

@@ -37,7 +37,73 @@ interface CodexConnection {
 interface CodexChatResult {
 	sessionId: string;
 	message: string;
+	runId: string;
 }
+
+interface CodexModelCapability {
+	id: string;
+	label: string;
+	description: string | null;
+	efforts: string[];
+	defaultEffort: string | null;
+	inputModalities: string[];
+	isDefault: boolean;
+}
+
+interface CodexCapabilities {
+	models: CodexModelCapability[];
+	modes: Array<{
+		id: "default" | "plan";
+		label: string;
+		defaultEffort: string | null;
+	}>;
+	skills: Array<{
+		name: string;
+		description: string | null;
+		enabled: boolean;
+	}>;
+	toolProfiles: Array<{
+		id: "edit" | "verify" | "full";
+		label: string;
+		description: string;
+	}>;
+}
+
+interface CodexRunSnapshot {
+	runId: string;
+	status: "running" | "completed" | "failed" | "interrupted";
+	sessionId: string | null;
+	turnId: string | null;
+	lastSequence: number;
+}
+
+interface CodexTurnOptions {
+	conversationId: string;
+	model: string;
+	effort: string;
+	mode: "default" | "plan";
+	toolProfile: "edit" | "verify" | "full";
+	visualMode: "off" | "auto";
+	verificationMode: "off" | "full";
+}
+
+interface CodexStreamHandlers {
+	onRun(run: CodexRunSnapshot): void;
+	onSession(sessionId: string): void;
+	onTurn(turnId: string): void;
+	onSequence(sequence: number): void;
+	onDelta(delta: string): void;
+	onProtocol(frame: CodexProtocolFrame): void;
+}
+
+const DEFAULT_CODEX_OPTIONS = {
+	model: "gpt-5.6-sol",
+	effort: "xhigh",
+	mode: "default",
+	toolProfile: "verify",
+	visualMode: "auto",
+	verificationMode: "full",
+} as const;
 
 const AGENT_REQUEST_PRESETS = [
 	"收紧这段剪辑",
@@ -97,6 +163,43 @@ async function fetchCodexConnection(): Promise<CodexConnection> {
 	const value: unknown = await response.json();
 	if (!isCodexConnection(value)) {
 		throw new Error("Codex config response is invalid");
+	}
+	return value;
+}
+
+function isCodexCapabilities(value: unknown): value is CodexCapabilities {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		"models" in value &&
+		Array.isArray(value.models) &&
+		"modes" in value &&
+		Array.isArray(value.modes) &&
+		"skills" in value &&
+		Array.isArray(value.skills) &&
+		"toolProfiles" in value &&
+		Array.isArray(value.toolProfiles)
+	);
+}
+
+function isCodexMode(value: string): value is "default" | "plan" {
+	return value === "default" || value === "plan";
+}
+
+function isCodexToolProfile(
+	value: string,
+): value is "edit" | "verify" | "full" {
+	return value === "edit" || value === "verify" || value === "full";
+}
+
+async function fetchCodexCapabilities(): Promise<CodexCapabilities> {
+	const response = await fetch("/api/codex/capabilities");
+	if (!response.ok) {
+		throw new Error(`Codex capabilities failed: ${response.status}`);
+	}
+	const value: unknown = await response.json();
+	if (!isCodexCapabilities(value)) {
+		throw new Error("Codex capabilities response is invalid");
 	}
 	return value;
 }
@@ -179,19 +282,13 @@ function protocolStatusClass(status: CodexProtocolStatus): string {
 function protocolActivityLabel(frame: CodexProtocolFrame): string {
 	const active = frame.status === "started" || frame.status === "streaming";
 	if (frame.status === "failed") return "处理遇到问题";
-	if (
-		frame.itemType === "reasoning" ||
-		frame.method.includes("reasoning")
-	) {
+	if (frame.itemType === "reasoning" || frame.method.includes("reasoning")) {
 		return active ? "正在理解剪辑需求" : "已理解剪辑需求";
 	}
 	if (frame.itemType === "plan" || frame.method.includes("plan")) {
 		return active ? "正在规划剪辑步骤" : "已规划剪辑步骤";
 	}
-	if (
-		frame.itemType === "mcpToolCall" ||
-		frame.method.includes("mcpServer")
-	) {
+	if (frame.itemType === "mcpToolCall" || frame.method.includes("mcpServer")) {
 		return active ? "正在处理当前工程" : "已处理当前工程";
 	}
 	if (frame.itemType === "commandExecution") {
@@ -199,6 +296,9 @@ function protocolActivityLabel(frame: CodexProtocolFrame): string {
 	}
 	if (frame.itemType === "fileChange") {
 		return active ? "正在应用工程修改" : "已应用工程修改";
+	}
+	if (frame.itemType === "verification") {
+		return active ? "正在验证编辑结果" : "验证证据已生成";
 	}
 	if (frame.itemType === "approval") {
 		return active ? "正在确认操作权限" : "操作权限已确认";
@@ -217,14 +317,32 @@ function protocolActivityLabel(frame: CodexProtocolFrame): string {
 	return frame.title.replaceAll("Codex", "智能剪辑");
 }
 
-function CodexActivityLine({
-	frames,
+function VerificationEvidence({
+	frame,
 }: {
-	frames: CodexProtocolFrame[];
+	frame: CodexProtocolFrame | undefined;
 }) {
+	if (!frame?.detail) return null;
+	const evidence = frame.detail;
+	return (
+		<details className="mt-2 rounded-lg border border-emerald-400/15 bg-emerald-400/[0.035] px-2.5 py-2">
+			<summary className="cursor-pointer text-[9px] font-medium text-emerald-300">
+				验证证据
+			</summary>
+			<p className="mt-1 whitespace-pre-wrap text-[9px] leading-relaxed text-slate-500">
+				{evidence}
+			</p>
+		</details>
+	);
+}
+
+function CodexActivityLine({ frames }: { frames: CodexProtocolFrame[] }) {
 	const latestFrame = frames.at(-1);
 	if (!latestFrame) return null;
 	const previousFrames = frames.slice(-6, -1);
+	const verificationFrame = [...frames]
+		.reverse()
+		.find((frame) => frame.itemType === "verification");
 	const active =
 		latestFrame.status === "started" || latestFrame.status === "streaming";
 	const line = (
@@ -277,14 +395,13 @@ function CodexActivityLine({
 								<span
 									className={`size-1 shrink-0 rounded-full ${protocolStatusClass(frame.status)}`}
 								/>
-								<span className="truncate">
-									{protocolActivityLabel(frame)}
-								</span>
+								<span className="truncate">{protocolActivityLabel(frame)}</span>
 							</li>
 						))}
 					</ol>
 				</details>
 			)}
+			<VerificationEvidence frame={verificationFrame} />
 		</section>
 	);
 }
@@ -294,7 +411,11 @@ async function sendCodexTurn({
 	message,
 	context,
 	sessionId,
+	options,
+	onRun,
 	onSession,
+	onTurn,
+	onSequence,
 	onDelta,
 	onProtocol,
 }: {
@@ -302,7 +423,11 @@ async function sendCodexTurn({
 	message: string;
 	context: string;
 	sessionId: string | null;
+	options: CodexTurnOptions;
+	onRun(run: CodexRunSnapshot): void;
 	onSession(sessionId: string): void;
+	onTurn(turnId: string): void;
+	onSequence(sequence: number): void;
 	onDelta(delta: string): void;
 	onProtocol(frame: CodexProtocolFrame): void;
 }): Promise<CodexChatResult> {
@@ -313,9 +438,44 @@ async function sendCodexTurn({
 			projectId,
 			message,
 			context,
+			conversationId: options.conversationId,
+			model: options.model,
+			effort: options.effort,
+			mode: options.mode,
+			toolProfile: options.toolProfile,
+			visualMode: options.visualMode,
+			verificationMode: options.verificationMode,
 			...(sessionId ? { sessionId } : {}),
 		}),
 	});
+	return consumeCodexStream({
+		response,
+		onRun,
+		onSession,
+		onTurn,
+		onSequence,
+		onDelta,
+		onProtocol,
+	});
+}
+
+async function consumeCodexStream({
+	response,
+	onRun,
+	onSession,
+	onTurn,
+	onSequence,
+	onDelta,
+	onProtocol,
+}: {
+	response: Response;
+	onRun(run: CodexRunSnapshot): void;
+	onSession(sessionId: string): void;
+	onTurn(turnId: string): void;
+	onSequence(sequence: number): void;
+	onDelta(delta: string): void;
+	onProtocol(frame: CodexProtocolFrame): void;
+}): Promise<CodexChatResult> {
 	if (!response.ok) {
 		const value: unknown = await response.json();
 		throw new Error(apiErrorMessage(value) ?? "Codex 会话请求失败。");
@@ -327,6 +487,7 @@ async function sendCodexTurn({
 	const textDecoder = new TextDecoder();
 	const sseDecoder = new CodexSseDecoder();
 	let completed: CodexChatResult | null = null;
+	let activeRunId = "";
 
 	for (;;) {
 		const chunk = await reader.read();
@@ -341,12 +502,61 @@ async function sendCodexTurn({
 				continue;
 			}
 			if (!value || typeof value !== "object") continue;
+			const eventSequence = event.id ? Number.parseInt(event.id, 10) : NaN;
+			if (Number.isInteger(eventSequence) && eventSequence >= 0) {
+				onSequence(eventSequence);
+			}
+			if (
+				event.event === "run" &&
+				"runId" in value &&
+				typeof value.runId === "string" &&
+				"status" in value &&
+				(value.status === "running" ||
+					value.status === "completed" ||
+					value.status === "failed" ||
+					value.status === "interrupted") &&
+				"lastSequence" in value &&
+				typeof value.lastSequence === "number"
+			) {
+				activeRunId = value.runId;
+				onRun({
+					runId: value.runId,
+					status: value.status,
+					sessionId:
+						"sessionId" in value && typeof value.sessionId === "string"
+							? value.sessionId
+							: null,
+					turnId:
+						"turnId" in value && typeof value.turnId === "string"
+							? value.turnId
+							: null,
+					lastSequence: value.lastSequence,
+				});
+				continue;
+			}
+			if ("runId" in value && typeof value.runId === "string") {
+				activeRunId = value.runId;
+			}
+			if ("sequence" in value && typeof value.sequence === "number") {
+				onSequence(value.sequence);
+			}
 			if (
 				event.event === "session" &&
 				"sessionId" in value &&
 				typeof value.sessionId === "string"
 			) {
 				onSession(value.sessionId);
+				continue;
+			}
+			if (
+				event.event === "turn" &&
+				"turnId" in value &&
+				typeof value.turnId === "string"
+			) {
+				onTurn(value.turnId);
+				if ("sessionId" in value && typeof value.sessionId === "string") {
+					onSession(value.sessionId);
+				}
 				continue;
 			}
 			if (
@@ -371,6 +581,7 @@ async function sendCodexTurn({
 				completed = {
 					sessionId: value.sessionId,
 					message: value.message,
+					runId: activeRunId,
 				};
 				continue;
 			}
@@ -387,6 +598,44 @@ async function sendCodexTurn({
 		throw new Error("Codex 流式响应在完成前中断。");
 	}
 	return completed;
+}
+
+async function reconnectCodexRun({
+	runId,
+	afterSequence,
+	handlers,
+}: {
+	runId: string;
+	afterSequence: number;
+	handlers: CodexStreamHandlers;
+}): Promise<CodexChatResult> {
+	const response = await fetch(
+		`/api/codex/chat?runId=${encodeURIComponent(runId)}&after=${afterSequence}`,
+		{ cache: "no-store" },
+	);
+	return consumeCodexStream({ response, ...handlers });
+}
+
+async function runCodexAction(
+	action:
+		| { action: "steer"; runId: string; message: string }
+		| { action: "interrupt"; runId: string }
+		| {
+				action: "compact";
+				runId?: string;
+				sessionId?: string;
+				toolProfile?: "edit" | "verify" | "full";
+		  },
+): Promise<void> {
+	const response = await fetch("/api/codex/chat", {
+		method: "PUT",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify(action),
+	});
+	if (!response.ok) {
+		const value: unknown = await response.json();
+		throw new Error(apiErrorMessage(value) ?? "Codex 会话操作失败。");
+	}
 }
 
 export function AgentWorkbench() {
@@ -415,9 +664,9 @@ export function AgentWorkbench() {
 	);
 
 	const [request, setRequest] = useState("");
-	const [conversations, setConversations] = useState<
-		CodexConversationThread[]
-	>([]);
+	const [conversations, setConversations] = useState<CodexConversationThread[]>(
+		[],
+	);
 	const [activeConversationId, setActiveConversationId] = useState<
 		string | null
 	>(null);
@@ -432,6 +681,29 @@ export function AgentWorkbench() {
 		useState<CodexConnection | null>(null);
 	const [codexSettingsOpen, setCodexSettingsOpen] = useState(false);
 	const [codexChecking, setCodexChecking] = useState(true);
+	const [codexCapabilities, setCodexCapabilities] =
+		useState<CodexCapabilities | null>(null);
+	const [codexModel, setCodexModel] = useState<string>(
+		DEFAULT_CODEX_OPTIONS.model,
+	);
+	const [codexEffort, setCodexEffort] = useState<string>(
+		DEFAULT_CODEX_OPTIONS.effort,
+	);
+	const [codexMode, setCodexMode] = useState<"default" | "plan">(
+		DEFAULT_CODEX_OPTIONS.mode,
+	);
+	const [codexToolProfile, setCodexToolProfile] = useState<
+		"edit" | "verify" | "full"
+	>(DEFAULT_CODEX_OPTIONS.toolProfile);
+	const [codexVisualMode, setCodexVisualMode] = useState<"off" | "auto">(
+		DEFAULT_CODEX_OPTIONS.visualMode,
+	);
+	const [codexVerificationMode, setCodexVerificationMode] = useState<
+		"off" | "full"
+	>(DEFAULT_CODEX_OPTIONS.verificationMode);
+	const [activeRunId, setActiveRunId] = useState<string | null>(null);
+	const [activeTurnId, setActiveTurnId] = useState<string | null>(null);
+	const [activeRunSequence, setActiveRunSequence] = useState(0);
 	const [referencePickerOpen, setReferencePickerOpen] = useState(false);
 	const [followSelection, setFollowSelection] = useState(true);
 	const [referencePickerTab, setReferencePickerTab] = useState<
@@ -441,6 +713,7 @@ export function AgentWorkbench() {
 	const [rangeStartInput, setRangeStartInput] = useState("");
 	const [rangeEndInput, setRangeEndInput] = useState("");
 	const followedSelectionKey = useRef("");
+	const reconnectingRunId = useRef<string | null>(null);
 	const conversationRevision = useRef(-1);
 	const conversationChannel = useRef<BroadcastChannel | null>(null);
 	const conversationHydratedRef = useRef(false);
@@ -464,16 +737,38 @@ export function AgentWorkbench() {
 
 	useEffect(() => {
 		let active = true;
-		void fetchCodexConnection()
-			.then((connection) => {
-				if (active) setCodexConnection(connection);
-			})
-			.catch(() => {
-				if (active) setCodexConnection(unavailableCodexConnection());
-			})
-			.finally(() => {
-				if (active) setCodexChecking(false);
-			});
+		void Promise.allSettled([
+			fetchCodexConnection(),
+			fetchCodexCapabilities(),
+		]).then(([connectionResult, capabilitiesResult]) => {
+			if (!active) return;
+			if (connectionResult.status === "fulfilled") {
+				setCodexConnection(connectionResult.value);
+			} else {
+				setCodexConnection(unavailableCodexConnection());
+			}
+			if (capabilitiesResult.status === "fulfilled") {
+				const capabilities = capabilitiesResult.value;
+				setCodexCapabilities(capabilities);
+				const preferred =
+					capabilities.models.find((model) => model.isDefault) ??
+					capabilities.models.find(
+						(model) => model.id === DEFAULT_CODEX_OPTIONS.model,
+					) ??
+					capabilities.models[0];
+				if (preferred) {
+					setCodexModel(preferred.id);
+					setCodexEffort(
+						preferred.efforts.includes(DEFAULT_CODEX_OPTIONS.effort)
+							? DEFAULT_CODEX_OPTIONS.effort
+							: (preferred.defaultEffort ??
+									preferred.efforts[0] ??
+									DEFAULT_CODEX_OPTIONS.effort),
+					);
+				}
+			}
+			setCodexChecking(false);
+		});
 		return () => {
 			active = false;
 		};
@@ -765,6 +1060,11 @@ export function AgentWorkbench() {
 		conversations.find(
 			(conversation) => conversation.id === activeConversationId,
 		) ?? null;
+	const selectedCodexModel =
+		codexCapabilities?.models.find((model) => model.id === codexModel) ?? null;
+	const availableEfforts = selectedCodexModel?.efforts.length
+		? selectedCodexModel.efforts
+		: ["low", "medium", "high", "xhigh", "max", "ultra"];
 
 	const persistCurrentConversation = () => {
 		const latest = latestConversation.current;
@@ -789,6 +1089,9 @@ export function AgentWorkbench() {
 		setActiveConversationId(conversation.id);
 		setSessionId(conversation.sessionId);
 		setMessages(conversation.messages);
+		setActiveRunId(null);
+		setActiveTurnId(null);
+		setActiveRunSequence(0);
 		setRequest("");
 	};
 
@@ -815,19 +1118,188 @@ export function AgentWorkbench() {
 		setActiveConversationId(conversationId);
 		setSessionId(null);
 		setMessages([]);
+		setActiveRunId(null);
+		setActiveTurnId(null);
+		setActiveRunSequence(0);
 		setRequest("");
 		return conversationId;
 	};
 
+	const streamHandlersFor = (assistantMessageId: string) => ({
+		onRun: (run: CodexRunSnapshot) => {
+			setActiveRunId(run.runId);
+			setActiveRunSequence(run.lastSequence);
+			if (run.sessionId) setSessionId(run.sessionId);
+			if (run.turnId) setActiveTurnId(run.turnId);
+			setMessages((current) =>
+				current.map((message) =>
+					message.id === assistantMessageId
+						? {
+								...message,
+								runId: run.runId,
+								runSequence: Math.max(
+									message.runSequence ?? 0,
+									run.lastSequence,
+								),
+								updatedAt: Math.max(timestampNow(), message.updatedAt + 1),
+							}
+						: message,
+				),
+			);
+		},
+		onSession: setSessionId,
+		onTurn: (turnId: string) => {
+			setActiveTurnId(turnId);
+			setMessages((current) =>
+				current.map((message) =>
+					message.id === assistantMessageId
+						? {
+								...message,
+								turnId,
+								updatedAt: Math.max(timestampNow(), message.updatedAt + 1),
+							}
+						: message,
+				),
+			);
+		},
+		onSequence: (sequence: number) => {
+			setActiveRunSequence(sequence);
+			setMessages((current) =>
+				current.map((message) =>
+					message.id === assistantMessageId
+						? {
+								...message,
+								runSequence: Math.max(message.runSequence ?? 0, sequence),
+								updatedAt: Math.max(timestampNow(), message.updatedAt + 1),
+							}
+						: message,
+				),
+			);
+		},
+		onDelta: (delta: string) => {
+			setMessages((current) =>
+				current.map((message) =>
+					message.id === assistantMessageId
+						? {
+								...message,
+								content: `${message.content}${delta}`,
+								updatedAt: Math.max(timestampNow(), message.updatedAt + 1),
+							}
+						: message,
+				),
+			);
+		},
+		onProtocol: (frame: CodexProtocolFrame) => {
+			setMessages((current) =>
+				current.map((message) =>
+					message.id === assistantMessageId
+						? {
+								...message,
+								protocol: upsertProtocolFrame({
+									frames: message.protocol,
+									incoming: frame,
+								}),
+								updatedAt: Math.max(timestampNow(), message.updatedAt + 1),
+							}
+						: message,
+				),
+			);
+		},
+	});
+
+	const completeAssistantMessage = ({
+		assistantMessageId,
+		result,
+	}: {
+		assistantMessageId: string;
+		result: CodexChatResult;
+	}) => {
+		setSessionId(result.sessionId);
+		setMessages((current) =>
+			current.map((message) =>
+				message.id === assistantMessageId
+					? {
+							...message,
+							content: result.message,
+							streaming: false,
+							runId: result.runId || message.runId,
+							updatedAt: Math.max(timestampNow(), message.updatedAt + 1),
+						}
+					: message,
+			),
+		);
+		setActiveRunId(null);
+		setActiveTurnId(null);
+	};
+
+	const failAssistantMessage = ({
+		assistantMessageId,
+		error,
+		notify = true,
+	}: {
+		assistantMessageId: string;
+		error: unknown;
+		notify?: boolean;
+	}) => {
+		const failure =
+			error instanceof Error ? error.message : "Codex 会话请求失败。";
+		setMessages((current) =>
+			current.map((item) =>
+				item.id === assistantMessageId
+					? {
+							...item,
+							role: "error",
+							content: failure,
+							streaming: false,
+							updatedAt: Math.max(timestampNow(), item.updatedAt + 1),
+						}
+					: item,
+			),
+		);
+		setActiveRunId(null);
+		setActiveTurnId(null);
+		if (notify) {
+			toast.error("Codex 会话失败", { description: failure });
+		}
+	};
+
 	const submitToCodex = async (nextRequest = request) => {
 		const normalizedRequest = nextRequest.trim();
-		if (!normalizedRequest || sending) return;
+		if (!normalizedRequest) return;
 		if (!conversationHydrated) {
 			toast("正在同步智能剪辑历史，请稍候");
 			return;
 		}
 		if (!semanticState.projectId) {
 			toast.error("当前没有可交给 Codex 的工程");
+			return;
+		}
+		if (sending) {
+			if (!activeRunId) return;
+			const createdAt = timestampNow();
+			setMessages((current) => [
+				...current,
+				{
+					id: nextMessageId(),
+					role: "user",
+					content: normalizedRequest,
+					createdAt,
+					updatedAt: createdAt,
+				},
+			]);
+			setRequest("");
+			try {
+				await runCodexAction({
+					action: "steer",
+					runId: activeRunId,
+					message: normalizedRequest,
+				});
+				toast.success("已追加到当前任务");
+			} catch (error) {
+				toast.error("追加指令失败", {
+					description: error instanceof Error ? error.message : "请稍后重试。",
+				});
+			}
 			return;
 		}
 		const targetConversationId =
@@ -864,80 +1336,117 @@ export function AgentWorkbench() {
 				message: normalizedRequest,
 				context: contextSnapshot.promptContext,
 				sessionId,
-				onSession: setSessionId,
-				onDelta: (delta) => {
-					setMessages((current) =>
-						current.map((message) =>
-							message.id === assistantMessageId
-								? {
-										...message,
-										content: `${message.content}${delta}`,
-										updatedAt: Math.max(
-											timestampNow(),
-											message.updatedAt + 1,
-										),
-									}
-								: message,
-						),
-					);
+				options: {
+					conversationId: targetConversationId,
+					model: codexModel,
+					effort: codexEffort,
+					mode: codexMode,
+					toolProfile: codexToolProfile,
+					visualMode: codexVisualMode,
+					verificationMode: codexVerificationMode,
 				},
-				onProtocol: (frame) => {
-					setMessages((current) =>
-						current.map((message) =>
-							message.id === assistantMessageId
-								? {
-										...message,
-										protocol: upsertProtocolFrame({
-											frames: message.protocol,
-											incoming: frame,
-										}),
-										updatedAt: Math.max(
-											timestampNow(),
-											message.updatedAt + 1,
-										),
-									}
-								: message,
-						),
-					);
-				},
+				...streamHandlersFor(assistantMessageId),
 			});
-			setSessionId(result.sessionId);
-			setMessages((current) =>
-				current.map((message) =>
-					message.id === assistantMessageId
-						? {
-								...message,
-								content: result.message,
-								streaming: false,
-								updatedAt: Math.max(
-									timestampNow(),
-									message.updatedAt + 1,
-								),
-							}
-						: message,
-				),
-			);
+			completeAssistantMessage({ assistantMessageId, result });
 		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : "Codex 会话请求失败。";
-			setMessages((current) =>
-				current.map((item) =>
-					item.id === assistantMessageId
-						? {
-								...item,
-								role: "error",
-								content: message,
-								streaming: false,
-								updatedAt: Math.max(timestampNow(), item.updatedAt + 1),
-							}
-						: item,
-				),
-			);
-			toast.error("Codex 会话失败", { description: message });
+			failAssistantMessage({ assistantMessageId, error });
 		} finally {
 			setSending(false);
 		}
 	};
+
+	const stopCodexRun = async () => {
+		if (!activeRunId) return;
+		try {
+			await runCodexAction({
+				action: "interrupt",
+				runId: activeRunId,
+			});
+			setMessages((current) =>
+				current.map((message) =>
+					message.streaming && message.runId === activeRunId
+						? {
+								...message,
+								content:
+									message.content ||
+									"已停止当前处理，可继续在本会话中发起新任务。",
+								streaming: false,
+								updatedAt: Math.max(timestampNow(), message.updatedAt + 1),
+							}
+						: message,
+				),
+			);
+			setSending(false);
+			setActiveRunId(null);
+			setActiveTurnId(null);
+		} catch (error) {
+			toast.error("停止失败", {
+				description: error instanceof Error ? error.message : "请稍后重试。",
+			});
+		}
+	};
+
+	const compactCodexContext = async () => {
+		if (!activeRunId && !sessionId) {
+			toast("当前会话还没有可压缩的上下文");
+			return;
+		}
+		try {
+			if (activeRunId) {
+				await runCodexAction({
+					action: "compact",
+					runId: activeRunId,
+					toolProfile: codexToolProfile,
+				});
+			} else if (sessionId) {
+				await runCodexAction({
+					action: "compact",
+					sessionId,
+					toolProfile: codexToolProfile,
+				});
+			}
+			toast.success("上下文压缩已启动");
+		} catch (error) {
+			toast.error("压缩上下文失败", {
+				description: error instanceof Error ? error.message : "请稍后重试。",
+			});
+		}
+	};
+
+	useEffect(() => {
+		if (!conversationHydrated || sending) return;
+		const pending = messages.findLast(
+			(message) => message.streaming && Boolean(message.runId),
+		);
+		if (!pending?.runId || reconnectingRunId.current === pending.runId) {
+			return;
+		}
+		reconnectingRunId.current = pending.runId;
+		setSending(true);
+		setActiveRunId(pending.runId);
+		setActiveRunSequence(pending.runSequence ?? 0);
+		void reconnectCodexRun({
+			runId: pending.runId,
+			afterSequence: pending.runSequence ?? 0,
+			handlers: streamHandlersFor(pending.id),
+		})
+			.then((result) => {
+				completeAssistantMessage({
+					assistantMessageId: pending.id,
+					result,
+				});
+			})
+			.catch((error) => {
+				failAssistantMessage({
+					assistantMessageId: pending.id,
+					error,
+				});
+			})
+			.finally(() => {
+				reconnectingRunId.current = null;
+				setSending(false);
+			});
+	}, [conversationHydrated, messages, sending]);
 
 	const toggleTimelineElementReference = ({
 		trackId,
@@ -1308,6 +1817,147 @@ export function AgentWorkbench() {
 							{codexConnection?.version ?? "—"}
 						</span>
 					</div>
+					<div className="mt-3 grid grid-cols-2 gap-2 border-t border-white/7 pt-3">
+						<label className="block">
+							<span className="mb-1 block text-[9px] text-slate-500">模型</span>
+							<select
+								aria-label="Codex 模型"
+								value={codexModel}
+								disabled={sending}
+								onChange={(event) => {
+									const nextModel = event.target.value;
+									setCodexModel(nextModel);
+									const capability = codexCapabilities?.models.find(
+										(model) => model.id === nextModel,
+									);
+									if (capability && !capability.efforts.includes(codexEffort)) {
+										setCodexEffort(
+											capability.defaultEffort ??
+												capability.efforts[0] ??
+												"high",
+										);
+									}
+								}}
+								className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+							>
+								{codexCapabilities?.models.length ? (
+									codexCapabilities.models.map((model) => (
+										<option key={model.id} value={model.id}>
+											{model.label || model.id}
+										</option>
+									))
+								) : (
+									<option value={codexModel}>{codexModel}</option>
+								)}
+							</select>
+						</label>
+						<label className="block">
+							<span className="mb-1 block text-[9px] text-slate-500">
+								推理强度
+							</span>
+							<select
+								aria-label="Codex 推理强度"
+								value={codexEffort}
+								disabled={sending}
+								onChange={(event) => setCodexEffort(event.target.value)}
+								className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+							>
+								{availableEfforts.map((effort) => (
+									<option key={effort} value={effort}>
+										{effort}
+									</option>
+								))}
+							</select>
+						</label>
+						<label className="block">
+							<span className="mb-1 block text-[9px] text-slate-500">
+								协作模式
+							</span>
+							<select
+								aria-label="Codex 协作模式"
+								value={codexMode}
+								disabled={sending}
+								onChange={(event) => {
+									if (isCodexMode(event.target.value)) {
+										setCodexMode(event.target.value);
+									}
+								}}
+								className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+							>
+								<option value="default">执行模式</option>
+								<option value="plan">规划模式</option>
+							</select>
+						</label>
+						<label className="block">
+							<span className="mb-1 block text-[9px] text-slate-500">
+								工具档位
+							</span>
+							<select
+								aria-label="Codex 工具档位"
+								value={codexToolProfile}
+								disabled={sending}
+								onChange={(event) => {
+									if (isCodexToolProfile(event.target.value)) {
+										setCodexToolProfile(event.target.value);
+									}
+								}}
+								className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+							>
+								<option value="edit">专注剪辑</option>
+								<option value="verify">剪辑与验收</option>
+								<option value="full">完整能力</option>
+							</select>
+						</label>
+					</div>
+					<div className="mt-2 grid grid-cols-2 gap-2">
+						<button
+							type="button"
+							aria-pressed={codexVisualMode === "auto"}
+							onClick={() =>
+								setCodexVisualMode((current) =>
+									current === "auto" ? "off" : "auto",
+								)
+							}
+							className={`rounded-lg border px-2.5 py-2 text-left text-[9px] transition ${
+								codexVisualMode === "auto"
+									? "border-cyan-400/30 bg-cyan-400/[0.06] text-cyan-200"
+									: "border-white/7 text-slate-500"
+							}`}
+						>
+							自动识别选区画面
+						</button>
+						<button
+							type="button"
+							aria-pressed={codexVerificationMode === "full"}
+							onClick={() =>
+								setCodexVerificationMode((current) =>
+									current === "full" ? "off" : "full",
+								)
+							}
+							className={`rounded-lg border px-2.5 py-2 text-left text-[9px] transition ${
+								codexVerificationMode === "full"
+									? "border-emerald-400/25 bg-emerald-400/[0.05] text-emerald-200"
+									: "border-white/7 text-slate-500"
+							}`}
+						>
+							修改后自动复核
+						</button>
+					</div>
+					<div className="mt-2 flex items-center justify-between">
+						<span className="text-[8px] text-slate-600">
+							{codexCapabilities?.skills.filter((skill) => skill.enabled)
+								.length ?? 0}{" "}
+							个可用技能
+						</span>
+						<button
+							type="button"
+							disabled={!sessionId}
+							onClick={() => void compactCodexContext()}
+							className="rounded-md border border-white/10 px-2.5 py-1 text-[9px] text-slate-400 transition hover:border-cyan-400/35 hover:text-cyan-200 disabled:opacity-35"
+						>
+							压缩上下文
+						</button>
+					</div>
 				</section>
 			) : null}
 
@@ -1426,60 +2076,60 @@ export function AgentWorkbench() {
 					</div>
 				) : (
 					messages.map((message) =>
-					message.role === "user" ? (
-						<div
-							key={message.id}
-							className="ml-auto max-w-[78%] rounded-2xl rounded-tr-sm bg-cyan-400 px-3.5 py-2.5 text-xs leading-relaxed text-slate-950"
-						>
-							<p className="whitespace-pre-wrap">{message.content}</p>
-							{message.referenceCount ? (
-								<p className="mt-1 text-[8px] opacity-60">
-									附带 {message.referenceCount} 项 Codex Path
-								</p>
-							) : null}
-						</div>
-					) : (
-						<div
-							key={message.id}
-							className="flex max-w-[86%] items-start gap-2.5"
-						>
-							<span
-								className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md text-[9px] font-black ${
-									message.role === "error"
-										? "bg-red-500 text-white"
-										: "bg-cyan-400 text-slate-950"
-								}`}
-							>
-								{message.role === "error" ? "!" : "AI"}
-							</span>
+						message.role === "user" ? (
 							<div
-								className={`min-w-0 flex-1 rounded-2xl rounded-tl-sm border px-3 py-3 text-xs leading-relaxed ${
-									message.role === "error"
-										? "border-red-500/25 bg-red-500/8 text-red-200"
-										: "border-white/8 bg-white/[0.045] text-slate-200"
-								}`}
+								key={message.id}
+								className="ml-auto max-w-[78%] rounded-2xl rounded-tr-sm bg-cyan-400 px-3.5 py-2.5 text-xs leading-relaxed text-slate-950"
 							>
-								{message.protocol && message.protocol.length > 0 ? (
-									<CodexActivityLine frames={message.protocol} />
-								) : message.streaming ? (
-									<div className="mb-2 flex items-center gap-2 rounded-lg border border-white/7 bg-black/20 px-2.5 py-2 text-[9px] text-slate-500">
-										<span className="size-1.5 animate-pulse rounded-full bg-cyan-300" />
-										正在准备工程上下文…
-									</div>
-								) : null}
-								{message.content ? (
-									<p className="whitespace-pre-wrap">
-										{message.content}
-										{message.streaming ? (
-											<span
-												className="ml-0.5 inline-block h-3 w-0.5 animate-pulse bg-cyan-300 align-middle"
-												aria-label="Codex 正在流式回复"
-											/>
-										) : null}
+								<p className="whitespace-pre-wrap">{message.content}</p>
+								{message.referenceCount ? (
+									<p className="mt-1 text-[8px] opacity-60">
+										附带 {message.referenceCount} 项 Codex Path
 									</p>
 								) : null}
 							</div>
-						</div>
+						) : (
+							<div
+								key={message.id}
+								className="flex max-w-[86%] items-start gap-2.5"
+							>
+								<span
+									className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md text-[9px] font-black ${
+										message.role === "error"
+											? "bg-red-500 text-white"
+											: "bg-cyan-400 text-slate-950"
+									}`}
+								>
+									{message.role === "error" ? "!" : "AI"}
+								</span>
+								<div
+									className={`min-w-0 flex-1 rounded-2xl rounded-tl-sm border px-3 py-3 text-xs leading-relaxed ${
+										message.role === "error"
+											? "border-red-500/25 bg-red-500/8 text-red-200"
+											: "border-white/8 bg-white/[0.045] text-slate-200"
+									}`}
+								>
+									{message.protocol && message.protocol.length > 0 ? (
+										<CodexActivityLine frames={message.protocol} />
+									) : message.streaming ? (
+										<div className="mb-2 flex items-center gap-2 rounded-lg border border-white/7 bg-black/20 px-2.5 py-2 text-[9px] text-slate-500">
+											<span className="size-1.5 animate-pulse rounded-full bg-cyan-300" />
+											正在准备工程上下文…
+										</div>
+									) : null}
+									{message.content ? (
+										<p className="whitespace-pre-wrap">
+											{message.content}
+											{message.streaming ? (
+												<span
+													className="ml-0.5 inline-block h-3 w-0.5 animate-pulse bg-cyan-300 align-middle"
+													aria-label="Codex 正在流式回复"
+												/>
+											) : null}
+										</p>
+									) : null}
+								</div>
+							</div>
 						),
 					)
 				)}
@@ -1753,7 +2403,7 @@ export function AgentWorkbench() {
 						className="max-h-28 min-h-8 flex-1 resize-none bg-transparent px-1 py-1.5 text-xs leading-relaxed text-slate-100 outline-none placeholder:text-slate-600"
 						value={request}
 						rows={1}
-						disabled={sending || !conversationHydrated}
+						disabled={!conversationHydrated}
 						onChange={(event) => setRequest(event.target.value)}
 						onKeyDown={(event) => {
 							if (event.key === "Enter" && !event.shiftKey) {
@@ -1765,22 +2415,44 @@ export function AgentWorkbench() {
 							!conversationHydrated
 								? "正在同步工程会话…"
 								: sending
-									? "回复生成中…"
+									? "继续补充当前任务…"
 									: "描述你想要的剪辑效果…"
 						}
 					/>
+					{sending ? (
+						<button
+							type="button"
+							aria-label="停止处理"
+							onClick={() => void stopCodexRun()}
+							className="flex h-8 shrink-0 items-center rounded-lg border border-red-400/25 bg-red-400/[0.06] px-2.5 text-[10px] font-medium text-red-200 transition hover:bg-red-400/10"
+						>
+							停止处理
+						</button>
+					) : null}
 					<button
 						type="submit"
 						aria-label="发送智能剪辑需求"
-						disabled={!conversationHydrated || !request.trim() || sending}
+						disabled={!conversationHydrated || !request.trim()}
 						className="flex h-8 shrink-0 items-center rounded-lg bg-cyan-400 px-3 text-[10px] font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-30"
 					>
-						{sending ? "处理中" : "发送"}
+						{sending ? "追加" : "发送"}
 					</button>
 				</div>
 				<div className="mt-1.5 flex items-center justify-between px-1 text-[8px] text-slate-600">
 					<span>Enter 发送 · Shift + Enter 换行</span>
-					<span>本会话由 Codex 直接处理 · 不运行本地计划或质检</span>
+					<span
+						title={
+							activeTurnId
+								? `任务 ${activeTurnId} · 已接收 ${activeRunSequence} 个事件`
+								: undefined
+						}
+					>
+						{codexMode === "plan"
+							? "规划模式 · 只分析不改工程"
+							: codexVerificationMode === "full"
+								? "Codex 直接处理 · 修改后自动复核"
+								: "Codex 直接处理"}
+					</span>
 				</div>
 			</form>
 		</section>

@@ -1,11 +1,5 @@
 import { randomUUID } from "node:crypto";
-import {
-	mkdir,
-	readFile,
-	rename,
-	unlink,
-	writeFile,
-} from "node:fs/promises";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import type {
@@ -207,6 +201,32 @@ function assertMessage(
 	) {
 		throw new Error("message streaming state is invalid");
 	}
+	for (const [key, label] of [
+		["runId", "run id"],
+		["turnId", "turn id"],
+	] as const) {
+		const record = message as Record<string, unknown>;
+		const value = record[key];
+		if (value !== undefined) {
+			if (typeof value !== "string") {
+				throw new Error(`${label} is invalid`);
+			}
+			assertShortString({
+				value,
+				label,
+				maxLength: 300,
+			});
+		}
+	}
+	if (
+		"runSequence" in message &&
+		message.runSequence !== undefined &&
+		(typeof message.runSequence !== "number" ||
+			!Number.isInteger(message.runSequence) ||
+			message.runSequence < 0)
+	) {
+		throw new Error("message run sequence is invalid");
+	}
 	const protocol =
 		"protocol" in message && message.protocol !== undefined
 			? message.protocol
@@ -304,7 +324,9 @@ function conversationsEqual({
 	left: CodexProjectConversation;
 	right: Omit<CodexProjectConversation, "revision" | "updatedAt">;
 }): boolean {
-	return JSON.stringify(left.conversations) === JSON.stringify(right.conversations);
+	return (
+		JSON.stringify(left.conversations) === JSON.stringify(right.conversations)
+	);
 }
 
 export class CodexConversationStore {
@@ -332,7 +354,9 @@ export class CodexConversationStore {
 		);
 	}
 
-	private async readUnlocked(projectId: string): Promise<CodexProjectConversation> {
+	private async readUnlocked(
+		projectId: string,
+	): Promise<CodexProjectConversation> {
 		try {
 			const value: unknown = JSON.parse(
 				await readFile(this.filePath(projectId), "utf8"),
@@ -394,7 +418,10 @@ export class CodexConversationStore {
 	): Promise<CodexProjectConversation> {
 		assertProjectId(input.projectId);
 		assertConversationId(input.conversationId);
-		if (!Array.isArray(input.messages) || input.messages.length > MAX_MESSAGES) {
+		if (
+			!Array.isArray(input.messages) ||
+			input.messages.length > MAX_MESSAGES
+		) {
 			throw new Error("messages must be a bounded array");
 		}
 		const normalizedMessages: CodexConversationMessage[] = [];
@@ -424,10 +451,7 @@ export class CodexConversationStore {
 					(conversation) => conversation.id === input.conversationId,
 				);
 				const byId = new Map(
-					(existing?.messages ?? []).map((message) => [
-						message.id,
-						message,
-					]),
+					(existing?.messages ?? []).map((message) => [message.id, message]),
 				);
 				for (const message of normalizedMessages) {
 					const existing = byId.get(message.id);

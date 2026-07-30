@@ -13,7 +13,9 @@ afterEach(async () => {
 });
 
 async function fixture() {
-	const root = await mkdtemp(path.join(tmpdir(), "opencut-codex-conversation-"));
+	const root = await mkdtemp(
+		path.join(tmpdir(), "opencut-codex-conversation-"),
+	);
 	temporaryRoots.push(root);
 	const projectId = "project-shared-chat";
 	await mkdir(path.join(root, projectId), { recursive: true });
@@ -54,6 +56,9 @@ describe("project-scoped Codex conversation storage", () => {
 					id: "message-second",
 					role: "user",
 					content: "再调整片尾字幕",
+					runId: "run-second",
+					turnId: "turn-second",
+					runSequence: 12,
 					createdAt: 200,
 					updatedAt: 200,
 				},
@@ -74,7 +79,14 @@ describe("project-scoped Codex conversation storage", () => {
 					id: "conversation-second",
 					title: "再调整片尾字幕",
 					sessionId: "thread-second",
-					messages: [{ id: "message-second" }],
+					messages: [
+						{
+							id: "message-second",
+							runId: "run-second",
+							turnId: "turn-second",
+							runSequence: 12,
+						},
+					],
 				},
 				{
 					id: "conversation-first",

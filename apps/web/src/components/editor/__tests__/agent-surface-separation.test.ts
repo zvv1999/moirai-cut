@@ -135,13 +135,9 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain("const latestFrame = frames.at(-1)");
 		expect(workbenchSource).toContain("frames.slice(-6, -1)");
 		expect(workbenchSource).toContain('aria-label="查看之前的处理步骤"');
-		expect(workbenchSource).toContain(
-			'frame.itemType === "agentMessage"',
-		);
+		expect(workbenchSource).toContain('frame.itemType === "agentMessage"');
 		expect(workbenchSource).toContain('"回复已生成"');
-		expect(workbenchSource).toContain(
-			'frame.itemType === "userMessage"',
-		);
+		expect(workbenchSource).toContain('frame.itemType === "userMessage"');
 		expect(workbenchSource).toContain('"已接收剪辑需求"');
 		expect(workbenchSource).toContain("正在准备工程上下文…");
 		expect(workbenchSource).not.toContain("查看执行详情");
@@ -168,9 +164,7 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain(
 			"const hydrateConversation = async () =>",
 		);
-		expect(workbenchSource).not.toContain(
-			"void refreshConversation().finally",
-		);
+		expect(workbenchSource).not.toContain("void refreshConversation().finally");
 	});
 
 	test("展示工程内的不同会话并可选择原上下文继续对话", () => {
@@ -183,9 +177,7 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain(
 			"conversation.id === activeConversationId",
 		);
-		expect(workbenchSource).toContain(
-			"sessionId: conversation.sessionId",
-		);
+		expect(workbenchSource).toContain("sessionId: conversation.sessionId");
 	});
 
 	test("对齐 Codex App 的模型、推理强度、协作模式与工具档位", () => {

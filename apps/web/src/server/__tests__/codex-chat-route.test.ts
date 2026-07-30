@@ -3,6 +3,10 @@ import {
 	createCodexChatRouteHandlers,
 	type CodexChatApiService,
 } from "@/app/api/codex/chat/route";
+import {
+	createCodexRunManager,
+	type CodexRunService,
+} from "@/server/codex-run-manager";
 
 describe("Codex Smart Edit SSE API", () => {
 	test("opens SSE immediately and forwards session, delta, and completion events", async () => {
@@ -47,6 +51,13 @@ describe("Codex Smart Edit SSE API", () => {
 					message: "统一字幕样式",
 					context: "Codex Path context",
 					sessionId: "thread-previous",
+					conversationId: "conversation-1",
+					model: "gpt-5.6-sol",
+					effort: "xhigh",
+					mode: "default",
+					toolProfile: "verify",
+					visualMode: "auto",
+					verificationMode: "full",
 				}),
 			}),
 		);
@@ -82,6 +93,13 @@ describe("Codex Smart Edit SSE API", () => {
 				message: "统一字幕样式",
 				context: "Codex Path context",
 				sessionId: "thread-previous",
+				conversationId: "conversation-1",
+				model: "gpt-5.6-sol",
+				effort: "xhigh",
+				mode: "default",
+				toolProfile: "verify",
+				visualMode: "auto",
+				verificationMode: "full",
 			},
 		]);
 	});
@@ -147,6 +165,53 @@ describe("Codex Smart Edit SSE API", () => {
 		]);
 	});
 
+	test("keeps the native turn running when the browser cancels only its SSE subscription", async () => {
+		let release: (() => void) | null = null;
+		const barrier = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const service: CodexRunService = {
+			stream: async function* () {
+				yield { type: "session", sessionId: "thread-background" };
+				await barrier;
+				yield {
+					type: "done",
+					sessionId: "thread-background",
+					message: "后台完成",
+				};
+			},
+			steer: async () => {},
+			interrupt: async () => {},
+			compact: async () => {},
+		};
+		const manager = createCodexRunManager({
+			service,
+			createId: () => "run-background",
+		});
+		const { POST } = createCodexChatRouteHandlers({ service, manager });
+		const response = await POST(
+			new Request("http://localhost/api/codex/chat", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					projectId: "project-1",
+					message: "继续后台处理",
+					context: "",
+				}),
+			}),
+		);
+		const reader = response.body?.getReader();
+		await reader?.read();
+		await reader?.cancel();
+		release?.();
+		await manager.waitForCompletion("run-background");
+
+		expect(manager.get("run-background")).toMatchObject({
+			status: "completed",
+			sessionId: "thread-background",
+		});
+	});
+
 	test("rejects malformed or incomplete requests before starting Codex", async () => {
 		let calls = 0;
 		const service: CodexChatApiService = {
@@ -160,6 +225,12 @@ describe("Codex Smart Edit SSE API", () => {
 		for (const body of [
 			"{broken",
 			JSON.stringify({ projectId: "project-1" }),
+			JSON.stringify({
+				projectId: "project-1",
+				message: "继续",
+				context: "",
+				mode: "unsafe",
+			}),
 		]) {
 			const response = await POST(
 				new Request("http://localhost/api/codex/chat", {
