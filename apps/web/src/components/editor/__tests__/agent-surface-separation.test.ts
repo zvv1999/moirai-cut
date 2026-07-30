@@ -215,7 +215,7 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain('aria-label="智能剪辑设置"');
 		expect(workbenchSource).toContain("absolute right-3 top-13 z-20");
 		expect(workbenchSource).toContain("messages.length === 0");
-		expect(workbenchSource).toContain(">高级设置<");
+		expect(workbenchSource).toContain("高级设置");
 		expect(workbenchSource).not.toContain('aria-label="智能剪辑会话记录"');
 		expect(workbenchSource).not.toContain("semanticTextCount");
 		expect(workbenchSource).not.toContain("semanticKeyframeCount");

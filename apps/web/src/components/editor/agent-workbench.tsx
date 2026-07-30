@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowUp, CircleStop, Plus, Settings2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
 	buildAgentContextSnapshot,
@@ -981,26 +982,6 @@ export function AgentWorkbench() {
 		(total, track) => total + track.elementCount,
 		0,
 	);
-	const semanticTextCount = semanticState.tracks.reduce(
-		(total, track) =>
-			total +
-			track.elements.filter((element) => element.type === "text").length,
-		0,
-	);
-	const semanticKeyframeCount = semanticState.tracks.reduce(
-		(total, track) =>
-			total +
-			track.elements.reduce(
-				(elementTotal, element) =>
-					elementTotal +
-					Object.values(element.animations ?? {}).reduce(
-						(channelTotal, keys) => channelTotal + keys.length,
-						0,
-					),
-				0,
-			),
-		0,
-	);
 	const normalizedReferenceSearch = referenceSearch.trim().toLocaleLowerCase();
 	const filteredTimelineTracks = semanticState.tracks
 		.map((track) => ({
@@ -1627,197 +1608,98 @@ export function AgentWorkbench() {
 
 	return (
 		<section
-			className="flex h-[min(78vh,760px)] min-h-[560px] flex-col overflow-hidden bg-[#111315]"
+			className="relative flex h-[min(70vh,680px)] min-h-[500px] flex-col overflow-hidden bg-[#111315]"
 			aria-label="智能剪辑工作台"
 		>
-			<header className="flex h-14 shrink-0 items-center justify-between border-b border-white/8 px-5">
-				<div className="flex items-center gap-3">
-					<span className="relative flex size-8 items-center justify-center rounded-lg bg-cyan-400 text-sm font-black text-slate-950">
+			<header className="flex h-13 shrink-0 items-center gap-3 border-b border-white/8 px-4 pr-12">
+				<div className="flex min-w-0 flex-1 items-center gap-2.5">
+					<span className="relative flex size-7 shrink-0 items-center justify-center rounded-lg bg-[#e6e8eb] text-[10px] font-black text-[#111315]">
 						AI
-						<span className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-[#111315] bg-emerald-400" />
+						<span
+							className={`absolute -right-0.5 -bottom-0.5 size-2 rounded-full border-2 border-[#111315] ${codexStatusClass}`}
+						/>
 					</span>
-					<div>
-						<div className="text-sm font-semibold tracking-tight">智能剪辑</div>
-						<div className="text-[10px] text-slate-400">
-							Codex 直接理解并执行
+					<div className="min-w-0">
+						<div className="text-[13px] font-semibold tracking-tight text-slate-100">
+							智能剪辑
 						</div>
+						<select
+							aria-label="切换智能剪辑会话"
+							value={activeConversationId ?? ""}
+							disabled={sending || !conversationHydrated}
+							onChange={(event) => {
+								const conversation = conversations.find(
+									(candidate) => candidate.id === event.target.value,
+								);
+								if (conversation) selectConversation(conversation);
+							}}
+							className="block h-4 max-w-64 appearance-none truncate bg-transparent pr-4 text-[9px] text-slate-500 outline-none disabled:opacity-50"
+							title={activeConversation?.title ?? "新对话"}
+						>
+							{conversations.length === 0 ? (
+								<option value="">新对话</option>
+							) : null}
+							{conversations.map((conversation) => (
+								<option key={conversation.id} value={conversation.id}>
+									{conversation.title}
+								</option>
+							))}
+						</select>
 					</div>
 				</div>
 				<div className="flex items-center gap-2">
 					<button
 						type="button"
-						aria-label="选中即引用"
-						aria-pressed={followSelection}
-						onClick={() => setFollowSelection((enabled) => !enabled)}
-						className={`flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[9px] transition-colors ${
-							followSelection
-								? "border-cyan-400/25 bg-cyan-400/8 text-cyan-200"
-								: "border-white/10 text-slate-500 hover:text-slate-200"
-						}`}
-						title="打开后继续点击时间轴素材，会自动加入本轮上下文"
+						aria-label="新建智能剪辑会话"
+						disabled={!conversationHydrated || sending}
+						onClick={() => createConversation()}
+						className="flex size-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/[0.06] hover:text-slate-100 disabled:opacity-30"
+						title="新对话"
 					>
-						<span
-							className={`size-1.5 rounded-full ${
-								followSelection ? "bg-cyan-300" : "bg-slate-600"
-							}`}
-						/>
-						选中即引用
+						<Plus className="size-3.5" />
 					</button>
 					<button
 						type="button"
-						aria-label="配置 Codex 连接"
+						aria-label="打开智能剪辑设置"
 						aria-expanded={codexSettingsOpen}
-						className="flex items-center gap-1.5 rounded-full border border-white/8 bg-white/[0.035] px-2.5 py-1 text-[10px] text-slate-300 transition hover:border-cyan-400/35 hover:text-white"
 						onClick={() => setCodexSettingsOpen((open) => !open)}
+						className={`flex size-7 items-center justify-center rounded-lg transition ${
+							codexSettingsOpen
+								? "bg-white/[0.08] text-slate-100"
+								: "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
+						}`}
+						title={codexStatusLabel}
 					>
-						<span
-							className={`size-1.5 rounded-full ${codexStatusClass}`}
-							aria-hidden="true"
-						/>
-						{codexStatusLabel}
+						<Settings2 className="size-3.5" />
 					</button>
-					<div
-						className="max-w-40 truncate rounded-full border border-white/8 bg-white/[0.035] px-2.5 py-1 text-[10px] text-slate-400"
-						title={
-							sessionId
-								? `${activeConversation?.title ?? "当前会话"} · ${sessionId}`
-								: undefined
-						}
-					>
-						{activeConversation?.title ?? selectedLabel}
-					</div>
 				</div>
 			</header>
 
-			<section
-				aria-label="智能剪辑会话记录"
-				className="flex h-14 shrink-0 items-stretch gap-2 border-b border-white/7 bg-[#131618] px-4 py-2"
-			>
-				<button
-					type="button"
-					aria-label="新建智能剪辑会话"
-					disabled={!conversationHydrated || sending}
-					onClick={() => createConversation()}
-					className="flex w-20 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-dashed border-cyan-400/25 bg-cyan-400/[0.035] text-[9px] font-medium text-cyan-200 transition hover:border-cyan-300/50 hover:bg-cyan-400/[0.07] disabled:cursor-not-allowed disabled:opacity-35"
-				>
-					<span className="text-sm leading-none">＋</span>
-					新对话
-				</button>
-				<div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
-					{conversations.length === 0 ? (
-						<div className="flex items-center px-2 text-[9px] text-slate-600">
-							发送第一条需求后，会在这里保留会话记录
-						</div>
-					) : (
-						conversations.map((conversation) => {
-							const active = conversation.id === activeConversationId;
-							return (
-								<button
-									key={conversation.id}
-									type="button"
-									aria-label={`继续会话：${conversation.title}`}
-									aria-pressed={active}
-									disabled={sending}
-									onClick={() => selectConversation(conversation)}
-									className={`group min-w-32 max-w-44 flex-1 rounded-lg border px-2.5 py-1 text-left transition ${
-										active
-											? "border-cyan-400/35 bg-cyan-400/[0.08] text-slate-100"
-											: "border-white/7 bg-white/[0.025] text-slate-400 hover:border-white/15 hover:bg-white/[0.045]"
-									} disabled:cursor-not-allowed disabled:opacity-45`}
-								>
-									<span className="block truncate text-[10px] font-medium">
-										{conversation.title}
-									</span>
-									<span
-										className={`mt-0.5 block text-[8px] ${
-											active ? "text-cyan-300/70" : "text-slate-600"
-										}`}
-									>
-										{conversation.messages.length} 条消息
-										{conversation.sessionId ? " · 可继续" : " · 新会话"}
-									</span>
-								</button>
-							);
-						})
-					)}
-				</div>
-			</section>
-
 			{codexSettingsOpen ? (
 				<section
-					aria-label="Codex 连接设置"
-					className="shrink-0 border-b border-white/8 bg-[#16191c] px-5 py-4"
+					aria-label="智能剪辑设置"
+					className="absolute right-3 top-13 z-20 max-h-[calc(100%-4rem)] w-[min(320px,calc(100%-1.5rem))] overflow-y-auto rounded-xl border border-white/10 bg-[#1a1c1f] p-3 shadow-2xl"
 				>
-					<div className="mb-3 flex items-start justify-between gap-4">
-						<div>
-							<h3 className="text-xs font-semibold text-slate-100">
-								Codex 连接
-							</h3>
-							<p className="mt-0.5 text-[10px] text-slate-500">
-								当前使用 ChatGPT/Codex 桌面应用内置 CLI。
+					<div className="flex items-center justify-between gap-3 border-b border-white/7 pb-3">
+						<div className="min-w-0">
+							<div className="flex items-center gap-2 text-[11px] font-medium text-slate-200">
+								<span className={`size-1.5 rounded-full ${codexStatusClass}`} />
+								{codexStatusLabel}
+							</div>
+							<p className="mt-0.5 truncate text-[9px] text-slate-500">
+								{codexConnection?.message ?? "正在检测桌面内置 Codex…"}
 							</p>
 						</div>
 						<button
 							type="button"
-							className="rounded-md border border-white/10 px-2.5 py-1 text-[10px] text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-200 disabled:opacity-50"
+							className="shrink-0 rounded-md px-2 py-1 text-[9px] text-slate-400 transition hover:bg-white/[0.06] hover:text-slate-100 disabled:opacity-40"
 							disabled={codexChecking}
 							onClick={() => void refreshCodexConnection()}
 						>
 							{codexChecking ? "检测中…" : "重新检测"}
 						</button>
 					</div>
-					<div className="grid grid-cols-2 gap-2">
-						<div className="rounded-lg border border-cyan-400/35 bg-cyan-400/[0.06] px-3 py-2">
-							<div className="flex items-center justify-between">
-								<span className="text-[11px] font-medium text-cyan-200">
-									Path 模式
-								</span>
-								<span className="rounded bg-cyan-400/12 px-1.5 py-0.5 text-[8px] text-cyan-300">
-									当前
-								</span>
-							</div>
-							<p className="mt-1 text-[9px] text-slate-500">
-								复用桌面登录，无需 API Key
-							</p>
-						</div>
-						<div
-							aria-disabled="true"
-							className="rounded-lg border border-white/6 bg-black/15 px-3 py-2 opacity-45"
-						>
-							<div className="flex items-center justify-between">
-								<span className="text-[11px] font-medium text-slate-300">
-									API 模式
-								</span>
-								<span className="text-[8px] text-slate-500">待接入</span>
-							</div>
-							<p className="mt-1 text-[9px] text-slate-600">
-								使用服务端 API Key
-							</p>
-						</div>
-					</div>
-					<label className="mt-3 block">
-						<span className="mb-1 block text-[9px] font-medium tracking-[0.1em] text-slate-500 uppercase">
-							Codex Path
-						</span>
-						<input
-							aria-label="Codex Path"
-							readOnly
-							value={
-								codexConnection?.path ??
-								"/Applications/ChatGPT.app/Contents/Resources/codex"
-							}
-							className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2.5 font-mono text-[10px] text-slate-300 outline-none"
-						/>
-					</label>
-					<div className="mt-2 flex items-center justify-between gap-3 text-[9px]">
-						<span className="min-w-0 truncate text-slate-500">
-							{codexConnection?.message ?? "正在检测桌面内置 Codex CLI…"}
-						</span>
-						<span className="shrink-0 font-mono text-slate-500">
-							{codexConnection?.version ?? "—"}
-						</span>
-					</div>
-					<div className="mt-3 grid grid-cols-2 gap-2 border-t border-white/7 pt-3">
+					<div className="mt-3 grid grid-cols-2 gap-2">
 						<label className="block">
 							<span className="mb-1 block text-[9px] text-slate-500">模型</span>
 							<select
@@ -1852,27 +1734,7 @@ export function AgentWorkbench() {
 							</select>
 						</label>
 						<label className="block">
-							<span className="mb-1 block text-[9px] text-slate-500">
-								推理强度
-							</span>
-							<select
-								aria-label="Codex 推理强度"
-								value={codexEffort}
-								disabled={sending}
-								onChange={(event) => setCodexEffort(event.target.value)}
-								className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
-							>
-								{availableEfforts.map((effort) => (
-									<option key={effort} value={effort}>
-										{effort}
-									</option>
-								))}
-							</select>
-						</label>
-						<label className="block">
-							<span className="mb-1 block text-[9px] text-slate-500">
-								协作模式
-							</span>
+							<span className="mb-1 block text-[9px] text-slate-500">模式</span>
 							<select
 								aria-label="Codex 协作模式"
 								value={codexMode}
@@ -1888,76 +1750,158 @@ export function AgentWorkbench() {
 								<option value="plan">规划模式</option>
 							</select>
 						</label>
-						<label className="block">
-							<span className="mb-1 block text-[9px] text-slate-500">
-								工具档位
-							</span>
-							<select
-								aria-label="Codex 工具档位"
-								value={codexToolProfile}
-								disabled={sending}
-								onChange={(event) => {
-									if (isCodexToolProfile(event.target.value)) {
-										setCodexToolProfile(event.target.value);
-									}
-								}}
-								className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+					</div>
+					<details className="group mt-3 border-t border-white/7 pt-2">
+						<summary className="cursor-pointer list-none py-1 text-[10px] text-slate-400 outline-none transition hover:text-slate-100 [&::-webkit-details-marker]:hidden">
+							高级设置
+						</summary>
+						<div className="mt-2 grid grid-cols-2 gap-2">
+							<label className="block">
+								<span className="mb-1 block text-[9px] text-slate-500">
+									推理强度
+								</span>
+								<select
+									aria-label="Codex 推理强度"
+									value={codexEffort}
+									disabled={sending}
+									onChange={(event) => setCodexEffort(event.target.value)}
+									className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+								>
+									{availableEfforts.map((effort) => (
+										<option key={effort} value={effort}>
+											{effort}
+										</option>
+									))}
+								</select>
+							</label>
+							<label className="block">
+								<span className="mb-1 block text-[9px] text-slate-500">
+									工具档位
+								</span>
+								<select
+									aria-label="Codex 工具档位"
+									value={codexToolProfile}
+									disabled={sending}
+									onChange={(event) => {
+										if (isCodexToolProfile(event.target.value)) {
+											setCodexToolProfile(event.target.value);
+										}
+									}}
+									className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+								>
+									<option value="edit">专注剪辑</option>
+									<option value="verify">剪辑与验收</option>
+									<option value="full">完整能力</option>
+								</select>
+							</label>
+						</div>
+						<div className="mt-2 space-y-1">
+							<button
+								type="button"
+								aria-label="选中即引用"
+								aria-pressed={followSelection}
+								onClick={() => setFollowSelection((enabled) => !enabled)}
+								className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-[9px] text-slate-400 transition hover:bg-white/[0.04]"
 							>
-								<option value="edit">专注剪辑</option>
-								<option value="verify">剪辑与验收</option>
-								<option value="full">完整能力</option>
-							</select>
+								<span>选中时间轴素材时自动引用</span>
+								<span
+									className={`h-4 w-7 rounded-full p-0.5 transition ${
+										followSelection ? "bg-cyan-400" : "bg-white/10"
+									}`}
+								>
+									<span
+										className={`block size-3 rounded-full bg-white transition ${
+											followSelection ? "translate-x-3" : ""
+										}`}
+									/>
+								</span>
+							</button>
+							<button
+								type="button"
+								aria-pressed={codexVisualMode === "auto"}
+								onClick={() =>
+									setCodexVisualMode((current) =>
+										current === "auto" ? "off" : "auto",
+									)
+								}
+								className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-[9px] text-slate-400 transition hover:bg-white/[0.04]"
+							>
+								<span>自动识别选区画面</span>
+								<span className="text-slate-500">
+									{codexVisualMode === "auto" ? "开启" : "关闭"}
+								</span>
+							</button>
+							<button
+								type="button"
+								aria-pressed={codexVerificationMode === "full"}
+								onClick={() =>
+									setCodexVerificationMode((current) =>
+										current === "full" ? "off" : "full",
+									)
+								}
+								className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-[9px] text-slate-400 transition hover:bg-white/[0.04]"
+							>
+								<span>修改后自动复核</span>
+								<span className="text-slate-500">
+									{codexVerificationMode === "full" ? "开启" : "关闭"}
+								</span>
+							</button>
+						</div>
+						<label className="mt-2 block">
+							<span className="mb-1 block text-[9px] text-slate-500">
+								Codex Path
+							</span>
+							<input
+								aria-label="Codex Path"
+								readOnly
+								value={
+									codexConnection?.path ??
+									"/Applications/ChatGPT.app/Contents/Resources/codex"
+								}
+								className="h-7 w-full rounded-md border border-white/8 bg-black/25 px-2 font-mono text-[9px] text-slate-400 outline-none"
+							/>
 						</label>
-					</div>
-					<div className="mt-2 grid grid-cols-2 gap-2">
-						<button
-							type="button"
-							aria-pressed={codexVisualMode === "auto"}
-							onClick={() =>
-								setCodexVisualMode((current) =>
-									current === "auto" ? "off" : "auto",
-								)
-							}
-							className={`rounded-lg border px-2.5 py-2 text-left text-[9px] transition ${
-								codexVisualMode === "auto"
-									? "border-cyan-400/30 bg-cyan-400/[0.06] text-cyan-200"
-									: "border-white/7 text-slate-500"
-							}`}
-						>
-							自动识别选区画面
-						</button>
-						<button
-							type="button"
-							aria-pressed={codexVerificationMode === "full"}
-							onClick={() =>
-								setCodexVerificationMode((current) =>
-									current === "full" ? "off" : "full",
-								)
-							}
-							className={`rounded-lg border px-2.5 py-2 text-left text-[9px] transition ${
-								codexVerificationMode === "full"
-									? "border-emerald-400/25 bg-emerald-400/[0.05] text-emerald-200"
-									: "border-white/7 text-slate-500"
-							}`}
-						>
-							修改后自动复核
-						</button>
-					</div>
-					<div className="mt-2 flex items-center justify-between">
-						<span className="text-[8px] text-slate-600">
+						<div className="mt-2 flex flex-wrap items-center gap-1 border-t border-white/7 pt-2">
+							{visibleReferences.length > 0 ? (
+								<>
+									<button
+										type="button"
+										onClick={() => void copyContext()}
+										className="rounded px-2 py-1 text-[9px] text-slate-500 hover:bg-white/[0.05] hover:text-slate-200"
+									>
+										复制上下文
+									</button>
+									<button
+										type="button"
+										onClick={() => void copyContextJson()}
+										className="rounded px-2 py-1 text-[9px] text-slate-500 hover:bg-white/[0.05] hover:text-slate-200"
+									>
+										复制 JSON
+									</button>
+									<button
+										type="button"
+										onClick={clearReferences}
+										className="rounded px-2 py-1 text-[9px] text-slate-500 hover:bg-white/[0.05] hover:text-red-300"
+									>
+										清空引用
+									</button>
+								</>
+							) : null}
+							<button
+								type="button"
+								disabled={!sessionId}
+								onClick={() => void compactCodexContext()}
+								className="ml-auto rounded px-2 py-1 text-[9px] text-slate-500 hover:bg-white/[0.05] hover:text-slate-200 disabled:opacity-30"
+							>
+								压缩上下文
+							</button>
+						</div>
+						<p className="mt-1 text-right text-[8px] text-slate-600">
 							{codexCapabilities?.skills.filter((skill) => skill.enabled)
 								.length ?? 0}{" "}
-							个可用技能
-						</span>
-						<button
-							type="button"
-							disabled={!sessionId}
-							onClick={() => void compactCodexContext()}
-							className="rounded-md border border-white/10 px-2.5 py-1 text-[9px] text-slate-400 transition hover:border-cyan-400/35 hover:text-cyan-200 disabled:opacity-35"
-						>
-							压缩上下文
-						</button>
-					</div>
+							个可用技能 · {codexConnection?.version ?? "版本未知"}
+						</p>
+					</details>
 				</section>
 			) : null}
 
@@ -1965,26 +1909,30 @@ export function AgentWorkbench() {
 				role="log"
 				aria-label="智能剪辑对话记录"
 				aria-live="polite"
-				className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5"
+				className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5"
 			>
-				<div className="flex max-w-[82%] items-start gap-2.5">
-					<span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md bg-cyan-400 text-[9px] font-black text-slate-950">
-						AI
-					</span>
-					<div className="rounded-2xl rounded-tl-sm border border-white/8 bg-white/[0.045] px-3.5 py-3 text-xs leading-relaxed text-slate-200">
-						<p>
-							本会话由 Codex 直接处理。告诉我你想怎么剪，我会直接操作当前工程。
+				{!conversationHydrated ? (
+					<div className="flex h-full items-center justify-center gap-2 text-[10px] text-slate-500">
+						<span className="size-1.5 animate-pulse rounded-full bg-cyan-300" />
+						正在同步工程会话…
+					</div>
+				) : messages.length === 0 ? (
+					<div className="flex h-full min-h-64 flex-col items-center justify-center px-8 text-center">
+						<span className="mb-3 flex size-9 items-center justify-center rounded-xl border border-white/8 bg-white/[0.035] text-slate-300">
+							<Sparkles className="size-4" />
+						</span>
+						<h3 className="text-sm font-medium text-slate-100">想怎么剪？</h3>
+						<p className="mt-1 max-w-72 text-[10px] leading-relaxed text-slate-500">
+							选中时间轴内容后直接描述修改，Codex 会读取当前工程并执行。
 						</p>
-						<p className="mt-1 text-[10px] text-slate-500">
-							可用“＋”从时间线或素材库精确引用上下文。
-						</p>
-						<div className="mt-2 flex flex-wrap gap-1.5">
+						<p className="mt-1 text-[9px] text-slate-600">{selectedLabel}</p>
+						<div className="mt-4 flex flex-wrap justify-center gap-1.5">
 							{AGENT_REQUEST_PRESETS.map((preset) => (
 								<button
 									key={preset}
 									type="button"
-									disabled={sending || !conversationHydrated}
-									className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-300 disabled:opacity-40"
+									disabled={sending}
+									className="rounded-full border border-white/8 px-2.5 py-1 text-[9px] text-slate-400 transition hover:border-white/15 hover:bg-white/[0.04] hover:text-slate-100 disabled:opacity-40"
 									onClick={() => void submitToCodex(preset)}
 								>
 									{preset}
@@ -1992,99 +1940,17 @@ export function AgentWorkbench() {
 							))}
 						</div>
 					</div>
-				</div>
-
-				{visibleReferences.length > 0 ? (
-					<div
-						className="ml-8 max-w-[84%] rounded-xl border border-cyan-400/15 bg-cyan-400/[0.035] p-2.5"
-						aria-label="Codex 上下文引用"
-					>
-						<div className="mb-2 flex items-center justify-between gap-2">
-							<span className="text-[9px] font-semibold tracking-[0.14em] text-cyan-300 uppercase">
-								已引用 {visibleReferences.length} 项上下文
-							</span>
-							<div className="flex items-center gap-2">
-								<button
-									type="button"
-									className="text-[9px] text-slate-400 hover:text-slate-100"
-									onClick={() => void copyContext()}
-								>
-									复制上下文
-								</button>
-								<button
-									type="button"
-									className="text-[9px] text-slate-400 hover:text-slate-100"
-									onClick={() => void copyContextJson()}
-								>
-									复制 JSON
-								</button>
-								<button
-									type="button"
-									className="text-[9px] text-slate-500 hover:text-red-300"
-									onClick={clearReferences}
-								>
-									清空
-								</button>
-							</div>
-						</div>
-						<ul className="space-y-1">
-							{visibleReferences.map((reference) => (
-								<li
-									key={reference.uri}
-									className="flex min-w-0 items-center gap-1 rounded-lg border border-white/7 bg-black/20 px-2 py-1.5"
-								>
-									<button
-										type="button"
-										className="min-w-0 flex-1 text-left"
-										onClick={() => revealReference(reference.uri)}
-										title={reference.uri}
-									>
-										<span className="block truncate text-[9px] font-medium">
-											{reference.label}
-										</span>
-										<span className="block truncate font-mono text-[7px] text-slate-600">
-											{reference.uri}
-										</span>
-									</button>
-									<button
-										type="button"
-										className="shrink-0 px-1 text-[11px] opacity-35 hover:opacity-100"
-										onClick={() => removeReference(reference.uri)}
-										aria-label={`移除引用 ${reference.label}`}
-									>
-										×
-									</button>
-								</li>
-							))}
-						</ul>
-					</div>
-				) : null}
-
-				<div className="ml-8 flex max-w-[84%] flex-wrap gap-x-2 gap-y-1 rounded-lg border border-white/6 bg-white/[0.025] px-2.5 py-2 font-mono text-[8px] text-slate-500">
-					<span>{semanticState.media.length} 个媒体</span>
-					<span>{semanticState.tracks.length} 条轨道</span>
-					<span>{semanticElementCount} 个素材</span>
-					<span>{semanticTextCount} 个文本</span>
-					<span>{semanticKeyframeCount} 个关键帧</span>
-					<span>{semanticState.bookmarks.length} 个标记</span>
-				</div>
-
-				{!conversationHydrated ? (
-					<div className="ml-8 flex max-w-[84%] items-center gap-2 rounded-xl border border-white/7 bg-white/[0.025] px-3 py-2 text-[9px] text-slate-500">
-						<span className="size-1.5 animate-pulse rounded-full bg-cyan-300" />
-						正在同步工程会话…
-					</div>
 				) : (
 					messages.map((message) =>
 						message.role === "user" ? (
 							<div
 								key={message.id}
-								className="ml-auto max-w-[78%] rounded-2xl rounded-tr-sm bg-cyan-400 px-3.5 py-2.5 text-xs leading-relaxed text-slate-950"
+								className="ml-auto max-w-[78%] rounded-2xl bg-[#2c2f33] px-3.5 py-2.5 text-xs leading-relaxed text-slate-100"
 							>
 								<p className="whitespace-pre-wrap">{message.content}</p>
 								{message.referenceCount ? (
-									<p className="mt-1 text-[8px] opacity-60">
-										附带 {message.referenceCount} 项 Codex Path
+									<p className="mt-1 text-[8px] text-slate-500">
+										已引用 {message.referenceCount} 项上下文
 									</p>
 								) : null}
 							</div>
@@ -2097,22 +1963,22 @@ export function AgentWorkbench() {
 									className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md text-[9px] font-black ${
 										message.role === "error"
 											? "bg-red-500 text-white"
-											: "bg-cyan-400 text-slate-950"
+											: "border border-white/10 bg-[#e6e8eb] text-[#111315]"
 									}`}
 								>
 									{message.role === "error" ? "!" : "AI"}
 								</span>
 								<div
-									className={`min-w-0 flex-1 rounded-2xl rounded-tl-sm border px-3 py-3 text-xs leading-relaxed ${
+									className={`min-w-0 flex-1 px-1 py-1 text-xs leading-relaxed ${
 										message.role === "error"
-											? "border-red-500/25 bg-red-500/8 text-red-200"
-											: "border-white/8 bg-white/[0.045] text-slate-200"
+											? "rounded-xl border border-red-500/25 bg-red-500/8 px-3 py-2 text-red-200"
+											: "text-slate-200"
 									}`}
 								>
 									{message.protocol && message.protocol.length > 0 ? (
 										<CodexActivityLine frames={message.protocol} />
 									) : message.streaming ? (
-										<div className="mb-2 flex items-center gap-2 rounded-lg border border-white/7 bg-black/20 px-2.5 py-2 text-[9px] text-slate-500">
+										<div className="mb-2 flex items-center gap-2 text-[9px] text-slate-500">
 											<span className="size-1.5 animate-pulse rounded-full bg-cyan-300" />
 											正在准备工程上下文…
 										</div>
@@ -2137,7 +2003,7 @@ export function AgentWorkbench() {
 
 			{referencePickerOpen ? (
 				<section
-					className="mx-4 mb-2 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-[#181b1e] shadow-xl"
+					className="absolute right-4 bottom-24 left-4 z-10 max-h-[55%] overflow-hidden rounded-xl border border-white/10 bg-[#181b1e] shadow-2xl"
 					aria-label="上下文选择器"
 				>
 					<div className="flex items-center justify-between border-b border-white/8 px-3 py-2">
@@ -2357,52 +2223,51 @@ export function AgentWorkbench() {
 			) : null}
 
 			<form
-				className="shrink-0 border-t border-white/8 bg-[#151719] px-4 py-3"
+				className="shrink-0 bg-[#111315] px-4 pt-2 pb-4"
 				onSubmit={(event) => {
 					event.preventDefault();
 					void submitToCodex();
 				}}
 			>
-				{visibleReferences.length > 0 ? (
-					<div className="mb-2 flex items-center gap-1.5 overflow-x-auto">
-						{visibleReferences.map((reference) => (
-							<button
-								key={reference.uri}
-								type="button"
-								className="shrink-0 rounded-full border border-cyan-400/20 bg-cyan-400/[0.06] px-2 py-1 text-[9px] text-cyan-200"
-								onClick={() => removeReference(reference.uri)}
-								title={`移除 ${reference.label}`}
-							>
-								@
-								{reference.kind === "media"
-									? "素材库"
-									: reference.kind === "range"
-										? "片段"
-										: "时间线"}{" "}
-								{reference.label} ×
-							</button>
-						))}
-					</div>
-				) : null}
-				<div className="flex items-end gap-2 rounded-xl border border-white/10 bg-black/20 p-2 focus-within:border-cyan-400/35">
-					<button
-						type="button"
-						aria-label="添加上下文引用"
-						aria-pressed={referencePickerOpen}
-						className={`flex size-8 shrink-0 items-center justify-center rounded-lg text-lg transition ${
-							referencePickerOpen
-								? "bg-cyan-400 text-slate-950"
-								: "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
-						}`}
-						onClick={() => setReferencePickerOpen((open) => !open)}
-					>
-						+
-					</button>
+				<div className="rounded-2xl border border-white/10 bg-[#1a1c1f] p-2 shadow-[0_10px_32px_rgba(0,0,0,0.24)] transition focus-within:border-white/20">
+					{visibleReferences.length > 0 ? (
+						<div className="flex items-center gap-1.5 overflow-x-auto px-1 pb-1.5">
+							{visibleReferences.map((reference) => (
+								<div
+									key={reference.uri}
+									className="flex shrink-0 items-center rounded-full border border-white/8 bg-white/[0.045] text-[9px] text-slate-300"
+								>
+									<button
+										type="button"
+										className="max-w-44 truncate py-1 pl-2"
+										onClick={() => revealReference(reference.uri)}
+										title={`定位 ${reference.label}`}
+									>
+										@
+										{reference.kind === "media"
+											? "素材库"
+											: reference.kind === "range"
+												? "片段"
+												: "时间线"}{" "}
+										{reference.label}
+									</button>
+									<button
+										type="button"
+										aria-label={`移除引用 ${reference.label}`}
+										className="px-1.5 py-1 text-slate-600 hover:text-slate-200"
+										onClick={() => removeReference(reference.uri)}
+									>
+										×
+									</button>
+								</div>
+							))}
+						</div>
+					) : null}
 					<textarea
 						aria-label="描述智能剪辑需求"
-						className="max-h-28 min-h-8 flex-1 resize-none bg-transparent px-1 py-1.5 text-xs leading-relaxed text-slate-100 outline-none placeholder:text-slate-600"
+						className="max-h-28 min-h-12 w-full resize-none bg-transparent px-2 py-1.5 text-xs leading-relaxed text-slate-100 outline-none placeholder:text-slate-600"
 						value={request}
-						rows={1}
+						rows={2}
 						disabled={!conversationHydrated}
 						onChange={(event) => setRequest(event.target.value)}
 						onKeyDown={(event) => {
@@ -2419,40 +2284,56 @@ export function AgentWorkbench() {
 									: "描述你想要的剪辑效果…"
 						}
 					/>
-					{sending ? (
-						<button
-							type="button"
-							aria-label="停止处理"
-							onClick={() => void stopCodexRun()}
-							className="flex h-8 shrink-0 items-center rounded-lg border border-red-400/25 bg-red-400/[0.06] px-2.5 text-[10px] font-medium text-red-200 transition hover:bg-red-400/10"
-						>
-							停止处理
-						</button>
-					) : null}
-					<button
-						type="submit"
-						aria-label="发送智能剪辑需求"
-						disabled={!conversationHydrated || !request.trim()}
-						className="flex h-8 shrink-0 items-center rounded-lg bg-cyan-400 px-3 text-[10px] font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-30"
-					>
-						{sending ? "追加" : "发送"}
-					</button>
-				</div>
-				<div className="mt-1.5 flex items-center justify-between px-1 text-[8px] text-slate-600">
-					<span>Enter 发送 · Shift + Enter 换行</span>
-					<span
-						title={
-							activeTurnId
-								? `任务 ${activeTurnId} · 已接收 ${activeRunSequence} 个事件`
-								: undefined
-						}
-					>
-						{codexMode === "plan"
-							? "规划模式 · 只分析不改工程"
-							: codexVerificationMode === "full"
-								? "Codex 直接处理 · 修改后自动复核"
-								: "Codex 直接处理"}
-					</span>
+					<div className="mt-1 flex items-center justify-between gap-2">
+						<div className="flex min-w-0 items-center gap-1">
+							<button
+								type="button"
+								aria-label="添加上下文引用"
+								aria-pressed={referencePickerOpen}
+								className={`flex size-7 shrink-0 items-center justify-center rounded-lg transition ${
+									referencePickerOpen
+										? "bg-white/12 text-slate-100"
+										: "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
+								}`}
+								onClick={() => setReferencePickerOpen((open) => !open)}
+							>
+								<Plus className="size-3.5" />
+							</button>
+							<span
+								className="min-w-0 truncate px-1 text-[9px] text-slate-500"
+								title={
+									activeTurnId
+										? `任务 ${activeTurnId} · 已接收 ${activeRunSequence} 个事件`
+										: undefined
+								}
+							>
+								{selectedCodexModel?.label ?? codexModel} ·{" "}
+								{codexMode === "plan" ? "规划" : "执行"}
+							</span>
+						</div>
+						<div className="flex items-center gap-1.5">
+							{sending ? (
+								<button
+									type="button"
+									aria-label="停止处理"
+									onClick={() => void stopCodexRun()}
+									className="flex size-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/[0.06] hover:text-red-300"
+									title="停止处理"
+								>
+									<CircleStop className="size-3.5" />
+								</button>
+							) : null}
+							<button
+								type="submit"
+								aria-label="发送智能剪辑需求"
+								disabled={!conversationHydrated || !request.trim()}
+								className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[#e6e8eb] text-[#111315] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-25"
+								title={sending ? "追加到当前任务" : "发送"}
+							>
+								<ArrowUp className="size-3.5" />
+							</button>
+						</div>
+					</div>
 				</div>
 			</form>
 		</section>

@@ -311,7 +311,7 @@ export function AgentBadge() {
 					showOverlay={false}
 					aria-label="智能剪辑对话框"
 					onInteractOutside={(event) => event.preventDefault()}
-					className="right-4 bottom-14 top-auto left-auto max-h-[86vh] w-[min(720px,calc(100vw-2rem))] max-w-[720px] translate-x-0 translate-y-0 gap-0 overflow-hidden border-white/10 bg-[#111315] p-0 text-slate-100 shadow-2xl"
+					className="right-4 bottom-14 top-auto left-auto max-h-[82vh] w-[min(640px,calc(100vw-2rem))] max-w-[640px] translate-x-0 translate-y-0 gap-0 overflow-hidden border-white/10 bg-[#111315] p-0 text-slate-100 shadow-2xl"
 				>
 					<DialogHeader className="sr-only">
 						<DialogTitle>智能剪辑对话框</DialogTitle>
