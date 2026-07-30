@@ -38,10 +38,10 @@ flowchart LR
 内置智能剪辑不会把“寻找工具、连接 MCP、寻找当前工程”交给模型。每一轮固定先完成：
 
 1. 启动或恢复当前工程对应的 Codex thread；
-2. 用 `mcpServerStatus/list` 校验 `opencut` 已注册，且至少暴露
-   `read_project`、`edit_project`；
-3. 用 `mcpServer/tool/call` 预读当前 `projectId` 的
-   `read_project(detail: "summary")`；
+2. 用 `mcpServer/tool/call` 直接预读当前 `projectId` 的
+   `read_project(detail: "summary")`；调用成功同时证明 `opencut` 已就绪；
+3. 只有画面识别或完整回写验证需要扩展工具时，才用 `mcpServerStatus/list`
+   读取完整工具目录；普通回合失败时也会调用它生成具体诊断；
 4. 把工程摘要与 `opencut.agent-context.v1` 一起放入本轮输入，再调用
    `turn/start`。
 
@@ -74,10 +74,10 @@ Codex 内核，只调整当前任务所需的推理、工具和验证深度：
 编辑器同步等待和关键画面验证。
 
 编辑器先从本地会话投影恢复 UI，并在后台用原生 `thread/read` 校准，历史同步不会阻塞
-输入框。能力发现使用五分钟缓存和并发请求合并；冷启动时 MCP 状态校验与
-`read_project` 预读并行；task 命名也不再阻塞 `turn/start`。SSE 每 15 秒发送心跳，
-长任务可通过 run 序列号恢复并补齐遗漏事件。流式回复默认跟随最新一行；用户主动向上
-查看历史后则保持当前位置。
+输入框。能力发现使用五分钟缓存和并发请求合并；普通回合用 `read_project` 直接完成
+MCP 就绪校验和工程预读，避免全量 MCP 状态枚举拖慢首轮；task 命名也不再阻塞
+`turn/start`。SSE 每 15 秒发送心跳，长任务可通过 run 序列号恢复并补齐遗漏事件。
+流式回复默认跟随最新一行；用户主动向上查看历史后则保持当前位置。
 
 素材预览也使用独立的性能策略：浏览器不兼容的编码、分辨率达到 2560×1440、帧率
 高于 30 fps 或码率高于 20 Mbps 时自动生成代理。大分辨率素材使用长边 1440 的
