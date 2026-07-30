@@ -247,8 +247,8 @@ MCP 工具审批，并只在当前会话持久化；其他服务器或普通表�
 
 - `session`：Codex thread/session ID；
 - `delta`：模型文本增量；
-- `protocol`：原生 Codex/app-server 协议步骤，包括分析、计划、命令、
-  MCP started/completed，以及模型前的“OpenCut MCP 已就绪”“当前工程上下文已载入”；
+- `protocol`：供服务端诊断的 Codex/app-server 协议步骤；内置智能剪辑会忽略这些事件，
+  不在对话界面展示调用轨迹；
 - `done`：本轮权威最终消息；
 - `error`：连接、工具或本轮失败。
 
