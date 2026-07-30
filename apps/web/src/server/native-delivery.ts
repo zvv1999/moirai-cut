@@ -1,11 +1,6 @@
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import {
-	mkdir,
-	rename,
-	rm,
-	stat,
-} from "node:fs/promises";
+import { mkdir, rename, rm, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import {
@@ -43,10 +38,7 @@ interface DeliveryPreset {
 	expectedBitDepth?: number;
 }
 
-const DELIVERY_PRESETS: Record<
-	DeliveryPresetName,
-	DeliveryPreset
-> = {
+const DELIVERY_PRESETS: Record<DeliveryPresetName, DeliveryPreset> = {
 	"h264-mp4": {
 		extension: "mp4",
 		suffix: "h264",
@@ -384,15 +376,7 @@ const DELIVERY_PRESETS: Record<
 		suffix: "opus",
 		encoder: "libopus",
 		hardwareAcceleration: "software",
-		args: [
-			"-vn",
-			"-map",
-			"0:a:0",
-			"-c:a",
-			"libopus",
-			"-b:a",
-			"192k",
-		],
+		args: ["-vn", "-map", "0:a:0", "-c:a", "libopus", "-b:a", "192k"],
 		expectedAudioCodec: "opus",
 	},
 };
@@ -424,7 +408,7 @@ function validateSafeExportName({ name }: { name: string }): void {
 function defaultProjectsRoot(): string {
 	return (
 		process.env.OPENCUT_PROJECTS_DIR ??
-		path.join(homedir(), "OpenCutProjects")
+		path.join(/*turbopackIgnore: true*/ homedir(), "OpenCutProjects")
 	);
 }
 
@@ -564,10 +548,7 @@ export async function transcodeProjectExport({
 	probe?: DeliveryProbe;
 	decode?: DeliveryDecode;
 	signal?: AbortSignal;
-	onProgress?: (update: {
-		progress: number;
-		processedSeconds: number;
-	}) => void;
+	onProgress?: (update: { progress: number; processedSeconds: number }) => void;
 }): Promise<NativeDeliveryResult> {
 	validateSafeProjectId({ projectId });
 	validateSafeExportName({ name: sourceName });
@@ -623,9 +604,7 @@ export async function transcodeProjectExport({
 			validated: true,
 		};
 	} catch (error) {
-		await rm(temporaryOutputPath, { force: true }).catch(
-			() => undefined,
-		);
+		await rm(temporaryOutputPath, { force: true }).catch(() => undefined);
 		throw error;
 	}
 }

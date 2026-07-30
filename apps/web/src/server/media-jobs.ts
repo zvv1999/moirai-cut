@@ -1,13 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
-import {
-	mkdir,
-	readFile,
-	rename,
-	rm,
-	stat,
-	writeFile,
-} from "node:fs/promises";
+import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import type { MediaProxyData } from "@/services/storage/types";
@@ -24,19 +17,11 @@ const TERMINAL_STATUSES = new Set<NativeMediaJobStatus>([
 	"cancelled",
 ]);
 
-export const PROXY_PROFILE_NAMES = [
-	"draft",
-	"standard",
-	"high",
-] as const;
+export const PROXY_PROFILE_NAMES = ["draft", "standard", "high"] as const;
 export type ProxyProfileName = (typeof PROXY_PROFILE_NAMES)[number];
 
 export type NativeMediaJobStatus =
-	| "queued"
-	| "running"
-	| "succeeded"
-	| "failed"
-	| "cancelled";
+	"queued" | "running" | "succeeded" | "failed" | "cancelled";
 
 export interface NativeProxyMetadata extends MediaProxyData {
 	profile: ProxyProfileName;
@@ -80,10 +65,7 @@ export type NativeTranscodeRunner = ({
 	signal: AbortSignal;
 	durationSeconds: number | null;
 	timeoutMs?: number;
-	onProgress: (update: {
-		progress: number;
-		processedSeconds: number;
-	}) => void;
+	onProgress: (update: { progress: number; processedSeconds: number }) => void;
 }) => Promise<void>;
 
 interface QueuedProxyExecution {
@@ -135,7 +117,7 @@ function validateId({ value, label }: { value: string; label: string }): void {
 function defaultProjectsRoot(): string {
 	return (
 		process.env.OPENCUT_PROJECTS_DIR ??
-		path.join(homedir(), "OpenCutProjects")
+		path.join(/*turbopackIgnore: true*/ homedir(), "OpenCutProjects")
 	);
 }
 
@@ -177,9 +159,7 @@ function isNativeMediaJob(value: unknown): value is NativeMediaJob {
 		value.kind === "proxy" &&
 		typeof value.projectId === "string" &&
 		typeof value.assetId === "string" &&
-		PROXY_PROFILE_NAMES.some(
-			(profile) => profile === value.profile,
-		) &&
+		PROXY_PROFILE_NAMES.some((profile) => profile === value.profile) &&
 		typeof value.status === "string" &&
 		typeof value.cacheKey === "string" &&
 		typeof value.progress === "number" &&
@@ -246,17 +226,13 @@ function proxyDimensions({
 	rotationDegrees?: number;
 	maxLongEdge: number;
 }): { width: number; height: number } {
-	const normalizedRotation =
-		((rotationDegrees % 360) + 360) % 360;
+	const normalizedRotation = ((rotationDegrees % 360) + 360) % 360;
 	const swapsAxes =
 		Math.abs(normalizedRotation - 90) < 0.5 ||
 		Math.abs(normalizedRotation - 270) < 0.5;
 	const sourceWidth = Math.max(2, swapsAxes ? height : width);
 	const sourceHeight = Math.max(2, swapsAxes ? width : height);
-	const scale = Math.min(
-		1,
-		maxLongEdge / Math.max(sourceWidth, sourceHeight),
-	);
+	const scale = Math.min(1, maxLongEdge / Math.max(sourceWidth, sourceHeight));
 	const even = (value: number) =>
 		Math.max(2, Math.round((value * scale) / 2) * 2);
 	return {
@@ -277,8 +253,7 @@ function proxyVideoFilter({
 		`scale=w=if(gte(iw\\,ih)\\,min(${longEdge}\\,iw)\\,-2):h=if(gte(iw\\,ih)\\,-2\\,min(${longEdge}\\,ih)):force_divisible_by=2`,
 	];
 	const video = probe.probe.videoStreams[0];
-	const sourceFps =
-		video?.averageFrameRate ?? video?.nominalFrameRate ?? null;
+	const sourceFps = video?.averageFrameRate ?? video?.nominalFrameRate ?? null;
 	if (
 		video?.frameRateMode === "variable" ||
 		(sourceFps ?? 0) > profile.maxFps
@@ -391,11 +366,7 @@ export const runNativeTranscode: NativeTranscodeRunner = ({
 			child.kill("SIGKILL");
 		}, boundedTimeoutMs);
 
-		const finish = ({
-			error,
-		}: {
-			error?: Error;
-		}): void => {
+		const finish = ({ error }: { error?: Error }): void => {
 			if (settled) {
 				return;
 			}
@@ -455,9 +426,7 @@ export const runNativeTranscode: NativeTranscodeRunner = ({
 		child.on("close", (code) => {
 			if (timedOut) {
 				finish({
-					error: new Error(
-						`Transcode timed out after ${boundedTimeoutMs} ms`,
-					),
+					error: new Error(`Transcode timed out after ${boundedTimeoutMs} ms`),
 				});
 			} else if (signal.aborted) {
 				finish({
@@ -465,9 +434,7 @@ export const runNativeTranscode: NativeTranscodeRunner = ({
 				});
 			} else if (code !== 0) {
 				finish({
-					error: new Error(
-						`FFmpeg exited with code ${code}: ${stderr.trim()}`,
-					),
+					error: new Error(`FFmpeg exited with code ${code}: ${stderr.trim()}`),
 				});
 			} else {
 				finish({});
@@ -480,11 +447,9 @@ function cloneJob(job: NativeMediaJob): NativeMediaJob {
 }
 
 function isAbortError(error: unknown): boolean {
-	return (
-		error instanceof DOMException
-			? error.name === "AbortError"
-			: error instanceof Error && error.name === "AbortError"
-	);
+	return error instanceof DOMException
+		? error.name === "AbortError"
+		: error instanceof Error && error.name === "AbortError";
 }
 
 export class NativeMediaJobService {
@@ -516,10 +481,7 @@ export class NativeMediaJobService {
 		this.projectsRoot = projectsRoot;
 		this.probeFile = probeFile;
 		this.transcode = transcode;
-		this.maxConcurrent = Math.max(
-			1,
-			Math.min(8, Math.trunc(maxConcurrent)),
-		);
+		this.maxConcurrent = Math.max(1, Math.min(8, Math.trunc(maxConcurrent)));
 	}
 
 	private controllerKey({
@@ -572,16 +534,12 @@ export class NativeMediaJobService {
 				for (const candidate of parsed) {
 					if (isNativeMediaJob(candidate)) {
 						const job = candidate;
-						if (
-							job.status === "queued" ||
-							job.status === "running"
-						) {
+						if (job.status === "queued" || job.status === "running") {
 							job.status = "failed";
 							recoveredInterruptedJob = true;
 							job.error = {
 								code: "interrupted",
-								message:
-									"The application restarted before this job completed",
+								message: "The application restarted before this job completed",
 							};
 							job.finishedAt = new Date().toISOString();
 						}
@@ -590,13 +548,11 @@ export class NativeMediaJobService {
 				}
 			}
 		} catch (error) {
-			if (
-				!(
-					error instanceof Error &&
-					"code" in error &&
-					error.code === "ENOENT"
-				)
-			) {
+			if (!(
+				error instanceof Error &&
+				"code" in error &&
+				error.code === "ENOENT"
+			)) {
 				throw error;
 			}
 		}
@@ -794,10 +750,7 @@ export class NativeMediaJobService {
 						projectId,
 						jobId,
 						update: (job) => {
-							job.progress = Math.max(
-								job.progress,
-								Math.min(0.99, progress),
-							);
+							job.progress = Math.max(job.progress, Math.min(0.99, progress));
 							job.processedSeconds = Math.max(
 								job.processedSeconds,
 								processedSeconds,
@@ -852,8 +805,7 @@ export class NativeMediaJobService {
 				height: proxy.height,
 				duration: probe.probe.container.durationSeconds ?? undefined,
 				fps: Math.min(
-					video?.averageFrameRate ??
-						PROXY_PROFILES[profile].maxFps,
+					video?.averageFrameRate ?? PROXY_PROFILES[profile].maxFps,
 					PROXY_PROFILES[profile].maxFps,
 				),
 				hasAudio: probe.probe.audioStreams.length > 0,
@@ -869,16 +821,14 @@ export class NativeMediaJobService {
 					job.status = "succeeded";
 					job.progress = 1;
 					job.processedSeconds =
-						probe.probe.container.durationSeconds ??
-						job.processedSeconds;
+						probe.probe.container.durationSeconds ?? job.processedSeconds;
 					job.finishedAt = new Date().toISOString();
 					job.result = { proxy, outputPath };
 					delete job.error;
 				},
 			});
 		} catch (error) {
-			const cancelled =
-				controller.signal.aborted || isAbortError(error);
+			const cancelled = controller.signal.aborted || isAbortError(error);
 			this.updateJob({
 				projectId,
 				jobId,
@@ -888,21 +838,14 @@ export class NativeMediaJobService {
 					if (!cancelled) {
 						job.error = {
 							code: "transcode_failed",
-							message:
-								error instanceof Error
-									? error.message
-									: String(error),
+							message: error instanceof Error ? error.message : String(error),
 						};
 					}
 				},
 			});
 		} finally {
-			await rm(temporaryOutputPath, { force: true }).catch(
-				() => undefined,
-			);
-			this.controllers.delete(
-				this.controllerKey({ projectId, jobId }),
-			);
+			await rm(temporaryOutputPath, { force: true }).catch(() => undefined);
+			this.controllers.delete(this.controllerKey({ projectId, jobId }));
 			await this.persist({ projectId });
 		}
 	}
@@ -929,16 +872,10 @@ export class NativeMediaJobService {
 		return job ? cloneJob(job) : null;
 	}
 
-	async list({
-		projectId,
-	}: {
-		projectId: string;
-	}): Promise<NativeMediaJob[]> {
+	async list({ projectId }: { projectId: string }): Promise<NativeMediaJob[]> {
 		const jobs = await this.ensureLoaded({ projectId });
 		return [...jobs.values()]
-			.sort((left, right) =>
-				right.createdAt.localeCompare(left.createdAt),
-			)
+			.sort((left, right) => right.createdAt.localeCompare(left.createdAt))
 			.map(cloneJob);
 	}
 
@@ -974,16 +911,11 @@ export class NativeMediaJobService {
 		await this.persist({ projectId });
 		if (controller) {
 			const deadline = Date.now() + 2_000;
-			while (
-				this.controllers.has(key) &&
-				Date.now() < deadline
-			) {
+			while (this.controllers.has(key) && Date.now() < deadline) {
 				await new Promise((resolve) => setTimeout(resolve, 5));
 			}
 		}
-		return cloneJob(
-			this.jobs.get(projectId)?.get(jobId) ?? job,
-		);
+		return cloneJob(this.jobs.get(projectId)?.get(jobId) ?? job);
 	}
 
 	async retry({
@@ -997,10 +929,7 @@ export class NativeMediaJobService {
 		if (!existing) {
 			throw new Error(`No media job ${jobId}`);
 		}
-		if (
-			existing.status !== "failed" &&
-			existing.status !== "cancelled"
-		) {
+		if (existing.status !== "failed" && existing.status !== "cancelled") {
 			throw new Error(`Job ${jobId} cannot be retried`);
 		}
 		return this.ensureProxy({

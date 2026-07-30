@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
 	createMediaJobsRouteHandlers,
 	type MediaJobsApiService,
-} from "@/app/api/media-jobs/[projectId]/route";
+} from "@/app/api/media-jobs/[projectId]/handlers";
 
 function serviceStub() {
 	const calls: Array<{ method: string; input: unknown }> = [];
@@ -75,9 +75,7 @@ describe("native media jobs API", () => {
 		expect((await listed.json()).data).toHaveLength(1);
 
 		const inspected = await handlers.GET(
-			new Request(
-				"http://localhost/api/media-jobs/project?jobId=job-1",
-			),
+			new Request("http://localhost/api/media-jobs/project?jobId=job-1"),
 			context,
 		);
 		expect((await inspected.json()).data.id).toBe("job-1");
@@ -171,9 +169,7 @@ describe("native media jobs API", () => {
 		}
 
 		const missing = await handlers.GET(
-			new Request(
-				"http://localhost/api/media-jobs/project?jobId=missing",
-			),
+			new Request("http://localhost/api/media-jobs/project?jobId=missing"),
 			context,
 		);
 		expect(missing.status).toBe(404);

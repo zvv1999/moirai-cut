@@ -6,7 +6,7 @@ import {
 	GET,
 	POST,
 	readSharedProjectConversation,
-} from "@/app/api/codex/history/[projectId]/route";
+} from "@/app/api/codex/history/[projectId]/handlers";
 import { createCodexConversationStore } from "@/server/codex-conversation";
 
 const originalProjectsRoot = process.env.OPENCUT_PROJECTS_DIR;

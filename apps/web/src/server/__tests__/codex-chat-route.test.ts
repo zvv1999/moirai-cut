@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
 	createCodexChatRouteHandlers,
 	type CodexChatApiService,
-} from "@/app/api/codex/chat/route";
+} from "@/app/api/codex/chat/handlers";
 import {
 	createCodexRunManager,
 	type CodexRunService,

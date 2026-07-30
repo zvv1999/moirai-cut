@@ -1,14 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { createReadStream } from "node:fs";
-import {
-	mkdir,
-	readFile,
-	rename,
-	rm,
-	stat,
-	writeFile,
-} from "node:fs/promises";
+import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import {
@@ -75,7 +68,7 @@ function validateId({ value, label }: { value: string; label: string }): void {
 function projectsRootFromEnvironment(): string {
 	return (
 		process.env.OPENCUT_PROJECTS_DIR ??
-		path.join(homedir(), "OpenCutProjects")
+		path.join(/*turbopackIgnore: true*/ homedir(), "OpenCutProjects")
 	);
 }
 
@@ -87,7 +80,11 @@ function mediaDirectory({
 	projectId: string;
 }): string {
 	validateId({ value: projectId, label: "project id" });
-	return path.join(path.resolve(projectsRoot), projectId, "media");
+	return path.join(
+		path.resolve(/*turbopackIgnore: true*/ projectsRoot),
+		projectId,
+		"media",
+	);
 }
 
 function resolveAssetPath({
@@ -176,11 +173,7 @@ function hasNodeErrorCode({
 	error: unknown;
 	code: string;
 }): boolean {
-	return (
-		error instanceof Error &&
-		"code" in error &&
-		error.code === code
-	);
+	return error instanceof Error && "code" in error && error.code === code;
 }
 
 function isCachedProbe(value: unknown): value is CachedProbe {
@@ -274,15 +267,7 @@ export async function runFfprobe({
 	const stdout = await new Promise<string>((resolve, reject) => {
 		execFile(
 			ffprobeBinary,
-			[
-				"-v",
-				"error",
-				"-show_format",
-				"-show_streams",
-				"-of",
-				"json",
-				filePath,
-			],
+			["-v", "error", "-show_format", "-show_streams", "-of", "json", filePath],
 			{
 				encoding: "utf8",
 				maxBuffer: MAX_FFPROBE_OUTPUT_BYTES,
@@ -291,10 +276,9 @@ export async function runFfprobe({
 			(error, output, stderr) => {
 				if (error) {
 					reject(
-						new Error(
-							`FFprobe failed: ${stderr.trim() || error.message}`,
-							{ cause: error },
-						),
+						new Error(`FFprobe failed: ${stderr.trim() || error.message}`, {
+							cause: error,
+						}),
 					);
 					return;
 				}
@@ -372,8 +356,7 @@ export async function probeProjectMedia({
 				? entry.name
 				: `${assetId}.${entry.ext}`,
 		extension: entry.ext,
-		mimeType:
-			typeof entry.mimeType === "string" ? entry.mimeType : null,
+		mimeType: typeof entry.mimeType === "string" ? entry.mimeType : null,
 		...signature,
 		sha256,
 	};

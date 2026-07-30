@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
 	createNativeDeliveryRouteHandlers,
 	type NativeDeliveryExecutor,
-} from "@/app/api/native-delivery/[projectId]/route";
+} from "@/app/api/native-delivery/[projectId]/handlers";
 
 describe("native delivery API", () => {
 	test("validates and executes a delivery preset", async () => {
@@ -61,10 +61,7 @@ describe("native delivery API", () => {
 				throw new Error("must not run");
 			},
 		});
-		for (const body of [
-			{},
-			{ sourceName: "cut.mp4", preset: "unknown" },
-		]) {
+		for (const body of [{}, { sourceName: "cut.mp4", preset: "unknown" }]) {
 			const response = await POST(
 				new Request("http://localhost/api/native-delivery/project", {
 					method: "POST",
