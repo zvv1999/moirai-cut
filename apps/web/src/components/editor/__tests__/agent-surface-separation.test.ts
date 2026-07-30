@@ -156,7 +156,12 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain("fetchCodexConversation");
 		expect(workbenchSource).toContain("persistCodexConversation");
 		expect(workbenchSource).toContain("BroadcastChannel");
-		expect(workbenchSource).toContain("setInterval(hydrateConversation");
+		expect(workbenchSource).toContain("synchronizeNative: false");
+		expect(workbenchSource).toContain("visibilitychange");
+		expect(workbenchSource).toContain("15_000");
+		expect(workbenchSource).not.toContain(
+			"setInterval(hydrateConversation, 1_000)",
+		);
 		expect(workbenchSource).toContain("conversationHydrated");
 		expect(workbenchSource).toContain("crypto.randomUUID()");
 		expect(workbenchSource).toContain(

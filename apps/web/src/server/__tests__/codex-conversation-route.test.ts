@@ -91,6 +91,34 @@ describe("Codex project conversation API", () => {
 		});
 	});
 
+	test("can read the local projection without opening the native App thread", async () => {
+		const { projectId, root } = await routeFixture();
+		const store = createCodexConversationStore({ rootDirectory: root });
+		await store.merge({
+			projectId,
+			conversationId: "conversation-local",
+			sessionId: "thread-local",
+			messages: [],
+		});
+		let nativeReads = 0;
+
+		const conversation = await readSharedProjectConversation({
+			projectId,
+			conversationId: "conversation-local",
+			synchronizeNative: false,
+			store,
+			codex: {
+				readThread: async () => {
+					nativeReads += 1;
+					throw new Error("native history should not be opened");
+				},
+			},
+		});
+
+		expect(nativeReads).toBe(0);
+		expect(conversation.conversations[0]?.id).toBe("conversation-local");
+	});
+
 	test("writes and reloads the same project conversation", async () => {
 		const { projectId } = await routeFixture();
 		const context = { params: Promise.resolve({ projectId }) };
@@ -134,6 +162,41 @@ describe("Codex project conversation API", () => {
 				},
 			],
 		});
+	});
+
+	test("returns an ETag and 304 for an unchanged local projection", async () => {
+		const { projectId } = await routeFixture();
+		const context = { params: Promise.resolve({ projectId }) };
+		await POST(
+			new Request(`http://localhost/api/codex/history/${projectId}`, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					conversationId: "conversation-etag",
+					sessionId: null,
+					messages: [],
+				}),
+			}),
+			context,
+		);
+		const first = await GET(
+			new Request(
+				`http://localhost/api/codex/history/${projectId}?conversationId=conversation-etag&syncNative=0`,
+			),
+			context,
+		);
+		const etag = first.headers.get("etag");
+		const unchanged = await GET(
+			new Request(
+				`http://localhost/api/codex/history/${projectId}?conversationId=conversation-etag&syncNative=0`,
+				{ headers: { "if-none-match": etag ?? "" } },
+			),
+			context,
+		);
+
+		expect(etag).toBeTruthy();
+		expect(unchanged.status).toBe(304);
+		expect(await unchanged.text()).toBe("");
 	});
 
 	test("returns stable client errors for unsafe projects and invalid payloads", async () => {

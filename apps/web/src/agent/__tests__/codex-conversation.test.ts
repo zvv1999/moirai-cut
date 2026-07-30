@@ -112,6 +112,34 @@ describe("Codex conversation client synchronization", () => {
 		expect(conversation.revision).toBe(3);
 	});
 
+	test("uses conditional local refreshes and skips parsing an unchanged history body", async () => {
+		let requestedUrl = "";
+		let requestedInit: RequestInit | undefined;
+		installFetchMock(async (...[input, init]: Parameters<typeof fetch>) => {
+			requestedUrl = String(input);
+			requestedInit = init;
+			return new Response(null, {
+				status: 304,
+				headers: { etag: '"opencut-codex-3"' },
+			});
+		});
+
+		const conversation = await fetchCodexConversation({
+			projectId: "project-1",
+			conversationId: "conversation 1",
+			revision: 3,
+			synchronizeNative: false,
+		});
+
+		expect(requestedUrl).toBe(
+			"/api/codex/history/project-1?conversationId=conversation%201&syncNative=0",
+		);
+		expect(new Headers(requestedInit?.headers).get("if-none-match")).toBe(
+			'"opencut-codex-3"',
+		);
+		expect(conversation).toBeNull();
+	});
+
 	test("persists only the project binding and current UI projection", async () => {
 		let body = "";
 		installFetchMock(async (...[_input, init]: Parameters<typeof fetch>) => {
