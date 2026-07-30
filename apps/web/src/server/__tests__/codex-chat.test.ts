@@ -2,13 +2,15 @@ import { describe, expect, test } from "bun:test";
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import {
-	buildCodexAppServerArgs,
 	buildCodexPrompt,
+	buildCodexSharedHostArgs,
 	codexDesktopRefreshUrls,
 	CodexAppServerRpcClient,
+	CodexAppServerWebSocketClient,
 	createCodexChatService,
 	type CodexAppServerConnection,
 	type CodexAppServerSubscription,
+	type CodexAppServerWebSocket,
 	type CodexRuntimeConfig,
 } from "@/server/codex-chat";
 
@@ -18,6 +20,7 @@ const runtime: CodexRuntimeConfig = {
 	mcpServerPath: "/workspace/opencut-classic/apps/mcp/src/server.mjs",
 	projectFilesDir: "/workspace/opencut-projects",
 	baseUrl: "http://127.0.0.1:3000",
+	sharedAppServerUrl: "ws://127.0.0.1:48721",
 	disabledMcpServers: [
 		"localcut",
 		"node_repl",
@@ -124,6 +127,43 @@ function appServerProcess() {
 		stderr,
 		writes,
 	};
+}
+
+class FakeWebSocket extends EventEmitter implements CodexAppServerWebSocket {
+	readonly sent: string[] = [];
+	readyState = 0;
+
+	send(data: string): void {
+		this.sent.push(data);
+	}
+
+	close(): void {
+		this.readyState = 3;
+		this.emit("close", { code: 1000, reason: "closed" });
+	}
+
+	open(): void {
+		this.readyState = 1;
+		this.emit("open");
+	}
+
+	message(value: unknown): void {
+		this.emit("message", { data: JSON.stringify(value) });
+	}
+
+	addEventListener(
+		event: "open" | "message" | "error" | "close",
+		listener: (...args: unknown[]) => void,
+	): void {
+		this.on(event, listener);
+	}
+
+	removeEventListener(
+		event: "open" | "message" | "error" | "close",
+		listener: (...args: unknown[]) => void,
+	): void {
+		this.off(event, listener);
+	}
 }
 
 async function waitForWrite({
@@ -320,89 +360,86 @@ describe("Codex app-server JSON-RPC client", () => {
 			},
 		});
 	});
+
+	test("uses the shared WebSocket host for RPC and thread events", async () => {
+		const socket = new FakeWebSocket();
+		const client = new CodexAppServerWebSocketClient(socket);
+		const initialized = client.initialize();
+
+		socket.open();
+		await waitForWrite({
+			writes: socket.sent.map((value) => JSON.parse(value)),
+			count: 1,
+		});
+		const initializeRequest = JSON.parse(socket.sent[0] ?? "{}");
+		expect(initializeRequest).toMatchObject({
+			id: 1,
+			method: "initialize",
+		});
+		socket.message({ id: 1, result: { userAgent: "shared-host" } });
+		await initialized;
+		expect(JSON.parse(socket.sent[1] ?? "{}")).toEqual({
+			method: "initialized",
+		});
+
+		const subscription = client.subscribe("thread-shared");
+		const next = subscription[Symbol.asyncIterator]().next();
+		socket.message({
+			method: "item/agentMessage/delta",
+			params: {
+				threadId: "thread-shared",
+				turnId: "turn-shared",
+				delta: "共享",
+			},
+		});
+		expect(await next).toEqual({
+			done: false,
+			value: {
+				method: "item/agentMessage/delta",
+				params: {
+					threadId: "thread-shared",
+					turnId: "turn-shared",
+					delta: "共享",
+				},
+			},
+		});
+	});
 });
 
 describe("Codex desktop refresh", () => {
-	test("forces the open desktop task route to reload before reopening it", () => {
+	test("opens the shared task without resetting the desktop route", () => {
 		expect(
 			codexDesktopRefreshUrls("019fb29a-6b2a-7661-b946-1cf7d2158711"),
 		).toEqual([
-			"codex://threads/new",
 			"codex://threads/019fb29a-6b2a-7661-b946-1cf7d2158711",
 		]);
 	});
 });
 
 describe("Codex direct Smart Edit streaming chat", () => {
-	test("starts Codex app-server so agent message deltas are available", () => {
-		const args = buildCodexAppServerArgs({ runtime });
+	test("starts one loopback WebSocket host for every tool profile", () => {
+		const editArgs = buildCodexSharedHostArgs({ runtime });
+		const verifyArgs = buildCodexSharedHostArgs({ runtime });
+		const fullArgs = buildCodexSharedHostArgs({ runtime });
 
-		expect(args.slice(0, 2)).toEqual(["app-server", "--stdio"]);
-		expect(args).toContain('approval_policy="never"');
-		expect(args).toContain('sandbox_mode="read-only"');
-		expect(args).toContain('mcp_servers.opencut.command="bun"');
-		expect(args).toContain(
+		expect(editArgs.slice(0, 3)).toEqual([
+			"app-server",
+			"--listen",
+			"ws://127.0.0.1:48721",
+		]);
+		expect(editArgs).toEqual(verifyArgs);
+		expect(editArgs).toEqual(fullArgs);
+		expect(editArgs).toContain('approval_policy="never"');
+		expect(editArgs).toContain('sandbox_mode="read-only"');
+		expect(editArgs).toContain('mcp_servers.opencut.command="bun"');
+		expect(editArgs).toContain(
 			'mcp_servers.opencut.args=["/workspace/opencut-classic/apps/mcp/src/server.mjs"]',
 		);
-		expect(args).toContain("mcp_servers.localcut.enabled=false");
-		expect(args).toContain("mcp_servers.node_repl.enabled=false");
-		expect(args).toContain("mcp_servers.computer-use.enabled=false");
-		expect(args).toContain("mcp_servers.opencut.enabled=true");
-		expect(args).not.toContain("mcp_servers.opencut.enabled=false");
-		expect(args).not.toContain("mcp_servers={}");
-		expect(args).not.toContain("exec");
-		expect(args).not.toContain("--json");
-	});
-
-	test("can reuse an explicit daemon socket for focused editing without mixing tool profiles", () => {
-		const socketRuntime = {
-			...runtime,
-			sharedAppServerSocket: "/tmp/opencut-codex.sock",
-		};
-
-		expect(
-			buildCodexAppServerArgs({
-				runtime: socketRuntime,
-				toolProfile: "edit",
-			}),
-		).toEqual([
-			"app-server",
-			"proxy",
-			"--sock",
-			"/tmp/opencut-codex.sock",
-		]);
-		expect(
-			buildCodexAppServerArgs({
-				runtime: socketRuntime,
-				toolProfile: "verify",
-			}).slice(0, 2),
-		).toEqual(["app-server", "--stdio"]);
-	});
-
-	test("offers focused, verification, and full App tool profiles without ever enabling LocalCut", () => {
-		const verificationArgs = buildCodexAppServerArgs({
-			runtime,
-			toolProfile: "verify",
-		});
-		const fullArgs = buildCodexAppServerArgs({
-			runtime,
-			toolProfile: "full",
-		});
-
-		expect(verificationArgs).toContain("mcp_servers.localcut.enabled=false");
-		expect(verificationArgs).toContain("mcp_servers.chanjing.enabled=false");
-		expect(verificationArgs).not.toContain(
-			"mcp_servers.node_repl.enabled=false",
-		);
-		expect(verificationArgs).not.toContain(
-			"mcp_servers.computer-use.enabled=false",
-		);
-		expect(verificationArgs).not.toContain(
-			"mcp_servers.openaiDeveloperDocs.enabled=false",
-		);
-		expect(fullArgs).toContain("mcp_servers.localcut.enabled=false");
-		expect(fullArgs).not.toContain("mcp_servers.chanjing.enabled=false");
-		expect(fullArgs).not.toContain("mcp_servers.node_repl.enabled=false");
+		expect(editArgs).toContain("mcp_servers.localcut.enabled=false");
+		expect(editArgs).toContain("mcp_servers.opencut.enabled=true");
+		expect(editArgs).not.toContain("mcp_servers.opencut.enabled=false");
+		expect(editArgs).not.toContain("--stdio");
+		expect(editArgs).not.toContain("proxy");
 	});
 
 	test("prompts Codex to execute or plan through OpenCut with native verification semantics", () => {
