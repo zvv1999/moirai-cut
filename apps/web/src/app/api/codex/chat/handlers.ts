@@ -33,7 +33,7 @@ function isVisualMode(value: unknown): value is CodexVisualMode {
 }
 
 function isVerificationMode(value: unknown): value is CodexVerificationMode {
-	return value === "off" || value === "full";
+	return value === "off" || value === "basic" || value === "full";
 }
 
 function optionalString({

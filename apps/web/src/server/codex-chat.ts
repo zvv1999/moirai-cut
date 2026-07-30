@@ -23,7 +23,7 @@ const VERIFY_MCP_SERVERS = new Set([
 
 export type CodexToolProfile = "edit" | "verify" | "full";
 export type CodexVisualMode = "off" | "auto";
-export type CodexVerificationMode = "off" | "full";
+export type CodexVerificationMode = "off" | "basic" | "full";
 export type CodexCollaborationMode = "default" | "plan";
 
 export interface CodexRuntimeConfig {
@@ -286,7 +286,9 @@ export function buildCodexPrompt({
 		"- 你能直接看上述工具返回的联系表图片并做多模态判断。可复用的素材理解结果用 save_media_analysis 写入素材 JSON 目录。",
 		verificationMode === "full"
 			? "- 系统会在本轮完成后自动核对工程 revision、等待编辑器同步并渲染关键画面；你仍应在修改前后正确处理 revision 冲突和工具报错。"
-			: "- 按任务风险使用必要的读取与验证工具；不要为了展示过程执行无关检查。",
+			: verificationMode === "basic"
+				? "- 系统会在本轮完成后轻量核对工程 revision，不会阻塞回复去等待编辑器或渲染验收画面。"
+				: "- 按任务风险使用必要的读取与验证工具；不要为了展示过程执行无关检查。",
 		"- 不要套用本地模板或最低素材数量规则。信息足够时自主判断并完成。",
 		"- 当前回合可能收到用户追加指令，始终以最新指令为准。完成后用简洁中文说明实际做了什么；若未改动，明确说明原因。",
 		"",
@@ -1805,6 +1807,7 @@ async function verificationFrames({
 	context,
 	beforeRevision,
 	tools,
+	mode,
 }: {
 	connection: CodexAppServerConnection;
 	threadId: string;
@@ -1812,6 +1815,7 @@ async function verificationFrames({
 	context: string;
 	beforeRevision: number | null;
 	tools: string[];
+	mode: Exclude<CodexVerificationMode, "off">;
 }): Promise<CodexProtocolFrame[]> {
 	const response = await connection.request({
 		method: "mcpServer/tool/call",
@@ -1852,6 +1856,7 @@ async function verificationFrames({
 			detail: `revision ${beforeRevision} → ${revision}`,
 		},
 	];
+	if (mode === "basic") return frames;
 	if (tools.includes("wait_for_sync")) {
 		const sync = await connection.request({
 			method: "mcpServer/tool/call",
@@ -1921,37 +1926,42 @@ async function bindOpenCutSession({
 	connection,
 	threadId,
 	projectId,
+	knownTools,
 }: {
 	connection: CodexAppServerConnection;
 	threadId: string;
 	projectId: string;
+	knownTools?: string[];
 }): Promise<OpenCutSessionBinding> {
-	const statusResponse = await connection.request({
-		method: "mcpServerStatus/list",
-		params: {
-			threadId,
-			detail: "toolsAndAuthOnly",
-			limit: 100,
-		},
-	});
-	const servers =
-		isRecord(statusResponse) && Array.isArray(statusResponse.data)
-			? statusResponse.data.filter(isRecord)
-			: [];
-	const openCut = servers.find((server) => server.name === "opencut");
-	if (!openCut || !isRecord(openCut.tools)) {
-		throw new CodexChatError(
-			"OpenCut MCP 未就绪：当前 Codex 会话没有可用的 opencut 工具入口。",
+	let tools = knownTools;
+	if (!tools) {
+		const statusResponse = await connection.request({
+			method: "mcpServerStatus/list",
+			params: {
+				threadId,
+				detail: "toolsAndAuthOnly",
+				limit: 100,
+			},
+		});
+		const servers =
+			isRecord(statusResponse) && Array.isArray(statusResponse.data)
+				? statusResponse.data.filter(isRecord)
+				: [];
+		const openCut = servers.find((server) => server.name === "opencut");
+		if (!openCut || !isRecord(openCut.tools)) {
+			throw new CodexChatError(
+				"OpenCut MCP 未就绪：当前 Codex 会话没有可用的 opencut 工具入口。",
+			);
+		}
+		tools = Object.keys(openCut.tools);
+		const missingTools = REQUIRED_OPENCUT_TOOLS.filter(
+			(tool) => !tools?.includes(tool),
 		);
-	}
-	const tools = Object.keys(openCut.tools);
-	const missingTools = REQUIRED_OPENCUT_TOOLS.filter(
-		(tool) => !tools.includes(tool),
-	);
-	if (missingTools.length > 0) {
-		throw new CodexChatError(
-			`OpenCut MCP 未就绪：缺少 ${missingTools.join("、")} 工具。`,
-		);
+		if (missingTools.length > 0) {
+			throw new CodexChatError(
+				`OpenCut MCP 未就绪：缺少 ${missingTools.join("、")} 工具。`,
+			);
+		}
 	}
 
 	const projectResponse = await connection.request({
@@ -2094,6 +2104,8 @@ export function createCodexChatService({
 	syncThreadToDesktop?: CodexDesktopThreadSync;
 } = {}): CodexChatService {
 	const sessions = new Map<string, string>();
+	const validatedTools = new Map<string, string[]>();
+	const visibleThreadNames = new Map<string, string>();
 	const sessionCacheKey = (input: CodexChatInput) => {
 		const conversationId = input.conversationId?.trim();
 		return conversationId
@@ -2256,16 +2268,22 @@ export function createCodexChatService({
 					connection,
 					threadId: sessionId,
 					projectId: input.projectId,
+					knownTools: validatedTools.get(`${toolProfile}:${sessionId}`),
 				});
-				await connection.request({
-					method: "thread/name/set",
-					params: {
-						threadId: sessionId,
-						name: visibleThreadName(
-							binding.projectName || `OpenCut · ${input.projectId}`,
-						),
-					},
-				});
+				validatedTools.set(`${toolProfile}:${sessionId}`, binding.tools);
+				const nextThreadName = visibleThreadName(
+					binding.projectName || `OpenCut · ${input.projectId}`,
+				);
+				if (visibleThreadNames.get(sessionId) !== nextThreadName) {
+					await connection.request({
+						method: "thread/name/set",
+						params: {
+							threadId: sessionId,
+							name: nextThreadName,
+						},
+					});
+					visibleThreadNames.set(sessionId, nextThreadName);
+				}
 				yield {
 					type: "protocol",
 					id: `mcp:${sessionId}:opencut`,
@@ -2393,7 +2411,7 @@ export function createCodexChatService({
 					status: "started",
 					title: "开始处理",
 				};
-				await refreshPersistedThreadInDesktop({
+				void refreshPersistedThreadInDesktop({
 					connection,
 					threadId: sessionId,
 					turnId,
@@ -2436,7 +2454,7 @@ export function createCodexChatService({
 
 					const completedTurn = completionFromNotification(notification);
 					if (!completedTurn) continue;
-					await refreshPersistedThreadInDesktop({
+					void refreshPersistedThreadInDesktop({
 						connection,
 						threadId: sessionId,
 						turnId,
@@ -2457,7 +2475,10 @@ export function createCodexChatService({
 						finalMessageFromTurn(completedTurn) ||
 						streamedMessage.trim() ||
 						"Codex 已完成处理。";
-					if (input.verificationMode === "full") {
+					if (
+						input.verificationMode === "basic" ||
+						input.verificationMode === "full"
+					) {
 						try {
 							for (const frame of await verificationFrames({
 								connection,
@@ -2466,6 +2487,7 @@ export function createCodexChatService({
 								context: input.context,
 								beforeRevision: binding.revision,
 								tools: binding.tools,
+								mode: input.verificationMode,
 							})) {
 								yield { type: "protocol", ...frame };
 							}

@@ -1860,7 +1860,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			"thread-desktop-project",
 			"thread-desktop-project",
 		]);
-		expect(syncObservedCompletedTurn).toEqual([false, true, false, true]);
+		expect(syncObservedCompletedTurn).toEqual([true, true, true, true]);
 		expect(syncObservedPersistedTurn).toEqual([true, true, true, true]);
 	});
 

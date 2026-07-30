@@ -21,6 +21,15 @@ import {
 	type CodexProtocolFrame,
 	type CodexProtocolStatus,
 } from "@/agent/codex-conversation";
+import {
+	CODEX_PERFORMANCE_PRESETS,
+	DEFAULT_CODEX_PERFORMANCE_MODE,
+	getCodexPerformancePreset,
+	type CodexPerformanceMode,
+	type CodexToolProfile,
+	type CodexVerificationMode,
+	type CodexVisualMode,
+} from "@/agent/codex-performance";
 import { CodexSseDecoder } from "@/agent/codex-sse";
 import { toMediaTime, toSeconds } from "@/agent/time";
 import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
@@ -84,9 +93,9 @@ interface CodexTurnOptions {
 	model: string;
 	effort: string;
 	mode: "default" | "plan";
-	toolProfile: "edit" | "verify" | "full";
-	visualMode: "off" | "auto";
-	verificationMode: "off" | "full";
+	toolProfile: CodexToolProfile;
+	visualMode: CodexVisualMode;
+	verificationMode: CodexVerificationMode;
 }
 
 interface CodexStreamHandlers {
@@ -98,13 +107,17 @@ interface CodexStreamHandlers {
 	onProtocol(frame: CodexProtocolFrame): void;
 }
 
+const DEFAULT_PERFORMANCE_PRESET = getCodexPerformancePreset(
+	DEFAULT_CODEX_PERFORMANCE_MODE,
+);
+
 const DEFAULT_CODEX_OPTIONS = {
 	model: "gpt-5.6-sol",
-	effort: "xhigh",
+	effort: DEFAULT_PERFORMANCE_PRESET.effort,
 	mode: "default",
-	toolProfile: "verify",
-	visualMode: "auto",
-	verificationMode: "full",
+	toolProfile: DEFAULT_PERFORMANCE_PRESET.toolProfile,
+	visualMode: DEFAULT_PERFORMANCE_PRESET.visualMode,
+	verificationMode: DEFAULT_PERFORMANCE_PRESET.verificationMode,
 } as const;
 
 const AGENT_REQUEST_PRESETS = [
@@ -697,15 +710,16 @@ export function AgentWorkbench() {
 	const [codexMode, setCodexMode] = useState<"default" | "plan">(
 		DEFAULT_CODEX_OPTIONS.mode,
 	);
-	const [codexToolProfile, setCodexToolProfile] = useState<
-		"edit" | "verify" | "full"
-	>(DEFAULT_CODEX_OPTIONS.toolProfile);
-	const [codexVisualMode, setCodexVisualMode] = useState<"off" | "auto">(
+	const [codexPerformanceMode, setCodexPerformanceMode] =
+		useState<CodexPerformanceMode>(DEFAULT_CODEX_PERFORMANCE_MODE);
+	const [codexToolProfile, setCodexToolProfile] = useState<CodexToolProfile>(
+		DEFAULT_CODEX_OPTIONS.toolProfile,
+	);
+	const [codexVisualMode, setCodexVisualMode] = useState<CodexVisualMode>(
 		DEFAULT_CODEX_OPTIONS.visualMode,
 	);
-	const [codexVerificationMode, setCodexVerificationMode] = useState<
-		"off" | "full"
-	>(DEFAULT_CODEX_OPTIONS.verificationMode);
+	const [codexVerificationMode, setCodexVerificationMode] =
+		useState<CodexVerificationMode>(DEFAULT_CODEX_OPTIONS.verificationMode);
 	const [activeRunId, setActiveRunId] = useState<string | null>(null);
 	const [activeTurnId, setActiveTurnId] = useState<string | null>(null);
 	const [activeRunSequence, setActiveRunSequence] = useState(0);
@@ -1078,6 +1092,20 @@ export function AgentWorkbench() {
 	const availableEfforts = selectedCodexModel?.efforts.length
 		? selectedCodexModel.efforts
 		: ["low", "medium", "high", "xhigh", "max", "ultra"];
+	const applyPerformanceMode = (mode: CodexPerformanceMode) => {
+		const preset = getCodexPerformancePreset(mode);
+		setCodexPerformanceMode(mode);
+		setCodexEffort(
+			availableEfforts.includes(preset.effort)
+				? preset.effort
+				: (selectedCodexModel?.defaultEffort ??
+						availableEfforts[0] ??
+						preset.effort),
+		);
+		setCodexToolProfile(preset.toolProfile);
+		setCodexVisualMode(preset.visualMode);
+		setCodexVerificationMode(preset.verificationMode);
+	};
 
 	const persistCurrentConversation = () => {
 		const latest = latestConversation.current;
@@ -1733,6 +1761,33 @@ export function AgentWorkbench() {
 							{codexChecking ? "检测中…" : "重新检测"}
 						</button>
 					</div>
+					<label className="mt-3 block">
+						<span className="mb-1 block text-[9px] text-slate-500">
+							响应模式
+						</span>
+						<select
+							aria-label="响应模式"
+							value={codexPerformanceMode}
+							disabled={sending}
+							onChange={(event) => {
+								const mode = event.target.value;
+								if (
+									mode === "fast" ||
+									mode === "balanced" ||
+									mode === "director"
+								) {
+									applyPerformanceMode(mode);
+								}
+							}}
+							className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+						>
+							{CODEX_PERFORMANCE_PRESETS.map((preset) => (
+								<option key={preset.id} value={preset.id}>
+									{preset.label} · {preset.description}
+								</option>
+							))}
+						</select>
+					</label>
 					<div className="mt-3 grid grid-cols-2 gap-2">
 						<label className="block">
 							<span className="mb-1 block text-[9px] text-slate-500">模型</span>
@@ -1867,17 +1922,21 @@ export function AgentWorkbench() {
 							</button>
 							<button
 								type="button"
-								aria-pressed={codexVerificationMode === "full"}
+								aria-pressed={codexVerificationMode !== "off"}
 								onClick={() =>
 									setCodexVerificationMode((current) =>
-										current === "full" ? "off" : "full",
+										current === "off" ? "full" : "off",
 									)
 								}
 								className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-[9px] text-slate-400 transition hover:bg-white/[0.04]"
 							>
 								<span>修改后自动复核</span>
 								<span className="text-slate-500">
-									{codexVerificationMode === "full" ? "开启" : "关闭"}
+									{codexVerificationMode === "full"
+										? "完整"
+										: codexVerificationMode === "basic"
+											? "轻量"
+											: "关闭"}
 								</span>
 							</button>
 						</div>
