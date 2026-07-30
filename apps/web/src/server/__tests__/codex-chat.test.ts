@@ -512,6 +512,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				if (method === "thread/start") {
 					return { thread: { id: "thread-vision" } };
 				}
+				if (method === "thread/name/set") return {};
 				if (method === "mcpServerStatus/list") {
 					return readyOpenCutStatus();
 				}
@@ -1110,6 +1111,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				if (method === "thread/start") {
 					return { thread: { id: "thread-1" } };
 				}
+				if (method === "thread/name/set") return {};
 				if (method === "mcpServerStatus/list") {
 					return { data: [], nextCursor: null };
 				}
@@ -1137,6 +1139,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(consume()).rejects.toThrow("OpenCut MCP 未就绪");
 		expect(calls.map((call) => call.method)).toEqual([
 			"thread/start",
+			"thread/name/set",
 			"mcpServerStatus/list",
 		]);
 	});

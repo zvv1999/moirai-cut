@@ -78,6 +78,10 @@ function chatInput(value: unknown): CodexChatInput | null {
 		value: "conversationId" in value ? value.conversationId : undefined,
 		maxLength: 200,
 	});
+	const messageId = optionalString({
+		value: "messageId" in value ? value.messageId : undefined,
+		maxLength: 300,
+	});
 	const model = optionalString({
 		value: "model" in value ? value.model : undefined,
 		maxLength: 100,
@@ -95,6 +99,7 @@ function chatInput(value: unknown): CodexChatInput | null {
 	if (
 		sessionId === null ||
 		conversationId === null ||
+		messageId === null ||
 		model === null ||
 		effort === null ||
 		(effort !== undefined && !EFFORTS.has(effort)) ||
@@ -112,6 +117,7 @@ function chatInput(value: unknown): CodexChatInput | null {
 		context: value.context,
 		...(sessionId ? { sessionId } : {}),
 		...(conversationId ? { conversationId } : {}),
+		...(messageId ? { messageId } : {}),
 		...(model ? { model } : {}),
 		...(effort ? { effort } : {}),
 		...(isMode(mode) ? { mode } : {}),

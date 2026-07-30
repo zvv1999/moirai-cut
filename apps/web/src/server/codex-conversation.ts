@@ -26,6 +26,14 @@ export interface MergeCodexConversationInput {
 	messages: unknown[];
 }
 
+export interface SynchronizeCodexThreadInput {
+	projectId: string;
+	conversationId: string;
+	sessionId: string;
+	title: string;
+	messages: unknown[];
+}
+
 function assertProjectId(projectId: string): void {
 	if (!SAFE_ID.test(projectId)) {
 		throw new Error(`Unsafe project id: ${JSON.stringify(projectId)}`);
@@ -410,6 +418,84 @@ export class CodexConversationStore {
 		return this.locked({
 			projectId,
 			work: () => this.readUnlocked(projectId),
+		});
+	}
+
+	async synchronizeThread(
+		input: SynchronizeCodexThreadInput,
+	): Promise<CodexProjectConversation> {
+		assertProjectId(input.projectId);
+		assertConversationId(input.conversationId);
+		const current = await this.read(input.projectId);
+		const conversation = current.conversations.find(
+			(candidate) => candidate.id === input.conversationId,
+		);
+		if (!conversation || conversation.sessionId !== input.sessionId) {
+			return current;
+		}
+		if (!Array.isArray(input.messages) || input.messages.length > MAX_MESSAGES) {
+			throw new Error("messages must be a bounded array");
+		}
+		const canonicalMessages: CodexConversationMessage[] = [];
+		for (const message of input.messages) {
+			assertMessage(message);
+			canonicalMessages.push(message);
+		}
+		const usedExistingIds = new Set<string>();
+		const synchronizedMessages = canonicalMessages.map((incoming) => {
+			const existing =
+				conversation.messages.find(
+					(message) =>
+						!usedExistingIds.has(message.id) && message.id === incoming.id,
+				) ??
+				conversation.messages.find(
+					(message) =>
+						!usedExistingIds.has(message.id) &&
+						Boolean(incoming.turnId) &&
+						message.turnId === incoming.turnId &&
+						message.role === incoming.role,
+				) ??
+				conversation.messages.find(
+					(message) =>
+						!usedExistingIds.has(message.id) &&
+						incoming.role === "user" &&
+						message.role === "user" &&
+						message.content === incoming.content,
+				);
+			if (!existing) return incoming;
+			usedExistingIds.add(existing.id);
+			const changed =
+				existing.content !== incoming.content ||
+				existing.role !== incoming.role ||
+				existing.turnId !== incoming.turnId ||
+				existing.streaming === true;
+			return {
+				...existing,
+				...incoming,
+				id: existing.id,
+				createdAt: existing.createdAt,
+				updatedAt: changed
+					? Math.max(incoming.updatedAt, existing.updatedAt + 1, this.now())
+					: Math.max(incoming.updatedAt, existing.updatedAt),
+				...(existing.referenceCount === undefined
+					? {}
+					: { referenceCount: existing.referenceCount }),
+				...(existing.protocol === undefined
+					? {}
+					: { protocol: existing.protocol }),
+				...(existing.runId === undefined ? {} : { runId: existing.runId }),
+				...(existing.runSequence === undefined
+					? {}
+					: { runSequence: existing.runSequence }),
+				streaming: false,
+			};
+		});
+		return this.merge({
+			projectId: input.projectId,
+			conversationId: input.conversationId,
+			sessionId: input.sessionId,
+			title: input.title,
+			messages: synchronizedMessages,
 		});
 	}
 

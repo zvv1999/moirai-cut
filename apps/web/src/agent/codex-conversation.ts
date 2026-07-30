@@ -161,8 +161,11 @@ export function isCodexProjectConversation(
 	);
 }
 
-function historyUrl(projectId: string): string {
-	return `/api/codex/history/${encodeURIComponent(projectId)}`;
+function historyUrl(projectId: string, conversationId?: string): string {
+	const base = `/api/codex/history/${encodeURIComponent(projectId)}`;
+	return conversationId
+		? `${base}?conversationId=${encodeURIComponent(conversationId)}`
+		: base;
 }
 
 async function conversationFromResponse(
@@ -184,15 +187,20 @@ async function conversationFromResponse(
 
 export async function fetchCodexConversation({
 	projectId,
+	conversationId,
 	signal,
 }: {
 	projectId: string;
+	conversationId?: string | null;
 	signal?: AbortSignal;
 }): Promise<CodexProjectConversation> {
-	const response = await fetch(historyUrl(projectId), {
+	const response = await fetch(
+		historyUrl(projectId, conversationId?.trim() || undefined),
+		{
 		cache: "no-store",
 		...(signal ? { signal } : {}),
-	});
+		},
+	);
 	return conversationFromResponse(response);
 }
 

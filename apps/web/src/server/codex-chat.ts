@@ -34,6 +34,7 @@ export interface CodexRuntimeConfig {
 export interface CodexChatInput {
 	projectId: string;
 	message: string;
+	messageId?: string;
 	context: string;
 	sessionId?: string;
 	conversationId?: string;
@@ -108,6 +109,23 @@ export interface CodexCapabilities {
 	toolProfiles: CodexToolProfileCapability[];
 }
 
+export interface CodexThreadMessage {
+	id: string;
+	role: "user" | "assistant" | "error";
+	content: string;
+	turnId: string;
+	createdAt: number;
+	updatedAt: number;
+}
+
+export interface CodexThreadHistory {
+	sessionId: string;
+	title: string;
+	messages: CodexThreadMessage[];
+	createdAt: number;
+	updatedAt: number;
+}
+
 export interface CodexAppServerSubscription extends AsyncIterable<unknown> {
 	close(): void;
 }
@@ -145,6 +163,10 @@ export interface CodexChatService {
 		sessionId: string;
 		toolProfile?: CodexToolProfile;
 	}): Promise<void>;
+	readThread(input: {
+		sessionId: string;
+		toolProfile?: CodexToolProfile;
+	}): Promise<CodexThreadHistory>;
 }
 
 export class CodexChatError extends Error {
@@ -269,6 +291,22 @@ export function buildCodexPrompt({
 		"用户消息：",
 		message.trim(),
 	].join("\n");
+}
+
+function buildOpenCutThreadInstructions(projectId: string): string {
+	return [
+		"你是 OpenCut 编辑器的智能剪辑 Agent。",
+		`唯一允许操作的工程 ID：${projectId}`,
+		"所有工程读取和修改必须使用 opencut MCP，不要修改 OpenCut 源码。",
+		"不要使用 LocalCut、localcut-native-video 或 localcut MCP。",
+		"继续会话时先读取工程的最新 revision，再基于用户最新指令编辑。",
+		"用户从 Codex App 继续对话时，当前 cwd 对应 OpenCut 仓库，项目级配置会提供 opencut MCP。",
+	].join("\n");
+}
+
+function visibleThreadName(message: string): string {
+	const normalized = message.trim().replace(/\s+/g, " ");
+	return (normalized || "OpenCut 智能剪辑").slice(0, 80);
 }
 
 function passthroughEnvironment(
@@ -694,6 +732,15 @@ function threadIdFromResponse(response: unknown): string {
 	return response.thread.id;
 }
 
+function threadSourceFromResponse(
+	response: unknown,
+): string | null | undefined {
+	if (!isRecord(response) || !isRecord(response.thread)) return undefined;
+	if (!("threadSource" in response.thread)) return undefined;
+	const value = response.thread.threadSource;
+	return typeof value === "string" || value === null ? value : undefined;
+}
+
 function turnIdFromResponse(response: unknown): string {
 	if (
 		!isRecord(response) ||
@@ -703,6 +750,171 @@ function turnIdFromResponse(response: unknown): string {
 		throw new CodexChatError("Codex 没有返回本轮 ID。");
 	}
 	return response.turn.id;
+}
+
+function cleanStoredUserText(text: string): string {
+	const marker = "\n用户消息：\n";
+	const markerIndex = text.lastIndexOf(marker);
+	return (markerIndex >= 0 ? text.slice(markerIndex + marker.length) : text).trim();
+}
+
+function userTextFromItem(item: Record<string, unknown>): string {
+	if (!Array.isArray(item.content)) return "";
+	return cleanStoredUserText(
+		item.content
+			.filter(isRecord)
+			.map((part) => (part.type === "text" && typeof part.text === "string" ? part.text : ""))
+			.filter(Boolean)
+			.join("\n"),
+	);
+}
+
+function timestampMilliseconds({
+	value,
+	fallback,
+	offset = 0,
+}: {
+	value: unknown;
+	fallback: number;
+	offset?: number;
+}): number {
+	const seconds =
+		typeof value === "number" && Number.isFinite(value) ? value : fallback;
+	return Math.max(0, Math.round(seconds * 1_000) + offset);
+}
+
+function threadHistoryFromResponse(response: unknown): CodexThreadHistory {
+	if (!isRecord(response) || !isRecord(response.thread)) {
+		throw new CodexChatError("Codex 没有返回可读取的会话。");
+	}
+	const thread = response.thread;
+	if (
+		typeof thread.id !== "string" ||
+		typeof thread.createdAt !== "number" ||
+		typeof thread.updatedAt !== "number" ||
+		!Array.isArray(thread.turns)
+	) {
+		throw new CodexChatError("Codex 会话历史格式无效。");
+	}
+	const messages: CodexThreadMessage[] = [];
+	for (const rawTurn of thread.turns) {
+		if (
+			!isRecord(rawTurn) ||
+			typeof rawTurn.id !== "string" ||
+			!Array.isArray(rawTurn.items)
+		) {
+			continue;
+		}
+		const turnId = rawTurn.id;
+		const startedAt =
+			typeof rawTurn.startedAt === "number"
+				? rawTurn.startedAt
+				: thread.createdAt;
+		const completedAt =
+			typeof rawTurn.completedAt === "number"
+				? rawTurn.completedAt
+				: typeof thread.updatedAt === "number"
+					? thread.updatedAt
+					: startedAt;
+		let offset = 0;
+		for (const item of rawTurn.items.filter(isRecord)) {
+			if (item.type !== "userMessage" || typeof item.id !== "string") continue;
+			const content = userTextFromItem(item);
+			if (!content) continue;
+			messages.push({
+				id:
+					typeof item.clientId === "string" && item.clientId
+						? item.clientId
+						: item.id,
+				role: "user",
+				content,
+				turnId,
+				createdAt: timestampMilliseconds({
+					value: startedAt,
+					fallback: thread.createdAt,
+					offset,
+				}),
+				updatedAt: timestampMilliseconds({
+					value: completedAt,
+					fallback: thread.updatedAt,
+					offset,
+				}),
+			});
+			offset += 1;
+		}
+		const agentItems = rawTurn.items.filter(
+			(item): item is Record<string, unknown> =>
+				isRecord(item) &&
+				item.type === "agentMessage" &&
+				typeof item.id === "string" &&
+				typeof item.text === "string" &&
+				item.text.trim().length > 0,
+		);
+		const finalAgent =
+			agentItems.filter((item) => item.phase === "final_answer").at(-1) ??
+			agentItems.filter((item) => item.phase !== "commentary").at(-1) ??
+			agentItems.at(-1);
+		if (finalAgent && typeof finalAgent.id === "string") {
+			messages.push({
+				id: finalAgent.id,
+				role: "assistant",
+				content: String(finalAgent.text).trim(),
+				turnId,
+				createdAt: timestampMilliseconds({
+					value: startedAt,
+					fallback: thread.createdAt,
+					offset,
+				}),
+				updatedAt: timestampMilliseconds({
+					value: completedAt,
+					fallback: thread.updatedAt,
+					offset,
+				}),
+			});
+			offset += 1;
+		}
+		if (
+			rawTurn.status === "failed" &&
+			isRecord(rawTurn.error) &&
+			typeof rawTurn.error.message === "string" &&
+			rawTurn.error.message.trim()
+		) {
+			messages.push({
+				id: `${turnId}:error`,
+				role: "error",
+				content: rawTurn.error.message.trim(),
+				turnId,
+				createdAt: timestampMilliseconds({
+					value: completedAt,
+					fallback: thread.updatedAt,
+					offset,
+				}),
+				updatedAt: timestampMilliseconds({
+					value: completedAt,
+					fallback: thread.updatedAt,
+					offset,
+				}),
+			});
+		}
+	}
+	const firstUserMessage = messages.find((message) => message.role === "user");
+	const title =
+		typeof thread.name === "string" && thread.name.trim()
+			? thread.name.trim()
+			: firstUserMessage?.content.slice(0, 80) || "OpenCut 智能剪辑";
+	return {
+		sessionId: thread.id,
+		title,
+		messages,
+		createdAt: timestampMilliseconds({
+			value: thread.createdAt,
+			fallback: 0,
+		}),
+		updatedAt: timestampMilliseconds({
+			value: thread.updatedAt,
+			fallback: thread.createdAt,
+		}),
+	};
 }
 
 function finalMessageFromTurn(turn: Record<string, unknown>): string | null {
@@ -1742,12 +1954,24 @@ export function createCodexChatService({
 				params: { threadId: sessionId },
 			});
 		},
+		async readThread({ sessionId, toolProfile = "edit" }) {
+			const connection = await connect({ runtime, toolProfile });
+			return threadHistoryFromResponse(
+				await connection.request({
+					method: "thread/read",
+					params: { threadId: sessionId, includeTurns: true },
+				}),
+			);
+		},
 		async *stream({ input, signal }) {
 			const toolProfile = input.toolProfile ?? "edit";
 			const connection = await connect({ runtime, toolProfile });
 			const requestedSessionId =
 				input.sessionId?.trim() || sessions.get(input.projectId);
-			const threadResponse = await connection.request({
+			const developerInstructions = buildOpenCutThreadInstructions(
+				input.projectId,
+			);
+			let threadResponse = await connection.request({
 				method: requestedSessionId ? "thread/resume" : "thread/start",
 				params: requestedSessionId
 					? {
@@ -1757,6 +1981,7 @@ export function createCodexChatService({
 								runtime.repoRoot,
 								runtime.projectFilesDir,
 							],
+							developerInstructions,
 							approvalPolicy: "never",
 							sandbox: "read-only",
 							excludeTurns: true,
@@ -1768,13 +1993,48 @@ export function createCodexChatService({
 								runtime.repoRoot,
 								runtime.projectFilesDir,
 							],
+							developerInstructions,
 							approvalPolicy: "never",
 							sandbox: "read-only",
 							serviceName: "opencut_smart_edit",
+							threadSource: "user",
 							...(input.model ? { model: input.model } : {}),
 						},
 			});
+			let migratedLegacyThread = false;
+			if (
+				requestedSessionId &&
+				threadSourceFromResponse(threadResponse) === null
+			) {
+				threadResponse = await connection.request({
+					method: "thread/fork",
+					params: {
+						threadId: requestedSessionId,
+						cwd: runtime.repoRoot,
+						runtimeWorkspaceRoots: [
+							runtime.repoRoot,
+							runtime.projectFilesDir,
+						],
+						developerInstructions,
+						approvalPolicy: "never",
+						sandbox: "read-only",
+						excludeTurns: true,
+						threadSource: "user",
+						...(input.model ? { model: input.model } : {}),
+					},
+				});
+				migratedLegacyThread = true;
+			}
 			const sessionId = threadIdFromResponse(threadResponse);
+			if (!requestedSessionId || migratedLegacyThread) {
+				await connection.request({
+					method: "thread/name/set",
+					params: {
+						threadId: sessionId,
+						name: visibleThreadName(input.message),
+					},
+				});
+			}
 			sessions.set(input.projectId, sessionId);
 			const subscription = connection.subscribe(sessionId);
 			const iterator = subscription[Symbol.asyncIterator]();
@@ -1795,10 +2055,18 @@ export function createCodexChatService({
 				yield {
 					type: "protocol",
 					id: `thread:${sessionId}`,
-					method: requestedSessionId ? "thread/resume" : "thread/start",
+					method: migratedLegacyThread
+						? "thread/fork"
+						: requestedSessionId
+							? "thread/resume"
+							: "thread/start",
 					threadId: sessionId,
 					status: "completed",
-					title: requestedSessionId ? "Codex 会话已恢复" : "Codex 会话已连接",
+					title: migratedLegacyThread
+						? "Codex 会话已迁移并恢复"
+						: requestedSessionId
+							? "Codex 会话已恢复"
+							: "Codex 会话已连接",
 				};
 				const binding = await bindOpenCutSession({
 					connection,
@@ -1886,6 +2154,9 @@ export function createCodexChatService({
 					method: "turn/start",
 					params: {
 						threadId: sessionId,
+						...(input.messageId
+							? { clientUserMessageId: input.messageId }
+							: {}),
 						...(input.model ? { model: input.model } : {}),
 						...(input.effort ? { effort: input.effort } : {}),
 						...(input.mode
@@ -1900,14 +2171,19 @@ export function createCodexChatService({
 									},
 								}
 							: {}),
-						input: [
-							{
-								type: "text",
-								text: buildCodexPrompt({
+						additionalContext: {
+							"opencut.smart_edit": {
+								kind: "application",
+								value: buildCodexPrompt({
 									...input,
 									projectSnapshot: binding.projectSnapshot,
 								}),
-								text_elements: [],
+							},
+						},
+						input: [
+							{
+								type: "text",
+								text: input.message.trim(),
 							},
 							...visual.inputs,
 						],

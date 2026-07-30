@@ -410,6 +410,7 @@ function CodexActivityLine({ frames }: { frames: CodexProtocolFrame[] }) {
 async function sendCodexTurn({
 	projectId,
 	message,
+	messageId,
 	context,
 	sessionId,
 	options,
@@ -422,6 +423,7 @@ async function sendCodexTurn({
 }: {
 	projectId: string;
 	message: string;
+	messageId: string;
 	context: string;
 	sessionId: string | null;
 	options: CodexTurnOptions;
@@ -438,6 +440,7 @@ async function sendCodexTurn({
 		body: JSON.stringify({
 			projectId,
 			message,
+			messageId,
 			context,
 			conversationId: options.conversationId,
 			model: options.model,
@@ -840,6 +843,7 @@ export function AgentWorkbench() {
 				applyConversation(
 					await fetchCodexConversation({
 						projectId,
+						conversationId: activeConversationIdRef.current,
 						signal: controller.signal,
 					}),
 				);
@@ -1288,11 +1292,12 @@ export function AgentWorkbench() {
 		if (!targetConversationId) return;
 		const referenceCount = contextSnapshot.references.length;
 		const createdAt = timestampNow();
+		const userMessageId = nextMessageId();
 		const assistantMessageId = nextMessageId();
 		setMessages((current) => [
 			...current,
 			{
-				id: nextMessageId(),
+				id: userMessageId,
 				role: "user",
 				content: normalizedRequest,
 				...(referenceCount > 0 ? { referenceCount } : {}),
@@ -1315,6 +1320,7 @@ export function AgentWorkbench() {
 			const result = await sendCodexTurn({
 				projectId: semanticState.projectId,
 				message: normalizedRequest,
+				messageId: userMessageId,
 				context: contextSnapshot.promptContext,
 				sessionId,
 				options: {

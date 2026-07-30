@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { getCodexConversationStore } from "@/server/codex-conversation";
+import {
+	createCodexChatService,
+	type CodexChatService,
+} from "@/server/codex-chat";
+import {
+	type CodexConversationStore,
+	getCodexConversationStore,
+} from "@/server/codex-conversation";
 
 export const dynamic = "force-dynamic";
 
@@ -36,13 +43,59 @@ function isClientError(message: string): boolean {
 	);
 }
 
+export async function readSharedProjectConversation({
+	projectId,
+	conversationId,
+	store = getCodexConversationStore(),
+	codex = createCodexChatService(),
+}: {
+	projectId: string;
+	conversationId: string;
+	store?: CodexConversationStore;
+	codex?: Pick<CodexChatService, "readThread">;
+}) {
+	const stored = await store.read(projectId);
+	const conversation = stored.conversations.find(
+		(candidate) => candidate.id === conversationId,
+	);
+	if (!conversation?.sessionId) return stored;
+	try {
+		const thread = await codex.readThread({
+			sessionId: conversation.sessionId,
+			toolProfile: "edit",
+		});
+		return store.synchronizeThread({
+			projectId,
+			conversationId,
+			sessionId: thread.sessionId,
+			title: thread.title,
+			messages: thread.messages,
+		});
+	} catch (error) {
+		console.warn("Failed to synchronize Codex App thread", {
+			projectId,
+			conversationId,
+			message: messageOf(error),
+		});
+		return stored;
+	}
+}
+
 // Next route handlers must use the framework's positional request/context API.
 // eslint-disable-next-line opencut/prefer-object-params
-export async function GET(_request: Request, { params }: RouteContext) {
+export async function GET(request: Request, { params }: RouteContext) {
 	const { projectId } = await params;
 	try {
+		const conversationId = new URL(request.url).searchParams
+			.get("conversationId")
+			?.trim();
 		return json({
-			value: await getCodexConversationStore().read(projectId),
+			value: conversationId
+				? await readSharedProjectConversation({
+						projectId,
+						conversationId,
+					})
+				: await getCodexConversationStore().read(projectId),
 		});
 	} catch (error) {
 		const message = messageOf(error);
