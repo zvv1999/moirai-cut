@@ -317,6 +317,9 @@ Codex App Server 的 task/thread 是对话正文的唯一事实来源。一个�
 独立 task，每条绑定都有自己的 `conversationId`、标题和 Codex `sessionId`。用户
 新建会话或选择历史会话时，浏览器必须传回该绑定自己的 `sessionId`，通过
 `thread/resume` 从原上下文继续；禁止把不同会话的消息或 Codex thread 合并。
+服务端为了覆盖“session 事件已经生成、浏览器还没来得及保存就断线”的短暂窗口，会
+保留进程内 session 缓存；缓存键必须是 `(projectId, conversationId)`，不能只按工程
+缓存。显式传入的 `sessionId` 始终优先于这个恢复缓存。
 
 工程目录的 `agent/codex-conversation.json` 是项目到 task 的绑定索引和 UI 投影缓存，
 不是第二份对话事实源。它保存浏览器所需的引用数量、可重连 `runId/runSequence` 和
@@ -359,13 +362,17 @@ OpenCut 智能剪辑创建、恢复或迁移 task 时使用 `OPENCUT_CODEX_WORKS
 因此 task 在 Codex App 的全局任务历史中可见、可打开和续聊，并同时具备当前编辑器
 工程和 MCP 工具上下文。
 
-需要注意：App Server 的 `thread/start`、`thread/resume`、`thread/fork` 协议只接受
-执行目录和运行时根，不接受 Codex 桌面端项目的 `projectId`；桌面端项目归类属于宿主
-应用创建任务时写入的元数据，不能由网页 App Server 客户端伪造。即使 `cwd` 与已保存
-的 `chatcut` 项目一致，网页创建的 task 在当前 Codex App 版本中仍可能显示在“无项目”
-任务下。OpenCut 以 App Server task/thread ID 保证双端正文一致，不把 `cwd` 错当成
-桌面项目绑定。若未来公开协议加入 `projectId`，应在 `thread/start` 时直接传入，而
-不是维护另一份对话。
+App Server 的 `thread/start`、`thread/resume`、`thread/fork` 协议只接受执行目录和
+运行时根，不接受 Codex 桌面端项目的 `projectId`。OpenCut 不修改
+`.codex-global-state.json`，也不伪造宿主元数据；在 macOS 上，新 task 的首轮原生
+turn 完成后，服务端会用后台深链 `codex://threads/<threadId>` 让 Codex App 加载一次
+该 task。桌面 App 随后依据 task 的真实 `cwd` 把它归入已保存的 `chatcut` 项目。
+
+归组刻意放在 turn 完成后执行，避免桌面 App 在外部 App Server 仍在流式运行时把 task
+误判为空闲并产生并发续聊。每个新 task 只触发一次；`thread/resume` 不重复触发。桌面
+App 未安装、深链失败或设置 `OPENCUT_CODEX_DESKTOP_SYNC=0` 时，只跳过自动归组，不
+中断 SSE、原生历史或工程编辑。若未来 App Server 公开 `projectId`，应改为在
+`thread/start` 中直接传入并删除这层宿主发现兼容逻辑。
 
 ## 8. 二次编辑范式
 
@@ -421,6 +428,10 @@ bun test apps/web/src/server/__tests__/codex-chat-route.test.ts
 node --test apps/mcp/src/__tests__/*.test.mjs
 bun run build:web
 ```
+
+`build:web` 会执行 Next.js 的生产 TypeScript 检查。构建和 ESLint 需要 Node 20+
+（推荐使用当前 Codex 桌面运行时自带的 Node）；系统 Node 16 缺少
+`structuredClone`，不能作为有效的规范检查环境。
 
 真实 E2E 应使用专门的临时工程完成：
 
