@@ -39,9 +39,7 @@ describe("智能剪辑与工程历史分面", () => {
 	});
 
 	test("两个入口向辅助技术暴露当前展开状态", () => {
-		expect(source).toContain(
-			'aria-pressed={openSurface === "smart-edit"}',
-		);
+		expect(source).toContain('aria-pressed={openSurface === "smart-edit"}');
 		expect(source).toContain(
 			'aria-pressed={openSurface === "project-history"}',
 		);
@@ -67,16 +65,12 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain(
 			"const [followSelection, setFollowSelection] = useState(true);",
 		);
-		expect(workbenchSource).toContain(
-			"if (!followSelection) return;",
-		);
+		expect(workbenchSource).toContain("if (!followSelection) return;");
 		expect(workbenchSource).toContain(
 			'if (selectedElements.length === 0) {\n\t\t\tfollowedSelectionKey.current = "";\n\t\t\treturn;\n\t\t}',
 		);
 		expect(workbenchSource).toContain("选中即引用");
-		expect(workbenchSource).toContain(
-			"visibleReferences.length > 0",
-		);
+		expect(workbenchSource).toContain("visibleReferences.length > 0");
 		expect(workbenchSource).toContain(
 			"`已引用 ${visibleReferences.length} 项`",
 		);
@@ -121,9 +115,7 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain("response.body.getReader()");
 		expect(workbenchSource).toContain('event.event === "delta"');
 		expect(workbenchSource).toContain('event.event === "protocol"');
-		expect(workbenchSource).toContain(
-			"...(sessionId ? { sessionId } : {})",
-		);
+		expect(workbenchSource).toContain("...(sessionId ? { sessionId } : {})");
 		expect(workbenchSource).not.toContain("compileSemanticEdit");
 		expect(workbenchSource).not.toContain("计划需要处理");
 		expect(workbenchSource).not.toContain("运行质检");
@@ -136,6 +128,9 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain("mcpToolCall");
 		expect(workbenchSource).toContain("commandExecution");
 		expect(workbenchSource).toContain("原生协议");
+		expect(workbenchSource).toContain(
+			"aria-label={`查看 ${frame.title} 协议详情`}",
+		);
 		expect(workbenchSource).not.toContain("Codex 正在处理");
 	});
 });

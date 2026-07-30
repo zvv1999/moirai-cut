@@ -30,12 +30,33 @@ interface CodexChatResult {
 	message: string;
 }
 
+type CodexProtocolStatus =
+	| "started"
+	| "streaming"
+	| "completed"
+	| "failed"
+	| "info";
+
+interface CodexProtocolFrame {
+	id: string;
+	method: string;
+	threadId: string;
+	turnId?: string;
+	itemId?: string;
+	itemType?: string;
+	status: CodexProtocolStatus;
+	title: string;
+	detail?: string;
+	append?: boolean;
+}
+
 interface ChatMessage {
 	id: string;
 	role: "user" | "assistant" | "error";
 	content: string;
 	referenceCount?: number;
 	streaming?: boolean;
+	protocol?: CodexProtocolFrame[];
 }
 
 const AGENT_REQUEST_PRESETS = [
@@ -114,6 +135,92 @@ function apiErrorMessage(value: unknown): string | null {
 	return null;
 }
 
+function isCodexProtocolFrame(value: unknown): value is CodexProtocolFrame {
+	if (!value || typeof value !== "object") return false;
+	if (
+		!("id" in value) ||
+		typeof value.id !== "string" ||
+		!("method" in value) ||
+		typeof value.method !== "string" ||
+		!("threadId" in value) ||
+		typeof value.threadId !== "string" ||
+		!("status" in value) ||
+		(value.status !== "started" &&
+			value.status !== "streaming" &&
+			value.status !== "completed" &&
+			value.status !== "failed" &&
+			value.status !== "info") ||
+		!("title" in value) ||
+		typeof value.title !== "string"
+	) {
+		return false;
+	}
+	return (
+		(!("turnId" in value) || typeof value.turnId === "string") &&
+		(!("itemId" in value) || typeof value.itemId === "string") &&
+		(!("itemType" in value) || typeof value.itemType === "string") &&
+		(!("detail" in value) || typeof value.detail === "string") &&
+		(!("append" in value) || typeof value.append === "boolean")
+	);
+}
+
+function upsertProtocolFrame({
+	frames,
+	incoming,
+}: {
+	frames: CodexProtocolFrame[] | undefined;
+	incoming: CodexProtocolFrame;
+}): CodexProtocolFrame[] {
+	const current = frames ?? [];
+	const index = current.findIndex((frame) => frame.id === incoming.id);
+	if (index < 0) return [...current, incoming];
+	const previous = current[index];
+	const detail =
+		incoming.append && incoming.detail
+			? `${previous?.detail ?? ""}${incoming.detail}`.slice(-8_000)
+			: incoming.detail;
+	const next = current.slice();
+	next[index] = {
+		...previous,
+		...incoming,
+		...(detail === undefined ? {} : { detail }),
+	};
+	return next;
+}
+
+function protocolStatusLabel(status: CodexProtocolStatus): string {
+	if (status === "started") return "进行中";
+	if (status === "streaming") return "流式";
+	if (status === "completed") return "完成";
+	if (status === "failed") return "失败";
+	return "信息";
+}
+
+function protocolStatusClass(status: CodexProtocolStatus): string {
+	if (status === "failed") return "bg-red-400";
+	if (status === "completed") return "bg-emerald-400";
+	if (status === "info") return "bg-slate-500";
+	return "bg-cyan-300";
+}
+
+function protocolKindLabel(itemType: string | undefined): string {
+	if (itemType === "reasoning") return "分析";
+	if (itemType === "plan") return "计划";
+	if (itemType === "mcpToolCall") return "MCP";
+	if (itemType === "commandExecution") return "终端";
+	if (itemType === "fileChange") return "修改";
+	if (itemType === "approval") return "授权";
+	return "Codex";
+}
+
+function isNarrativeProtocolFrame(frame: CodexProtocolFrame): boolean {
+	return (
+		frame.itemType === "reasoning" ||
+		frame.itemType === "plan" ||
+		frame.method === "item/reasoning/summaryTextDelta"
+	);
+}
+
 async function sendCodexTurn({
 	projectId,
 	message,
@@ -121,6 +228,7 @@ async function sendCodexTurn({
 	sessionId,
 	onSession,
 	onDelta,
+	onProtocol,
 }: {
 	projectId: string;
 	message: string;
@@ -128,6 +236,7 @@ async function sendCodexTurn({
 	sessionId: string | null;
 	onSession(sessionId: string): void;
 	onDelta(delta: string): void;
+	onProtocol(frame: CodexProtocolFrame): void;
 }): Promise<CodexChatResult> {
 	const response = await fetch("/api/codex/chat", {
 		method: "POST",
@@ -178,6 +287,10 @@ async function sendCodexTurn({
 				typeof value.delta === "string"
 			) {
 				onDelta(value.delta);
+				continue;
+			}
+			if (event.event === "protocol" && isCodexProtocolFrame(value)) {
+				onProtocol(value);
 				continue;
 			}
 			if (
@@ -414,6 +527,7 @@ export function AgentWorkbench() {
 				role: "assistant",
 				content: "",
 				streaming: true,
+				protocol: [],
 			},
 		]);
 		setRequest("");
@@ -430,6 +544,21 @@ export function AgentWorkbench() {
 						current.map((message) =>
 							message.id === assistantMessageId
 								? { ...message, content: `${message.content}${delta}` }
+								: message,
+						),
+					);
+				},
+				onProtocol: (frame) => {
+					setMessages((current) =>
+						current.map((message) =>
+							message.id === assistantMessageId
+								? {
+										...message,
+										protocol: upsertProtocolFrame({
+											frames: message.protocol,
+											incoming: frame,
+										}),
+									}
 								: message,
 						),
 					);
@@ -915,23 +1044,95 @@ export function AgentWorkbench() {
 								{message.role === "error" ? "!" : "AI"}
 							</span>
 							<div
-								className={`whitespace-pre-wrap rounded-2xl rounded-tl-sm border px-3.5 py-3 text-xs leading-relaxed ${
+								className={`min-w-0 flex-1 rounded-2xl rounded-tl-sm border px-3 py-3 text-xs leading-relaxed ${
 									message.role === "error"
 										? "border-red-500/25 bg-red-500/8 text-red-200"
 										: "border-white/8 bg-white/[0.045] text-slate-200"
 								}`}
 							>
-								{message.streaming && !message.content ? (
-									<span className="flex items-center gap-2 text-cyan-200">
-										<span className="flex gap-1">
-											<span className="size-1 animate-bounce rounded-full bg-cyan-300" />
-											<span className="size-1 animate-bounce rounded-full bg-cyan-300 [animation-delay:120ms]" />
-											<span className="size-1 animate-bounce rounded-full bg-cyan-300 [animation-delay:240ms]" />
-										</span>
-										Codex 正在处理
-									</span>
-								) : (
-									<>
+								{message.protocol && message.protocol.length > 0 ? (
+									<section
+										aria-label="Codex 调用流程"
+										className="mb-2.5 overflow-hidden rounded-xl border border-white/8 bg-black/20"
+									>
+										<div className="flex items-center justify-between border-b border-white/7 px-2.5 py-1.5">
+											<span className="flex items-center gap-1.5 text-[9px] font-semibold text-slate-300">
+												<span className="font-mono text-cyan-300">{"{ }"}</span>
+												Codex 调用流程
+												<span className="rounded bg-cyan-400/8 px-1.5 py-0.5 font-mono text-[7px] font-normal text-cyan-300">
+													原生协议
+												</span>
+											</span>
+											<span className="font-mono text-[7px] text-slate-600">
+												{message.protocol.length} 项事件
+											</span>
+										</div>
+										<ol className="divide-y divide-white/5">
+											{message.protocol.map((frame) => (
+												<li key={frame.id} className="px-2.5 py-2">
+													<div className="flex min-w-0 items-start gap-2">
+														<span className="relative mt-1 flex size-2 shrink-0 items-center justify-center">
+															{frame.status === "started" ||
+															frame.status === "streaming" ? (
+																<span
+																	className={`absolute size-2 animate-ping rounded-full opacity-40 ${protocolStatusClass(frame.status)}`}
+																/>
+															) : null}
+															<span
+																className={`relative size-1.5 rounded-full ${protocolStatusClass(frame.status)}`}
+															/>
+														</span>
+														<div className="min-w-0 flex-1">
+															<div className="flex min-w-0 items-center gap-1.5">
+																<span className="shrink-0 rounded bg-white/5 px-1 py-0.5 text-[7px] text-slate-500">
+																	{protocolKindLabel(frame.itemType)}
+																</span>
+																<span className="truncate text-[9px] font-medium text-slate-200">
+																	{frame.title}
+																</span>
+																<span className="ml-auto shrink-0 text-[7px] text-slate-600">
+																	{protocolStatusLabel(frame.status)}
+																</span>
+															</div>
+															<div
+																className="mt-0.5 truncate font-mono text-[7px] text-slate-600"
+																title={frame.method}
+															>
+																{frame.method}
+															</div>
+															{frame.detail ? (
+																isNarrativeProtocolFrame(frame) ? (
+																	<pre className="mt-1.5 max-h-32 overflow-auto whitespace-pre-wrap rounded-md bg-white/[0.025] px-2 py-1.5 font-sans text-[9px] leading-relaxed text-slate-400">
+																		{frame.detail}
+																	</pre>
+																) : (
+																	<details className="mt-1 text-[8px] text-slate-500">
+																		<summary
+																			aria-label={`查看 ${frame.title} 协议详情`}
+																			className="cursor-pointer select-none hover:text-slate-300"
+																		>
+																			查看协议详情
+																		</summary>
+																		<pre className="mt-1.5 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md bg-black/25 px-2 py-1.5 font-mono text-[8px] leading-relaxed text-slate-400">
+																			{frame.detail}
+																		</pre>
+																	</details>
+																)
+															) : null}
+														</div>
+													</div>
+												</li>
+											))}
+										</ol>
+									</section>
+								) : message.streaming ? (
+									<div className="mb-2 flex items-center gap-2 rounded-lg border border-white/7 bg-black/20 px-2.5 py-2 font-mono text-[8px] text-slate-500">
+										<span className="size-1.5 animate-pulse rounded-full bg-cyan-300" />
+										app-server · 等待协议事件
+									</div>
+								) : null}
+								{message.content ? (
+									<p className="whitespace-pre-wrap">
 										{message.content}
 										{message.streaming ? (
 											<span
@@ -939,8 +1140,8 @@ export function AgentWorkbench() {
 												aria-label="Codex 正在流式回复"
 											/>
 										) : null}
-									</>
-								)}
+									</p>
+								) : null}
 							</div>
 						</div>
 					),
@@ -1223,9 +1424,7 @@ export function AgentWorkbench() {
 								void submitToCodex();
 							}
 						}}
-						placeholder={
-							sending ? "Codex 正在处理当前消息…" : "描述你想要的剪辑效果…"
-						}
+						placeholder={sending ? "调用流程运行中…" : "描述你想要的剪辑效果…"}
 					/>
 					<button
 						type="submit"

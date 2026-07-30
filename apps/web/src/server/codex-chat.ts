@@ -7,6 +7,7 @@ import { configuredCodexBinary } from "@/server/codex-config";
 const REQUEST_TIMEOUT_MS = 30_000;
 const TURN_TIMEOUT_MS = 6 * 60 * 1_000;
 const MAX_STDERR_CHARS = 16_384;
+const MAX_PROTOCOL_DETAIL_CHARS = 8_000;
 
 export interface CodexRuntimeConfig {
 	binary: string;
@@ -23,15 +24,30 @@ export interface CodexChatInput {
 	sessionId?: string;
 }
 
+export type CodexProtocolStatus =
+	| "started"
+	| "streaming"
+	| "completed"
+	| "failed"
+	| "info";
+
+export interface CodexProtocolFrame {
+	id: string;
+	method: string;
+	threadId: string;
+	turnId?: string;
+	itemId?: string;
+	itemType?: string;
+	status: CodexProtocolStatus;
+	title: string;
+	detail?: string;
+	append?: boolean;
+}
+
 export type CodexChatEvent =
 	| { type: "session"; sessionId: string }
 	| { type: "delta"; delta: string }
-	| {
-			type: "activity";
-			itemId: string;
-			label: string;
-			status: "started" | "completed";
-	  }
+	| ({ type: "protocol" } & CodexProtocolFrame)
 	| { type: "done"; sessionId: string; message: string };
 
 export interface CodexAppServerSubscription extends AsyncIterable<unknown> {
@@ -265,10 +281,7 @@ export class CodexAppServerRpcClient implements CodexAppServerConnection {
 					requestAttestation: false,
 					optOutNotificationMethods: [
 						"turn/diff/updated",
-						"item/reasoning/summaryTextDelta",
-						"item/reasoning/summaryPartAdded",
 						"item/reasoning/textDelta",
-						"item/commandExecution/outputDelta",
 						"command/exec/outputDelta",
 						"process/outputDelta",
 					],
@@ -335,8 +348,7 @@ export class CodexAppServerRpcClient implements CodexAppServerConnection {
 
 	private handleServerRequest(message: Record<string, unknown>): boolean {
 		if (
-			(typeof message.id !== "number" &&
-				typeof message.id !== "string") ||
+			(typeof message.id !== "number" && typeof message.id !== "string") ||
 			typeof message.method !== "string" ||
 			!isRecord(message.params)
 		) {
@@ -344,15 +356,20 @@ export class CodexAppServerRpcClient implements CodexAppServerConnection {
 		}
 
 		if (message.method === "mcpServer/elicitation/request") {
-			const meta = isRecord(message.params._meta)
-				? message.params._meta
-				: null;
-			const persist = Array.isArray(meta?.persist)
-				? meta.persist
-				: [];
+			const meta = isRecord(message.params._meta) ? message.params._meta : null;
+			const persist = Array.isArray(meta?.persist) ? meta.persist : [];
 			const isOpenCutToolApproval =
 				message.params.serverName === "opencut" &&
 				meta?.codex_approval_kind === "mcp_tool_call";
+			const threadId =
+				typeof message.params.threadId === "string"
+					? message.params.threadId
+					: null;
+			if (threadId) {
+				for (const subscription of this.subscriptions.get(threadId) ?? []) {
+					subscription.push(message);
+				}
+			}
 			this.write({
 				id: message.id,
 				result: isOpenCutToolApproval
@@ -564,6 +581,362 @@ function completionFromNotification(
 	return notification.params.turn;
 }
 
+function truncated(value: string): string {
+	if (value.length <= MAX_PROTOCOL_DETAIL_CHARS) return value;
+	return `${value.slice(0, MAX_PROTOCOL_DETAIL_CHARS)}\n…已截断`;
+}
+
+function compactJson(value: unknown): string {
+	try {
+		return truncated(JSON.stringify(value, null, 2));
+	} catch {
+		return "无法序列化协议数据";
+	}
+}
+
+function protocolStatus(value: unknown): CodexProtocolStatus {
+	if (value === "completed") return "completed";
+	if (value === "failed" || value === "declined") return "failed";
+	if (value === "inProgress") return "started";
+	return "info";
+}
+
+function stringField({
+	record,
+	key,
+}: {
+	record: Record<string, unknown>;
+	key: string;
+}): string | null {
+	return typeof record[key] === "string" ? record[key] : null;
+}
+
+function itemLifecycleFrame({
+	notification,
+	params,
+	item,
+}: {
+	notification: Record<string, unknown>;
+	params: Record<string, unknown>;
+	item: Record<string, unknown>;
+}): CodexProtocolFrame | null {
+	const method = stringField({ record: notification, key: "method" });
+	const threadId = stringField({ record: params, key: "threadId" });
+	const turnId = stringField({ record: params, key: "turnId" });
+	const itemId = stringField({ record: item, key: "id" });
+	const itemType = stringField({ record: item, key: "type" });
+	if (!method || !threadId || !turnId || !itemId || !itemType) return null;
+	const lifecycleStatus =
+		method === "item/started"
+			? "started"
+			: protocolStatus(item.status ?? "completed");
+	const base = {
+		id: itemId,
+		method,
+		threadId,
+		turnId,
+		itemId,
+		itemType,
+		status: lifecycleStatus,
+	} satisfies Omit<CodexProtocolFrame, "title">;
+
+	if (itemType === "mcpToolCall") {
+		const server = stringField({ record: item, key: "server" }) ?? "MCP";
+		const tool = stringField({ record: item, key: "tool" }) ?? "tool";
+		const detailParts = [`参数\n${compactJson(item.arguments ?? {})}`];
+		if (item.result !== null && item.result !== undefined) {
+			detailParts.push(`结果\n${compactJson(item.result)}`);
+		}
+		if (isRecord(item.error) && typeof item.error.message === "string") {
+			detailParts.push(`错误\n${item.error.message}`);
+		}
+		return {
+			...base,
+			title: `${server === "opencut" ? "OpenCut" : server} · ${tool}`,
+			detail: truncated(detailParts.join("\n\n")),
+		};
+	}
+
+	if (itemType === "commandExecution") {
+		const command = stringField({ record: item, key: "command" }) ?? "";
+		const cwd = stringField({ record: item, key: "cwd" });
+		const output = stringField({ record: item, key: "aggregatedOutput" });
+		const exitCode =
+			typeof item.exitCode === "number" ? `退出码 ${item.exitCode}` : null;
+		return {
+			...base,
+			title: "运行命令",
+			detail: truncated(
+				[
+					command ? `$ ${command}` : null,
+					cwd ? `目录 ${cwd}` : null,
+					output,
+					exitCode,
+				]
+					.filter((part): part is string => Boolean(part))
+					.join("\n"),
+			),
+		};
+	}
+
+	if (itemType === "fileChange") {
+		return {
+			...base,
+			title: "应用文件修改",
+			detail: compactJson(item.changes ?? []),
+		};
+	}
+
+	if (itemType === "reasoning") {
+		const summary = Array.isArray(item.summary)
+			? item.summary.filter((part): part is string => typeof part === "string")
+			: [];
+		return {
+			...base,
+			title: "分析",
+			...(summary.length > 0 ? { detail: truncated(summary.join("\n")) } : {}),
+		};
+	}
+
+	if (itemType === "plan") {
+		return {
+			...base,
+			title: "执行计划",
+			...(typeof item.text === "string"
+				? { detail: truncated(item.text) }
+				: {}),
+		};
+	}
+
+	if (itemType === "dynamicToolCall") {
+		const namespace = stringField({ record: item, key: "namespace" });
+		const tool = stringField({ record: item, key: "tool" }) ?? "tool";
+		return {
+			...base,
+			title: `${namespace ? `${namespace} · ` : ""}${tool}`,
+			detail: compactJson({
+				arguments: item.arguments ?? {},
+				contentItems: item.contentItems ?? null,
+			}),
+		};
+	}
+
+	return {
+		...base,
+		title: itemType,
+		detail: compactJson(item),
+	};
+}
+
+function protocolFrameFromNotification(
+	notification: Record<string, unknown>,
+): CodexProtocolFrame | null {
+	const method = stringField({ record: notification, key: "method" });
+	if (!method || !isRecord(notification.params)) return null;
+	const params = notification.params;
+	const threadId = stringField({ record: params, key: "threadId" });
+	const turnId =
+		stringField({ record: params, key: "turnId" }) ??
+		(isRecord(params.turn)
+			? stringField({ record: params.turn, key: "id" })
+			: null);
+	if (!threadId) return null;
+
+	if (
+		(method === "item/started" || method === "item/completed") &&
+		isRecord(params.item)
+	) {
+		return itemLifecycleFrame({ notification, params, item: params.item });
+	}
+
+	if (
+		method === "item/reasoning/summaryTextDelta" &&
+		turnId &&
+		typeof params.itemId === "string" &&
+		typeof params.delta === "string"
+	) {
+		return {
+			id: params.itemId,
+			method,
+			threadId,
+			turnId,
+			itemId: params.itemId,
+			itemType: "reasoning",
+			status: "streaming",
+			title: "分析",
+			detail: params.delta,
+			append: true,
+		};
+	}
+
+	if (method === "turn/plan/updated" && turnId && Array.isArray(params.plan)) {
+		const explanation =
+			typeof params.explanation === "string" ? params.explanation : null;
+		const plan = params.plan
+			.filter(isRecord)
+			.map((step) => {
+				const marker =
+					step.status === "completed"
+						? "✓"
+						: step.status === "inProgress"
+							? "→"
+							: "○";
+				return `${marker} ${typeof step.step === "string" ? step.step : ""}`;
+			})
+			.join("\n");
+		return {
+			id: `${turnId}:plan`,
+			method,
+			threadId,
+			turnId,
+			itemType: "plan",
+			status: "streaming",
+			title: "更新执行计划",
+			detail: truncated([explanation, plan].filter(Boolean).join("\n")),
+		};
+	}
+
+	if (
+		method === "item/mcpToolCall/progress" &&
+		turnId &&
+		typeof params.itemId === "string" &&
+		typeof params.message === "string"
+	) {
+		return {
+			id: params.itemId,
+			method,
+			threadId,
+			turnId,
+			itemId: params.itemId,
+			itemType: "mcpToolCall",
+			status: "streaming",
+			title: "MCP 工具处理中",
+			detail: truncated(params.message),
+		};
+	}
+
+	if (
+		method === "item/commandExecution/outputDelta" &&
+		turnId &&
+		typeof params.itemId === "string" &&
+		typeof params.delta === "string"
+	) {
+		return {
+			id: params.itemId,
+			method,
+			threadId,
+			turnId,
+			itemId: params.itemId,
+			itemType: "commandExecution",
+			status: "streaming",
+			title: "运行命令",
+			detail: params.delta,
+			append: true,
+		};
+	}
+
+	if (
+		method === "item/fileChange/outputDelta" &&
+		turnId &&
+		typeof params.itemId === "string" &&
+		typeof params.delta === "string"
+	) {
+		return {
+			id: params.itemId,
+			method,
+			threadId,
+			turnId,
+			itemId: params.itemId,
+			itemType: "fileChange",
+			status: "streaming",
+			title: "应用文件修改",
+			detail: params.delta,
+			append: true,
+		};
+	}
+
+	if (method === "turn/started" && turnId) {
+		return {
+			id: `turn:${turnId}`,
+			method,
+			threadId,
+			turnId,
+			status: "started",
+			title: "开始处理",
+		};
+	}
+
+	if (method === "turn/completed" && turnId && isRecord(params.turn)) {
+		const status = protocolStatus(params.turn.status);
+		const duration =
+			typeof params.turn.durationMs === "number"
+				? `耗时 ${params.turn.durationMs}ms`
+				: undefined;
+		return {
+			id: `turn:${turnId}`,
+			method,
+			threadId,
+			turnId,
+			status,
+			title: status === "completed" ? "处理完成" : "处理失败",
+			...(duration ? { detail: duration } : {}),
+		};
+	}
+
+	if (
+		method === "mcpServer/elicitation/request" &&
+		turnId &&
+		(typeof notification.id === "number" || typeof notification.id === "string")
+	) {
+		const serverName =
+			stringField({ record: params, key: "serverName" }) ?? "MCP";
+		const meta = isRecord(params._meta) ? params._meta : null;
+		const accepted =
+			serverName === "opencut" && meta?.codex_approval_kind === "mcp_tool_call";
+		return {
+			id: `request:${notification.id}`,
+			method,
+			threadId,
+			turnId,
+			itemType: "approval",
+			status: accepted ? "completed" : "failed",
+			title: accepted ? "OpenCut 调用已授权" : `${serverName} 请求已拒绝`,
+			...(typeof params.message === "string"
+				? { detail: truncated(params.message) }
+				: {}),
+		};
+	}
+
+	if (method === "serverRequest/resolved" && turnId) {
+		return {
+			id: `request:${String(params.requestId ?? "resolved")}`,
+			method,
+			threadId,
+			turnId,
+			itemType: "approval",
+			status: "completed",
+			title: "权限请求已处理",
+		};
+	}
+
+	if (
+		(method === "warning" || method === "error") &&
+		typeof params.message === "string"
+	) {
+		return {
+			id: `${turnId ?? threadId}:${method}`,
+			method,
+			threadId,
+			...(turnId ? { turnId } : {}),
+			status: method === "error" ? "failed" : "info",
+			title: method === "error" ? "Codex 错误" : "Codex 提醒",
+			detail: truncated(params.message),
+		};
+	}
+
+	return null;
+}
+
 async function nextWithDeadline({
 	iterator,
 	deadline,
@@ -646,6 +1019,14 @@ export function createCodexChatService({
 
 			try {
 				yield { type: "session", sessionId };
+				yield {
+					type: "protocol",
+					id: `thread:${sessionId}`,
+					method: requestedSessionId ? "thread/resume" : "thread/start",
+					threadId: sessionId,
+					status: "completed",
+					title: requestedSessionId ? "Codex 会话已恢复" : "Codex 会话已连接",
+				};
 				const turnResponse = await connection.request({
 					method: "turn/start",
 					params: {
@@ -660,6 +1041,15 @@ export function createCodexChatService({
 					},
 				});
 				turnId = turnIdFromResponse(turnResponse);
+				yield {
+					type: "protocol",
+					id: `turn:${turnId}`,
+					method: "turn/start",
+					threadId: sessionId,
+					turnId,
+					status: "started",
+					title: "开始处理",
+				};
 				const deadline = Date.now() + TURN_TIMEOUT_MS;
 				let streamedMessage = "";
 
@@ -688,25 +1078,12 @@ export function createCodexChatService({
 						continue;
 					}
 
-					if (
-						(notification.method === "item/started" ||
-							notification.method === "item/completed") &&
-						isRecord(notification.params) &&
-						isRecord(notification.params.item) &&
-						notification.params.item.type === "mcpToolCall" &&
-						typeof notification.params.item.id === "string" &&
-						typeof notification.params.item.tool === "string"
-					) {
+					const protocolFrame = protocolFrameFromNotification(notification);
+					if (protocolFrame) {
 						yield {
-							type: "activity",
-							itemId: notification.params.item.id,
-							label: `OpenCut · ${notification.params.item.tool}`,
-							status:
-								notification.method === "item/started"
-									? "started"
-									: "completed",
+							type: "protocol",
+							...protocolFrame,
 						};
-						continue;
 					}
 
 					const completedTurn = completionFromNotification(notification);

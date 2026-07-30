@@ -67,9 +67,7 @@ describe("Codex Smart Edit SSE API", () => {
 			if (!next || next.done) break;
 			body += new TextDecoder().decode(next.value);
 		}
-		expect(body).toContain(
-			'event: session\ndata: {"sessionId":"thread-1"}',
-		);
+		expect(body).toContain('event: session\ndata: {"sessionId":"thread-1"}');
 		expect(body).toContain(
 			'event: protocol\ndata: {"id":"tool-1","method":"item/started","threadId":"thread-1","turnId":"turn-1","itemId":"tool-1","itemType":"mcpToolCall","status":"started","title":"OpenCut · read_project","detail":"{\\n  \\"projectId\\": \\"project-1\\"\\n}"}',
 		);
@@ -109,9 +107,7 @@ describe("Codex Smart Edit SSE API", () => {
 		);
 
 		const body = await response.text();
-		expect(body).toContain(
-			'event: error\ndata: {"message":"Codex 调用失败"}',
-		);
+		expect(body).toContain('event: error\ndata: {"message":"Codex 调用失败"}');
 	});
 
 	test("treats the browser's null session as a new Codex conversation", async () => {
@@ -161,7 +157,10 @@ describe("Codex Smart Edit SSE API", () => {
 		};
 		const { POST } = createCodexChatRouteHandlers({ service });
 
-		for (const body of ["{broken", JSON.stringify({ projectId: "project-1" })]) {
+		for (const body of [
+			"{broken",
+			JSON.stringify({ projectId: "project-1" }),
+		]) {
 			const response = await POST(
 				new Request("http://localhost/api/codex/chat", {
 					method: "POST",

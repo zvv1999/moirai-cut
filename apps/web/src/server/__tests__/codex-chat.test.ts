@@ -80,6 +80,24 @@ async function waitForWrite({
 	expect(writes.length).toBeGreaterThanOrEqual(count);
 }
 
+function initializeOptOutMethods(
+	write: Record<string, unknown> | undefined,
+): unknown[] {
+	if (!write || typeof write.params !== "object" || write.params === null) {
+		return [];
+	}
+	if (
+		!("capabilities" in write.params) ||
+		typeof write.params.capabilities !== "object" ||
+		write.params.capabilities === null ||
+		!("optOutNotificationMethods" in write.params.capabilities) ||
+		!Array.isArray(write.params.capabilities.optOutNotificationMethods)
+	) {
+		return [];
+	}
+	return write.params.capabilities.optOutNotificationMethods;
+}
+
 describe("Codex app-server JSON-RPC client", () => {
 	test("performs the handshake and dispatches thread notifications", async () => {
 		const fake = appServerProcess();
@@ -91,27 +109,10 @@ describe("Codex app-server JSON-RPC client", () => {
 			id: 1,
 			method: "initialize",
 		});
-		expect(
-			(
-				(fake.writes[0]?.params as {
-					capabilities?: { optOutNotificationMethods?: string[] };
-				})?.capabilities?.optOutNotificationMethods ?? []
-			),
-		).not.toContain("item/reasoning/summaryTextDelta");
-		expect(
-			(
-				(fake.writes[0]?.params as {
-					capabilities?: { optOutNotificationMethods?: string[] };
-				})?.capabilities?.optOutNotificationMethods ?? []
-			),
-		).not.toContain("item/commandExecution/outputDelta");
-		expect(
-			(
-				(fake.writes[0]?.params as {
-					capabilities?: { optOutNotificationMethods?: string[] };
-				})?.capabilities?.optOutNotificationMethods ?? []
-			),
-		).toContain("item/reasoning/textDelta");
+		const optOutMethods = initializeOptOutMethods(fake.writes[0]);
+		expect(optOutMethods).not.toContain("item/reasoning/summaryTextDelta");
+		expect(optOutMethods).not.toContain("item/commandExecution/outputDelta");
+		expect(optOutMethods).toContain("item/reasoning/textDelta");
 		fake.stdout.write('{"id":1,"result":{"userAgent":"test"}}\n');
 		await initialized;
 		await waitForWrite({ writes: fake.writes, count: 2 });
@@ -404,6 +405,15 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			{ type: "delta", delta: "已" },
 			{ type: "delta", delta: "完成" },
 			{
+				type: "protocol",
+				id: "turn:turn-1",
+				method: "turn/completed",
+				threadId: "thread-project-1",
+				turnId: "turn-1",
+				status: "completed",
+				title: "处理完成",
+			},
+			{
 				type: "done",
 				sessionId: "thread-project-1",
 				message: "已完成",
@@ -447,6 +457,19 @@ describe("Codex direct Smart Edit streaming chat", () => {
 									{ step: "读取工程", status: "completed" },
 									{ step: "修改时间线", status: "inProgress" },
 								],
+							},
+						},
+						{
+							id: "elicitation-1",
+							method: "mcpServer/elicitation/request",
+							params: {
+								threadId,
+								turnId: "turn-1",
+								serverName: "opencut",
+								message: "允许 OpenCut 读取工程？",
+								_meta: {
+									codex_approval_kind: "mcp_tool_call",
+								},
 							},
 						},
 						{
@@ -592,6 +615,17 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				detail: expect.stringContaining("修改时间线"),
 			}),
 		);
+		expect(events).toContainEqual({
+			type: "protocol",
+			id: "request:elicitation-1",
+			method: "mcpServer/elicitation/request",
+			threadId: "thread-1",
+			turnId: "turn-1",
+			itemType: "approval",
+			status: "completed",
+			title: "OpenCut 调用已授权",
+			detail: "允许 OpenCut 读取工程？",
+		});
 		expect(events).toContainEqual(
 			expect.objectContaining({
 				type: "protocol",
