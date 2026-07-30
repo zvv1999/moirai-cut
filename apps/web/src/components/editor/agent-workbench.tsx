@@ -15,6 +15,7 @@ import {
 	mergeCodexConversationMessages,
 	persistCodexConversation,
 	type CodexConversationMessage as ChatMessage,
+	type CodexConversationThread,
 	type CodexProtocolFrame,
 	type CodexProtocolStatus,
 } from "@/agent/codex-conversation";
@@ -414,6 +415,12 @@ export function AgentWorkbench() {
 	);
 
 	const [request, setRequest] = useState("");
+	const [conversations, setConversations] = useState<
+		CodexConversationThread[]
+	>([]);
+	const [activeConversationId, setActiveConversationId] = useState<
+		string | null
+	>(null);
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [sending, setSending] = useState(false);
 	const [sessionId, setSessionId] = useState<string | null>(null);
@@ -437,10 +444,12 @@ export function AgentWorkbench() {
 	const conversationRevision = useRef(-1);
 	const conversationChannel = useRef<BroadcastChannel | null>(null);
 	const conversationHydratedRef = useRef(false);
+	const activeConversationIdRef = useRef<string | null>(null);
 	const latestConversation = useRef<{
+		conversationId: string | null;
 		sessionId: string | null;
 		messages: ChatMessage[];
-	}>({ sessionId: null, messages: [] });
+	}>({ conversationId: null, sessionId: null, messages: [] });
 
 	const refreshCodexConnection = useCallback(async () => {
 		setCodexChecking(true);
@@ -471,8 +480,13 @@ export function AgentWorkbench() {
 	}, []);
 
 	useEffect(() => {
-		latestConversation.current = { sessionId, messages };
-	}, [messages, sessionId]);
+		latestConversation.current = {
+			conversationId: activeConversationId,
+			sessionId,
+			messages,
+		};
+		activeConversationIdRef.current = activeConversationId;
+	}, [activeConversationId, messages, sessionId]);
 	useEffect(() => {
 		conversationHydratedRef.current = conversationHydrated;
 	}, [conversationHydrated]);
@@ -496,15 +510,34 @@ export function AgentWorkbench() {
 				return;
 			}
 			conversationRevision.current = conversation.revision;
+			setConversations(conversation.conversations);
+			const currentId = activeConversationIdRef.current;
+			const target =
+				conversation.conversations.find(
+					(candidate) => candidate.id === currentId,
+				) ?? conversation.conversations[0];
+			if (!target) {
+				activeConversationIdRef.current = null;
+				setActiveConversationId(null);
+				setMessages([]);
+				setSessionId(null);
+				return;
+			}
+			const local = latestConversation.current;
+			const switching = local.conversationId !== target.id;
+			activeConversationIdRef.current = target.id;
+			setActiveConversationId(target.id);
 			setMessages((current) =>
-				initialConversation
-					? conversation.messages
+				initialConversation || switching
+					? target.messages
 					: mergeCodexConversationMessages({
 							current,
-							incoming: conversation.messages,
+							incoming: target.messages,
 						}),
 			);
-			setSessionId(conversation.sessionId);
+			setSessionId(
+				switching ? target.sessionId : (target.sessionId ?? local.sessionId),
+			);
 		};
 		const refreshConversation = async (): Promise<boolean> => {
 			try {
@@ -551,20 +584,24 @@ export function AgentWorkbench() {
 			}
 			if (conversationHydratedRef.current) {
 				const latest = latestConversation.current;
-				void persistCodexConversation({
-					projectId,
-					sessionId: latest.sessionId,
-					messages: latest.messages,
-				}).catch(() => {});
+				if (latest.conversationId) {
+					void persistCodexConversation({
+						projectId,
+						conversationId: latest.conversationId,
+						sessionId: latest.sessionId,
+						messages: latest.messages,
+					}).catch(() => {});
+				}
 			}
 		};
 	}, [projectId]);
 	useEffect(() => {
-		if (!projectId || !conversationHydrated) return;
+		if (!projectId || !activeConversationId || !conversationHydrated) return;
 		const controller = new AbortController();
 		const timer = setTimeout(() => {
 			void persistCodexConversation({
 				projectId,
+				conversationId: activeConversationId,
 				sessionId,
 				messages,
 				signal: controller.signal,
@@ -574,13 +611,22 @@ export function AgentWorkbench() {
 						conversationRevision.current,
 						conversation.revision,
 					);
-					setMessages((current) =>
-						mergeCodexConversationMessages({
-							current,
-							incoming: conversation.messages,
-						}),
+					setConversations(conversation.conversations);
+					const active = conversation.conversations.find(
+						(candidate) => candidate.id === activeConversationId,
 					);
-					setSessionId(conversation.sessionId);
+					if (
+						active &&
+						activeConversationIdRef.current === activeConversationId
+					) {
+						setMessages((current) =>
+							mergeCodexConversationMessages({
+								current,
+								incoming: active.messages,
+							}),
+						);
+						setSessionId(active.sessionId);
+					}
 					conversationChannel.current?.postMessage({
 						revision: conversation.revision,
 					});
@@ -595,7 +641,13 @@ export function AgentWorkbench() {
 			clearTimeout(timer);
 			controller.abort();
 		};
-	}, [conversationHydrated, messages, projectId, sessionId]);
+	}, [
+		activeConversationId,
+		conversationHydrated,
+		messages,
+		projectId,
+		sessionId,
+	]);
 	const visibleReferences = pinnedReferences.filter(
 		(reference) =>
 			reference.projectId === semanticState.projectId &&
@@ -709,6 +761,63 @@ export function AgentWorkbench() {
 				: codexChecking
 					? "bg-slate-500"
 					: "bg-red-400";
+	const activeConversation =
+		conversations.find(
+			(conversation) => conversation.id === activeConversationId,
+		) ?? null;
+
+	const persistCurrentConversation = () => {
+		const latest = latestConversation.current;
+		if (!projectId || !latest.conversationId) return;
+		void persistCodexConversation({
+			projectId,
+			conversationId: latest.conversationId,
+			sessionId: latest.sessionId,
+			messages: latest.messages,
+		}).catch(() => {});
+	};
+
+	const selectConversation = (conversation: CodexConversationThread) => {
+		if (sending || conversation.id === activeConversationId) return;
+		persistCurrentConversation();
+		activeConversationIdRef.current = conversation.id;
+		latestConversation.current = {
+			conversationId: conversation.id,
+			sessionId: conversation.sessionId,
+			messages: conversation.messages,
+		};
+		setActiveConversationId(conversation.id);
+		setSessionId(conversation.sessionId);
+		setMessages(conversation.messages);
+		setRequest("");
+	};
+
+	const createConversation = (): string | null => {
+		if (!conversationHydrated || sending) return null;
+		persistCurrentConversation();
+		const conversationId = crypto.randomUUID();
+		const now = timestampNow();
+		const conversation: CodexConversationThread = {
+			id: conversationId,
+			title: "新对话",
+			sessionId: null,
+			messages: [],
+			createdAt: now,
+			updatedAt: now,
+		};
+		activeConversationIdRef.current = conversationId;
+		latestConversation.current = {
+			conversationId,
+			sessionId: null,
+			messages: [],
+		};
+		setConversations((current) => [conversation, ...current].slice(0, 50));
+		setActiveConversationId(conversationId);
+		setSessionId(null);
+		setMessages([]);
+		setRequest("");
+		return conversationId;
+	};
 
 	const submitToCodex = async (nextRequest = request) => {
 		const normalizedRequest = nextRequest.trim();
@@ -721,6 +830,9 @@ export function AgentWorkbench() {
 			toast.error("当前没有可交给 Codex 的工程");
 			return;
 		}
+		const targetConversationId =
+			activeConversationIdRef.current ?? createConversation();
+		if (!targetConversationId) return;
 		const referenceCount = contextSnapshot.references.length;
 		const createdAt = timestampNow();
 		const assistantMessageId = nextMessageId();
@@ -1055,11 +1167,72 @@ export function AgentWorkbench() {
 						/>
 						{codexStatusLabel}
 					</button>
-					<div className="rounded-full border border-white/8 bg-white/[0.035] px-2.5 py-1 font-mono text-[10px] text-slate-400">
-						{sessionId ? `会话 ${sessionId.slice(-8)}` : selectedLabel}
+					<div
+						className="max-w-40 truncate rounded-full border border-white/8 bg-white/[0.035] px-2.5 py-1 text-[10px] text-slate-400"
+						title={
+							sessionId
+								? `${activeConversation?.title ?? "当前会话"} · ${sessionId}`
+								: undefined
+						}
+					>
+						{activeConversation?.title ?? selectedLabel}
 					</div>
 				</div>
 			</header>
+
+			<section
+				aria-label="智能剪辑会话记录"
+				className="flex h-14 shrink-0 items-stretch gap-2 border-b border-white/7 bg-[#131618] px-4 py-2"
+			>
+				<button
+					type="button"
+					aria-label="新建智能剪辑会话"
+					disabled={!conversationHydrated || sending}
+					onClick={() => createConversation()}
+					className="flex w-20 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-dashed border-cyan-400/25 bg-cyan-400/[0.035] text-[9px] font-medium text-cyan-200 transition hover:border-cyan-300/50 hover:bg-cyan-400/[0.07] disabled:cursor-not-allowed disabled:opacity-35"
+				>
+					<span className="text-sm leading-none">＋</span>
+					新对话
+				</button>
+				<div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
+					{conversations.length === 0 ? (
+						<div className="flex items-center px-2 text-[9px] text-slate-600">
+							发送第一条需求后，会在这里保留会话记录
+						</div>
+					) : (
+						conversations.map((conversation) => {
+							const active = conversation.id === activeConversationId;
+							return (
+								<button
+									key={conversation.id}
+									type="button"
+									aria-label={`继续会话：${conversation.title}`}
+									aria-pressed={active}
+									disabled={sending}
+									onClick={() => selectConversation(conversation)}
+									className={`group min-w-32 max-w-44 flex-1 rounded-lg border px-2.5 py-1 text-left transition ${
+										active
+											? "border-cyan-400/35 bg-cyan-400/[0.08] text-slate-100"
+											: "border-white/7 bg-white/[0.025] text-slate-400 hover:border-white/15 hover:bg-white/[0.045]"
+									} disabled:cursor-not-allowed disabled:opacity-45`}
+								>
+									<span className="block truncate text-[10px] font-medium">
+										{conversation.title}
+									</span>
+									<span
+										className={`mt-0.5 block text-[8px] ${
+											active ? "text-cyan-300/70" : "text-slate-600"
+										}`}
+									>
+										{conversation.messages.length} 条消息
+										{conversation.sessionId ? " · 可继续" : " · 新会话"}
+									</span>
+								</button>
+							);
+						})
+					)}
+				</div>
+			</section>
 
 			{codexSettingsOpen ? (
 				<section

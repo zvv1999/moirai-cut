@@ -30,7 +30,9 @@ function isClientError(message: string): boolean {
 		message.includes("messages") ||
 		message.includes("message ") ||
 		message.includes("protocol ") ||
-		message.includes("session id")
+		message.includes("session id") ||
+		message.includes("conversation id") ||
+		message.includes("conversation title")
 	);
 }
 
@@ -63,6 +65,12 @@ export async function POST(request: Request, { params }: RouteContext) {
 		if (!("messages" in body) || !Array.isArray(body.messages)) {
 			throw new Error("messages must be an array");
 		}
+		if (
+			!("conversationId" in body) ||
+			typeof body.conversationId !== "string"
+		) {
+			throw new Error("conversation id is invalid");
+		}
 		let sessionId: string | null | undefined;
 		if ("sessionId" in body) {
 			const candidate = body.sessionId;
@@ -71,9 +79,18 @@ export async function POST(request: Request, { params }: RouteContext) {
 			}
 			sessionId = candidate;
 		}
+		let title: string | undefined;
+		if ("title" in body) {
+			if (typeof body.title !== "string") {
+				throw new Error("conversation title is invalid");
+			}
+			title = body.title;
+		}
 		return json({
 			value: await getCodexConversationStore().merge({
 				projectId,
+				conversationId: body.conversationId,
+				...(title !== undefined ? { title } : {}),
 				...(sessionId !== undefined ? { sessionId } : {}),
 				messages: body.messages,
 			}),

@@ -10,19 +10,24 @@ import { homedir } from "node:os";
 import path from "node:path";
 import type {
 	CodexConversationMessage,
+	CodexConversationThread,
 	CodexProjectConversation,
 	CodexProtocolFrame,
 } from "@/agent/codex-conversation";
 import { isCodexProjectConversation } from "@/agent/codex-conversation";
 
 const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/;
+const MAX_CONVERSATIONS = 50;
 const MAX_MESSAGES = 500;
 const MAX_MESSAGE_CONTENT = 200_000;
 const MAX_PROTOCOL_FRAMES = 200;
 const MAX_DETAIL_LENGTH = 20_000;
+const MAX_TITLE_LENGTH = 120;
 
 export interface MergeCodexConversationInput {
 	projectId: string;
+	conversationId: string;
+	title?: string;
 	sessionId?: string | null;
 	messages: unknown[];
 }
@@ -30,6 +35,14 @@ export interface MergeCodexConversationInput {
 function assertProjectId(projectId: string): void {
 	if (!SAFE_ID.test(projectId)) {
 		throw new Error(`Unsafe project id: ${JSON.stringify(projectId)}`);
+	}
+}
+
+function assertConversationId(conversationId: string): void {
+	if (!SAFE_ID.test(conversationId)) {
+		throw new Error(
+			`Unsafe conversation id: ${JSON.stringify(conversationId)}`,
+		);
 	}
 }
 
@@ -209,14 +222,78 @@ function assertMessage(
 	}
 }
 
+function conversationTitle(messages: CodexConversationMessage[]): string {
+	const firstRequest = messages.find(
+		(message) => message.role === "user" && message.content.trim(),
+	);
+	const normalized = firstRequest?.content.trim().replace(/\s+/g, " ");
+	return normalized ? normalized.slice(0, 40) : "新对话";
+}
+
 function emptyConversation(projectId: string): CodexProjectConversation {
 	return {
-		schemaVersion: "opencut.codex-conversation.v1",
+		schemaVersion: "opencut.codex-conversations.v2",
 		projectId,
 		revision: 0,
-		sessionId: null,
-		messages: [],
+		conversations: [],
 		updatedAt: 0,
+	};
+}
+
+function migrateLegacyConversation({
+	value,
+	projectId,
+}: {
+	value: unknown;
+	projectId: string;
+}): CodexProjectConversation | null {
+	if (
+		!value ||
+		typeof value !== "object" ||
+		Array.isArray(value) ||
+		!("schemaVersion" in value) ||
+		value.schemaVersion !== "opencut.codex-conversation.v1" ||
+		!("projectId" in value) ||
+		value.projectId !== projectId ||
+		!("revision" in value) ||
+		typeof value.revision !== "number" ||
+		!Number.isInteger(value.revision) ||
+		value.revision < 0 ||
+		!("sessionId" in value) ||
+		(value.sessionId !== null && typeof value.sessionId !== "string") ||
+		!("messages" in value) ||
+		!Array.isArray(value.messages) ||
+		value.messages.length > MAX_MESSAGES ||
+		!("updatedAt" in value) ||
+		typeof value.updatedAt !== "number" ||
+		!Number.isFinite(value.updatedAt)
+	) {
+		return null;
+	}
+	const messages: CodexConversationMessage[] = [];
+	for (const message of value.messages) {
+		assertMessage(message);
+		messages.push(message);
+	}
+	const hasConversation = value.sessionId !== null || messages.length > 0;
+	const conversations: CodexConversationThread[] = hasConversation
+		? [
+				{
+					id: "legacy-conversation",
+					title: conversationTitle(messages),
+					sessionId: value.sessionId,
+					messages,
+					createdAt: messages[0]?.createdAt ?? value.updatedAt,
+					updatedAt: value.updatedAt,
+				},
+			]
+		: [];
+	return {
+		schemaVersion: "opencut.codex-conversations.v2",
+		projectId,
+		revision: value.revision,
+		conversations,
+		updatedAt: value.updatedAt,
 	};
 }
 
@@ -227,10 +304,7 @@ function conversationsEqual({
 	left: CodexProjectConversation;
 	right: Omit<CodexProjectConversation, "revision" | "updatedAt">;
 }): boolean {
-	return (
-		left.sessionId === right.sessionId &&
-		JSON.stringify(left.messages) === JSON.stringify(right.messages)
-	);
+	return JSON.stringify(left.conversations) === JSON.stringify(right.conversations);
 }
 
 export class CodexConversationStore {
@@ -263,13 +337,12 @@ export class CodexConversationStore {
 			const value: unknown = JSON.parse(
 				await readFile(this.filePath(projectId), "utf8"),
 			);
-			if (
-				!isCodexProjectConversation(value) ||
-				value.projectId !== projectId
-			) {
-				throw new Error("Stored Codex conversation is invalid");
+			if (isCodexProjectConversation(value) && value.projectId === projectId) {
+				return value;
 			}
-			return value;
+			const migrated = migrateLegacyConversation({ value, projectId });
+			if (migrated) return migrated;
+			throw new Error("Stored Codex conversation is invalid");
 		} catch (error) {
 			if (
 				error &&
@@ -320,6 +393,7 @@ export class CodexConversationStore {
 		input: MergeCodexConversationInput,
 	): Promise<CodexProjectConversation> {
 		assertProjectId(input.projectId);
+		assertConversationId(input.conversationId);
 		if (!Array.isArray(input.messages) || input.messages.length > MAX_MESSAGES) {
 			throw new Error("messages must be a bounded array");
 		}
@@ -337,13 +411,23 @@ export class CodexConversationStore {
 		) {
 			throw new Error("session id is invalid");
 		}
+		const requestedTitle = input.title?.trim();
+		if (requestedTitle && requestedTitle.length > MAX_TITLE_LENGTH) {
+			throw new Error("conversation title is invalid");
+		}
 
 		return this.locked({
 			projectId: input.projectId,
 			work: async () => {
 				const current = await this.readUnlocked(input.projectId);
+				const existing = current.conversations.find(
+					(conversation) => conversation.id === input.conversationId,
+				);
 				const byId = new Map(
-					current.messages.map((message) => [message.id, message]),
+					(existing?.messages ?? []).map((message) => [
+						message.id,
+						message,
+					]),
 				);
 				for (const message of normalizedMessages) {
 					const existing = byId.get(message.id);
@@ -359,21 +443,59 @@ export class CodexConversationStore {
 					)
 					.slice(-MAX_MESSAGES);
 				const sessionId =
-					input.sessionId === undefined ? current.sessionId : input.sessionId;
-				const candidate = {
-					schemaVersion: "opencut.codex-conversation.v1" as const,
-					projectId: input.projectId,
+					input.sessionId === undefined
+						? (existing?.sessionId ?? null)
+						: input.sessionId;
+				const generatedTitle = conversationTitle(messages);
+				const title =
+					requestedTitle && requestedTitle !== "新对话"
+						? requestedTitle
+						: existing?.title && existing.title !== "新对话"
+							? existing.title
+							: generatedTitle;
+				if (
+					existing &&
+					existing.title === title &&
+					existing.sessionId === sessionId &&
+					JSON.stringify(existing.messages) === JSON.stringify(messages)
+				) {
+					return current;
+				}
+				const updatedAt = this.now();
+				const conversation: CodexConversationThread = {
+					id: input.conversationId,
+					title,
 					sessionId,
 					messages,
+					createdAt: existing?.createdAt ?? updatedAt,
+					updatedAt,
+				};
+				const conversations = [
+					conversation,
+					...current.conversations.filter(
+						(candidate) => candidate.id !== input.conversationId,
+					),
+				]
+					.sort(
+						(left, right) =>
+							right.updatedAt - left.updatedAt ||
+							right.createdAt - left.createdAt ||
+							left.id.localeCompare(right.id),
+					)
+					.slice(0, MAX_CONVERSATIONS);
+				const candidate = {
+					schemaVersion: "opencut.codex-conversations.v2" as const,
+					projectId: input.projectId,
+					conversations,
 				};
 				if (conversationsEqual({ left: current, right: candidate })) {
 					return current;
 				}
 
-				const conversation: CodexProjectConversation = {
+				const history: CodexProjectConversation = {
 					...candidate,
 					revision: current.revision + 1,
-					updatedAt: this.now(),
+					updatedAt,
 				};
 				const destination = this.filePath(input.projectId);
 				const directory = path.dirname(destination);
@@ -385,7 +507,7 @@ export class CodexConversationStore {
 				try {
 					await writeFile(
 						temporary,
-						`${JSON.stringify(conversation, null, 2)}\n`,
+						`${JSON.stringify(history, null, 2)}\n`,
 						"utf8",
 					);
 					await rename(temporary, destination);
@@ -393,7 +515,7 @@ export class CodexConversationStore {
 					await unlink(temporary).catch(() => {});
 					throw error;
 				}
-				return conversation;
+				return history;
 			},
 		});
 	}

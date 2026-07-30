@@ -29,12 +29,20 @@ export interface CodexConversationMessage {
 	updatedAt: number;
 }
 
-export interface CodexProjectConversation {
-	schemaVersion: "opencut.codex-conversation.v1";
-	projectId: string;
-	revision: number;
+export interface CodexConversationThread {
+	id: string;
+	title: string;
 	sessionId: string | null;
 	messages: CodexConversationMessage[];
+	createdAt: number;
+	updatedAt: number;
+}
+
+export interface CodexProjectConversation {
+	schemaVersion: "opencut.codex-conversations.v2";
+	projectId: string;
+	revision: number;
+	conversations: CodexConversationThread[];
 	updatedAt: number;
 }
 
@@ -109,19 +117,33 @@ function isConversationMessage(
 	);
 }
 
+function isConversationThread(value: unknown): value is CodexConversationThread {
+	if (!isRecord(value)) return false;
+	return (
+		typeof value.id === "string" &&
+		typeof value.title === "string" &&
+		(value.sessionId === null || typeof value.sessionId === "string") &&
+		Array.isArray(value.messages) &&
+		value.messages.every(isConversationMessage) &&
+		typeof value.createdAt === "number" &&
+		Number.isFinite(value.createdAt) &&
+		typeof value.updatedAt === "number" &&
+		Number.isFinite(value.updatedAt)
+	);
+}
+
 export function isCodexProjectConversation(
 	value: unknown,
 ): value is CodexProjectConversation {
 	if (!isRecord(value)) return false;
 	return (
-		value.schemaVersion === "opencut.codex-conversation.v1" &&
+		value.schemaVersion === "opencut.codex-conversations.v2" &&
 		typeof value.projectId === "string" &&
 		typeof value.revision === "number" &&
 		Number.isInteger(value.revision) &&
 		value.revision >= 0 &&
-		(value.sessionId === null || typeof value.sessionId === "string") &&
-		Array.isArray(value.messages) &&
-		value.messages.every(isConversationMessage) &&
+		Array.isArray(value.conversations) &&
+		value.conversations.every(isConversationThread) &&
 		typeof value.updatedAt === "number" &&
 		Number.isFinite(value.updatedAt)
 	);
@@ -164,11 +186,15 @@ export async function fetchCodexConversation({
 
 export async function persistCodexConversation({
 	projectId,
+	conversationId,
+	title,
 	sessionId,
 	messages,
 	signal,
 }: {
 	projectId: string;
+	conversationId: string;
+	title?: string;
 	sessionId: string | null;
 	messages: CodexConversationMessage[];
 	signal?: AbortSignal;
@@ -176,7 +202,12 @@ export async function persistCodexConversation({
 	const response = await fetch(historyUrl(projectId), {
 		method: "POST",
 		headers: { "content-type": "application/json" },
-		body: JSON.stringify({ sessionId, messages }),
+		body: JSON.stringify({
+			conversationId,
+			...(title ? { title } : {}),
+			sessionId,
+			messages,
+		}),
 		...(signal ? { signal } : {}),
 	});
 	return conversationFromResponse(response);
