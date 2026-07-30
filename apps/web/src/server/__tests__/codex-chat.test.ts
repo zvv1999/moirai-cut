@@ -51,13 +51,17 @@ function readyOpenCutStatus(): unknown {
 	};
 }
 
-function projectSummary(projectId = "project-1"): unknown {
+function projectSummary(
+	projectId = "project-1",
+	projectName = "地坛 × Reed",
+): unknown {
 	return {
 		content: [
 			{
 				type: "text",
 				text: JSON.stringify({
 					projectId,
+					projectName,
 					revision: 7,
 					scene: { id: "main", durationSeconds: 31 },
 					tracks: [{ id: "video", elementCount: 4 }],
@@ -1082,7 +1086,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			method: "thread/name/set",
 			params: {
 				threadId: "thread-project-1",
-				name: "统一字幕样式",
+				name: "地坛 × Reed",
 			},
 		});
 		expect(calls[2]).toEqual({
