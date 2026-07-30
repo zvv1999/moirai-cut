@@ -491,13 +491,12 @@ export class CodexConversationStore {
 			if (!existing) return incoming;
 			usedExistingIds.add(existing.id);
 			const streaming = incoming.streaming ?? false;
-			const protocol =
-				streaming
-					? existing.protocol
-					: settleProtocolFrames({
-							frames: existing.protocol,
-							failed: incoming.role === "error",
-						});
+			const protocol = streaming
+				? existing.protocol
+				: settleProtocolFrames({
+						frames: existing.protocol,
+						failed: incoming.role === "error",
+					});
 			const changed =
 				existing.content !== incoming.content ||
 				existing.role !== incoming.role ||
@@ -523,15 +522,15 @@ export class CodexConversationStore {
 				streaming,
 			};
 		});
-			return this.merge({
-				projectId: input.projectId,
-				conversationId: input.conversationId,
-				sessionId: input.sessionId,
-				title: input.title,
-				messages: synchronizedMessages,
-				replaceMessages: true,
-			});
-		}
+		return this.merge({
+			projectId: input.projectId,
+			conversationId: input.conversationId,
+			sessionId: input.sessionId,
+			title: input.title,
+			messages: synchronizedMessages,
+			replaceMessages: true,
+		});
+	}
 
 	async merge(
 		input: MergeCodexConversationInput,
@@ -570,11 +569,11 @@ export class CodexConversationStore {
 				const existing = current.conversations.find(
 					(conversation) => conversation.id === input.conversationId,
 				);
-					const byId = new Map(
-						(input.replaceMessages ? [] : (existing?.messages ?? [])).map(
-							(message) => [message.id, message],
-						),
-					);
+				const byId = new Map(
+					(input.replaceMessages ? [] : (existing?.messages ?? [])).map(
+						(message) => [message.id, message],
+					),
+				);
 				for (const message of normalizedMessages) {
 					const existing = byId.get(message.id);
 					if (!existing || message.updatedAt >= existing.updatedAt) {
