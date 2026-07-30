@@ -127,13 +127,21 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).not.toContain("运行质检");
 	});
 
-	test("智能剪辑保留实时处理轨迹，但不向用户暴露原生协议术语", () => {
+	test("处理过程默认只展示最新一行，展开后也只保留用户可读步骤", () => {
 		expect(workbenchSource).toContain('aria-label="智能剪辑处理过程"');
 		expect(workbenchSource).toContain("CodexProtocolFrame");
 		expect(conversationSource).toContain("protocol?:");
-		expect(workbenchSource).toContain("处理过程");
-		expect(workbenchSource).toContain("查看执行详情");
+		expect(workbenchSource).toContain("function CodexActivityLine");
+		expect(workbenchSource).toContain("const latestFrame = frames.at(-1)");
+		expect(workbenchSource).toContain("frames.slice(-6, -1)");
+		expect(workbenchSource).toContain('aria-label="查看之前的处理步骤"');
 		expect(workbenchSource).toContain("正在准备工程上下文…");
+		expect(workbenchSource).not.toContain("查看执行详情");
+		expect(workbenchSource).not.toContain("{frame.method}");
+		expect(workbenchSource).not.toContain("{frame.detail}");
+		expect(workbenchSource).not.toContain("个步骤");
+		expect(workbenchSource).not.toContain("protocolKindLabel");
+		expect(workbenchSource).not.toContain("protocolStatusLabel");
 		expect(workbenchSource).not.toContain("Codex 调用流程");
 		expect(workbenchSource).not.toContain("原生协议");
 		expect(workbenchSource).not.toContain("查看协议详情");
