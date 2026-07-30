@@ -57,7 +57,7 @@ describe("Codex Smart Edit SSE API", () => {
 					mode: "default",
 					toolProfile: "verify",
 					visualMode: "auto",
-					verificationMode: "full",
+					verificationMode: "basic",
 				}),
 			}),
 		);
@@ -99,7 +99,7 @@ describe("Codex Smart Edit SSE API", () => {
 				mode: "default",
 				toolProfile: "verify",
 				visualMode: "auto",
-				verificationMode: "full",
+				verificationMode: "basic",
 			},
 		]);
 	});

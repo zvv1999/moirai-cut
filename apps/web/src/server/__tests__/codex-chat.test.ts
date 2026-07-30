@@ -55,9 +55,11 @@ function readyOpenCutStatus(): unknown {
 function projectSummary({
 	projectId = "project-1",
 	projectName = "地坛 × Reed",
+	revision = 7,
 }: {
 	projectId?: string;
 	projectName?: string;
+	revision?: number;
 } = {}): unknown {
 	return {
 		content: [
@@ -66,7 +68,7 @@ function projectSummary({
 				text: JSON.stringify({
 					projectId,
 					projectName,
-					revision: 7,
+					revision,
 					scene: { id: "main", durationSeconds: 31 },
 					tracks: [{ id: "video", elementCount: 4 }],
 				}),
@@ -1860,6 +1862,250 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		]);
 		expect(syncObservedCompletedTurn).toEqual([false, true, false, true]);
 		expect(syncObservedPersistedTurn).toEqual([true, true, true, true]);
+	});
+
+	test("does not hold back native events while desktop refresh is still pending", async () => {
+		let releaseDesktop = () => {};
+		const desktopBarrier = new Promise<void>((resolve) => {
+			releaseDesktop = resolve;
+		});
+		const connection: CodexAppServerConnection = {
+			request: async ({ method, params }) => {
+				if (method === "thread/start") {
+					return { thread: { id: "thread-nonblocking", threadSource: "user" } };
+				}
+				if (method === "thread/name/set") return {};
+				if (method === "mcpServerStatus/list") return readyOpenCutStatus();
+				if (method === "mcpServer/tool/call") return projectSummary();
+				if (method === "turn/start") return { turn: { id: "turn-nonblocking" } };
+				if (method === "thread/read") {
+					return {
+						thread: {
+							id:
+								isRecord(params) && typeof params.threadId === "string"
+									? params.threadId
+									: "thread-nonblocking",
+							turns: [{ id: "turn-nonblocking", status: "inProgress" }],
+						},
+					};
+				}
+				throw new Error(`unexpected method ${method}`);
+			},
+			subscribe: (threadId) =>
+				subscriptionOf({
+					notifications: [
+						{
+							method: "item/agentMessage/delta",
+							params: {
+								threadId,
+								turnId: "turn-nonblocking",
+								delta: "流式",
+							},
+						},
+						{
+							method: "turn/completed",
+							params: {
+								threadId,
+								turn: {
+									id: "turn-nonblocking",
+									status: "completed",
+									error: null,
+									items: [
+										{
+											type: "agentMessage",
+											id: "message-nonblocking",
+											text: "流式完成",
+										},
+									],
+								},
+							},
+						},
+					],
+				}),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+			syncThreadToDesktop: async () => desktopBarrier,
+		});
+		const iterator = service
+			.stream({
+				input: {
+					projectId: "project-1",
+					message: "立即回复",
+					context: "",
+				},
+			})
+			[Symbol.asyncIterator]();
+
+		for (let index = 0; index < 6; index += 1) {
+			await iterator.next();
+		}
+		const nextEventPromise = iterator.next();
+		const result = await Promise.race([
+			nextEventPromise.then((next) => next.value),
+			new Promise<"blocked">((resolve) =>
+				setTimeout(() => resolve("blocked"), 50),
+			),
+		]);
+		releaseDesktop();
+		await nextEventPromise;
+
+		expect(result).toEqual({ type: "delta", delta: "流式" });
+	});
+
+	test("reuses MCP capability validation and unchanged thread names across turns", async () => {
+		const calls: string[] = [];
+		let turnNumber = 0;
+		const connection: CodexAppServerConnection = {
+			request: async ({ method }) => {
+				calls.push(method);
+				if (method === "thread/start" || method === "thread/resume") {
+					return { thread: { id: "thread-warm", threadSource: "user" } };
+				}
+				if (method === "thread/name/set") return {};
+				if (method === "mcpServerStatus/list") return readyOpenCutStatus();
+				if (method === "mcpServer/tool/call") return projectSummary();
+				if (method === "turn/start") {
+					turnNumber += 1;
+					return { turn: { id: `turn-warm-${turnNumber}` } };
+				}
+				throw new Error(`unexpected method ${method}`);
+			},
+			subscribe: (threadId) => ({
+				async *[Symbol.asyncIterator]() {
+					await Promise.resolve();
+					yield {
+						method: "turn/completed",
+						params: {
+							threadId,
+							turn: {
+								id: `turn-warm-${turnNumber}`,
+								status: "completed",
+								error: null,
+								items: [
+									{
+										type: "agentMessage",
+										id: `message-warm-${turnNumber}`,
+										text: "完成",
+									},
+								],
+							},
+						},
+					};
+				},
+				close() {},
+			}),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+		});
+
+		for (let index = 0; index < 2; index += 1) {
+			for await (const _event of service.stream({
+				input: {
+					projectId: "project-1",
+					conversationId: "conversation-warm",
+					message: "继续",
+					context: "",
+				},
+			})) {
+				// Consume the complete turn.
+			}
+		}
+
+		expect(calls.filter((method) => method === "mcpServerStatus/list")).toHaveLength(
+			1,
+		);
+		expect(calls.filter((method) => method === "thread/name/set")).toHaveLength(
+			1,
+		);
+		expect(
+			calls.filter((method) => method === "mcpServer/tool/call"),
+		).toHaveLength(2);
+	});
+
+	test("basic verification checks the resulting revision without rendering frames", async () => {
+		const calledTools: string[] = [];
+		let projectRead = 0;
+		const connection: CodexAppServerConnection = {
+			request: async ({ method, params }) => {
+				if (method === "thread/start") {
+					return { thread: { id: "thread-basic", threadSource: "user" } };
+				}
+				if (method === "thread/name/set") return {};
+				if (method === "mcpServerStatus/list") {
+					const status = readyOpenCutStatus() as {
+						data: Array<{ tools: Record<string, unknown> }>;
+					};
+					status.data[0]!.tools.wait_for_sync = { name: "wait_for_sync" };
+					status.data[0]!.tools.render_frames = { name: "render_frames" };
+					return status;
+				}
+				if (method === "mcpServer/tool/call") {
+					if (!isRecord(params) || typeof params.tool !== "string") {
+						throw new Error("invalid tool call");
+					}
+					calledTools.push(params.tool);
+					if (params.tool === "read_project") {
+						projectRead += 1;
+						return projectSummary({ revision: projectRead === 1 ? 7 : 8 });
+					}
+					throw new Error(`unexpected tool ${params.tool}`);
+				}
+				if (method === "turn/start") return { turn: { id: "turn-basic" } };
+				throw new Error(`unexpected method ${method}`);
+			},
+			subscribe: (threadId) =>
+				subscriptionOf({
+					notifications: [
+						{
+							method: "turn/completed",
+							params: {
+								threadId,
+								turn: {
+									id: "turn-basic",
+									status: "completed",
+									error: null,
+									items: [
+										{
+											type: "agentMessage",
+											id: "message-basic",
+											text: "已修改",
+										},
+									],
+								},
+							},
+						},
+					],
+				}),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+		});
+		const events = [];
+
+		for await (const event of service.stream({
+			input: {
+				projectId: "project-1",
+				message: "修改并轻量复核",
+				context: "",
+				verificationMode: "basic",
+			},
+		})) {
+			events.push(event);
+		}
+
+		expect(calledTools).toEqual(["read_project", "read_project"]);
+		expect(events).toContainEqual(
+			expect.objectContaining({
+				type: "protocol",
+				title: "工程修改已确认",
+				detail: "revision 7 → 8",
+			}),
+		);
 	});
 
 	test("refreshes the desktop project when a browser turn is interrupted", async () => {

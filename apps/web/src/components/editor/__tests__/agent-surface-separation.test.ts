@@ -16,6 +16,10 @@ const conversationSource = readFileSync(
 	),
 	"utf8",
 );
+const performanceSource = readFileSync(
+	fileURLToPath(new URL("../../../agent/codex-performance.ts", import.meta.url)),
+	"utf8",
+);
 const dialogSource = readFileSync(
 	fileURLToPath(new URL("../../ui/dialog.tsx", import.meta.url)),
 	"utf8",
@@ -206,9 +210,14 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain("压缩上下文");
 	});
 
-	test("默认把选区画面作为原生多模态输入并执行结果验证", () => {
-		expect(workbenchSource).toContain('visualMode: "auto"');
-		expect(workbenchSource).toContain('verificationMode: "full"');
+	test("默认使用均衡响应档，并保留导演级多模态与完整验收", () => {
+		expect(workbenchSource).toContain("DEFAULT_CODEX_PERFORMANCE_MODE");
+		expect(workbenchSource).toContain('aria-label="响应模式"');
+		expect(performanceSource).toContain(
+			'DEFAULT_CODEX_PERFORMANCE_MODE: CodexPerformanceMode = "balanced"',
+		);
+		expect(performanceSource).toContain('visualMode: "auto"');
+		expect(performanceSource).toContain('verificationMode: "full"');
 		expect(workbenchSource).toContain("自动识别选区画面");
 		expect(workbenchSource).toContain("修改后自动复核");
 		expect(workbenchSource).toContain("验证证据");
