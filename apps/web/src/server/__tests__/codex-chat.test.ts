@@ -17,7 +17,14 @@ const runtime: CodexRuntimeConfig = {
 	mcpServerPath: "/workspace/opencut-classic/apps/mcp/src/server.mjs",
 	projectFilesDir: "/workspace/opencut-projects",
 	baseUrl: "http://127.0.0.1:3000",
-	disabledMcpServers: ["localcut", "node_repl", "opencut"],
+	disabledMcpServers: [
+		"localcut",
+		"node_repl",
+		"computer-use",
+		"openaiDeveloperDocs",
+		"chanjing",
+		"opencut",
+	],
 };
 
 function readyOpenCutStatus(): unknown {
@@ -314,10 +321,30 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		);
 		expect(args).toContain("mcp_servers.localcut.enabled=false");
 		expect(args).toContain("mcp_servers.node_repl.enabled=false");
+		expect(args).toContain("mcp_servers.computer-use.enabled=false");
 		expect(args).toContain("mcp_servers.opencut.enabled=true");
 		expect(args).not.toContain("mcp_servers.opencut.enabled=false");
+		expect(args).not.toContain("mcp_servers={}");
 		expect(args).not.toContain("exec");
 		expect(args).not.toContain("--json");
+	});
+
+	test("offers focused, verification, and full App tool profiles without ever enabling LocalCut", () => {
+		const verificationArgs = buildCodexAppServerArgs(runtime, "verify");
+		const fullArgs = buildCodexAppServerArgs(runtime, "full");
+
+		expect(verificationArgs).toContain("mcp_servers.localcut.enabled=false");
+		expect(verificationArgs).toContain("mcp_servers.chanjing.enabled=false");
+		expect(verificationArgs).not.toContain("mcp_servers.node_repl.enabled=false");
+		expect(verificationArgs).not.toContain(
+			"mcp_servers.computer-use.enabled=false",
+		);
+		expect(verificationArgs).not.toContain(
+			"mcp_servers.openaiDeveloperDocs.enabled=false",
+		);
+		expect(fullArgs).toContain("mcp_servers.localcut.enabled=false");
+		expect(fullArgs).not.toContain("mcp_servers.chanjing.enabled=false");
+		expect(fullArgs).not.toContain("mcp_servers.node_repl.enabled=false");
 	});
 
 	test("prompts Codex to execute through OpenCut without automatic lint or quality checks", () => {
@@ -352,6 +379,297 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(prompt).toContain("不要自行连接或启动 MCP");
 		expect(prompt).not.toContain("优先使用 get_context");
 		expect(prompt).not.toContain("至少需要两个字幕素材");
+	});
+
+	test("discovers the native model, effort, collaboration mode, and skill catalog", async () => {
+		const calls: Array<{ method: string; params: unknown }> = [];
+		const connection: CodexAppServerConnection = {
+			request: async ({ method, params }) => {
+				calls.push({ method, params });
+				if (method === "model/list") {
+					return {
+						data: [
+							{
+								id: "gpt-5.6-sol",
+								model: "gpt-5.6-sol",
+								displayName: "GPT-5.6-Sol",
+								defaultReasoningEffort: "low",
+								supportedReasoningEfforts: [
+									{ reasoningEffort: "low", description: "Fast" },
+									{ reasoningEffort: "xhigh", description: "Deep" },
+								],
+								inputModalities: ["text", "image"],
+								isDefault: true,
+							},
+						],
+						nextCursor: null,
+					};
+				}
+				if (method === "collaborationMode/list") {
+					return {
+						data: [
+							{
+								name: "Plan",
+								mode: "plan",
+								model: null,
+								reasoning_effort: "medium",
+							},
+							{
+								name: "Default",
+								mode: "default",
+								model: null,
+								reasoning_effort: null,
+							},
+						],
+					};
+				}
+				if (method === "skills/list") {
+					return {
+						data: [
+							{
+								cwd: runtime.repoRoot,
+								skills: [
+									{
+										name: "openai-docs",
+										description: "Read official OpenAI docs",
+										enabled: true,
+									},
+								],
+								errors: [],
+							},
+						],
+					};
+				}
+				throw new Error(`unexpected method ${method}`);
+			},
+			subscribe: () => subscriptionOf({ notifications: [] }),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+		});
+
+		const capabilities = await service.capabilities({ toolProfile: "edit" });
+
+		expect(calls.map((call) => call.method)).toEqual([
+			"model/list",
+			"collaborationMode/list",
+			"skills/list",
+		]);
+		expect(capabilities.models[0]).toMatchObject({
+			id: "gpt-5.6-sol",
+			label: "GPT-5.6-Sol",
+			efforts: ["low", "xhigh"],
+			inputModalities: ["text", "image"],
+			isDefault: true,
+		});
+		expect(capabilities.modes).toEqual([
+			{ id: "plan", label: "Plan", defaultEffort: "medium" },
+			{ id: "default", label: "Default", defaultEffort: null },
+		]);
+		expect(capabilities.skills).toEqual([
+			{
+				name: "openai-docs",
+				description: "Read official OpenAI docs",
+				enabled: true,
+			},
+		]);
+		expect(capabilities.toolProfiles.map((profile) => profile.id)).toEqual([
+			"edit",
+			"verify",
+			"full",
+		]);
+	});
+
+	test("sends native multimodal range frames and App model settings into the turn", async () => {
+		const calls: Array<{ method: string; params: unknown }> = [];
+		const connection: CodexAppServerConnection = {
+			request: async ({ method, params }) => {
+				calls.push({ method, params });
+				if (method === "thread/start") {
+					return { thread: { id: "thread-vision" } };
+				}
+				if (method === "mcpServerStatus/list") {
+					return readyOpenCutStatus();
+				}
+				if (method === "mcpServer/tool/call") {
+					const request = params as {
+						tool: string;
+						arguments: Record<string, unknown>;
+					};
+					if (request.tool === "read_project") return projectSummary();
+					if (request.tool === "inspect_timeline_range") {
+						return {
+							content: [
+								{ type: "text", text: '{"samples":[1,2,3]}' },
+								{
+									type: "image",
+									data: "aW1hZ2U=",
+									mimeType: "image/jpeg",
+								},
+							],
+							isError: false,
+						};
+					}
+				}
+				if (method === "turn/start") {
+					return { turn: { id: "turn-vision" } };
+				}
+				throw new Error(`unexpected method ${method}`);
+			},
+			subscribe: () =>
+				subscriptionOf({
+					notifications: [
+						{
+							method: "turn/completed",
+							params: {
+								threadId: "thread-vision",
+								turn: {
+									id: "turn-vision",
+									status: "completed",
+									error: null,
+									items: [
+										{
+											type: "agentMessage",
+											id: "message-vision",
+											text: "已识别选区",
+										},
+									],
+								},
+							},
+						},
+					],
+				}),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+		});
+		const context = [
+			"<opencut-agent-context-json>",
+			JSON.stringify({
+				schemaVersion: "opencut.agent-context.v1",
+				project: { id: "project-1", sceneId: "main" },
+				references: [
+					{
+						kind: "range",
+						projectId: "project-1",
+						sceneId: "main",
+						startSeconds: 1,
+						endSeconds: 3,
+					},
+				],
+				timelineElements: [],
+				media: [],
+			}),
+			"</opencut-agent-context-json>",
+		].join("\n");
+
+		for await (const _event of service.stream({
+			input: {
+				projectId: "project-1",
+				message: "看画面后重新剪辑",
+				context,
+				model: "gpt-5.6-sol",
+				effort: "xhigh",
+				mode: "default",
+				toolProfile: "verify",
+				visualMode: "auto",
+			},
+		})) {
+			// consume the native stream
+		}
+
+		const inspection = calls.find(
+			(call) =>
+				call.method === "mcpServer/tool/call" &&
+				(call.params as { tool?: string }).tool === "inspect_timeline_range",
+		);
+		expect(inspection?.params).toMatchObject({
+			server: "opencut",
+			tool: "inspect_timeline_range",
+			arguments: {
+				projectId: "project-1",
+				sceneId: "main",
+				startSeconds: 1,
+				endSeconds: 3,
+			},
+		});
+		const turnStart = calls.find((call) => call.method === "turn/start");
+		expect(turnStart?.params).toMatchObject({
+			threadId: "thread-vision",
+			model: "gpt-5.6-sol",
+			effort: "xhigh",
+			collaborationMode: {
+				mode: "default",
+				settings: {
+					model: "gpt-5.6-sol",
+					reasoning_effort: "xhigh",
+					developer_instructions: null,
+				},
+			},
+		});
+		expect(
+			(turnStart?.params as { input: unknown[] }).input,
+		).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: "image",
+					url: "data:image/jpeg;base64,aW1hZ2U=",
+				}),
+			]),
+		);
+	});
+
+	test("steers, interrupts, and compacts native App turns", async () => {
+		const calls: Array<{ method: string; params: unknown }> = [];
+		const connection: CodexAppServerConnection = {
+			request: async ({ method, params }) => {
+				calls.push({ method, params });
+				if (method === "turn/steer") return { turnId: "turn-1" };
+				return {};
+			},
+			subscribe: () => subscriptionOf({ notifications: [] }),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+		});
+
+		await service.steer({
+			sessionId: "thread-1",
+			turnId: "turn-1",
+			message: "把开头再缩短半秒",
+			toolProfile: "verify",
+		});
+		await service.interrupt({
+			sessionId: "thread-1",
+			turnId: "turn-1",
+			toolProfile: "verify",
+		});
+		await service.compact({
+			sessionId: "thread-1",
+			toolProfile: "verify",
+		});
+
+		expect(calls).toEqual([
+			{
+				method: "turn/steer",
+				params: {
+					threadId: "thread-1",
+					expectedTurnId: "turn-1",
+					input: [{ type: "text", text: "把开头再缩短半秒" }],
+				},
+			},
+			{
+				method: "turn/interrupt",
+				params: { threadId: "thread-1", turnId: "turn-1" },
+			},
+			{
+				method: "thread/compact/start",
+				params: { threadId: "thread-1" },
+			},
+		]);
 	});
 
 	test("streams each Codex token delta before the authoritative completed message", async () => {

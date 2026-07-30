@@ -187,4 +187,35 @@ describe("智能剪辑与工程历史分面", () => {
 			"sessionId: conversation.sessionId",
 		);
 	});
+
+	test("对齐 Codex App 的模型、推理强度、协作模式与工具档位", () => {
+		expect(workbenchSource).toContain('fetch("/api/codex/capabilities")');
+		expect(workbenchSource).toContain('aria-label="Codex 模型"');
+		expect(workbenchSource).toContain('aria-label="Codex 推理强度"');
+		expect(workbenchSource).toContain('aria-label="Codex 协作模式"');
+		expect(workbenchSource).toContain("执行模式");
+		expect(workbenchSource).toContain("规划模式");
+		expect(workbenchSource).toContain('aria-label="Codex 工具档位"');
+		expect(workbenchSource).toContain("专注剪辑");
+		expect(workbenchSource).toContain("剪辑与验收");
+		expect(workbenchSource).toContain("完整能力");
+	});
+
+	test("处理中可以追加指令、停止、重连和压缩上下文", () => {
+		expect(workbenchSource).toContain('action: "steer"');
+		expect(workbenchSource).toContain('action: "interrupt"');
+		expect(workbenchSource).toContain('action: "compact"');
+		expect(workbenchSource).toContain("reconnectCodexRun");
+		expect(workbenchSource).toContain("继续补充当前任务");
+		expect(workbenchSource).toContain("停止处理");
+		expect(workbenchSource).toContain("压缩上下文");
+	});
+
+	test("默认把选区画面作为原生多模态输入并执行结果验证", () => {
+		expect(workbenchSource).toContain('visualMode: "auto"');
+		expect(workbenchSource).toContain('verificationMode: "full"');
+		expect(workbenchSource).toContain("自动识别选区画面");
+		expect(workbenchSource).toContain("修改后自动复核");
+		expect(workbenchSource).toContain("验证证据");
+	});
 });
