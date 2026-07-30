@@ -15,14 +15,20 @@ interface RouteContext {
 function json({
 	value,
 	status = 200,
+	headers,
 }: {
 	value: unknown;
 	status?: number;
+	headers?: HeadersInit;
 }): NextResponse {
 	return NextResponse.json(value, {
 		status,
-		headers: { "cache-control": "no-store" },
+		headers: { "cache-control": "no-store", ...headers },
 	});
+}
+
+function conversationEtag(revision: number): string {
+	return `"opencut-codex-${revision}"`;
 }
 
 function messageOf(error: unknown): string {
@@ -44,15 +50,18 @@ function isClientError(message: string): boolean {
 export async function readSharedProjectConversation({
 	projectId,
 	conversationId,
+	synchronizeNative = true,
 	store = getCodexConversationStore(),
 	codex = createCodexChatService(),
 }: {
 	projectId: string;
 	conversationId: string;
+	synchronizeNative?: boolean;
 	store?: CodexConversationStore;
 	codex?: Pick<CodexChatService, "readThread">;
 }) {
 	const stored = await store.read(projectId);
+	if (!synchronizeNative) return stored;
 	const conversation = stored.conversations.find(
 		(candidate) => candidate.id === conversationId,
 	);
@@ -83,16 +92,29 @@ export async function readSharedProjectConversation({
 export async function GET(request: Request, { params }: RouteContext) {
 	const { projectId } = await params;
 	try {
-		const conversationId = new URL(request.url).searchParams
-			.get("conversationId")
-			?.trim();
-		return json({
-			value: conversationId
+		const url = new URL(request.url);
+		const conversationId = url.searchParams.get("conversationId")?.trim();
+		const synchronizeNative = url.searchParams.get("syncNative") !== "0";
+		const value = conversationId
 				? await readSharedProjectConversation({
 						projectId,
 						conversationId,
+						synchronizeNative,
 					})
-				: await getCodexConversationStore().read(projectId),
+				: await getCodexConversationStore().read(projectId);
+		const etag = conversationEtag(value.revision);
+		if (request.headers.get("if-none-match") === etag) {
+			return new NextResponse(null, {
+				status: 304,
+				headers: {
+					"cache-control": "no-store",
+					etag,
+				},
+			});
+		}
+		return json({
+			value,
+			headers: { etag },
 		});
 	} catch (error) {
 		const message = messageOf(error);
@@ -135,14 +157,16 @@ export async function POST(request: Request, { params }: RouteContext) {
 			}
 			title = body.title;
 		}
-		return json({
-			value: await getCodexConversationStore().merge({
+		const value = await getCodexConversationStore().merge({
 				projectId,
 				conversationId: body.conversationId,
 				...(title !== undefined ? { title } : {}),
 				...(sessionId !== undefined ? { sessionId } : {}),
 				messages: body.messages,
-			}),
+			});
+		return json({
+			value,
+			headers: { etag: conversationEtag(value.revision) },
 		});
 	} catch (error) {
 		const message = messageOf(error);

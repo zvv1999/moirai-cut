@@ -182,19 +182,26 @@ export function isCodexProjectConversation(
 function historyUrl({
 	projectId,
 	conversationId,
+	synchronizeNative = true,
 }: {
 	projectId: string;
 	conversationId?: string;
+	synchronizeNative?: boolean;
 }): string {
 	const base = `/api/codex/history/${encodeURIComponent(projectId)}`;
-	return conversationId
-		? `${base}?conversationId=${encodeURIComponent(conversationId)}`
-		: base;
+	const query = [
+		conversationId
+			? `conversationId=${encodeURIComponent(conversationId)}`
+			: null,
+		synchronizeNative ? null : "syncNative=0",
+	].filter((part): part is string => part !== null);
+	return query.length > 0 ? `${base}?${query.join("&")}` : base;
 }
 
 async function conversationFromResponse(
 	response: Response,
-): Promise<CodexProjectConversation> {
+): Promise<CodexProjectConversation | null> {
+	if (response.status === 304) return null;
 	const value: unknown = await response.json();
 	if (!response.ok) {
 		const message =
@@ -212,19 +219,27 @@ async function conversationFromResponse(
 export async function fetchCodexConversation({
 	projectId,
 	conversationId,
+	revision,
+	synchronizeNative = true,
 	signal,
 }: {
 	projectId: string;
 	conversationId?: string | null;
+	revision?: number;
+	synchronizeNative?: boolean;
 	signal?: AbortSignal;
-}): Promise<CodexProjectConversation> {
+}): Promise<CodexProjectConversation | null> {
 	const response = await fetch(
 		historyUrl({
 			projectId,
 			conversationId: conversationId?.trim() || undefined,
+			synchronizeNative,
 		}),
 		{
 			cache: "no-store",
+			...(revision !== undefined && revision >= 0
+				? { headers: { "if-none-match": `"opencut-codex-${revision}"` } }
+				: {}),
 			...(signal ? { signal } : {}),
 		},
 	);
@@ -257,5 +272,9 @@ export async function persistCodexConversation({
 		}),
 		...(signal ? { signal } : {}),
 	});
-	return conversationFromResponse(response);
+	const conversation = await conversationFromResponse(response);
+	if (!conversation) {
+		throw new Error("智能剪辑历史写入未返回工程会话。");
+	}
+	return conversation;
 }

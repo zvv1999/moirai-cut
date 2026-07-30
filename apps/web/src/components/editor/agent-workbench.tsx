@@ -799,7 +799,9 @@ export function AgentWorkbench() {
 		conversationHydratedRef.current = false;
 
 		const applyConversation = (
-			conversation: Awaited<ReturnType<typeof fetchCodexConversation>>,
+			conversation: NonNullable<
+				Awaited<ReturnType<typeof fetchCodexConversation>>
+			>,
 		) => {
 			const initialConversation = conversationRevision.current < 0;
 			if (
@@ -842,15 +844,20 @@ export function AgentWorkbench() {
 				switching ? target.sessionId : (target.sessionId ?? local.sessionId),
 			);
 		};
-		const refreshConversation = async (): Promise<boolean> => {
+		const refreshConversation = async ({
+			synchronizeNative = true,
+		}: {
+			synchronizeNative?: boolean;
+		} = {}): Promise<boolean> => {
 			try {
-				applyConversation(
-					await fetchCodexConversation({
-						projectId,
-						conversationId: activeConversationIdRef.current,
-						signal: controller.signal,
-					}),
-				);
+				const conversation = await fetchCodexConversation({
+					projectId,
+					conversationId: activeConversationIdRef.current,
+					revision: conversationRevision.current,
+					synchronizeNative,
+					signal: controller.signal,
+				});
+				if (conversation) applyConversation(conversation);
 				return true;
 			} catch (error) {
 				if (!controller.signal.aborted) {
@@ -859,8 +866,12 @@ export function AgentWorkbench() {
 				return false;
 			}
 		};
-		const hydrateConversation = async () => {
-			if ((await refreshConversation()) && active) {
+		const hydrateConversation = async ({
+			synchronizeNative = true,
+		}: {
+			synchronizeNative?: boolean;
+		} = {}) => {
+			if ((await refreshConversation({ synchronizeNative })) && active) {
 				setHydratedConversationProjectId(projectId);
 			}
 		};
@@ -872,15 +883,28 @@ export function AgentWorkbench() {
 		conversationChannel.current = channel;
 		if (channel) {
 			channel.onmessage = () => {
-				void hydrateConversation();
+				void hydrateConversation({ synchronizeNative: false });
 			};
 		}
-		const timer = setInterval(hydrateConversation, 1_000);
+		const refreshWhenVisible = () => {
+			if (document.visibilityState === "visible") {
+				void hydrateConversation();
+			}
+		};
+		const timer = setInterval(() => {
+			if (document.visibilityState === "visible") {
+				void hydrateConversation();
+			}
+		}, 15_000);
+		document.addEventListener("visibilitychange", refreshWhenVisible);
+		window.addEventListener("focus", refreshWhenVisible);
 		void hydrateConversation();
 
 		return () => {
 			active = false;
 			clearInterval(timer);
+			document.removeEventListener("visibilitychange", refreshWhenVisible);
+			window.removeEventListener("focus", refreshWhenVisible);
 			controller.abort();
 			channel?.close();
 			if (conversationChannel.current === channel) {

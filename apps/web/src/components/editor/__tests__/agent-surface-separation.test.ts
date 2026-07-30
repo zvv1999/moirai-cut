@@ -165,7 +165,7 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain("conversationHydrated");
 		expect(workbenchSource).toContain("crypto.randomUUID()");
 		expect(workbenchSource).toContain(
-			"const hydrateConversation = async () =>",
+			"const hydrateConversation = async ({",
 		);
 		expect(workbenchSource).not.toContain("void refreshConversation().finally");
 	});
