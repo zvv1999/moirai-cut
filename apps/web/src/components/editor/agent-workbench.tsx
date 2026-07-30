@@ -284,7 +284,11 @@ export function AgentWorkbench() {
 			reference.sceneId === semanticState.sceneId,
 	);
 	useEffect(() => {
-		if (!followSelection || selectedElements.length === 0) return;
+		if (!followSelection) return;
+		if (selectedElements.length === 0) {
+			followedSelectionKey.current = "";
+			return;
+		}
 		const selectionKey = selectedElements
 			.map(({ trackId, elementId }) => `${trackId}:${elementId}`)
 			.sort()
