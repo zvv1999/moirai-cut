@@ -25,6 +25,7 @@ export type CodexCollaborationMode = "default" | "plan";
 export interface CodexRuntimeConfig {
 	binary: string;
 	repoRoot: string;
+	appWorkspaceRoot?: string;
 	mcpServerPath: string;
 	projectFilesDir: string;
 	baseUrl: string;
@@ -716,6 +717,9 @@ export function resolveCodexRuntimeConfig(): CodexRuntimeConfig {
 	return {
 		binary: configuredCodexBinary(),
 		repoRoot,
+		appWorkspaceRoot:
+			process.env.OPENCUT_CODEX_WORKSPACE_ROOT?.trim() ||
+			path.dirname(repoRoot),
 		mcpServerPath:
 			process.env.OPENCUT_MCP_SERVER?.trim() ||
 			path.join(repoRoot, "apps/mcp/src/server.mjs"),
@@ -728,6 +732,20 @@ export function resolveCodexRuntimeConfig(): CodexRuntimeConfig {
 			"http://127.0.0.1:3000",
 		disabledMcpServers: configuredMcpServerNames(),
 	};
+}
+
+function appWorkspaceRoot(runtime: CodexRuntimeConfig): string {
+	return runtime.appWorkspaceRoot?.trim() || runtime.repoRoot;
+}
+
+function runtimeWorkspaceRoots(runtime: CodexRuntimeConfig): string[] {
+	return Array.from(
+		new Set([
+			appWorkspaceRoot(runtime),
+			runtime.repoRoot,
+			runtime.projectFilesDir,
+		]),
+	);
 }
 
 function threadIdFromResponse(response: unknown): string {
@@ -1988,16 +2006,15 @@ export function createCodexChatService({
 			const developerInstructions = buildOpenCutThreadInstructions(
 				input.projectId,
 			);
+			const cwd = appWorkspaceRoot(runtime);
+			const workspaceRoots = runtimeWorkspaceRoots(runtime);
 			let threadResponse = await connection.request({
 				method: requestedSessionId ? "thread/resume" : "thread/start",
 				params: requestedSessionId
 					? {
 							threadId: requestedSessionId,
-							cwd: runtime.repoRoot,
-							runtimeWorkspaceRoots: [
-								runtime.repoRoot,
-								runtime.projectFilesDir,
-							],
+							cwd,
+							runtimeWorkspaceRoots: workspaceRoots,
 							developerInstructions,
 							approvalPolicy: "never",
 							sandbox: "read-only",
@@ -2005,11 +2022,8 @@ export function createCodexChatService({
 							...(input.model ? { model: input.model } : {}),
 						}
 					: {
-							cwd: runtime.repoRoot,
-							runtimeWorkspaceRoots: [
-								runtime.repoRoot,
-								runtime.projectFilesDir,
-							],
+							cwd,
+							runtimeWorkspaceRoots: workspaceRoots,
 							developerInstructions,
 							approvalPolicy: "never",
 							sandbox: "read-only",
@@ -2027,8 +2041,8 @@ export function createCodexChatService({
 					method: "thread/fork",
 					params: {
 						threadId: requestedSessionId,
-						cwd: runtime.repoRoot,
-						runtimeWorkspaceRoots: [runtime.repoRoot, runtime.projectFilesDir],
+						cwd,
+						runtimeWorkspaceRoots: workspaceRoots,
 						developerInstructions,
 						approvalPolicy: "never",
 						sandbox: "read-only",

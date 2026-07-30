@@ -15,6 +15,7 @@ import {
 	fetchCodexConversation,
 	mergeCodexConversationMessages,
 	persistCodexConversation,
+	synchronizeCodexConversationMessages,
 	type CodexConversationMessage as ChatMessage,
 	type CodexConversationThread,
 	type CodexProtocolFrame,
@@ -826,14 +827,17 @@ export function AgentWorkbench() {
 			const switching = local.conversationId !== target.id;
 			activeConversationIdRef.current = target.id;
 			setActiveConversationId(target.id);
-			setMessages((current) =>
-				initialConversation || switching
-					? target.messages
-					: mergeCodexConversationMessages({
-							current,
-							incoming: target.messages,
-						}),
-			);
+				setMessages((current) =>
+					initialConversation || switching
+						? target.messages
+						: synchronizeCodexConversationMessages({
+								current,
+								incoming: target.messages,
+								hasActiveRun: current.some(
+									(message) => message.streaming && Boolean(message.runId),
+								),
+							}),
+				);
 			setSessionId(
 				switching ? target.sessionId : (target.sessionId ?? local.sessionId),
 			);

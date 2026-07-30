@@ -73,6 +73,24 @@ export function mergeCodexConversationMessages({
 		: merged;
 }
 
+export function synchronizeCodexConversationMessages({
+	current,
+	incoming,
+	hasActiveRun,
+}: {
+	current: CodexConversationMessage[];
+	incoming: CodexConversationMessage[];
+	hasActiveRun: boolean;
+}): CodexConversationMessage[] {
+	if (hasActiveRun) {
+		return mergeCodexConversationMessages({ current, incoming });
+	}
+	return incoming.length === current.length &&
+		incoming.every((message, index) => message === current[index])
+		? current
+		: incoming;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }

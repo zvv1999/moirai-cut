@@ -24,6 +24,7 @@ export interface MergeCodexConversationInput {
 	title?: string;
 	sessionId?: string | null;
 	messages: unknown[];
+	replaceMessages?: boolean;
 }
 
 export interface SynchronizeCodexThreadInput {
@@ -522,14 +523,15 @@ export class CodexConversationStore {
 				streaming,
 			};
 		});
-		return this.merge({
-			projectId: input.projectId,
-			conversationId: input.conversationId,
-			sessionId: input.sessionId,
-			title: input.title,
-			messages: synchronizedMessages,
-		});
-	}
+			return this.merge({
+				projectId: input.projectId,
+				conversationId: input.conversationId,
+				sessionId: input.sessionId,
+				title: input.title,
+				messages: synchronizedMessages,
+				replaceMessages: true,
+			});
+		}
 
 	async merge(
 		input: MergeCodexConversationInput,
@@ -568,9 +570,11 @@ export class CodexConversationStore {
 				const existing = current.conversations.find(
 					(conversation) => conversation.id === input.conversationId,
 				);
-				const byId = new Map(
-					(existing?.messages ?? []).map((message) => [message.id, message]),
-				);
+					const byId = new Map(
+						(input.replaceMessages ? [] : (existing?.messages ?? [])).map(
+							(message) => [message.id, message],
+						),
+					);
 				for (const message of normalizedMessages) {
 					const existing = byId.get(message.id);
 					if (!existing || message.updatedAt >= existing.updatedAt) {
