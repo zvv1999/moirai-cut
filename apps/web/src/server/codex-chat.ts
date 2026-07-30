@@ -1103,6 +1103,34 @@ async function waitForThreadPersistence({
 	}
 }
 
+async function refreshPersistedThreadInDesktop({
+	connection,
+	threadId,
+	turnId,
+	syncThreadToDesktop,
+}: {
+	connection: CodexAppServerConnection;
+	threadId: string;
+	turnId: string;
+	syncThreadToDesktop?: CodexDesktopThreadSync;
+}): Promise<void> {
+	if (!syncThreadToDesktop) return;
+	try {
+		await waitForThreadPersistence({
+			connection,
+			threadId,
+			turnId,
+		});
+	} catch {
+		// A failed persistence probe must not block the desktop refresh.
+	}
+	try {
+		await syncThreadToDesktop(threadId);
+	} catch {
+		// Desktop refresh is best-effort; App Server remains authoritative.
+	}
+}
+
 function truncated(value: string): string {
 	if (value.length <= MAX_PROTOCOL_DETAIL_CHARS) return value;
 	return `${value.slice(0, MAX_PROTOCOL_DETAIL_CHARS)}\n…已截断`;
@@ -2365,6 +2393,12 @@ export function createCodexChatService({
 					status: "started",
 					title: "开始处理",
 				};
+				await refreshPersistedThreadInDesktop({
+					connection,
+					threadId: sessionId,
+					turnId,
+					syncThreadToDesktop,
+				});
 				let streamedMessage = "";
 
 				for (;;) {
@@ -2402,22 +2436,12 @@ export function createCodexChatService({
 
 					const completedTurn = completionFromNotification(notification);
 					if (!completedTurn) continue;
-					if (syncThreadToDesktop) {
-						try {
-							await waitForThreadPersistence({
-								connection,
-								threadId: sessionId,
-								turnId,
-							});
-						} catch {
-							// A failed persistence probe must not block the final refresh.
-						}
-					}
-					try {
-						await syncThreadToDesktop?.(sessionId);
-					} catch {
-						// Desktop refresh is best-effort; App Server remains authoritative.
-					}
+					await refreshPersistedThreadInDesktop({
+						connection,
+						threadId: sessionId,
+						turnId,
+						syncThreadToDesktop,
+					});
 					if (completedTurn.status === "failed") {
 						const message =
 							isRecord(completedTurn.error) &&
