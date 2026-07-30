@@ -507,7 +507,6 @@ export class CodexConversationStore {
 				...existing,
 				...incoming,
 				id: existing.id,
-				createdAt: existing.createdAt,
 				updatedAt: changed
 					? Math.max(incoming.updatedAt, existing.updatedAt + 1, this.now())
 					: existing.updatedAt,
