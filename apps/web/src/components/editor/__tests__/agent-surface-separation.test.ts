@@ -114,18 +114,23 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain("本会话由 Codex 直接处理");
 		expect(workbenchSource).toContain("response.body.getReader()");
 		expect(workbenchSource).toContain('event.event === "delta"');
-		expect(workbenchSource).not.toContain('event.event === "protocol"');
+		expect(workbenchSource).toContain('event.event === "protocol"');
 		expect(workbenchSource).toContain("...(sessionId ? { sessionId } : {})");
 		expect(workbenchSource).not.toContain("compileSemanticEdit");
 		expect(workbenchSource).not.toContain("计划需要处理");
 		expect(workbenchSource).not.toContain("运行质检");
 	});
 
-	test("智能剪辑只显示流式回复正文，不显示 Codex 原生协议调用轨迹", () => {
-		expect(workbenchSource).not.toContain('aria-label="Codex 调用流程"');
-		expect(workbenchSource).not.toContain("CodexProtocolFrame");
-		expect(workbenchSource).not.toContain("protocol?:");
+	test("智能剪辑保留实时处理轨迹，但不向用户暴露原生协议术语", () => {
+		expect(workbenchSource).toContain('aria-label="智能剪辑处理过程"');
+		expect(workbenchSource).toContain("CodexProtocolFrame");
+		expect(workbenchSource).toContain("protocol?:");
+		expect(workbenchSource).toContain("处理过程");
+		expect(workbenchSource).toContain("查看执行详情");
+		expect(workbenchSource).toContain("正在准备工程上下文…");
+		expect(workbenchSource).not.toContain("Codex 调用流程");
 		expect(workbenchSource).not.toContain("原生协议");
+		expect(workbenchSource).not.toContain("查看协议详情");
 		expect(workbenchSource).not.toContain("app-server · 等待协议事件");
 		expect(workbenchSource).not.toContain("Codex 正在处理");
 	});
