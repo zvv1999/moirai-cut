@@ -136,6 +136,41 @@ describe("playback strategy", () => {
 		});
 	});
 
+	test("recommends a proxy for decodable 4K, high-frame-rate, or high-bitrate video", () => {
+		const probe = normalizeFfprobe({
+			format: {
+				format_name: "mov,mp4",
+				duration: "12",
+				bit_rate: "42000000",
+			},
+			streams: [
+				{
+					index: 0,
+					codec_type: "video",
+					codec_name: "h264",
+					profile: "High",
+					pix_fmt: "yuv420p",
+					width: 3840,
+					height: 2160,
+					avg_frame_rate: "60/1",
+					r_frame_rate: "60/1",
+					bit_rate: "40000000",
+				},
+			],
+		});
+
+		expect(
+			decidePlaybackStrategy({
+				probe,
+				browserCanDecode: true,
+				nativeTranscodeAvailable: true,
+			}),
+		).toEqual({
+			kind: "proxy-recommended",
+			reasonCodes: ["large-frame", "high-frame-rate", "high-bitrate"],
+		});
+	});
+
 	test("requires a native proxy when the browser decoder rejects video", () => {
 		expect(
 			decidePlaybackStrategy({

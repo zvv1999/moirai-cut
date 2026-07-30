@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { MediaAsset } from "@/media/types";
 import {
+	automaticProxyProfile,
 	buildBatchMediaNames,
 	computeProxyDimensions,
 	getMediaAssetPlaybackSource,
@@ -108,7 +109,7 @@ describe("media proxy workflow", () => {
 		]);
 	});
 
-	test("automatically proxies only browser-incompatible video without a ready proxy", () => {
+	test("automatically proxies incompatible or expensive video without a ready proxy", () => {
 		expect(
 			shouldAutoGenerateProxy({
 				asset: {
@@ -144,6 +145,30 @@ describe("media proxy workflow", () => {
 					browserCanDecode: true,
 				},
 			}),
+		).toBe(true);
+		expect(
+			shouldAutoGenerateProxy({
+				asset: {
+					...videoAsset(),
+					width: 1920,
+					height: 1080,
+					fps: 30,
+					file: new File([new Uint8Array(1_000_000)], "ordinary.mp4"),
+					duration: 12,
+					proxy: undefined,
+					proxyFile: undefined,
+					browserCanDecode: true,
+				},
+			}),
 		).toBe(false);
+	});
+
+	test("uses a higher-quality automatic proxy for large source frames", () => {
+		expect(automaticProxyProfile({ asset: videoAsset() })).toBe("high");
+		expect(
+			automaticProxyProfile({
+				asset: { ...videoAsset(), width: 1920, height: 1080 },
+			}),
+		).toBe("standard");
 	});
 });
