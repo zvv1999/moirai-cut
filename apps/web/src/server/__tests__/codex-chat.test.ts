@@ -4,6 +4,7 @@ import { PassThrough } from "node:stream";
 import {
 	buildCodexAppServerArgs,
 	buildCodexPrompt,
+	codexDesktopRefreshUrls,
 	CodexAppServerRpcClient,
 	createCodexChatService,
 	type CodexAppServerConnection,
@@ -316,6 +317,17 @@ describe("Codex app-server JSON-RPC client", () => {
 				_meta: null,
 			},
 		});
+	});
+});
+
+describe("Codex desktop refresh", () => {
+	test("forces the open desktop task route to reload before reopening it", () => {
+		expect(
+			codexDesktopRefreshUrls("019fb29a-6b2a-7661-b946-1cf7d2158711"),
+		).toEqual([
+			"codex://threads/new",
+			"codex://threads/019fb29a-6b2a-7661-b946-1cf7d2158711",
+		]);
 	});
 });
 
@@ -1733,9 +1745,11 @@ describe("Codex direct Smart Edit streaming chat", () => {
 	test("refreshes the desktop project after every completed browser turn without blocking chat", async () => {
 		const syncCalls: string[] = [];
 		const syncObservedCompletedTurn: boolean[] = [];
+		const syncObservedPersistedTurn: boolean[] = [];
 		let nativeTurnCompleted = false;
 		let nextTurn = 0;
 		const turnByThread = new Map<string, string>();
+		const persistedTurns = new Set<string>();
 		const connection: CodexAppServerConnection = {
 			request: async ({ method, params }) => {
 				if (method === "thread/start" || method === "thread/resume") {
@@ -1757,6 +1771,22 @@ describe("Codex direct Smart Edit streaming chat", () => {
 					const turnId = `turn-desktop-${nextTurn}`;
 					turnByThread.set(params.threadId, turnId);
 					return { turn: { id: turnId } };
+				}
+				if (method === "thread/read") {
+					if (!isRecord(params) || typeof params.threadId !== "string") {
+						throw new Error("invalid thread/read request");
+					}
+					const persistedTurnId = turnByThread.get(params.threadId);
+					if (!persistedTurnId) {
+						throw new Error(`missing turn for ${params.threadId}`);
+					}
+					persistedTurns.add(persistedTurnId);
+					return {
+						thread: {
+							id: params.threadId,
+							turns: [{ id: persistedTurnId, status: "completed", items: [] }],
+						},
+					};
 				}
 				throw new Error(`unexpected method ${method}`);
 			},
@@ -1794,6 +1824,10 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			syncThreadToDesktop: async (threadId) => {
 				syncCalls.push(threadId);
 				syncObservedCompletedTurn.push(nativeTurnCompleted);
+				const turnId = turnByThread.get(threadId);
+				syncObservedPersistedTurn.push(
+					typeof turnId === "string" && persistedTurns.has(turnId),
+				);
 				throw new Error("desktop app is unavailable");
 			},
 		});
@@ -1823,12 +1857,13 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			"thread-desktop-project",
 		]);
 		expect(syncObservedCompletedTurn).toEqual([true, true]);
+		expect(syncObservedPersistedTurn).toEqual([true, true]);
 	});
 
 	test("refreshes the desktop project when a browser turn is interrupted", async () => {
 		const syncCalls: string[] = [];
 		const connection: CodexAppServerConnection = {
-			request: async ({ method }) => {
+			request: async ({ method, params }) => {
 				if (method === "thread/start") {
 					return {
 						thread: {
@@ -1842,6 +1877,23 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				if (method === "mcpServer/tool/call") return projectSummary();
 				if (method === "turn/start") {
 					return { turn: { id: "turn-interrupted" } };
+				}
+				if (method === "thread/read") {
+					return {
+						thread: {
+							id:
+								isRecord(params) && typeof params.threadId === "string"
+									? params.threadId
+									: "thread-interrupted",
+							turns: [
+								{
+									id: "turn-interrupted",
+									status: "interrupted",
+									items: [],
+								},
+							],
+						},
+					};
 				}
 				throw new Error(`unexpected method ${method}`);
 			},
