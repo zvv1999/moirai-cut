@@ -31,6 +31,98 @@ async function fixture() {
 }
 
 describe("project-scoped Codex conversation storage", () => {
+	test("synchronizes App thread messages without duplicating browser placeholders", async () => {
+		const { store, projectId } = await fixture();
+		await store.merge({
+			projectId,
+			conversationId: "conversation-shared",
+			sessionId: "thread-shared",
+			messages: [
+				{
+					id: "user-browser",
+					role: "user",
+					content: "收紧开场",
+					referenceCount: 1,
+					createdAt: 100,
+					updatedAt: 100,
+				},
+				{
+					id: "assistant-browser",
+					role: "assistant",
+					content: "处理中",
+					streaming: false,
+					turnId: "turn-browser",
+					protocol: [],
+					createdAt: 101,
+					updatedAt: 101,
+				},
+			],
+		});
+
+		const synchronized = await store.synchronizeThread({
+			projectId,
+			conversationId: "conversation-shared",
+			sessionId: "thread-shared",
+			title: "收紧开场",
+			messages: [
+				{
+					id: "user-browser",
+					role: "user",
+					content: "收紧开场",
+					turnId: "turn-browser",
+					createdAt: 100,
+					updatedAt: 110,
+				},
+				{
+					id: "assistant-native",
+					role: "assistant",
+					content: "已收紧开场。",
+					turnId: "turn-browser",
+					createdAt: 101,
+					updatedAt: 111,
+				},
+				{
+					id: "user-app",
+					role: "user",
+					content: "再快一点",
+					turnId: "turn-app",
+					createdAt: 120,
+					updatedAt: 130,
+				},
+				{
+					id: "assistant-app",
+					role: "assistant",
+					content: "已继续压缩停顿。",
+					turnId: "turn-app",
+					createdAt: 121,
+					updatedAt: 131,
+				},
+			],
+		});
+
+		expect(synchronized.conversations[0]?.messages).toEqual([
+			expect.objectContaining({
+				id: "user-browser",
+				content: "收紧开场",
+				referenceCount: 1,
+			}),
+			expect.objectContaining({
+				id: "assistant-browser",
+				content: "已收紧开场。",
+				turnId: "turn-browser",
+				protocol: [],
+			}),
+			expect.objectContaining({
+				id: "user-app",
+				content: "再快一点",
+			}),
+			expect.objectContaining({
+				id: "assistant-app",
+				content: "已继续压缩停顿。",
+			}),
+		]);
+	});
+
 	test("persists multiple independent conversations and resumes each thread", async () => {
 		const { projectId, store } = await fixture();
 		await store.merge({

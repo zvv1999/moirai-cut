@@ -695,6 +695,219 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		]);
 	});
 
+	test("reads the authoritative App thread as clean browser conversation messages", async () => {
+		const calls: Array<{ method: string; params: unknown }> = [];
+		const connection: CodexAppServerConnection = {
+			request: async ({ method, params }) => {
+				calls.push({ method, params });
+				if (method !== "thread/read") {
+					throw new Error(`unexpected method ${method}`);
+				}
+				return {
+					thread: {
+						id: "thread-shared",
+						name: "收紧开场",
+						createdAt: 100,
+						updatedAt: 120,
+						turns: [
+							{
+								id: "turn-browser",
+								status: "completed",
+								startedAt: 101,
+								completedAt: 110,
+								items: [
+									{
+										id: "user-native",
+										clientId: "user-browser",
+										type: "userMessage",
+										content: [{ type: "text", text: "收紧开场" }],
+									},
+									{
+										id: "assistant-native",
+										type: "agentMessage",
+										phase: "final_answer",
+										text: "已把开场缩短一秒。",
+									},
+								],
+							},
+							{
+								id: "turn-app",
+								status: "completed",
+								startedAt: 111,
+								completedAt: 120,
+								items: [
+									{
+										id: "user-app",
+										clientId: null,
+										type: "userMessage",
+										content: [{ type: "text", text: "再快一点" }],
+									},
+									{
+										id: "assistant-app",
+										type: "agentMessage",
+										phase: "final_answer",
+										text: "已继续压缩停顿。",
+									},
+								],
+							},
+						],
+					},
+				};
+			},
+			subscribe: () => subscriptionOf({ notifications: [] }),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+		});
+
+		const history = await service.readThread({
+			sessionId: "thread-shared",
+		});
+
+		expect(calls).toEqual([
+			{
+				method: "thread/read",
+				params: { threadId: "thread-shared", includeTurns: true },
+			},
+		]);
+		expect(history).toEqual({
+			sessionId: "thread-shared",
+			title: "收紧开场",
+			createdAt: 100_000,
+			updatedAt: 120_000,
+			messages: [
+				{
+					id: "user-browser",
+					role: "user",
+					content: "收紧开场",
+					turnId: "turn-browser",
+					createdAt: 101_000,
+					updatedAt: 110_000,
+				},
+				{
+					id: "assistant-native",
+					role: "assistant",
+					content: "已把开场缩短一秒。",
+					turnId: "turn-browser",
+					createdAt: 101_001,
+					updatedAt: 110_001,
+				},
+				{
+					id: "user-app",
+					role: "user",
+					content: "再快一点",
+					turnId: "turn-app",
+					createdAt: 111_000,
+					updatedAt: 120_000,
+				},
+				{
+					id: "assistant-app",
+					role: "assistant",
+					content: "已继续压缩停顿。",
+					turnId: "turn-app",
+					createdAt: 111_001,
+					updatedAt: 120_001,
+				},
+			],
+		});
+	});
+
+	test("forks a legacy hidden thread into a user-visible App task", async () => {
+		const calls: Array<{ method: string; params: unknown }> = [];
+		const connection: CodexAppServerConnection = {
+			request: async ({ method, params }) => {
+				calls.push({ method, params });
+				if (method === "thread/resume") {
+					return {
+						thread: {
+							id: "thread-hidden",
+							threadSource: null,
+							turns: [],
+						},
+					};
+				}
+				if (method === "thread/fork") {
+					return {
+						thread: {
+							id: "thread-visible",
+							threadSource: "user",
+							turns: [],
+						},
+					};
+				}
+				if (method === "thread/name/set") return {};
+				if (method === "mcpServerStatus/list") return readyOpenCutStatus();
+				if (method === "mcpServer/tool/call") return projectSummary();
+				if (method === "turn/start") return { turn: { id: "turn-visible" } };
+				throw new Error(`unexpected method ${method}`);
+			},
+			subscribe: (threadId) => {
+				expect(threadId).toBe("thread-visible");
+				return subscriptionOf({
+					notifications: [
+						{
+							method: "turn/completed",
+							params: {
+								threadId,
+								turn: {
+									id: "turn-visible",
+									status: "completed",
+									error: null,
+									items: [
+										{
+											type: "agentMessage",
+											id: "assistant-visible",
+											text: "已继续编辑",
+										},
+									],
+								},
+							},
+						},
+					],
+				});
+			},
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+		});
+
+		const events = [];
+		for await (const event of service.stream({
+			input: {
+				projectId: "project-1",
+				conversationId: "conversation-1",
+				sessionId: "thread-hidden",
+				message: "继续调整",
+				context: "",
+			},
+		})) {
+			events.push(event);
+		}
+
+		expect(events[0]).toEqual({
+			type: "session",
+			sessionId: "thread-visible",
+		});
+		expect(calls[1]).toMatchObject({
+			method: "thread/fork",
+			params: {
+				threadId: "thread-hidden",
+				threadSource: "user",
+				cwd: runtime.repoRoot,
+				runtimeWorkspaceRoots: [runtime.repoRoot, runtime.projectFilesDir],
+			},
+		});
+		expect(calls[2]).toEqual({
+			method: "thread/name/set",
+			params: {
+				threadId: "thread-visible",
+				name: "继续调整",
+			},
+		});
+	});
+
 	test("streams each Codex token delta before the authoritative completed message", async () => {
 		const calls: Array<{ method: string; params: unknown }> = [];
 		let closed = false;
@@ -704,6 +917,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				if (method === "thread/start") {
 					return { thread: { id: "thread-project-1" } };
 				}
+				if (method === "thread/name/set") return {};
 				if (method === "mcpServerStatus/list") {
 					return readyOpenCutStatus();
 				}
@@ -841,11 +1055,24 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		]);
 		expect(calls.map((call) => call.method)).toEqual([
 			"thread/start",
+			"thread/name/set",
 			"mcpServerStatus/list",
 			"mcpServer/tool/call",
 			"turn/start",
 		]);
+		expect(calls[0]?.params).toMatchObject({
+			threadSource: "user",
+			serviceName: "opencut_smart_edit",
+		});
+		expect(JSON.stringify(calls[0]?.params)).toContain("project-1");
 		expect(calls[1]).toEqual({
+			method: "thread/name/set",
+			params: {
+				threadId: "thread-project-1",
+				name: "统一字幕样式",
+			},
+		});
+		expect(calls[2]).toEqual({
 			method: "mcpServerStatus/list",
 			params: {
 				threadId: "thread-project-1",
@@ -853,7 +1080,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				limit: 100,
 			},
 		});
-		expect(calls[2]).toEqual({
+		expect(calls[3]).toEqual({
 			method: "mcpServer/tool/call",
 			params: {
 				threadId: "thread-project-1",
@@ -862,9 +1089,16 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				arguments: { projectId: "project-1", detail: "summary" },
 			},
 		});
-		expect(JSON.stringify(calls[3]?.params)).toContain("统一字幕样式");
-		expect(JSON.stringify(calls[3]?.params)).toContain("引用 A");
-		expect(JSON.stringify(calls[3]?.params)).toContain('\\"revision\\":7');
+		expect(calls[4]?.params).toMatchObject({
+			input: [{ type: "text", text: "统一字幕样式" }],
+			additionalContext: {
+				"opencut.smart_edit": {
+					kind: "application",
+				},
+			},
+		});
+		expect(JSON.stringify(calls[4]?.params)).toContain("引用 A");
+		expect(JSON.stringify(calls[4]?.params)).toContain('\\"revision\\":7');
 		expect(closed).toBe(true);
 	});
 
