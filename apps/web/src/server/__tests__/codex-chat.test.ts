@@ -1724,6 +1724,92 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		});
 	});
 
+	test("syncs only newly created native threads into the desktop project without blocking chat", async () => {
+		const syncCalls: string[] = [];
+		let nextTurn = 0;
+		const turnByThread = new Map<string, string>();
+		const connection: CodexAppServerConnection = {
+			request: async ({ method, params }) => {
+				if (method === "thread/start" || method === "thread/resume") {
+					return {
+						thread: {
+							id: "thread-desktop-project",
+							threadSource: "user",
+						},
+					};
+				}
+				if (method === "thread/name/set") return {};
+				if (method === "mcpServerStatus/list") return readyOpenCutStatus();
+				if (method === "mcpServer/tool/call") return projectSummary();
+				if (method === "turn/start") {
+					if (!isRecord(params) || typeof params.threadId !== "string") {
+						throw new Error("invalid turn/start request");
+					}
+					nextTurn += 1;
+					const turnId = `turn-desktop-${nextTurn}`;
+					turnByThread.set(params.threadId, turnId);
+					return { turn: { id: turnId } };
+				}
+				throw new Error(`unexpected method ${method}`);
+			},
+			subscribe: (threadId) => ({
+				async *[Symbol.asyncIterator]() {
+					await Promise.resolve();
+					const turnId = turnByThread.get(threadId);
+					if (!turnId) throw new Error(`missing turn for ${threadId}`);
+					yield {
+						method: "turn/completed",
+						params: {
+							threadId,
+							turn: {
+								id: turnId,
+								status: "completed",
+								error: null,
+								items: [
+									{
+										type: "agentMessage",
+										id: `message-${turnId}`,
+										text: "桌面归组不影响回复",
+									},
+								],
+							},
+						},
+					};
+				},
+				close() {},
+			}),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+			syncThreadToDesktop: async (threadId) => {
+				syncCalls.push(threadId);
+				throw new Error("desktop app is unavailable");
+			},
+		});
+
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			const events = [];
+			for await (const event of service.stream({
+				input: {
+					projectId: "project-1",
+					conversationId: "conversation-desktop-project",
+					message: "验证桌面工程归组",
+					context: "",
+				},
+			})) {
+				events.push(event);
+			}
+			expect(events.at(-1)).toEqual({
+				type: "done",
+				sessionId: "thread-desktop-project",
+				message: "桌面归组不影响回复",
+			});
+		}
+
+		expect(syncCalls).toEqual(["thread-desktop-project"]);
+	});
+
 	test("surfaces a failed Codex turn without replacing it with local validation", async () => {
 		const connection: CodexAppServerConnection = {
 			request: async ({ method }) => {
