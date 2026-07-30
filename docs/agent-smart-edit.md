@@ -55,6 +55,27 @@ flowchart LR
 `model/list`、`collaborationMode/list`、`skills/list` 返回，不在前端硬编码成一套
 弱化能力。
 
+### 性能与画质档位
+
+智能剪辑把影响首字延迟、工具权限和画面验收成本的选项收敛为三个预设；预设不会更换
+Codex 内核，只调整当前任务所需的推理、工具和验证深度：
+
+| 档位 | 推理 | 工具 | 画面识别 | 回写验证 | 适用场景 |
+| --- | --- | --- | --- | --- | --- |
+| 快速 | `medium` | 专注剪辑 | 关闭 | 关闭 | 文案、重命名和确定性的简单修改 |
+| 均衡（默认） | `high` | 专注剪辑 | 关闭 | 基础 | 日常剪辑；回读 revision 确认落盘，不阻塞等待渲染 |
+| 导演 | `xhigh` | 剪辑与验收 | 自动 | 完整 | 镜头判断、节奏重排、关键画面和最终质量验收 |
+
+自动档会根据指令和显式引用决定是否取帧。均衡档不在每一轮强制生成联系表或渲染帧，
+因此普通对话能更快开始流式返回；需要视觉证据时切换“导演”即可恢复多模态识别、
+编辑器同步等待和关键画面验证。
+
+素材预览也使用独立的性能策略：浏览器不兼容的编码、分辨率达到 2560×1440、帧率
+高于 30 fps 或码率高于 20 Mbps 时自动生成代理。大分辨率素材使用长边 1440 的
+高画质代理，其余素材使用标准代理；代理只服务编辑预览，最终导出始终读取原始素材。
+磁盘素材库只读取一次索引，并以最多四路并发加载媒体，避免每个素材重复拉取索引形成
+串行瀑布。
+
 ## 2. Codex App 配置
 
 仓库已经包含以下项目级配置：
@@ -346,15 +367,30 @@ thread/read(threadId: sessionId, includeTurns: true)
 
 智能剪辑入口通过 `GET /api/codex/history/:projectId?conversationId=...` 读取并校准所选
 task，通过 `POST /api/codex/history/:projectId` 保存绑定和流式 UI 投影。同源页面使用
-`BroadcastChannel` 即时通知，另以一秒轮询作为跨窗口、跨浏览器和通知丢失时的兜底。
-消息 ID 必须使用 UUID；页面写入采用按 `updatedAt` 的增量合并，避免一个标签页用旧
-快照覆盖另一个标签页的新流式状态。关闭面板、刷新页面或在 Codex App 继续对话后，
-下一次 `thread/read` 都必须得到相同正文。
+`BroadcastChannel` 即时通知：同源标签页收到通知后只读取本地投影，不重复触发
+`thread/read`。历史接口返回 revision 对应的 `ETag`，客户端通过
+`If-None-Match` 复用未改变的结果；`304` 不传输会话正文。页面重新可见、窗口聚焦时
+立即执行一次权威原生同步，另以页面可见时每 15 秒一次的同步作为跨窗口、跨浏览器和
+通知丢失时的兜底。消息 ID 必须使用 UUID；页面写入采用按 `updatedAt` 的增量合并，
+避免一个标签页用旧快照覆盖另一个标签页的新流式状态。关闭面板、刷新页面或在 Codex
+App 继续对话后，下一次权威 `thread/read` 都必须得到相同正文。
 
 这不是把 Codex App 窗口嵌入网页。浏览器只实现轻量展示和 OpenCut 引用交互，
 认证、任务历史、续聊、模型执行与流式事件均使用 Codex 原生 App Server 协议。
 浏览器智能剪辑和 Codex App 当前各自持有一个 app-server 进程：两端共享原生 task
 历史，但不共享进程内的实时事件订阅。
+
+OpenCut 默认已经为每个工具档位复用一个长驻 app-server。需要让多个 OpenCut Web
+进程再复用同一个浏览器侧服务时，可以预先启动可信的 app-server daemon，并设置：
+
+```bash
+OPENCUT_CODEX_APP_SERVER_SOCKET=/absolute/path/to/app-server.sock
+```
+
+只有“专注剪辑”档位会连接该 socket；daemon 必须已经配置 OpenCut MCP。“剪辑与验收”
+和“完整能力”仍使用隔离进程，防止不同权限和 MCP 集合在同一个连接中串用。这个选项
+不会让 Codex 桌面 App 改接外部 daemon；桌面 App 仍使用自己的宿主连接和原生 task
+历史。
 
 ### Codex App 工作区与任务可见性
 
@@ -387,14 +423,15 @@ App Server 的 `thread/start`、`thread/resume`、`thread/fork` 协议只接受�
 
 桌面刷新分两阶段执行：turn 刚进入原生历史时刷新一次，让 Codex App 立即看到浏览器
 发起的用户消息和运行中 task；turn 完成、失败或中断后再刷新一次，让 App 读取最终
-回复和状态。浏览器自己的 SSE 仍实时展示增量文本和工具步骤。由于 Codex App 尚未
-提供连接外部 app-server 实时订阅的公开宿主入口，桌面端当前不能逐 token 镜像浏览器
-进程中的事件；安装的 app-server 虽支持 `ws://`、`unix://` 和 daemon 传输，也不能
-让已经由桌面 App 私有 stdio 进程承载的窗口自动改接外部连接。若持久化探测或临时
-重置路由失败，服务端仍会尝试直接打开目标 task；桌面 App 未安装、深链失败或设置
-`OPENCUT_CODEX_DESKTOP_SYNC=0` 时，只跳过自动刷新，不中断 SSE、原生历史或工程编辑。
-若未来 Codex App 暴露共享连接或跨客户端实时订阅入口，应以单一 app-server 事件流
-替代这层两阶段宿主刷新兼容逻辑。
+回复和状态。这两次刷新均在后台调度；等待原生历史落盘、配置同步和打开桌面深链都不
+阻塞浏览器 SSE 的首字或后续增量。浏览器自己的 SSE 仍实时展示文本和工具步骤。由于
+Codex App 尚未提供连接外部 app-server 实时订阅的公开宿主入口，桌面端当前不能逐
+token 镜像浏览器进程中的事件；安装的 app-server 虽支持 `ws://`、`unix://` 和 daemon
+传输，也不能让已经由桌面 App 私有 stdio 进程承载的窗口自动改接外部连接。若持久化
+探测或临时重置路由失败，服务端仍会尝试直接打开目标 task；桌面 App 未安装、深链
+失败或设置 `OPENCUT_CODEX_DESKTOP_SYNC=0` 时，只跳过自动刷新，不中断 SSE、原生
+历史或工程编辑。若未来 Codex App 暴露共享连接或跨客户端实时订阅入口，应以单一
+app-server 事件流替代这层两阶段宿主刷新兼容逻辑。
 
 ## 8. 二次编辑范式
 
@@ -444,12 +481,17 @@ OpenCut 内置智能剪辑已经随消息携带上下文，Codex App 则通过 P
 
 ```bash
 bun test apps/web/src/agent/__tests__
+bun test apps/web/src/lib/media/__tests__/media-loading.test.ts
 bun test apps/web/src/components/editor/__tests__/agent-surface-separation.test.ts
 bun test apps/web/src/server/__tests__/codex-chat.test.ts
 bun test apps/web/src/server/__tests__/codex-run-manager.test.ts
 bun test apps/web/src/server/__tests__/codex-chat-route.test.ts
 node --test apps/mcp/src/__tests__/*.test.mjs
+bun test
+bun run typecheck:web
+bun run lint:web
 bun run build:web
+bun audit
 ```
 
 `build:web` 会执行 Next.js 的生产 TypeScript 检查。构建和 ESLint 需要 Node 20+
