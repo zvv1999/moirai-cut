@@ -325,7 +325,8 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			projectId: "project-1",
 			message: "统一字幕样式",
 			context: "opencut://project/project-1/scene/main/track/text",
-		}, '{"projectId":"project-1","revision":7}');
+			projectSnapshot: '{"projectId":"project-1","revision":7}',
+		});
 
 		expect(prompt).toContain("project-1");
 		expect(prompt).toContain("统一字幕样式");
@@ -517,7 +518,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		});
 		expect(JSON.stringify(calls[3]?.params)).toContain("统一字幕样式");
 		expect(JSON.stringify(calls[3]?.params)).toContain("引用 A");
-		expect(JSON.stringify(calls[3]?.params)).toContain('"revision":7');
+		expect(JSON.stringify(calls[3]?.params)).toContain('\\"revision\\":7');
 		expect(closed).toBe(true);
 	});
 

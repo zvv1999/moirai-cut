@@ -33,6 +33,20 @@ flowchart LR
 工程文件是两条链路共同的事实来源。Agent 用文件工具写入后，已打开的编辑器会跟随
 新的文件 revision；用户在界面中的后续编辑又会成为 Agent 下一次读取到的新状态。
 
+内置智能剪辑不会把“寻找工具、连接 MCP、寻找当前工程”交给模型。每一轮固定先完成：
+
+1. 启动或恢复当前工程对应的 Codex thread；
+2. 用 `mcpServerStatus/list` 校验 `opencut` 已注册，且至少暴露
+   `read_project`、`edit_project`；
+3. 用 `mcpServer/tool/call` 预读当前 `projectId` 的
+   `read_project(detail: "summary")`；
+4. 把工程摘要与 `opencut.agent-context.v1` 一起放入本轮输入，再调用
+   `turn/start`。
+
+任一步失败都在模型开始回复前终止并显示具体错误。服务启动时会禁用用户全局配置中的
+其他 MCP，只为内置智能剪辑显式启用 `opencut`，因此不会误入 LocalCut 或把启动时间
+消耗在无关工具上。
+
 ## 2. Codex App 配置
 
 仓库已经包含以下项目级配置：
@@ -83,7 +97,7 @@ opencut://project/<projectId>/media/<mediaId>
 
 1. 用户显式固定的引用；
 2. 当前时间轴选择；
-3. 空上下文，此时 Agent 可用 `read_project` 自行了解工程。
+3. 没有引用时仍携带当前工程、轨道、素材和播放头信息，并由服务端预读工程摘要。
 
 `opencut.agent-context.v1` 同时包含：
 
@@ -233,7 +247,8 @@ MCP 工具审批，并只在当前会话持久化；其他服务器或普通表�
 
 - `session`：Codex thread/session ID；
 - `delta`：模型文本增量；
-- `activity`：OpenCut MCP 工具的 started/completed；
+- `protocol`：原生 Codex/app-server 协议步骤，包括分析、计划、命令、
+  MCP started/completed，以及模型前的“OpenCut MCP 已就绪”“当前工程上下文已载入”；
 - `done`：本轮权威最终消息；
 - `error`：连接、工具或本轮失败。
 
@@ -295,4 +310,3 @@ node --test apps/mcp/src/__tests__/*.test.mjs
 2. 观察 SSE 中 `read_project`、`edit_project` 均 completed；
 3. 回读工程，确认时间、时长、内容与 revision；
 4. 删除临时工程，不能用正式素材工程做破坏性验收。
-

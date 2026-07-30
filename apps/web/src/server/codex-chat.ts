@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline";
 import { configuredCodexBinary } from "@/server/codex-config";
@@ -8,6 +8,8 @@ const REQUEST_TIMEOUT_MS = 30_000;
 const TURN_TIMEOUT_MS = 6 * 60 * 1_000;
 const MAX_STDERR_CHARS = 16_384;
 const MAX_PROTOCOL_DETAIL_CHARS = 8_000;
+const MAX_PROJECT_SNAPSHOT_CHARS = 120_000;
+const REQUIRED_OPENCUT_TOOLS = ["read_project", "edit_project"] as const;
 
 export interface CodexRuntimeConfig {
 	binary: string;
@@ -15,6 +17,7 @@ export interface CodexRuntimeConfig {
 	mcpServerPath: string;
 	projectFilesDir: string;
 	baseUrl: string;
+	disabledMcpServers?: string[];
 }
 
 export interface CodexChatInput {
@@ -86,6 +89,12 @@ function tomlString(value: string): string {
 }
 
 function commonCodexConfigArgs(runtime: CodexRuntimeConfig): string[] {
+	const disabledMcpArgs = Array.from(new Set(runtime.disabledMcpServers ?? []))
+		.filter(
+			(serverName) =>
+				serverName !== "opencut" && /^[A-Za-z0-9_-]+$/.test(serverName),
+		)
+		.flatMap((serverName) => ["-c", `mcp_servers.${serverName}.enabled=false`]);
 	return [
 		"-c",
 		'approval_policy="never"',
@@ -93,6 +102,9 @@ function commonCodexConfigArgs(runtime: CodexRuntimeConfig): string[] {
 		'sandbox_mode="read-only"',
 		"-c",
 		"mcp_servers={}",
+		...disabledMcpArgs,
+		"-c",
+		"mcp_servers.opencut.enabled=true",
 		"-c",
 		'mcp_servers.opencut.command="bun"',
 		"-c",
@@ -114,10 +126,16 @@ export function buildCodexPrompt({
 	projectId,
 	message,
 	context,
-}: CodexChatInput): string {
+	projectSnapshot = "",
+}: CodexChatInput & { projectSnapshot?: string }): string {
 	return [
 		"你正在 OpenCut 编辑器的“智能剪辑”直接 Codex 会话中。",
 		`唯一允许操作的工程 ID：${projectId}`,
+		"",
+		"本轮系统预绑定：",
+		"- OpenCut MCP 已由系统验证就绪，服务器名为 opencut，工具入口已直接暴露给当前会话。",
+		"- 当前工程摘要已由系统预读；编辑器中的当前选区、播放头和显式引用也已随本消息提供。",
+		"- 不要声称没有 OpenCut 工具、正在连接或正在查找 OpenCut MCP；不要自行连接或启动 MCP。若后续调用失败，只报告具体调用错误。",
 		"",
 		"工作方式：",
 		"- 这是执行型会话。用户提出明确的剪辑要求时，直接执行，不要只给计划。",
@@ -133,6 +151,9 @@ export function buildCodexPrompt({
 		"",
 		"当前编辑器上下文：",
 		context.trim() || "未附加素材或时间轴引用；可通过 read_project 读取工程。",
+		"",
+		"当前工程摘要（系统通过 opencut.read_project 预读）：",
+		projectSnapshot.trim() || "工程摘要读取失败；不要继续执行。",
 		"",
 		"用户消息：",
 		message.trim(),
@@ -485,6 +506,22 @@ const connectSharedAppServer: CodexAppServerConnector = async (runtime) => {
 	return connectSharedAppServer(runtime);
 };
 
+function configuredMcpServerNames(): string[] {
+	const codexHome =
+		process.env.CODEX_HOME?.trim() ||
+		(process.env.HOME ? path.join(process.env.HOME, ".codex") : "");
+	if (!codexHome) return [];
+	try {
+		const config = readFileSync(path.join(codexHome, "config.toml"), "utf8");
+		return Array.from(
+			config.matchAll(/^\s*\[mcp_servers\.([A-Za-z0-9_-]+)\]\s*(?:#.*)?$/gm),
+			(match) => match[1],
+		);
+	} catch {
+		return [];
+	}
+}
+
 function repoRootFromCurrentWorkingDirectory(): string {
 	const candidates = [
 		process.env.OPENCUT_REPO_ROOT?.trim(),
@@ -515,6 +552,7 @@ export function resolveCodexRuntimeConfig(): CodexRuntimeConfig {
 			process.env.OPENCUT_BASE_URL?.trim() ||
 			process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
 			"http://127.0.0.1:3000",
+		disabledMcpServers: configuredMcpServerNames(),
 	};
 }
 
@@ -964,6 +1002,106 @@ async function nextWithDeadline({
 	}
 }
 
+interface OpenCutSessionBinding {
+	tools: string[];
+	projectSnapshot: string;
+	revision: number | null;
+}
+
+function projectSnapshotFromToolResponse(response: unknown): string {
+	if (!isRecord(response)) {
+		throw new CodexChatError("当前工程上下文读取失败：OpenCut 返回格式无效。");
+	}
+	const content = Array.isArray(response.content) ? response.content : [];
+	const text = content
+		.filter(isRecord)
+		.map((item) => (typeof item.text === "string" ? item.text : ""))
+		.filter(Boolean)
+		.join("\n");
+	const fallback =
+		response.structuredContent === undefined
+			? ""
+			: JSON.stringify(response.structuredContent);
+	const snapshot = text || fallback;
+	if (response.isError === true) {
+		throw new CodexChatError(
+			`当前工程上下文读取失败：${snapshot || "OpenCut MCP 调用失败。"}`,
+		);
+	}
+	if (!snapshot) {
+		throw new CodexChatError(
+			"当前工程上下文读取失败：OpenCut 未返回工程摘要。",
+		);
+	}
+	if (snapshot.length <= MAX_PROJECT_SNAPSHOT_CHARS) return snapshot;
+	return `${snapshot.slice(0, MAX_PROJECT_SNAPSHOT_CHARS)}\n…工程摘要已截断`;
+}
+
+function revisionFromProjectSnapshot(snapshot: string): number | null {
+	try {
+		const value: unknown = JSON.parse(snapshot);
+		return isRecord(value) && typeof value.revision === "number"
+			? value.revision
+			: null;
+	} catch {
+		return null;
+	}
+}
+
+async function bindOpenCutSession({
+	connection,
+	threadId,
+	projectId,
+}: {
+	connection: CodexAppServerConnection;
+	threadId: string;
+	projectId: string;
+}): Promise<OpenCutSessionBinding> {
+	const statusResponse = await connection.request({
+		method: "mcpServerStatus/list",
+		params: {
+			threadId,
+			detail: "toolsAndAuthOnly",
+			limit: 100,
+		},
+	});
+	const servers =
+		isRecord(statusResponse) && Array.isArray(statusResponse.data)
+			? statusResponse.data.filter(isRecord)
+			: [];
+	const openCut = servers.find((server) => server.name === "opencut");
+	if (!openCut || !isRecord(openCut.tools)) {
+		throw new CodexChatError(
+			"OpenCut MCP 未就绪：当前 Codex 会话没有可用的 opencut 工具入口。",
+		);
+	}
+	const tools = Object.keys(openCut.tools);
+	const missingTools = REQUIRED_OPENCUT_TOOLS.filter(
+		(tool) => !tools.includes(tool),
+	);
+	if (missingTools.length > 0) {
+		throw new CodexChatError(
+			`OpenCut MCP 未就绪：缺少 ${missingTools.join("、")} 工具。`,
+		);
+	}
+
+	const projectResponse = await connection.request({
+		method: "mcpServer/tool/call",
+		params: {
+			threadId,
+			server: "opencut",
+			tool: "read_project",
+			arguments: { projectId, detail: "summary" },
+		},
+	});
+	const projectSnapshot = projectSnapshotFromToolResponse(projectResponse);
+	return {
+		tools,
+		projectSnapshot,
+		revision: revisionFromProjectSnapshot(projectSnapshot),
+	};
+}
+
 export function createCodexChatService({
 	runtime = resolveCodexRuntimeConfig(),
 	connect = connectSharedAppServer,
@@ -1027,6 +1165,36 @@ export function createCodexChatService({
 					status: "completed",
 					title: requestedSessionId ? "Codex 会话已恢复" : "Codex 会话已连接",
 				};
+				const binding = await bindOpenCutSession({
+					connection,
+					threadId: sessionId,
+					projectId: input.projectId,
+				});
+				yield {
+					type: "protocol",
+					id: `mcp:${sessionId}:opencut`,
+					method: "mcpServerStatus/list",
+					threadId: sessionId,
+					itemType: "mcpToolCall",
+					status: "completed",
+					title: "OpenCut MCP 已就绪",
+					detail: binding.tools.join(" · "),
+				};
+				yield {
+					type: "protocol",
+					id: `context:${sessionId}:${input.projectId}`,
+					method: "mcpServer/tool/call",
+					threadId: sessionId,
+					itemType: "mcpToolCall",
+					status: "completed",
+					title: "当前工程上下文已载入",
+					detail: [
+						input.projectId,
+						binding.revision === null ? null : `revision ${binding.revision}`,
+					]
+						.filter((part): part is string => Boolean(part))
+						.join(" · "),
+				};
 				const turnResponse = await connection.request({
 					method: "turn/start",
 					params: {
@@ -1034,7 +1202,10 @@ export function createCodexChatService({
 						input: [
 							{
 								type: "text",
-								text: buildCodexPrompt(input),
+								text: buildCodexPrompt({
+									...input,
+									projectSnapshot: binding.projectSnapshot,
+								}),
 								text_elements: [],
 							},
 						],
