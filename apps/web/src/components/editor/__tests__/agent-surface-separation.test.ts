@@ -10,6 +10,10 @@ const workbenchSource = readFileSync(
 	fileURLToPath(new URL("../agent-workbench.tsx", import.meta.url)),
 	"utf8",
 );
+const dialogSource = readFileSync(
+	fileURLToPath(new URL("../../ui/dialog.tsx", import.meta.url)),
+	"utf8",
+);
 const envExampleSource = readFileSync(
 	fileURLToPath(new URL("../../../../.env.example", import.meta.url)),
 	"utf8",
@@ -49,6 +53,36 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain('role="log"');
 		expect(workbenchSource).toContain('aria-label="智能剪辑对话记录"');
 		expect(workbenchSource).toContain('aria-label="发送智能剪辑需求"');
+	});
+
+	test("智能剪辑保持非模态，打开后仍可继续操作时间线", () => {
+		expect(source).toContain("modal={false}");
+		expect(source).toContain("showOverlay={false}");
+		expect(source).toContain("onInteractOutside");
+		expect(dialogSource).toContain("showOverlay = true");
+		expect(dialogSource).toContain("{showOverlay ? <DialogOverlay /> : null}");
+	});
+
+	test("打开后默认把时间线选择直接加入上下文", () => {
+		expect(workbenchSource).toContain(
+			"const [followSelection, setFollowSelection] = useState(true);",
+		);
+		expect(workbenchSource).toContain(
+			"if (!followSelection || selectedElements.length === 0) return;",
+		);
+		expect(workbenchSource).toContain("选中即引用");
+		expect(workbenchSource).toContain(
+			"visibleReferences.length > 0",
+		);
+		expect(workbenchSource).toContain(
+			"`已引用 ${visibleReferences.length} 项`",
+		);
+	});
+
+	test("入口使用面向剪辑任务的文案", () => {
+		expect(source).toContain('aria-label="进入智能剪辑"');
+		expect(source).toContain(">进入智能剪辑<");
+		expect(source).not.toContain("问 Codex");
 	});
 
 	test("对话框提供时间轴与素材库两类上下文选择器", () => {
