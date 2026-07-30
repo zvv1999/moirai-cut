@@ -5,6 +5,7 @@ import {
 	buildCodexPrompt,
 	buildCodexSharedHostArgs,
 	codexDesktopRefreshUrls,
+	codexRequestTimeoutMs,
 	CodexAppServerRpcClient,
 	CodexAppServerWebSocketClient,
 	createCodexChatService,
@@ -198,6 +199,12 @@ function initializeOptOutMethods(
 }
 
 describe("Codex app-server JSON-RPC client", () => {
+	test("allows cold MCP startup requests to outlive the generic RPC timeout", () => {
+		expect(codexRequestTimeoutMs("thread/read")).toBe(30_000);
+		expect(codexRequestTimeoutMs("mcpServerStatus/list")).toBe(120_000);
+		expect(codexRequestTimeoutMs("mcpServer/tool/call")).toBe(120_000);
+	});
+
 	test("performs the handshake and dispatches thread notifications", async () => {
 		const fake = appServerProcess();
 		const client = new CodexAppServerRpcClient(fake.process);
