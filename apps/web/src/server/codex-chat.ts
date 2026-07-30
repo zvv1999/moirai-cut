@@ -782,9 +782,13 @@ function turnIdFromResponse(response: unknown): string {
 function cleanStoredUserText(text: string): string {
 	const marker = "\n用户消息：\n";
 	const markerIndex = text.lastIndexOf(marker);
-	return (
+	const visibleText = (
 		markerIndex >= 0 ? text.slice(markerIndex + marker.length) : text
 	).trim();
+	const delegatedInput = visibleText.match(
+		/^<codex_delegation>\s*[\s\S]*?<input>([\s\S]*?)<\/input>\s*<\/codex_delegation>$/,
+	);
+	return (delegatedInput?.[1] ?? visibleText).trim();
 }
 
 function userTextFromItem(item: Record<string, unknown>): string {

@@ -329,8 +329,10 @@ thread/read(threadId: sessionId, includeTurns: true)
 随后用 App Server 返回的 turns **权威替换**缓存正文。只存在于旧浏览器缓存、但不在
 原生 task 中的消息必须删除；按消息 ID 或 turn ID 匹配到的 UI 元数据可以保留。任务
 正在流式执行时，浏览器可以暂存尚未出现在 `thread/read` 中的乐观消息；任务空闲后
-下一次同步必须恢复为原生历史。旧版 `opencut.codex-conversation.v1` 文件读取时会
-迁移为一条 `legacy-conversation`，首次成功读取其 App task 后同样遵守这一规则。
+下一次同步必须恢复为原生历史。由 Codex App 任务转发入口产生的
+`<codex_delegation>` 消息只展示其 `<input>` 内容，不把宿主协议壳暴露给用户。旧版
+`opencut.codex-conversation.v1` 文件读取时会迁移为一条 `legacy-conversation`，
+首次成功读取其 App task 后同样遵守这一规则。
 
 智能剪辑入口通过 `GET /api/codex/history/:projectId?conversationId=...` 读取并校准所选
 task，通过 `POST /api/codex/history/:projectId` 保存绑定和流式 UI 投影。同源页面使用
@@ -342,12 +344,11 @@ task，通过 `POST /api/codex/history/:projectId` 保存绑定和流式 UI 投�
 这不是把 Codex App 窗口嵌入网页。浏览器只实现轻量展示和 OpenCut 引用交互，
 认证、任务历史、续聊、模型执行与流式事件均来自同一 App Server 协议。
 
-### Codex App 工作区归类
+### Codex App 工作区与任务可见性
 
-App Server 通过 task 的 `cwd` 把任务归入 Codex App 已保存的项目。OpenCut 智能剪辑
-创建、恢复或迁移 task 时使用 `OPENCUT_CODEX_WORKSPACE_ROOT` 作为 `cwd`；未设置时
-默认使用 `opencut-classic` 的父目录。当前仓库布局下即 `opencut-classic` 所在的
-工作区：
+OpenCut 智能剪辑创建、恢复或迁移 task 时使用 `OPENCUT_CODEX_WORKSPACE_ROOT` 作为
+`cwd`；未设置时默认使用 `opencut-classic` 的父目录。当前仓库布局下即
+`opencut-classic` 所在的工作区：
 
 ```text
 <workspace>/chatcut
@@ -355,8 +356,16 @@ App Server 通过 task 的 `cwd` 把任务归入 Codex App 已保存的项目。
 
 同时 `runtimeWorkspaceRoots` 保留工作区根、`opencut-classic` 仓库和
 `opencut-projects` 工程文件目录，OpenCut MCP 的 `cwd` 仍是 `opencut-classic`。
-因此任务会显示在 Codex App 的 `chatcut` 项目下，同时具备当前编辑器工程和 MCP 工具
-上下文，不再作为新的“无项目”任务创建。
+因此 task 在 Codex App 的全局任务历史中可见、可打开和续聊，并同时具备当前编辑器
+工程和 MCP 工具上下文。
+
+需要注意：App Server 的 `thread/start`、`thread/resume`、`thread/fork` 协议只接受
+执行目录和运行时根，不接受 Codex 桌面端项目的 `projectId`；桌面端项目归类属于宿主
+应用创建任务时写入的元数据，不能由网页 App Server 客户端伪造。即使 `cwd` 与已保存
+的 `chatcut` 项目一致，网页创建的 task 在当前 Codex App 版本中仍可能显示在“无项目”
+任务下。OpenCut 以 App Server task/thread ID 保证双端正文一致，不把 `cwd` 错当成
+桌面项目绑定。若未来公开协议加入 `projectId`，应在 `thread/start` 时直接传入，而
+不是维护另一份对话。
 
 ## 8. 二次编辑范式
 
