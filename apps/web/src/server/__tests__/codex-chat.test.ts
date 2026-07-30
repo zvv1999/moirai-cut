@@ -1187,7 +1187,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				runtimeWorkspaceRoots: [runtime.repoRoot, runtime.projectFilesDir],
 			},
 		});
-		expect(calls[4]).toEqual({
+		expect(calls[3]).toEqual({
 			method: "thread/name/set",
 			params: {
 				threadId: "thread-visible",
@@ -1293,12 +1293,12 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			{
 				type: "protocol",
 				id: "mcp:thread-project-1:opencut",
-				method: "mcpServerStatus/list",
+				method: "mcpServer/tool/call",
 				threadId: "thread-project-1",
 				itemType: "mcpToolCall",
 				status: "completed",
 				title: "OpenCut MCP 已就绪",
-				detail: "read_project · edit_project · inspect_timeline_range",
+				detail: "read_project · edit_project",
 			},
 			{
 				type: "protocol",
@@ -1343,7 +1343,6 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		]);
 		expect(calls.map((call) => call.method)).toEqual([
 			"thread/start",
-			"mcpServerStatus/list",
 			"mcpServer/tool/call",
 			"thread/name/set",
 			"turn/start",
@@ -1354,14 +1353,6 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		});
 		expect(JSON.stringify(calls[0]?.params)).toContain("project-1");
 		expect(calls[1]).toEqual({
-			method: "mcpServerStatus/list",
-			params: {
-				threadId: "thread-project-1",
-				detail: "toolsAndAuthOnly",
-				limit: 100,
-			},
-		});
-		expect(calls[2]).toEqual({
 			method: "mcpServer/tool/call",
 			params: {
 				threadId: "thread-project-1",
@@ -1370,14 +1361,14 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				arguments: { projectId: "project-1", detail: "summary" },
 			},
 		});
-		expect(calls[3]).toEqual({
+		expect(calls[2]).toEqual({
 			method: "thread/name/set",
 			params: {
 				threadId: "thread-project-1",
 				name: "地坛 × Reed",
 			},
 		});
-		expect(calls[4]?.params).toMatchObject({
+		expect(calls[3]?.params).toMatchObject({
 			input: [{ type: "text", text: "统一字幕样式" }],
 			additionalContext: {
 				"opencut.smart_edit": {
@@ -1385,8 +1376,8 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				},
 			},
 		});
-		expect(JSON.stringify(calls[4]?.params)).toContain("引用 A");
-		expect(JSON.stringify(calls[4]?.params)).toContain('\\"revision\\":7');
+		expect(JSON.stringify(calls[3]?.params)).toContain("引用 A");
+		expect(JSON.stringify(calls[3]?.params)).toContain('\\"revision\\":7');
 		expect(closed).toBe(true);
 	});
 
@@ -1567,8 +1558,8 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(consume()).rejects.toThrow("OpenCut MCP 未就绪");
 		expect(calls.map((call) => call.method)).toEqual([
 			"thread/start",
-			"mcpServerStatus/list",
 			"mcpServer/tool/call",
+			"mcpServerStatus/list",
 		]);
 	});
 
@@ -2281,7 +2272,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(result).toEqual({ type: "delta", delta: "流式" });
 	});
 
-	test("reuses MCP capability validation and unchanged thread names across turns", async () => {
+	test("keeps direct MCP readiness checks and unchanged thread names lightweight", async () => {
 		const calls: string[] = [];
 		let turnNumber = 0;
 		const connection: CodexAppServerConnection = {
@@ -2344,7 +2335,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 
 		expect(
 			calls.filter((method) => method === "mcpServerStatus/list"),
-		).toHaveLength(1);
+		).toHaveLength(0);
 		expect(calls.filter((method) => method === "thread/name/set")).toHaveLength(
 			1,
 		);

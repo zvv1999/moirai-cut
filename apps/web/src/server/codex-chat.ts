@@ -1783,6 +1783,7 @@ async function nextWithTurnReconciliation({
 
 interface OpenCutSessionBinding {
 	tools: string[];
+	completeToolInventory: boolean;
 	projectSnapshot: string;
 	projectName: string | null;
 	revision: number | null;
@@ -2188,30 +2189,59 @@ async function verificationFrames({
 	return frames;
 }
 
+async function listOpenCutTools({
+	connection,
+	threadId,
+}: {
+	connection: CodexAppServerConnection;
+	threadId: string;
+}): Promise<string[]> {
+	const statusResponse = await connection.request({
+		method: "mcpServerStatus/list",
+		params: {
+			threadId,
+			detail: "toolsAndAuthOnly",
+			limit: 100,
+		},
+	});
+	const servers =
+		isRecord(statusResponse) && Array.isArray(statusResponse.data)
+			? statusResponse.data.filter(isRecord)
+			: [];
+	const openCut = servers.find((server) => server.name === "opencut");
+	if (!openCut || !isRecord(openCut.tools)) {
+		throw new CodexChatError(
+			"OpenCut MCP 未就绪：当前 Codex 会话没有可用的 opencut 工具入口。",
+		);
+	}
+	const tools = Object.keys(openCut.tools);
+	const missingTools = REQUIRED_OPENCUT_TOOLS.filter(
+		(tool) => !tools.includes(tool),
+	);
+	if (missingTools.length > 0) {
+		throw new CodexChatError(
+			`OpenCut MCP 未就绪：缺少 ${missingTools.join("、")} 工具。`,
+		);
+	}
+	return tools;
+}
+
 async function bindOpenCutSession({
 	connection,
 	threadId,
 	projectId,
 	knownTools,
+	requireCompleteToolInventory = false,
 }: {
 	connection: CodexAppServerConnection;
 	threadId: string;
 	projectId: string;
 	knownTools?: string[];
+	requireCompleteToolInventory?: boolean;
 }): Promise<OpenCutSessionBinding> {
-	let tools = knownTools;
-	const statusRequest = tools
-		? null
-		: connection.request({
-				method: "mcpServerStatus/list",
-				params: {
-					threadId,
-					detail: "toolsAndAuthOnly",
-					limit: 100,
-				},
-			});
-	const projectRequest = connection
-		.request({
+	let projectSnapshot: string;
+	try {
+		const projectResponse = await connection.request({
 			method: "mcpServer/tool/call",
 			params: {
 				threadId,
@@ -2219,43 +2249,28 @@ async function bindOpenCutSession({
 				tool: "read_project",
 				arguments: { projectId, detail: "summary" },
 			},
-		})
-		.then(
-			(response) => ({ response, error: null }),
-			(error: unknown) => ({ response: null, error }),
-		);
-	if (statusRequest) {
-		const statusResponse = await statusRequest;
-		const servers =
-			isRecord(statusResponse) && Array.isArray(statusResponse.data)
-				? statusResponse.data.filter(isRecord)
-				: [];
-		const openCut = servers.find((server) => server.name === "opencut");
-		if (!openCut || !isRecord(openCut.tools)) {
-			throw new CodexChatError(
-				"OpenCut MCP 未就绪：当前 Codex 会话没有可用的 opencut 工具入口。",
-			);
+		});
+		projectSnapshot = projectSnapshotFromToolResponse(projectResponse);
+	} catch (projectError) {
+		try {
+			await listOpenCutTools({ connection, threadId });
+		} catch (diagnosticError) {
+			throw diagnosticError;
 		}
-		tools = Object.keys(openCut.tools);
-		const missingTools = REQUIRED_OPENCUT_TOOLS.filter(
-			(tool) => !tools?.includes(tool),
-		);
-		if (missingTools.length > 0) {
-			throw new CodexChatError(
-				`OpenCut MCP 未就绪：缺少 ${missingTools.join("、")} 工具。`,
-			);
-		}
-	}
-	if (!tools) {
-		throw new CodexChatError("OpenCut MCP 未就绪：无法读取工具目录。");
+		throw projectError;
 	}
 
-	const projectResult = await projectRequest;
-	if (projectResult.error) throw projectResult.error;
-	const projectResponse = projectResult.response;
-	const projectSnapshot = projectSnapshotFromToolResponse(projectResponse);
+	const completeToolInventory = Boolean(
+		knownTools || requireCompleteToolInventory,
+	);
+	const tools =
+		knownTools ??
+		(requireCompleteToolInventory
+			? await listOpenCutTools({ connection, threadId })
+			: [...REQUIRED_OPENCUT_TOOLS]);
 	return {
 		tools,
+		completeToolInventory,
 		projectSnapshot,
 		projectName: projectNameFromSnapshot(projectSnapshot),
 		revision: revisionFromProjectSnapshot(projectSnapshot),
@@ -2580,8 +2595,13 @@ export function createCodexChatService({
 					threadId: sessionId,
 					projectId: input.projectId,
 					knownTools: validatedTools.get(`${toolProfile}:${sessionId}`),
+					requireCompleteToolInventory:
+						input.visualMode === "auto" ||
+						input.verificationMode === "full",
 				});
-				validatedTools.set(`${toolProfile}:${sessionId}`, binding.tools);
+				if (binding.completeToolInventory) {
+					validatedTools.set(`${toolProfile}:${sessionId}`, binding.tools);
+				}
 				const nextThreadName = visibleThreadName(
 					binding.projectName || `OpenCut · ${input.projectId}`,
 				);
@@ -2604,7 +2624,7 @@ export function createCodexChatService({
 				yield {
 					type: "protocol",
 					id: `mcp:${sessionId}:opencut`,
-					method: "mcpServerStatus/list",
+					method: "mcpServer/tool/call",
 					threadId: sessionId,
 					itemType: "mcpToolCall",
 					status: "completed",
