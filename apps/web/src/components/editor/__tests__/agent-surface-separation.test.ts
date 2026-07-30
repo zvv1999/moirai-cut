@@ -134,4 +134,14 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).not.toContain("app-server · 等待协议事件");
 		expect(workbenchSource).not.toContain("Codex 正在处理");
 	});
+
+	test("同一工程在关闭重开、刷新和不同页面中恢复同一份会话", () => {
+		expect(workbenchSource).toContain("/api/codex/history/");
+		expect(workbenchSource).toContain("fetchCodexConversation");
+		expect(workbenchSource).toContain("persistCodexConversation");
+		expect(workbenchSource).toContain("BroadcastChannel");
+		expect(workbenchSource).toContain("setInterval(refreshConversation");
+		expect(workbenchSource).toContain("conversationHydrated");
+		expect(workbenchSource).toContain("crypto.randomUUID()");
+	});
 });
