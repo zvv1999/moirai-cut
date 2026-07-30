@@ -5,7 +5,9 @@ import path from "node:path";
 import {
 	GET,
 	POST,
+	readSharedProjectConversation,
 } from "@/app/api/codex/history/[projectId]/route";
+import { createCodexConversationStore } from "@/server/codex-conversation";
 
 const originalProjectsRoot = process.env.OPENCUT_PROJECTS_DIR;
 const temporaryRoots: string[] = [];
@@ -27,10 +29,68 @@ async function routeFixture() {
 	const projectId = "project-route-chat";
 	await mkdir(path.join(root, projectId), { recursive: true });
 	process.env.OPENCUT_PROJECTS_DIR = root;
-	return { projectId };
+	return { projectId, root };
 }
 
 describe("Codex project conversation API", () => {
+	test("hydrates the selected project conversation from its App Server thread", async () => {
+		const { projectId, root } = await routeFixture();
+		const store = createCodexConversationStore({ rootDirectory: root });
+		await store.merge({
+			projectId,
+			conversationId: "conversation-shared",
+			sessionId: "thread-shared",
+			messages: [],
+		});
+		const calls: string[] = [];
+
+		const conversation = await readSharedProjectConversation({
+			projectId,
+			conversationId: "conversation-shared",
+			store,
+			codex: {
+				readThread: async ({ sessionId }) => {
+					calls.push(sessionId);
+					return {
+						sessionId,
+						title: "App 中继续的会话",
+						createdAt: 100,
+						updatedAt: 200,
+						messages: [
+							{
+								id: "user-app",
+								role: "user",
+								content: "从 App 继续调整",
+								turnId: "turn-app",
+								createdAt: 100,
+								updatedAt: 100,
+							},
+							{
+								id: "assistant-app",
+								role: "assistant",
+								content: "已同步到工程。",
+								turnId: "turn-app",
+								createdAt: 101,
+								updatedAt: 200,
+							},
+						],
+					};
+				},
+			},
+		});
+
+		expect(calls).toEqual(["thread-shared"]);
+		expect(conversation.conversations[0]).toMatchObject({
+			id: "conversation-shared",
+			title: "App 中继续的会话",
+			sessionId: "thread-shared",
+			messages: [
+				{ id: "user-app", content: "从 App 继续调整" },
+				{ id: "assistant-app", content: "已同步到工程。" },
+			],
+		});
+	});
+
 	test("writes and reloads the same project conversation", async () => {
 		const { projectId } = await routeFixture();
 		const context = { params: Promise.resolve({ projectId }) };
