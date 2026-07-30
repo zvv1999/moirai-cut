@@ -11,7 +11,9 @@ flowchart LR
   UI["OpenCut 编辑器"] -->|"选择元素 / 时间段 / 素材"| Context["Agent Context v1"]
   Context --> Presence["编辑器 Presence API"]
   Context --> Chat["智能剪辑 SSE 会话"]
-  Chat --> Codex["Codex app-server"]
+  Chat --> Host["共享 Codex app-server"]
+  App["Codex App"] --> Host
+  Host --> Codex["同一 thread 与事件通道"]
   Codex --> MCP["OpenCut MCP"]
   MCP --> Project["project.json"]
   Project -->|"文件 revision 更新"| UI
@@ -43,28 +45,29 @@ flowchart LR
 4. 把工程摘要与 `opencut.agent-context.v1` 一起放入本轮输入，再调用
    `turn/start`。
 
-任一步失败都在模型开始回复前终止并显示具体错误。内置智能剪辑始终显式启用
-`opencut`、始终禁用 `localcut`，其他能力由工具档位决定：
+任一步失败都在模型开始回复前终止并显示具体错误。共享宿主始终显式启用
+`opencut`、始终禁用 `localcut`，并装载 Codex App 已配置的其他能力。工具档位只用于
+约束本轮的工作重点和验收深度，不再切换 app-server：
 
-- **专注剪辑**：只开放 OpenCut；
-- **剪辑与验收**：增加 Node REPL、桌面/浏览器验收和 OpenAI 官方文档能力；
-- **完整能力**：保留 Codex App 已配置的其他 MCP，仍强制禁用 LocalCut。
+- **专注剪辑**：本轮只使用 OpenCut；
+- **剪辑与验收**：本轮可使用 Node REPL、桌面/浏览器验收和 OpenAI 官方文档能力；
+- **完整能力**：本轮可使用 Codex App 已配置的其他 MCP，仍强制禁用 LocalCut。
 
-三个档位各自维护一个长驻 app-server 连接，避免工具权限不同的 thread 互相污染。
-模型、推理强度、执行/规划模式、技能目录均由 app-server 的原生
-`model/list`、`collaborationMode/list`、`skills/list` 返回，不在前端硬编码成一套
-弱化能力。
+三个档位复用同一个长驻 WebSocket app-server 和同一条客户端连接，避免切换档位时
+thread 被带到另一个宿主。档位是本轮 Agent 的行为边界，不再通过不同进程隐藏工具。
+模型、推理强度、执行/规划模式、技能目录均由 app-server 的原生 `model/list`、
+`collaborationMode/list`、`skills/list` 返回，不在前端硬编码成一套弱化能力。
 
 ### 性能与画质档位
 
 智能剪辑把影响首字延迟、工具权限和画面验收成本的选项收敛为三个预设；预设不会更换
 Codex 内核，只调整当前任务所需的推理、工具和验证深度：
 
-| 档位 | 推理 | 工具 | 画面识别 | 回写验证 | 适用场景 |
-| --- | --- | --- | --- | --- | --- |
-| 快速 | `medium` | 专注剪辑 | 关闭 | 关闭 | 文案、重命名和确定性的简单修改 |
-| 均衡（默认） | `high` | 专注剪辑 | 关闭 | 基础 | 日常剪辑；回读 revision 确认落盘，不阻塞等待渲染 |
-| 导演 | `xhigh` | 剪辑与验收 | 自动 | 完整 | 镜头判断、节奏重排、关键画面和最终质量验收 |
+| 档位         | 推理     | 工具       | 画面识别 | 回写验证 | 适用场景                                         |
+| ------------ | -------- | ---------- | -------- | -------- | ------------------------------------------------ |
+| 快速         | `medium` | 专注剪辑   | 关闭     | 关闭     | 文案、重命名和确定性的简单修改                   |
+| 均衡（默认） | `high`   | 专注剪辑   | 关闭     | 基础     | 日常剪辑；回读 revision 确认落盘，不阻塞等待渲染 |
+| 导演         | `xhigh`  | 剪辑与验收 | 自动     | 完整     | 镜头判断、节奏重排、关键画面和最终质量验收       |
 
 自动档会根据指令和显式引用决定是否取帧。均衡档不在每一轮强制生成联系表或渲染帧，
 因此普通对话能更快开始流式返回；需要视觉证据时切换“导演”即可恢复多模态识别、
@@ -95,12 +98,11 @@ OPENCUT_PROJECTS_DIR = "../opencut-projects"
 必须使用 Bun 启动 MCP。当前运行环境中的旧版 Node 不提供服务所需的原生
 `fetch`。这份配置只注册 OpenCut，不依赖 LocalCut。
 
-智能剪辑 task 在 Codex App 中归入上层工作区时，服务端会在首次后台同步前确保
+智能剪辑 task 在 Codex App 中归入上层工作区时，服务端会在首次打开桌面任务前确保
 `<workspace>/.codex/config.toml` 也包含等价的 `opencut` 配置。自动写入只追加带
 `BEGIN/END OPENCUT MANAGED MCP` 标记的区块；若用户已经配置
-`[mcp_servers.opencut]`，则完全保留用户版本。这样 Codex App 的主 app-server 从
-同一 task 续聊时会从 task 的真实 `cwd` 加载 OpenCut MCP，不依赖网页专用
-app-server 的启动参数。
+`[mcp_servers.opencut]`，则完全保留用户版本。共享宿主同时通过启动参数显式装载
+OpenCut MCP；工作区配置作为用户从非共享入口启动 Codex 时的兼容兜底。
 
 编辑器每 5 秒发布一次心跳。Codex App 中的标准入口顺序是：
 
@@ -377,20 +379,30 @@ App 继续对话后，下一次权威 `thread/read` 都必须得到相同正文�
 
 这不是把 Codex App 窗口嵌入网页。浏览器只实现轻量展示和 OpenCut 引用交互，
 认证、任务历史、续聊、模型执行与流式事件均使用 Codex 原生 App Server 协议。
-浏览器智能剪辑和 Codex App 当前各自持有一个 app-server 进程：两端共享原生 task
-历史，但不共享进程内的实时事件订阅。
-
-OpenCut 默认已经为每个工具档位复用一个长驻 app-server。需要让多个 OpenCut Web
-进程再复用同一个浏览器侧服务时，可以预先启动可信的 app-server daemon，并设置：
+OpenCut 和 Codex App 必须连接同一个 loopback WebSocket 宿主；默认地址为：
 
 ```bash
-OPENCUT_CODEX_APP_SERVER_SOCKET=/absolute/path/to/app-server.sock
+OPENCUT_CODEX_APP_SERVER_URL=ws://127.0.0.1:48721
 ```
 
-只有“专注剪辑”档位会连接该 socket；daemon 必须已经配置 OpenCut MCP。“剪辑与验收”
-和“完整能力”仍使用隔离进程，防止不同权限和 MCP 集合在同一个连接中串用。这个选项
-不会让 Codex 桌面 App 改接外部 daemon；桌面 App 仍使用自己的宿主连接和原生 task
-历史。
+OpenCut 在首次请求能力或发起会话时检查 `/readyz`，宿主不存在时以当前 Codex
+运行时自动启动一次；同一 OpenCut 服务进程内的所有工具档位、API 路由和工程会话
+复用一个 WebSocket 客户端。Codex App 使用同一个 URL 启动后，会对打开或恢复的
+thread 建立自己的订阅；浏览器和桌面端因此从同一宿主读取同一 task，并接收同一轮
+事件，不再依赖“两份 app-server + 落盘后刷新”的伪同步。
+
+Codex App 只在进程启动时选择传输，因此从旧版私有 stdio 宿主迁移需要正常退出一次
+桌面 App，然后在 OpenCut 仓库执行：
+
+```bash
+bun run codex:shared-app
+```
+
+启动器先触发 OpenCut 建立共享宿主，再以
+`CODEX_APP_SERVER_WS_URL=ws://127.0.0.1:48721` 启动桌面 App。若 App 仍在运行，
+启动器会停止并提示先退出，避免同时出现一个私有宿主和一个共享宿主。之后浏览器与
+桌面端可以在同一 task 上继续对话；切换工具档位、刷新网页或关闭智能剪辑面板都不会
+改变宿主。自定义端口时，OpenCut 环境变量和桌面 App 启动环境必须使用同一个 URL。
 
 ### Codex App 工作区与任务可见性
 
@@ -414,24 +426,15 @@ OpenCut 智能剪辑创建、恢复或迁移 task 时使用 `OPENCUT_CODEX_WORKS
 
 App Server 的 `thread/start`、`thread/resume`、`thread/fork` 协议只接受执行目录和
 运行时根，不接受 Codex 桌面端项目的 `projectId`。OpenCut 不修改
-`.codex-global-state.json`，也不伪造宿主元数据；在 macOS 上，每个原生 turn 开始
-后，服务端先用 `thread/read(includeTurns: true)` 确认这一轮已经进入原生历史，再
-增量确保工作区 MCP 配置。随后依次发送后台深链
-`codex://threads/new` 和 `codex://threads/<threadId>`：第一步让已经停留在同一 task
-路由上的 Codex App 卸载旧视图，第二步触发一次新的 `thread/read` 并重新加载该 task。
-桌面 App 随后依据 task 的真实 `cwd` 把它归入已保存的 `chatcut` 项目。
+`.codex-global-state.json`，也不伪造宿主元数据。桌面 App 依据 task 的真实 `cwd`
+把它归入已保存的 `chatcut` 项目。
 
-桌面刷新分两阶段执行：turn 刚进入原生历史时刷新一次，让 Codex App 立即看到浏览器
-发起的用户消息和运行中 task；turn 完成、失败或中断后再刷新一次，让 App 读取最终
-回复和状态。这两次刷新均在后台调度；等待原生历史落盘、配置同步和打开桌面深链都不
-阻塞浏览器 SSE 的首字或后续增量。浏览器自己的 SSE 仍实时展示文本和工具步骤。由于
-Codex App 尚未提供连接外部 app-server 实时订阅的公开宿主入口，桌面端当前不能逐
-token 镜像浏览器进程中的事件；安装的 app-server 虽支持 `ws://`、`unix://` 和 daemon
-传输，也不能让已经由桌面 App 私有 stdio 进程承载的窗口自动改接外部连接。若持久化
-探测或临时重置路由失败，服务端仍会尝试直接打开目标 task；桌面 App 未安装、深链
-失败或设置 `OPENCUT_CODEX_DESKTOP_SYNC=0` 时，只跳过自动刷新，不中断 SSE、原生
-历史或工程编辑。若未来 Codex App 暴露共享连接或跨客户端实时订阅入口，应以单一
-app-server 事件流替代这层两阶段宿主刷新兼容逻辑。
+浏览器启动或完成 turn 时仍可后台打开
+`codex://threads/<threadId>`，但该深链只负责把桌面界面导航到目标 task，不参与数据
+同步，也不再先跳转 `codex://threads/new` 强制卸载页面。正文、状态和流式事件全部
+来自共享 app-server；`thread/read(includeTurns: true)` 只用于断线恢复和权威校准。
+桌面 App 未安装、深链失败或设置 `OPENCUT_CODEX_DESKTOP_SYNC=0` 时，仅跳过自动导航，
+不会影响共享事件、原生历史或工程编辑。
 
 ## 8. 二次编辑范式
 
@@ -469,7 +472,7 @@ OpenCut 内置智能剪辑已经随消息携带上下文，Codex App 则通过 P
 | `fetch is not defined`        | MCP 被旧 Node 启动；改用项目配置中的 `bun`。                                                 |
 | `edit_project` 一直 started   | 检查 app-server 客户端是否响应 `mcpServer/elicitation/request`。                             |
 | 页面刷新后仍显示处理中        | 检查消息是否保存 `runId/runSequence`，再调用重连接口；不要新开 turn。                        |
-| Codex App 续聊缺少 OpenCut    | 检查 task 的 `cwd` 所在工作区 `.codex/config.toml` 是否包含 `mcp_servers.opencut`。           |
+| Codex App 续聊缺少 OpenCut    | 检查 task 的 `cwd` 所在工作区 `.codex/config.toml` 是否包含 `mcp_servers.opencut`。          |
 | 选区没有作为图片输入          | 确认开启“自动识别选区画面”，且 MCP 暴露 `inspect_timeline_range` 或 `inspect_media_scenes`。 |
 | 完整能力仍缺少某个工具        | 先查看 `~/.codex/config.toml` 是否配置该 MCP；工具档位不会凭空安装服务。                     |
 | `revision_conflict`           | 重新 `read_project`，重新生成操作，不要盲重试。                                              |

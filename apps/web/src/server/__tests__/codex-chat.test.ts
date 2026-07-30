@@ -410,9 +410,7 @@ describe("Codex desktop refresh", () => {
 	test("opens the shared task without resetting the desktop route", () => {
 		expect(
 			codexDesktopRefreshUrls("019fb29a-6b2a-7661-b946-1cf7d2158711"),
-		).toEqual([
-			"codex://threads/019fb29a-6b2a-7661-b946-1cf7d2158711",
-		]);
+		).toEqual(["codex://threads/019fb29a-6b2a-7661-b946-1cf7d2158711"]);
 	});
 });
 
@@ -453,6 +451,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 
 		expect(prompt).toContain("project-1");
 		expect(prompt).toContain("统一字幕样式");
+		expect(prompt).toContain("本轮只使用 opencut MCP");
 		expect(prompt).toContain(
 			"opencut://project/project-1/scene/main/track/text",
 		);
@@ -1939,7 +1938,8 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				if (method === "thread/name/set") return {};
 				if (method === "mcpServerStatus/list") return readyOpenCutStatus();
 				if (method === "mcpServer/tool/call") return projectSummary();
-				if (method === "turn/start") return { turn: { id: "turn-nonblocking" } };
+				if (method === "turn/start")
+					return { turn: { id: "turn-nonblocking" } };
 				if (method === "thread/read") {
 					return {
 						thread: {
@@ -2077,9 +2077,9 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			}
 		}
 
-		expect(calls.filter((method) => method === "mcpServerStatus/list")).toHaveLength(
-			1,
-		);
+		expect(
+			calls.filter((method) => method === "mcpServerStatus/list"),
+		).toHaveLength(1);
 		expect(calls.filter((method) => method === "thread/name/set")).toHaveLength(
 			1,
 		);

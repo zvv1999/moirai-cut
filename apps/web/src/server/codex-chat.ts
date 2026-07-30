@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline";
+import { PassThrough } from "node:stream";
 import { configuredCodexBinary } from "@/server/codex-config";
 import { ensureOpenCutWorkspaceConfig } from "@/server/codex-workspace-config";
 
@@ -10,9 +12,11 @@ const TURN_IDLE_TIMEOUT_MS = 6 * 60 * 1_000;
 const MAX_STDERR_CHARS = 16_384;
 const MAX_PROTOCOL_DETAIL_CHARS = 8_000;
 const MAX_PROJECT_SNAPSHOT_CHARS = 120_000;
-const DESKTOP_REFRESH_ROUTE_SETTLE_MS = 180;
 const THREAD_PERSISTENCE_RETRY_MS = 40;
 const THREAD_PERSISTENCE_MAX_ATTEMPTS = 5;
+const SHARED_HOST_START_TIMEOUT_MS = 12_000;
+const SHARED_HOST_READY_RETRY_MS = 80;
+const DEFAULT_SHARED_APP_SERVER_URL = "ws://127.0.0.1:48721";
 const REQUIRED_OPENCUT_TOOLS = ["read_project", "edit_project"] as const;
 const BLOCKED_MCP_SERVERS = new Set(["localcut"]);
 const VERIFY_MCP_SERVERS = new Set([
@@ -33,7 +37,7 @@ export interface CodexRuntimeConfig {
 	mcpServerPath: string;
 	projectFilesDir: string;
 	baseUrl: string;
-	sharedAppServerSocket?: string;
+	sharedAppServerUrl: string;
 	disabledMcpServers?: string[];
 }
 
@@ -55,11 +59,7 @@ export interface CodexChatInput {
 }
 
 export type CodexProtocolStatus =
-	| "started"
-	| "streaming"
-	| "completed"
-	| "failed"
-	| "info";
+	"started" | "streaming" | "completed" | "failed" | "info";
 
 export interface CodexProtocolFrame {
 	id: string;
@@ -243,25 +243,31 @@ function commonCodexConfigArgs({
 	];
 }
 
-export function buildCodexAppServerArgs({
+function assertLoopbackWebSocketUrl(value: string): URL {
+	let url: URL;
+	try {
+		url = new URL(value);
+	} catch {
+		throw new CodexChatError("Codex 共享宿主 URL 无效。");
+	}
+	const loopbackHosts = new Set(["127.0.0.1", "localhost", "[::1]"]);
+	if (url.protocol !== "ws:" || !loopbackHosts.has(url.hostname)) {
+		throw new CodexChatError("Codex 共享宿主必须使用本机 loopback WebSocket。");
+	}
+	return url;
+}
+
+export function buildCodexSharedHostArgs({
 	runtime,
-	toolProfile = "edit",
 }: {
 	runtime: CodexRuntimeConfig;
-	toolProfile?: CodexToolProfile;
 }): string[] {
-	if (toolProfile === "edit" && runtime.sharedAppServerSocket) {
-		return [
-			"app-server",
-			"proxy",
-			"--sock",
-			runtime.sharedAppServerSocket,
-		];
-	}
+	assertLoopbackWebSocketUrl(runtime.sharedAppServerUrl);
 	return [
 		"app-server",
-		"--stdio",
-		...commonCodexConfigArgs({ runtime, toolProfile }),
+		"--listen",
+		runtime.sharedAppServerUrl,
+		...commonCodexConfigArgs({ runtime, toolProfile: "full" }),
 	];
 }
 
@@ -271,9 +277,16 @@ export function buildCodexPrompt({
 	context,
 	projectSnapshot = "",
 	mode = "default",
+	toolProfile = "edit",
 	verificationMode = "off",
 }: CodexChatInput & { projectSnapshot?: string }): string {
 	const planning = mode === "plan";
+	const toolGuidance =
+		toolProfile === "full"
+			? "- 本轮可按需使用共享宿主中已配置的其他能力，但工程读写仍只能使用 opencut MCP。"
+			: toolProfile === "verify"
+				? "- 本轮以 opencut MCP 为主，可使用浏览器、桌面和文档工具做必要验收；不要调用无关能力。"
+				: "- 本轮只使用 opencut MCP 完成剪辑，不要调用共享宿主中的其他工具。";
 	return [
 		"你正在 OpenCut 编辑器的“智能剪辑”直接 Codex 会话中。",
 		`唯一允许操作的工程 ID：${projectId}`,
@@ -288,6 +301,7 @@ export function buildCodexPrompt({
 			? "- 这是规划型会话。读取和分析工程后给出可执行计划，不要调用 edit_project 修改工程。"
 			: "- 这是执行型会话。用户提出明确的剪辑要求时，直接执行，不要只给计划。",
 		"- 任何工程读取和改动都必须使用 opencut MCP；不要修改 OpenCut 源码仓库。",
+		toolGuidance,
 		"- 这是 OpenCut 工程，不是 LocalCut 任务。不要读取、调用或套用 LocalCut、localcut-native-video 技能、MCP、运行时或工作流。",
 		"- 当前运行在内置浏览器，使用 read_project 和 edit_project 这组文件工具读取及修改工程。",
 		"- 不要调用 status、get_context、open_editor、reveal_context 等依赖 Chrome 9222 的标签页工具；引用上下文已随本消息提供。",
@@ -433,6 +447,20 @@ interface CodexAppServerChildProcess {
 	stderr: NodeJS.ReadableStream;
 	on(event: "error", listener: (error: Error) => void): unknown;
 	on(event: "close", listener: (code: number | null) => void): unknown;
+}
+
+export interface CodexAppServerWebSocket {
+	readonly readyState: number;
+	send(data: string): void;
+	close(): void;
+	addEventListener(
+		event: "open" | "message" | "error" | "close",
+		listener: (event: unknown) => void,
+	): void;
+	removeEventListener(
+		event: "open" | "message" | "error" | "close",
+		listener: (event: unknown) => void,
+	): void;
 }
 
 export class CodexAppServerRpcClient implements CodexAppServerConnection {
@@ -651,51 +679,222 @@ export class CodexAppServerRpcClient implements CodexAppServerConnection {
 	}
 }
 
+function errorFromWebSocketEvent(
+	event: unknown,
+	fallback: string,
+): CodexChatError {
+	if (isRecord(event) && event.error instanceof Error) {
+		return new CodexChatError(event.error.message);
+	}
+	if (isRecord(event) && typeof event.reason === "string" && event.reason) {
+		return new CodexChatError(event.reason);
+	}
+	return new CodexChatError(fallback);
+}
+
+function websocketChildProcess(
+	socket: CodexAppServerWebSocket,
+): CodexAppServerChildProcess {
+	const events = new EventEmitter();
+	const stdout = new PassThrough();
+	const stderr = new PassThrough();
+	const queued: string[] = [];
+	let opened = socket.readyState === 1;
+	let closed = false;
+
+	const send = (value: string): boolean => {
+		const message = value.endsWith("\n") ? value.slice(0, -1) : value;
+		if (!message) return true;
+		if (opened) {
+			socket.send(message);
+			return true;
+		}
+		queued.push(message);
+		return true;
+	};
+	const onOpen = () => {
+		opened = true;
+		for (const message of queued.splice(0)) socket.send(message);
+	};
+	const onMessage = (event: unknown) => {
+		if (!isRecord(event)) return;
+		const data = event.data;
+		if (typeof data === "string") {
+			stdout.write(`${data}\n`);
+			return;
+		}
+		if (data instanceof ArrayBuffer) {
+			stdout.write(`${Buffer.from(data).toString("utf8")}\n`);
+		}
+	};
+	const onError = (event: unknown) => {
+		events.emit(
+			"error",
+			errorFromWebSocketEvent(event, "Codex 共享宿主 WebSocket 连接失败。"),
+		);
+	};
+	const onClose = (event: unknown) => {
+		if (closed) return;
+		closed = true;
+		events.emit(
+			"close",
+			isRecord(event) && typeof event.code === "number" ? event.code : null,
+		);
+	};
+
+	socket.addEventListener("open", onOpen);
+	socket.addEventListener("message", onMessage);
+	socket.addEventListener("error", onError);
+	socket.addEventListener("close", onClose);
+
+	return {
+		stdin: { write: send },
+		stdout,
+		stderr,
+		on(event, listener) {
+			events.on(event, listener);
+			return events;
+		},
+	};
+}
+
+export class CodexAppServerWebSocketClient extends CodexAppServerRpcClient {
+	constructor(socket: CodexAppServerWebSocket) {
+		super(websocketChildProcess(socket));
+	}
+}
+
 const sharedConnectionPromises = new Map<
-	CodexToolProfile,
-	Promise<CodexAppServerRpcClient>
+	string,
+	Promise<CodexAppServerWebSocketClient>
 >();
+const sharedHostStartPromises = new Map<string, Promise<void>>();
+
+function sharedHostHealthUrl(sharedAppServerUrl: string): string {
+	const url = assertLoopbackWebSocketUrl(sharedAppServerUrl);
+	url.protocol = "http:";
+	url.pathname = "/readyz";
+	url.search = "";
+	url.hash = "";
+	return url.toString();
+}
+
+async function sharedHostReady(sharedAppServerUrl: string): Promise<boolean> {
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), 800);
+	try {
+		const response = await fetch(sharedHostHealthUrl(sharedAppServerUrl), {
+			cache: "no-store",
+			signal: controller.signal,
+		});
+		return response.ok;
+	} catch {
+		return false;
+	} finally {
+		clearTimeout(timeout);
+	}
+}
+
+async function startSharedAppServerHost(
+	runtime: CodexRuntimeConfig,
+): Promise<void> {
+	if (await sharedHostReady(runtime.sharedAppServerUrl)) return;
+	const child = spawn(runtime.binary, buildCodexSharedHostArgs({ runtime }), {
+		cwd: runtime.repoRoot,
+		env: passthroughEnvironment(runtime),
+		shell: false,
+		stdio: ["ignore", "ignore", "pipe"],
+	});
+	let stderr = "";
+	let processError: Error | null = null;
+	let exitCode: number | null | undefined;
+	child.stderr.on("data", (chunk: Buffer) => {
+		stderr = `${stderr}${chunk.toString("utf8")}`.slice(-MAX_STDERR_CHARS);
+	});
+	child.once("error", (error) => {
+		processError = error;
+	});
+	child.once("exit", (code) => {
+		exitCode = code;
+	});
+
+	const deadline = Date.now() + SHARED_HOST_START_TIMEOUT_MS;
+	while (Date.now() < deadline) {
+		if (await sharedHostReady(runtime.sharedAppServerUrl)) return;
+		if (processError) throw processError;
+		if (exitCode !== undefined) {
+			throw new CodexChatError(
+				stderr.trim() ||
+					`Codex 共享宿主已退出，状态码 ${exitCode ?? "unknown"}。`,
+			);
+		}
+		await wait(SHARED_HOST_READY_RETRY_MS);
+	}
+	throw new CodexChatError(
+		stderr.trim() || "Codex 共享宿主启动超时，请检查本机端口 48721。",
+	);
+}
+
+async function ensureSharedAppServerHost(
+	runtime: CodexRuntimeConfig,
+): Promise<void> {
+	const key = runtime.sharedAppServerUrl;
+	let pending = sharedHostStartPromises.get(key);
+	if (!pending) {
+		pending = startSharedAppServerHost(runtime);
+		sharedHostStartPromises.set(key, pending);
+	}
+	try {
+		await pending;
+	} finally {
+		if (sharedHostStartPromises.get(key) === pending) {
+			sharedHostStartPromises.delete(key);
+		}
+	}
+}
 
 async function createAppServerConnection({
 	runtime,
-	toolProfile,
 }: {
 	runtime: CodexRuntimeConfig;
-	toolProfile: CodexToolProfile;
-}): Promise<CodexAppServerRpcClient> {
-	const child = spawn(
-		runtime.binary,
-		buildCodexAppServerArgs({ runtime, toolProfile }),
-		{
-			cwd: runtime.repoRoot,
-			env: passthroughEnvironment(runtime),
-			shell: false,
-			stdio: ["pipe", "pipe", "pipe"],
-		},
-	);
-	const connection = new CodexAppServerRpcClient(child);
-	await connection.initialize();
-	return connection;
+}): Promise<CodexAppServerWebSocketClient> {
+	await ensureSharedAppServerHost(runtime);
+	const WebSocketConstructor = globalThis.WebSocket;
+	if (!WebSocketConstructor) {
+		throw new CodexChatError(
+			"当前服务端运行时不支持 WebSocket，请使用项目要求的 Node 20+ 或 Bun。",
+		);
+	}
+	const socket = new WebSocketConstructor(
+		runtime.sharedAppServerUrl,
+	) as unknown as CodexAppServerWebSocket;
+	const connection = new CodexAppServerWebSocketClient(socket);
+	try {
+		await connection.initialize();
+		return connection;
+	} catch (error) {
+		socket.close();
+		throw error;
+	}
 }
 
 const connectSharedAppServer: CodexAppServerConnector = async ({
 	runtime,
-	toolProfile = "edit",
+	toolProfile: _toolProfile = "edit",
 }) => {
-	let pending = sharedConnectionPromises.get(toolProfile);
+	const key = runtime.sharedAppServerUrl;
+	let pending = sharedConnectionPromises.get(key);
 	if (!pending) {
-		pending = createAppServerConnection({ runtime, toolProfile }).catch(
-			(error) => {
-				sharedConnectionPromises.delete(toolProfile);
-				throw error;
-			},
-		);
-		sharedConnectionPromises.set(toolProfile, pending);
+		pending = createAppServerConnection({ runtime }).catch((error) => {
+			sharedConnectionPromises.delete(key);
+			throw error;
+		});
+		sharedConnectionPromises.set(key, pending);
 	}
 	const connection = await pending;
 	if (connection.isOpen) return connection;
-	sharedConnectionPromises.delete(toolProfile);
-	return connectSharedAppServer({ runtime, toolProfile });
+	sharedConnectionPromises.delete(key);
+	return connectSharedAppServer({ runtime, toolProfile: _toolProfile });
 };
 
 function configuredMcpServerNames(): string[] {
@@ -747,17 +946,15 @@ export function resolveCodexRuntimeConfig(): CodexRuntimeConfig {
 			process.env.OPENCUT_BASE_URL?.trim() ||
 			process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
 			"http://127.0.0.1:3000",
-		sharedAppServerSocket:
-			process.env.OPENCUT_CODEX_APP_SERVER_SOCKET?.trim() || undefined,
+		sharedAppServerUrl:
+			process.env.OPENCUT_CODEX_APP_SERVER_URL?.trim() ||
+			DEFAULT_SHARED_APP_SERVER_URL,
 		disabledMcpServers: configuredMcpServerNames(),
 	};
 }
 
 export function codexDesktopRefreshUrls(threadId: string): string[] {
-	return [
-		"codex://threads/new",
-		`codex://threads/${encodeURIComponent(threadId)}`,
-	];
+	return [`codex://threads/${encodeURIComponent(threadId)}`];
 }
 
 function wait(milliseconds: number): Promise<void> {
@@ -807,13 +1004,7 @@ export async function syncCodexThreadToDesktop({
 		projectFilesDir: runtime.projectFilesDir,
 		baseUrl: runtime.baseUrl,
 	});
-	const [resetUrl, threadUrl] = codexDesktopRefreshUrls(threadId);
-	try {
-		await openCodexDesktopUrl(resetUrl);
-		await wait(DESKTOP_REFRESH_ROUTE_SETTLE_MS);
-	} catch {
-		// Reopening the target task remains useful if the reset route is unavailable.
-	}
+	const [threadUrl] = codexDesktopRefreshUrls(threadId);
 	await openCodexDesktopUrl(threadUrl);
 }
 
@@ -1085,9 +1276,7 @@ function threadReadContainsTurn(response: unknown, turnId: string): boolean {
 		isRecord(response) &&
 		isRecord(response.thread) &&
 		Array.isArray(response.thread.turns) &&
-		response.thread.turns.some(
-			(turn) => isRecord(turn) && turn.id === turnId,
-		)
+		response.thread.turns.some((turn) => isRecord(turn) && turn.id === turnId)
 	);
 }
 
@@ -1997,17 +2186,17 @@ const TOOL_PROFILES: CodexToolProfileCapability[] = [
 	{
 		id: "edit",
 		label: "专注剪辑",
-		description: "只开放 OpenCut 工程工具，适合日常剪辑。",
+		description: "本轮只使用 OpenCut 工程工具，适合日常剪辑。",
 	},
 	{
 		id: "verify",
 		label: "剪辑与验收",
-		description: "增加浏览器与桌面验收能力，仍禁用 LocalCut。",
+		description: "本轮可使用浏览器与桌面能力验收，仍禁用 LocalCut。",
 	},
 	{
 		id: "full",
 		label: "完整能力",
-		description: "开放已配置的 Codex 工具，始终禁用 LocalCut。",
+		description: "本轮可使用已配置的 Codex 工具，始终禁用 LocalCut。",
 	},
 ];
 
