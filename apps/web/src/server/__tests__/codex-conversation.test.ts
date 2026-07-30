@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, mkdir, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createCodexConversationStore } from "../codex-conversation";
@@ -17,25 +17,45 @@ async function fixture() {
 	temporaryRoots.push(root);
 	const projectId = "project-shared-chat";
 	await mkdir(path.join(root, projectId), { recursive: true });
+	let clock = 1_000;
 	return {
 		projectId,
-		store: createCodexConversationStore({ rootDirectory: root }),
+		root,
+		store: createCodexConversationStore({
+			rootDirectory: root,
+			now: () => ++clock,
+		}),
 	};
 }
 
 describe("project-scoped Codex conversation storage", () => {
-	test("persists one authoritative conversation across store instances", async () => {
+	test("persists multiple independent conversations and resumes each thread", async () => {
 		const { projectId, store } = await fixture();
 		await store.merge({
 			projectId,
-			sessionId: "thread-shared",
+			conversationId: "conversation-first",
+			sessionId: "thread-first",
 			messages: [
 				{
-					id: "message-user",
+					id: "message-first",
 					role: "user",
-					content: "第一条消息",
+					content: "先整理开场节奏",
 					createdAt: 100,
 					updatedAt: 100,
+				},
+			],
+		});
+		await store.merge({
+			projectId,
+			conversationId: "conversation-second",
+			sessionId: "thread-second",
+			messages: [
+				{
+					id: "message-second",
+					role: "user",
+					content: "再调整片尾字幕",
+					createdAt: 200,
+					updatedAt: 200,
 				},
 			],
 		});
@@ -43,18 +63,24 @@ describe("project-scoped Codex conversation storage", () => {
 		const reopened = createCodexConversationStore({
 			rootDirectory: store.rootDirectory,
 		});
-		const conversation = await reopened.read(projectId);
+		const history = await reopened.read(projectId);
 
-		expect(conversation).toMatchObject({
-			schemaVersion: "opencut.codex-conversation.v1",
+		expect(history).toMatchObject({
+			schemaVersion: "opencut.codex-conversations.v2",
 			projectId,
-			revision: 1,
-			sessionId: "thread-shared",
-			messages: [
+			revision: 2,
+			conversations: [
 				{
-					id: "message-user",
-					role: "user",
-					content: "第一条消息",
+					id: "conversation-second",
+					title: "再调整片尾字幕",
+					sessionId: "thread-second",
+					messages: [{ id: "message-second" }],
+				},
+				{
+					id: "conversation-first",
+					title: "先整理开场节奏",
+					sessionId: "thread-first",
+					messages: [{ id: "message-first" }],
 				},
 			],
 		});
@@ -64,6 +90,7 @@ describe("project-scoped Codex conversation storage", () => {
 		const { projectId, store } = await fixture();
 		await store.merge({
 			projectId,
+			conversationId: "conversation-shared",
 			sessionId: "thread-shared",
 			messages: [
 				{
@@ -86,6 +113,7 @@ describe("project-scoped Codex conversation storage", () => {
 		});
 		await store.merge({
 			projectId,
+			conversationId: "conversation-shared",
 			sessionId: "thread-shared",
 			messages: [
 				{
@@ -115,17 +143,60 @@ describe("project-scoped Codex conversation storage", () => {
 			],
 		});
 
-		const conversation = await store.read(projectId);
-		expect(conversation.messages.map((message) => message.id)).toEqual([
+		const history = await store.read(projectId);
+		const conversation = history.conversations[0];
+		expect(conversation?.messages.map((message) => message.id)).toEqual([
 			"page-a-user",
 			"page-a-assistant",
 			"page-b-user",
 		]);
-		expect(conversation.messages[1]).toMatchObject({
+		expect(conversation?.messages[1]).toMatchObject({
 			content: "页面 A 已完成",
 			streaming: false,
 		});
-		expect(conversation.revision).toBe(2);
+		expect(history.revision).toBe(2);
+	});
+
+	test("migrates the existing v1 project conversation without losing context", async () => {
+		const { projectId, root, store } = await fixture();
+		const agentDirectory = path.join(root, projectId, "agent");
+		await mkdir(agentDirectory, { recursive: true });
+		await writeFile(
+			path.join(agentDirectory, "codex-conversation.json"),
+			JSON.stringify({
+				schemaVersion: "opencut.codex-conversation.v1",
+				projectId,
+				revision: 7,
+				sessionId: "thread-legacy",
+				messages: [
+					{
+						id: "legacy-user",
+						role: "user",
+						content: "继续之前的粗剪",
+						createdAt: 300,
+						updatedAt: 300,
+					},
+				],
+				updatedAt: 400,
+			}),
+		);
+
+		const history = await store.read(projectId);
+		expect(history).toMatchObject({
+			schemaVersion: "opencut.codex-conversations.v2",
+			projectId,
+			revision: 7,
+			conversations: [
+				{
+					id: "legacy-conversation",
+					title: "继续之前的粗剪",
+					sessionId: "thread-legacy",
+					messages: [{ id: "legacy-user" }],
+					createdAt: 300,
+					updatedAt: 400,
+				},
+			],
+		});
 	});
 
 	test("rejects unsafe projects and oversized or malformed messages", async () => {
@@ -135,6 +206,7 @@ describe("project-scoped Codex conversation storage", () => {
 		await expect(
 			store.merge({
 				projectId: "project-shared-chat",
+				conversationId: "conversation-invalid",
 				sessionId: null,
 				messages: [
 					{
@@ -147,5 +219,13 @@ describe("project-scoped Codex conversation storage", () => {
 				],
 			}),
 		).rejects.toThrow("message content");
+		await expect(
+			store.merge({
+				projectId: "project-shared-chat",
+				conversationId: "../conversation",
+				sessionId: null,
+				messages: [],
+			}),
+		).rejects.toThrow("conversation id");
 	});
 });

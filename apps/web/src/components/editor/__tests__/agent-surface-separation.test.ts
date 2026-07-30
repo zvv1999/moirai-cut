@@ -172,4 +172,19 @@ describe("智能剪辑与工程历史分面", () => {
 			"void refreshConversation().finally",
 		);
 	});
+
+	test("展示工程内的不同会话并可选择原上下文继续对话", () => {
+		expect(conversationSource).toContain("CodexConversationThread");
+		expect(conversationSource).toContain("conversationId");
+		expect(workbenchSource).toContain('aria-label="智能剪辑会话记录"');
+		expect(workbenchSource).toContain('aria-label="新建智能剪辑会话"');
+		expect(workbenchSource).toContain("createConversation");
+		expect(workbenchSource).toContain("selectConversation");
+		expect(workbenchSource).toContain(
+			"conversation.id === activeConversationId",
+		);
+		expect(workbenchSource).toContain(
+			"sessionId: conversation.sessionId",
+		);
+	});
 });

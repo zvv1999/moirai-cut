@@ -39,6 +39,7 @@ describe("Codex project conversation API", () => {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({
+					conversationId: "conversation-route",
 					sessionId: "thread-route",
 					messages: [
 						{
@@ -64,8 +65,14 @@ describe("Codex project conversation API", () => {
 		expect(readResponse.headers.get("cache-control")).toContain("no-store");
 		expect(conversation).toMatchObject({
 			projectId,
-			sessionId: "thread-route",
-			messages: [{ id: "message-route", content: "跨页面可见" }],
+			schemaVersion: "opencut.codex-conversations.v2",
+			conversations: [
+				{
+					id: "conversation-route",
+					sessionId: "thread-route",
+					messages: [{ id: "message-route", content: "跨页面可见" }],
+				},
+			],
 		});
 	});
 
@@ -87,7 +94,19 @@ describe("Codex project conversation API", () => {
 			new Request(`http://localhost/api/codex/history/${projectId}`, {
 				method: "POST",
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ sessionId: 42, messages: [] }),
+				body: JSON.stringify({
+					conversationId: "conversation-invalid-session",
+					sessionId: 42,
+					messages: [],
+				}),
+			}),
+			{ params: Promise.resolve({ projectId }) },
+		);
+		const missingConversation = await POST(
+			new Request(`http://localhost/api/codex/history/${projectId}`, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ sessionId: null, messages: [] }),
 			}),
 			{ params: Promise.resolve({ projectId }) },
 		);
@@ -95,5 +114,6 @@ describe("Codex project conversation API", () => {
 		expect(unsafe.status).toBe(400);
 		expect(invalid.status).toBe(400);
 		expect(invalidSession.status).toBe(400);
+		expect(missingConversation.status).toBe(400);
 	});
 });
