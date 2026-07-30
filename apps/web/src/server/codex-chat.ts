@@ -32,6 +32,8 @@ export interface CodexRuntimeConfig {
 	disabledMcpServers?: string[];
 }
 
+export type CodexDesktopThreadSync = (threadId: string) => Promise<void> | void;
+
 export interface CodexChatInput {
 	projectId: string;
 	message: string;
@@ -732,6 +734,39 @@ export function resolveCodexRuntimeConfig(): CodexRuntimeConfig {
 			"http://127.0.0.1:3000",
 		disabledMcpServers: configuredMcpServerNames(),
 	};
+}
+
+export async function syncCodexThreadToDesktop(
+	threadId: string,
+): Promise<void> {
+	if (
+		process.platform !== "darwin" ||
+		process.env.OPENCUT_CODEX_DESKTOP_SYNC?.trim() === "0"
+	) {
+		return;
+	}
+	if (
+		!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+			threadId,
+		)
+	) {
+		throw new CodexChatError("Codex 返回了无效的桌面任务 ID。");
+	}
+	await new Promise<void>((resolve, reject) => {
+		const child = spawn(
+			"/usr/bin/open",
+			["-g", `codex://threads/${encodeURIComponent(threadId)}`],
+			{ stdio: "ignore" },
+		);
+		child.once("error", reject);
+		child.once("exit", (code) => {
+			if (code === 0) {
+				resolve();
+				return;
+			}
+			reject(new Error(`Codex desktop sync exited with code ${code}.`));
+		});
+	});
 }
 
 function appWorkspaceRoot(runtime: CodexRuntimeConfig): string {
@@ -1935,9 +1970,11 @@ function capabilitiesFromResponses({
 export function createCodexChatService({
 	runtime = resolveCodexRuntimeConfig(),
 	connect = connectSharedAppServer,
+	syncThreadToDesktop,
 }: {
 	runtime?: CodexRuntimeConfig;
 	connect?: CodexAppServerConnector;
+	syncThreadToDesktop?: CodexDesktopThreadSync;
 } = {}): CodexChatService {
 	const sessions = new Map<string, string>();
 	const sessionCacheKey = (input: CodexChatInput) => {
@@ -2073,6 +2110,11 @@ export function createCodexChatService({
 						name: visibleThreadName(input.message),
 					},
 				});
+				try {
+					await syncThreadToDesktop?.(sessionId);
+				} catch {
+					// Desktop discovery is best-effort; App Server remains authoritative.
+				}
 			}
 			sessions.set(cacheKey, sessionId);
 			const subscription = connection.subscribe(sessionId);
