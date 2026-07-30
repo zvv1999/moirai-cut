@@ -2252,11 +2252,7 @@ async function bindOpenCutSession({
 		});
 		projectSnapshot = projectSnapshotFromToolResponse(projectResponse);
 	} catch (projectError) {
-		try {
-			await listOpenCutTools({ connection, threadId });
-		} catch (diagnosticError) {
-			throw diagnosticError;
-		}
+		await listOpenCutTools({ connection, threadId });
 		throw projectError;
 	}
 
