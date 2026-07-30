@@ -193,6 +193,61 @@ describe("project-scoped Codex conversation storage", () => {
 		]);
 	});
 
+	test("treats App thread history as authoritative and removes stale local-only messages", async () => {
+		const { store, projectId } = await fixture();
+		await store.merge({
+			projectId,
+			conversationId: "conversation-authoritative",
+			sessionId: "thread-authoritative",
+			messages: [
+				{
+					id: "user-native",
+					role: "user",
+					content: "保留原生消息",
+					turnId: "turn-native",
+					createdAt: 100,
+					updatedAt: 100,
+				},
+				{
+					id: "legacy-local-copy",
+					role: "assistant",
+					content: "这条只存在于旧浏览器缓存",
+					createdAt: 101,
+					updatedAt: 101,
+				},
+			],
+		});
+
+		const synchronized = await store.synchronizeThread({
+			projectId,
+			conversationId: "conversation-authoritative",
+			sessionId: "thread-authoritative",
+			title: "保留原生消息",
+			messages: [
+				{
+					id: "user-native",
+					role: "user",
+					content: "保留原生消息",
+					turnId: "turn-native",
+					createdAt: 100,
+					updatedAt: 110,
+				},
+				{
+					id: "assistant-native",
+					role: "assistant",
+					content: "这是 App Server 的权威回复。",
+					turnId: "turn-native",
+					createdAt: 101,
+					updatedAt: 111,
+				},
+			],
+		});
+
+		expect(
+			synchronized.conversations[0]?.messages.map((message) => message.id),
+		).toEqual(["user-native", "assistant-native"]);
+	});
+
 	test("persists multiple independent conversations and resumes each thread", async () => {
 		const { projectId, store } = await fixture();
 		await store.merge({

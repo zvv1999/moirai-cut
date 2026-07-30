@@ -1105,6 +1105,76 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(closed).toBe(true);
 	});
 
+	test("uses the saved Codex App workspace for thread grouping while keeping OpenCut roots available", async () => {
+		const calls: Array<{ method: string; params: unknown }> = [];
+		const groupedRuntime = {
+			...runtime,
+			appWorkspaceRoot: "/workspace",
+		} as CodexRuntimeConfig & { appWorkspaceRoot: string };
+		const connection: CodexAppServerConnection = {
+			request: async ({ method, params }) => {
+				calls.push({ method, params });
+				if (method === "thread/start") {
+					return { thread: { id: "thread-grouped" } };
+				}
+				if (method === "thread/name/set") return {};
+				if (method === "mcpServerStatus/list") return readyOpenCutStatus();
+				if (method === "mcpServer/tool/call") return projectSummary();
+				if (method === "turn/start") return { turn: { id: "turn-grouped" } };
+				throw new Error(`unexpected method ${method}`);
+			},
+			subscribe: (threadId) =>
+				subscriptionOf({
+					notifications: [
+						{
+							method: "turn/completed",
+							params: {
+								threadId,
+								turn: {
+									id: "turn-grouped",
+									status: "completed",
+									error: null,
+									items: [
+										{
+											type: "agentMessage",
+											id: "assistant-grouped",
+											text: "已归入工作区",
+										},
+									],
+								},
+							},
+						},
+					],
+				}),
+		};
+		const service = createCodexChatService({
+			runtime: groupedRuntime,
+			connect: async () => connection,
+		});
+
+		for await (const _event of service.stream({
+			input: {
+				projectId: "project-1",
+				message: "检查工作区归类",
+				context: "",
+			},
+		})) {
+			// Consume the completed turn.
+		}
+
+		expect(calls[0]).toMatchObject({
+			method: "thread/start",
+			params: {
+				cwd: "/workspace",
+				runtimeWorkspaceRoots: [
+					"/workspace",
+					runtime.repoRoot,
+					runtime.projectFilesDir,
+				],
+			},
+		});
+	});
+
 	test("fails before starting a turn when the current session has no OpenCut MCP", async () => {
 		const calls: Array<{ method: string; params: unknown }> = [];
 		const connection: CodexAppServerConnection = {
