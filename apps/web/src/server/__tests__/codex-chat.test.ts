@@ -17,7 +17,45 @@ const runtime: CodexRuntimeConfig = {
 	mcpServerPath: "/workspace/opencut-classic/apps/mcp/src/server.mjs",
 	projectFilesDir: "/workspace/opencut-projects",
 	baseUrl: "http://127.0.0.1:3000",
+	disabledMcpServers: ["localcut", "node_repl", "opencut"],
 };
+
+function readyOpenCutStatus(): unknown {
+	return {
+		data: [
+			{
+				name: "opencut",
+				serverInfo: { name: "opencut", version: "1.0.0" },
+				tools: {
+					read_project: { name: "read_project" },
+					edit_project: { name: "edit_project" },
+					inspect_timeline_range: { name: "inspect_timeline_range" },
+				},
+				resources: [],
+				resourceTemplates: [],
+				authStatus: "notRequired",
+			},
+		],
+		nextCursor: null,
+	};
+}
+
+function projectSummary(projectId = "project-1"): unknown {
+	return {
+		content: [
+			{
+				type: "text",
+				text: JSON.stringify({
+					projectId,
+					revision: 7,
+					scene: { id: "main", durationSeconds: 31 },
+					tracks: [{ id: "video", elementCount: 4 }],
+				}),
+			},
+		],
+		isError: false,
+	};
+}
 
 function subscriptionOf({
 	notifications,
@@ -274,6 +312,10 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(args).toContain(
 			'mcp_servers.opencut.args=["/workspace/opencut-classic/apps/mcp/src/server.mjs"]',
 		);
+		expect(args).toContain("mcp_servers.localcut.enabled=false");
+		expect(args).toContain("mcp_servers.node_repl.enabled=false");
+		expect(args).toContain("mcp_servers.opencut.enabled=true");
+		expect(args).not.toContain("mcp_servers.opencut.enabled=false");
 		expect(args).not.toContain("exec");
 		expect(args).not.toContain("--json");
 	});
@@ -283,7 +325,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			projectId: "project-1",
 			message: "统一字幕样式",
 			context: "opencut://project/project-1/scene/main/track/text",
-		});
+		}, '{"projectId":"project-1","revision":7}');
 
 		expect(prompt).toContain("project-1");
 		expect(prompt).toContain("统一字幕样式");
@@ -302,6 +344,11 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(prompt).toContain(
 			"不要读取、调用或套用 LocalCut、localcut-native-video",
 		);
+		expect(prompt).toContain("OpenCut MCP 已由系统验证就绪");
+		expect(prompt).toContain("当前工程摘要已由系统预读");
+		expect(prompt).toContain('{"projectId":"project-1","revision":7}');
+		expect(prompt).toContain("不要声称没有 OpenCut 工具");
+		expect(prompt).toContain("不要自行连接或启动 MCP");
 		expect(prompt).not.toContain("优先使用 get_context");
 		expect(prompt).not.toContain("至少需要两个字幕素材");
 	});
@@ -314,6 +361,12 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				calls.push({ method, params });
 				if (method === "thread/start") {
 					return { thread: { id: "thread-project-1" } };
+				}
+				if (method === "mcpServerStatus/list") {
+					return readyOpenCutStatus();
+				}
+				if (method === "mcpServer/tool/call") {
+					return projectSummary();
 				}
 				if (method === "turn/start") {
 					return { turn: { id: "turn-1" } };
@@ -395,6 +448,26 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			},
 			{
 				type: "protocol",
+				id: "mcp:thread-project-1:opencut",
+				method: "mcpServerStatus/list",
+				threadId: "thread-project-1",
+				itemType: "mcpToolCall",
+				status: "completed",
+				title: "OpenCut MCP 已就绪",
+				detail: "read_project · edit_project · inspect_timeline_range",
+			},
+			{
+				type: "protocol",
+				id: "context:thread-project-1:project-1",
+				method: "mcpServer/tool/call",
+				threadId: "thread-project-1",
+				itemType: "mcpToolCall",
+				status: "completed",
+				title: "当前工程上下文已载入",
+				detail: "project-1 · revision 7",
+			},
+			{
+				type: "protocol",
 				id: "turn:turn-1",
 				method: "turn/start",
 				threadId: "thread-project-1",
@@ -421,19 +494,86 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		]);
 		expect(calls.map((call) => call.method)).toEqual([
 			"thread/start",
+			"mcpServerStatus/list",
+			"mcpServer/tool/call",
 			"turn/start",
 		]);
-		expect(JSON.stringify(calls[1]?.params)).toContain("统一字幕样式");
-		expect(JSON.stringify(calls[1]?.params)).toContain("引用 A");
+		expect(calls[1]).toEqual({
+			method: "mcpServerStatus/list",
+			params: {
+				threadId: "thread-project-1",
+				detail: "toolsAndAuthOnly",
+				limit: 100,
+			},
+		});
+		expect(calls[2]).toEqual({
+			method: "mcpServer/tool/call",
+			params: {
+				threadId: "thread-project-1",
+				server: "opencut",
+				tool: "read_project",
+				arguments: { projectId: "project-1", detail: "summary" },
+			},
+		});
+		expect(JSON.stringify(calls[3]?.params)).toContain("统一字幕样式");
+		expect(JSON.stringify(calls[3]?.params)).toContain("引用 A");
+		expect(JSON.stringify(calls[3]?.params)).toContain('"revision":7');
 		expect(closed).toBe(true);
+	});
+
+	test("fails before starting a turn when the current session has no OpenCut MCP", async () => {
+		const calls: Array<{ method: string; params: unknown }> = [];
+		const connection: CodexAppServerConnection = {
+			request: async ({ method, params }) => {
+				calls.push({ method, params });
+				if (method === "thread/start") {
+					return { thread: { id: "thread-1" } };
+				}
+				if (method === "mcpServerStatus/list") {
+					return { data: [], nextCursor: null };
+				}
+				throw new Error(`unexpected method ${method}`);
+			},
+			subscribe: () => subscriptionOf({ notifications: [] }),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+		});
+
+		const consume = async () => {
+			for await (const _event of service.stream({
+				input: {
+					projectId: "project-1",
+					message: "重排当前选区",
+					context: "21.3-29.0s",
+				},
+			})) {
+				// Consume until the preflight fails.
+			}
+		};
+
+		expect(consume()).rejects.toThrow("OpenCut MCP 未就绪");
+		expect(calls.map((call) => call.method)).toEqual([
+			"thread/start",
+			"mcpServerStatus/list",
+		]);
 	});
 
 	test("forwards native Codex reasoning, plan, MCP and command lifecycle frames", async () => {
 		const connection: CodexAppServerConnection = {
-			request: async ({ method }) =>
-				method === "thread/start"
-					? { thread: { id: "thread-1" } }
-					: { turn: { id: "turn-1" } },
+			request: async ({ method }) => {
+				if (method === "thread/start") {
+					return { thread: { id: "thread-1" } };
+				}
+				if (method === "mcpServerStatus/list") {
+					return readyOpenCutStatus();
+				}
+				if (method === "mcpServer/tool/call") {
+					return projectSummary();
+				}
+				return { turn: { id: "turn-1" } };
+			},
 			subscribe: (threadId) =>
 				subscriptionOf({
 					notifications: [
@@ -679,6 +819,12 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				if (method === "thread/resume") {
 					return { thread: { id: "thread-existing" } };
 				}
+				if (method === "mcpServerStatus/list") {
+					return readyOpenCutStatus();
+				}
+				if (method === "mcpServer/tool/call") {
+					return projectSummary();
+				}
 				return { turn: { id: "turn-2" } };
 			},
 			subscribe: (threadId) =>
@@ -735,10 +881,18 @@ describe("Codex direct Smart Edit streaming chat", () => {
 
 	test("surfaces a failed Codex turn without replacing it with local validation", async () => {
 		const connection: CodexAppServerConnection = {
-			request: async ({ method }) =>
-				method === "thread/start"
-					? { thread: { id: "thread-1" } }
-					: { turn: { id: "turn-1" } },
+			request: async ({ method }) => {
+				if (method === "thread/start") {
+					return { thread: { id: "thread-1" } };
+				}
+				if (method === "mcpServerStatus/list") {
+					return readyOpenCutStatus();
+				}
+				if (method === "mcpServer/tool/call") {
+					return projectSummary();
+				}
+				return { turn: { id: "turn-1" } };
+			},
 			subscribe: (threadId) =>
 				subscriptionOf({
 					notifications: [
