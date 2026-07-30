@@ -10,6 +10,7 @@ import { ensureOpenCutWorkspaceConfig } from "@/server/codex-workspace-config";
 const REQUEST_TIMEOUT_MS = 30_000;
 const MCP_REQUEST_TIMEOUT_MS = 120_000;
 const TURN_IDLE_TIMEOUT_MS = 6 * 60 * 1_000;
+const TURN_RECONCILE_INTERVAL_MS = 15_000;
 const MAX_STDERR_CHARS = 16_384;
 const MAX_PROTOCOL_DETAIL_CHARS = 8_000;
 const MAX_PROJECT_SNAPSHOT_CHARS = 120_000;
@@ -1696,29 +1697,86 @@ function protocolFrameFromNotification(
 	return null;
 }
 
-async function nextWithIdleTimeout({
+function terminalTurnFromThreadRead(
+	response: unknown,
+	turnId: string,
+): Record<string, unknown> | null {
+	if (
+		!isRecord(response) ||
+		!isRecord(response.thread) ||
+		!Array.isArray(response.thread.turns)
+	) {
+		return null;
+	}
+	const turn = response.thread.turns.find(
+		(candidate) => isRecord(candidate) && candidate.id === turnId,
+	);
+	return (
+		isRecord(turn) &&
+			(turn.status === "completed" ||
+				turn.status === "failed" ||
+				turn.status === "interrupted")
+			? turn
+			: null
+	);
+}
+
+async function nextWithTurnReconciliation({
 	iterator,
+	connection,
+	threadId,
+	turnId,
+	reconcileIntervalMs,
 }: {
 	iterator: AsyncIterator<unknown>;
+	connection: CodexAppServerConnection;
+	threadId: string;
+	turnId: string;
+	reconcileIntervalMs: number;
 }): Promise<IteratorResult<unknown>> {
-	let timer: ReturnType<typeof setTimeout> | null = null;
-	try {
-		return await Promise.race([
-			iterator.next(),
-			new Promise<IteratorResult<unknown>>((_, reject) => {
+	const pendingNotification = iterator.next();
+	const deadline = Date.now() + TURN_IDLE_TIMEOUT_MS;
+	for (;;) {
+		let timer: ReturnType<typeof setTimeout> | null = null;
+		const remainingMs = Math.max(1, deadline - Date.now());
+		const result = await Promise.race([
+			pendingNotification.then((value) => ({
+				kind: "notification" as const,
+				value,
+			})),
+			new Promise<{ kind: "reconcile" }>((resolve) => {
 				timer = setTimeout(
-					() =>
-						reject(
-							new CodexChatError(
-								"Codex 长时间没有返回新进度，可重新连接此任务。",
-							),
-						),
-					TURN_IDLE_TIMEOUT_MS,
+					() => resolve({ kind: "reconcile" }),
+					Math.min(reconcileIntervalMs, remainingMs),
 				);
 			}),
 		]);
-	} finally {
 		if (timer) clearTimeout(timer);
+		if (result.kind === "notification") return result.value;
+
+		try {
+			const response = await connection.request({
+				method: "thread/read",
+				params: { threadId, includeTurns: true },
+			});
+			const turn = terminalTurnFromThreadRead(response, turnId);
+			if (turn) {
+				return {
+					done: false,
+					value: {
+						method: "turn/completed",
+						params: { threadId, turn },
+					},
+				};
+			}
+		} catch {
+			// Native event delivery remains primary; retry reconciliation until idle.
+		}
+		if (Date.now() >= deadline) {
+			throw new CodexChatError(
+				"Codex 长时间没有返回新进度，可重新连接此任务。",
+			);
+		}
 	}
 }
 
@@ -2305,10 +2363,12 @@ export function createCodexChatService({
 	runtime = resolveCodexRuntimeConfig(),
 	connect = connectSharedAppServer,
 	syncThreadToDesktop,
+	turnReconcileIntervalMs = TURN_RECONCILE_INTERVAL_MS,
 }: {
 	runtime?: CodexRuntimeConfig;
 	connect?: CodexAppServerConnector;
 	syncThreadToDesktop?: CodexDesktopThreadSync;
+	turnReconcileIntervalMs?: number;
 } = {}): CodexChatService {
 	const sessions = new Map<string, string>();
 	const validatedTools = new Map<string, string[]>();
@@ -2630,7 +2690,13 @@ export function createCodexChatService({
 					if (signal?.aborted) {
 						throw new CodexChatError("Codex 会话已取消。");
 					}
-					const next = await nextWithIdleTimeout({ iterator });
+					const next = await nextWithTurnReconciliation({
+						iterator,
+						connection,
+						threadId: sessionId,
+						turnId,
+						reconcileIntervalMs: turnReconcileIntervalMs,
+					});
 					if (next.done) {
 						throw new CodexChatError("Codex 事件流提前结束。");
 					}

@@ -1242,8 +1242,10 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				throw new Error(`unexpected method ${method}`);
 			},
 			subscribe: () => ({
-				async *[Symbol.asyncIterator]() {
-					await new Promise(() => {});
+				[Symbol.asyncIterator]() {
+					return {
+						next: async () => await new Promise<IteratorResult<unknown>>(() => {}),
+					};
 				},
 				close() {},
 			}),
