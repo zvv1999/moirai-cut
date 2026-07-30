@@ -23,6 +23,9 @@ const externalProjectRouteExcludes = [
 ];
 
 const nextConfig: NextConfig = {
+	// The Codex in-app browser opens the local editor through this loopback
+	// hostname. Next.js 16 otherwise blocks its dev chunks and HMR requests.
+	allowedDevOrigins: ["127.0.0.1"],
 	// The dev-tools launcher (the "N" button bottom-left) and its floating
 	// popovers sit on top of the editor and read as broken UI to anyone who is
 	// here to edit video rather than debug Next.
