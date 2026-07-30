@@ -354,6 +354,31 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(args).not.toContain("--json");
 	});
 
+	test("can reuse an explicit daemon socket for focused editing without mixing tool profiles", () => {
+		const socketRuntime = {
+			...runtime,
+			sharedAppServerSocket: "/tmp/opencut-codex.sock",
+		};
+
+		expect(
+			buildCodexAppServerArgs({
+				runtime: socketRuntime,
+				toolProfile: "edit",
+			}),
+		).toEqual([
+			"app-server",
+			"proxy",
+			"--sock",
+			"/tmp/opencut-codex.sock",
+		]);
+		expect(
+			buildCodexAppServerArgs({
+				runtime: socketRuntime,
+				toolProfile: "verify",
+			}).slice(0, 2),
+		).toEqual(["app-server", "--stdio"]);
+	});
+
 	test("offers focused, verification, and full App tool profiles without ever enabling LocalCut", () => {
 		const verificationArgs = buildCodexAppServerArgs({
 			runtime,
