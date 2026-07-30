@@ -396,7 +396,8 @@ export function createCodexChatRouteHandlers({
 }
 
 const service = createCodexChatService({
-	syncThreadToDesktop: syncCodexThreadToDesktop,
+	syncThreadToDesktop: (threadId) =>
+		syncCodexThreadToDesktop({ threadId }),
 });
 const handlers = createCodexChatRouteHandlers({ service });
 

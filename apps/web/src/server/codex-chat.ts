@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline";
 import { configuredCodexBinary } from "@/server/codex-config";
+import { ensureOpenCutWorkspaceConfig } from "@/server/codex-workspace-config";
 
 const REQUEST_TIMEOUT_MS = 30_000;
 const TURN_IDLE_TIMEOUT_MS = 6 * 60 * 1_000;
@@ -304,12 +305,12 @@ function buildOpenCutThreadInstructions(projectId: string): string {
 		"所有工程读取和修改必须使用 opencut MCP，不要修改 OpenCut 源码。",
 		"不要使用 LocalCut、localcut-native-video 或 localcut MCP。",
 		"继续会话时先读取工程的最新 revision，再基于用户最新指令编辑。",
-		"用户从 Codex App 继续对话时，当前 cwd 对应 OpenCut 仓库，项目级配置会提供 opencut MCP。",
+		"用户从 Codex App 继续对话时，当前工作区的项目级配置会提供 opencut MCP。",
 	].join("\n");
 }
 
-function visibleThreadName(message: string): string {
-	const normalized = message.trim().replace(/\s+/g, " ");
+function visibleThreadName(name: string): string {
+	const normalized = name.trim().replace(/\s+/g, " ");
 	return (normalized || "OpenCut 智能剪辑").slice(0, 80);
 }
 
@@ -736,9 +737,13 @@ export function resolveCodexRuntimeConfig(): CodexRuntimeConfig {
 	};
 }
 
-export async function syncCodexThreadToDesktop(
-	threadId: string,
-): Promise<void> {
+export async function syncCodexThreadToDesktop({
+	threadId,
+	runtime = resolveCodexRuntimeConfig(),
+}: {
+	threadId: string;
+	runtime?: CodexRuntimeConfig;
+}): Promise<void> {
 	if (
 		process.platform !== "darwin" ||
 		process.env.OPENCUT_CODEX_DESKTOP_SYNC?.trim() === "0"
@@ -752,6 +757,13 @@ export async function syncCodexThreadToDesktop(
 	) {
 		throw new CodexChatError("Codex 返回了无效的桌面任务 ID。");
 	}
+	await ensureOpenCutWorkspaceConfig({
+		appWorkspaceRoot: appWorkspaceRoot(runtime),
+		repoRoot: runtime.repoRoot,
+		mcpServerPath: runtime.mcpServerPath,
+		projectFilesDir: runtime.projectFilesDir,
+		baseUrl: runtime.baseUrl,
+	});
 	await new Promise<void>((resolve, reject) => {
 		const child = spawn(
 			"/usr/bin/open",
@@ -1417,6 +1429,7 @@ async function nextWithIdleTimeout({
 interface OpenCutSessionBinding {
 	tools: string[];
 	projectSnapshot: string;
+	projectName: string | null;
 	revision: number | null;
 }
 
@@ -1447,6 +1460,22 @@ function projectSnapshotFromToolResponse(response: unknown): string {
 	}
 	if (snapshot.length <= MAX_PROJECT_SNAPSHOT_CHARS) return snapshot;
 	return `${snapshot.slice(0, MAX_PROJECT_SNAPSHOT_CHARS)}\n…工程摘要已截断`;
+}
+
+function projectNameFromSnapshot(snapshot: string): string | null {
+	try {
+		const project: unknown = JSON.parse(snapshot);
+		if (!isRecord(project)) return null;
+		const projectName =
+			typeof project.projectName === "string"
+				? project.projectName
+				: typeof project.name === "string"
+					? project.name
+					: null;
+		return projectName?.trim() || null;
+	} catch {
+		return null;
+	}
 }
 
 function revisionFromProjectSnapshot(snapshot: string): number | null {
@@ -1851,6 +1880,7 @@ async function bindOpenCutSession({
 	return {
 		tools,
 		projectSnapshot,
+		projectName: projectNameFromSnapshot(projectSnapshot),
 		revision: revisionFromProjectSnapshot(projectSnapshot),
 	};
 }
@@ -2104,15 +2134,6 @@ export function createCodexChatService({
 			const sessionId = threadIdFromResponse(threadResponse);
 			const shouldSyncThreadToDesktop =
 				!requestedSessionId || migratedLegacyThread;
-			if (shouldSyncThreadToDesktop) {
-				await connection.request({
-					method: "thread/name/set",
-					params: {
-						threadId: sessionId,
-						name: visibleThreadName(input.message),
-					},
-				});
-			}
 			sessions.set(cacheKey, sessionId);
 			const subscription = connection.subscribe(sessionId);
 			const iterator = subscription[Symbol.asyncIterator]();
@@ -2150,6 +2171,15 @@ export function createCodexChatService({
 					connection,
 					threadId: sessionId,
 					projectId: input.projectId,
+				});
+				await connection.request({
+					method: "thread/name/set",
+					params: {
+						threadId: sessionId,
+						name: visibleThreadName(
+							binding.projectName || `OpenCut · ${input.projectId}`,
+						),
+					},
 				});
 				yield {
 					type: "protocol",

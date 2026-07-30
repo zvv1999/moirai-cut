@@ -51,10 +51,13 @@ function readyOpenCutStatus(): unknown {
 	};
 }
 
-function projectSummary(
+function projectSummary({
 	projectId = "project-1",
 	projectName = "地坛 × Reed",
-): unknown {
+}: {
+	projectId?: string;
+	projectName?: string;
+} = {}): unknown {
 	return {
 		content: [
 			{
@@ -916,11 +919,11 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				runtimeWorkspaceRoots: [runtime.repoRoot, runtime.projectFilesDir],
 			},
 		});
-		expect(calls[2]).toEqual({
+		expect(calls[4]).toEqual({
 			method: "thread/name/set",
 			params: {
 				threadId: "thread-visible",
-				name: "继续调整",
+				name: "地坛 × Reed",
 			},
 		});
 	});
@@ -1072,9 +1075,9 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		]);
 		expect(calls.map((call) => call.method)).toEqual([
 			"thread/start",
-			"thread/name/set",
 			"mcpServerStatus/list",
 			"mcpServer/tool/call",
+			"thread/name/set",
 			"turn/start",
 		]);
 		expect(calls[0]?.params).toMatchObject({
@@ -1083,13 +1086,6 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		});
 		expect(JSON.stringify(calls[0]?.params)).toContain("project-1");
 		expect(calls[1]).toEqual({
-			method: "thread/name/set",
-			params: {
-				threadId: "thread-project-1",
-				name: "地坛 × Reed",
-			},
-		});
-		expect(calls[2]).toEqual({
 			method: "mcpServerStatus/list",
 			params: {
 				threadId: "thread-project-1",
@@ -1097,13 +1093,20 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				limit: 100,
 			},
 		});
-		expect(calls[3]).toEqual({
+		expect(calls[2]).toEqual({
 			method: "mcpServer/tool/call",
 			params: {
 				threadId: "thread-project-1",
 				server: "opencut",
 				tool: "read_project",
 				arguments: { projectId: "project-1", detail: "summary" },
+			},
+		});
+		expect(calls[3]).toEqual({
+			method: "thread/name/set",
+			params: {
+				threadId: "thread-project-1",
+				name: "地坛 × Reed",
 			},
 		});
 		expect(calls[4]?.params).toMatchObject({
@@ -1225,7 +1228,6 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(consume()).rejects.toThrow("OpenCut MCP 未就绪");
 		expect(calls.map((call) => call.method)).toEqual([
 			"thread/start",
-			"thread/name/set",
 			"mcpServerStatus/list",
 		]);
 	});
