@@ -1726,6 +1726,8 @@ describe("Codex direct Smart Edit streaming chat", () => {
 
 	test("syncs only newly created native threads into the desktop project without blocking chat", async () => {
 		const syncCalls: string[] = [];
+		const syncObservedCompletedTurn: boolean[] = [];
+		let nativeTurnCompleted = false;
 		let nextTurn = 0;
 		const turnByThread = new Map<string, string>();
 		const connection: CodexAppServerConnection = {
@@ -1757,6 +1759,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 					await Promise.resolve();
 					const turnId = turnByThread.get(threadId);
 					if (!turnId) throw new Error(`missing turn for ${threadId}`);
+					nativeTurnCompleted = true;
 					yield {
 						method: "turn/completed",
 						params: {
@@ -1784,11 +1787,13 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			connect: async () => connection,
 			syncThreadToDesktop: async (threadId) => {
 				syncCalls.push(threadId);
+				syncObservedCompletedTurn.push(nativeTurnCompleted);
 				throw new Error("desktop app is unavailable");
 			},
 		});
 
 		for (let attempt = 0; attempt < 2; attempt += 1) {
+			nativeTurnCompleted = false;
 			const events = [];
 			for await (const event of service.stream({
 				input: {
@@ -1808,6 +1813,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		}
 
 		expect(syncCalls).toEqual(["thread-desktop-project"]);
+		expect(syncObservedCompletedTurn).toEqual([true]);
 	});
 
 	test("surfaces a failed Codex turn without replacing it with local validation", async () => {
