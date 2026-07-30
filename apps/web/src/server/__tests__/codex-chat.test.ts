@@ -1730,7 +1730,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		});
 	});
 
-	test("syncs only newly created native threads into the desktop project without blocking chat", async () => {
+	test("refreshes the desktop project after every completed browser turn without blocking chat", async () => {
 		const syncCalls: string[] = [];
 		const syncObservedCompletedTurn: boolean[] = [];
 		let nativeTurnCompleted = false;
@@ -1818,8 +1818,74 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			});
 		}
 
-		expect(syncCalls).toEqual(["thread-desktop-project"]);
-		expect(syncObservedCompletedTurn).toEqual([true]);
+		expect(syncCalls).toEqual([
+			"thread-desktop-project",
+			"thread-desktop-project",
+		]);
+		expect(syncObservedCompletedTurn).toEqual([true, true]);
+	});
+
+	test("refreshes the desktop project when a browser turn is interrupted", async () => {
+		const syncCalls: string[] = [];
+		const connection: CodexAppServerConnection = {
+			request: async ({ method }) => {
+				if (method === "thread/start") {
+					return {
+						thread: {
+							id: "thread-interrupted",
+							threadSource: "user",
+						},
+					};
+				}
+				if (method === "thread/name/set") return {};
+				if (method === "mcpServerStatus/list") return readyOpenCutStatus();
+				if (method === "mcpServer/tool/call") return projectSummary();
+				if (method === "turn/start") {
+					return { turn: { id: "turn-interrupted" } };
+				}
+				throw new Error(`unexpected method ${method}`);
+			},
+			subscribe: (threadId) =>
+				subscriptionOf({
+					notifications: [
+						{
+							method: "turn/completed",
+							params: {
+								threadId,
+								turn: {
+									id: "turn-interrupted",
+									status: "interrupted",
+									error: null,
+									items: [],
+								},
+							},
+						},
+					],
+				}),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+			syncThreadToDesktop: async (threadId) => {
+				syncCalls.push(threadId);
+			},
+		});
+
+		const consume = async () => {
+			for await (const _event of service.stream({
+				input: {
+					projectId: "project-1",
+					conversationId: "conversation-interrupted",
+					message: "处理中断后仍同步到桌面",
+					context: "",
+				},
+			})) {
+				// Consume until the interrupted native turn terminates the stream.
+			}
+		};
+
+		expect(consume()).rejects.toThrow("Codex 本轮处理已中断");
+		expect(syncCalls).toEqual(["thread-interrupted"]);
 	});
 
 	test("surfaces a failed Codex turn without replacing it with local validation", async () => {
