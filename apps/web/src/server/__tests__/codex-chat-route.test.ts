@@ -16,6 +16,18 @@ describe("Codex Smart Edit SSE API", () => {
 				calls.push(input);
 				yield { type: "session", sessionId: "thread-1" };
 				await barrier;
+				yield {
+					type: "protocol",
+					id: "tool-1",
+					method: "item/started",
+					threadId: "thread-1",
+					turnId: "turn-1",
+					itemId: "tool-1",
+					itemType: "mcpToolCall",
+					status: "started",
+					title: "OpenCut · read_project",
+					detail: '{\n  "projectId": "project-1"\n}',
+				};
 				yield { type: "delta", delta: "已" };
 				yield { type: "delta", delta: "完成" };
 				yield {
@@ -57,6 +69,9 @@ describe("Codex Smart Edit SSE API", () => {
 		}
 		expect(body).toContain(
 			'event: session\ndata: {"sessionId":"thread-1"}',
+		);
+		expect(body).toContain(
+			'event: protocol\ndata: {"id":"tool-1","method":"item/started","threadId":"thread-1","turnId":"turn-1","itemId":"tool-1","itemType":"mcpToolCall","status":"started","title":"OpenCut · read_project","detail":"{\\n  \\"projectId\\": \\"project-1\\"\\n}"}',
 		);
 		expect(body).toContain('event: delta\ndata: {"delta":"已"}');
 		expect(body).toContain('event: delta\ndata: {"delta":"完成"}');

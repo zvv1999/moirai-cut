@@ -117,15 +117,25 @@ describe("智能剪辑与工程历史分面", () => {
 
 	test("每条智能剪辑消息直接进入 Codex，不再经过本地计划和质检", () => {
 		expect(workbenchSource).toContain('fetch("/api/codex/chat"');
-		expect(workbenchSource).toContain("Codex 正在处理");
 		expect(workbenchSource).toContain("本会话由 Codex 直接处理");
 		expect(workbenchSource).toContain("response.body.getReader()");
 		expect(workbenchSource).toContain('event.event === "delta"');
+		expect(workbenchSource).toContain('event.event === "protocol"');
 		expect(workbenchSource).toContain(
 			"...(sessionId ? { sessionId } : {})",
 		);
 		expect(workbenchSource).not.toContain("compileSemanticEdit");
 		expect(workbenchSource).not.toContain("计划需要处理");
 		expect(workbenchSource).not.toContain("运行质检");
+	});
+
+	test("使用 Codex 原生协议轨迹展示分析、计划、工具和命令调用", () => {
+		expect(workbenchSource).toContain('aria-label="Codex 调用流程"');
+		expect(workbenchSource).toContain("CodexProtocolFrame");
+		expect(workbenchSource).toContain("item/reasoning/summaryTextDelta");
+		expect(workbenchSource).toContain("mcpToolCall");
+		expect(workbenchSource).toContain("commandExecution");
+		expect(workbenchSource).toContain("原生协议");
+		expect(workbenchSource).not.toContain("Codex 正在处理");
 	});
 });

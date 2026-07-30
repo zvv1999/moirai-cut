@@ -91,6 +91,27 @@ describe("Codex app-server JSON-RPC client", () => {
 			id: 1,
 			method: "initialize",
 		});
+		expect(
+			(
+				(fake.writes[0]?.params as {
+					capabilities?: { optOutNotificationMethods?: string[] };
+				})?.capabilities?.optOutNotificationMethods ?? []
+			),
+		).not.toContain("item/reasoning/summaryTextDelta");
+		expect(
+			(
+				(fake.writes[0]?.params as {
+					capabilities?: { optOutNotificationMethods?: string[] };
+				})?.capabilities?.optOutNotificationMethods ?? []
+			),
+		).not.toContain("item/commandExecution/outputDelta");
+		expect(
+			(
+				(fake.writes[0]?.params as {
+					capabilities?: { optOutNotificationMethods?: string[] };
+				})?.capabilities?.optOutNotificationMethods ?? []
+			),
+		).toContain("item/reasoning/textDelta");
 		fake.stdout.write('{"id":1,"result":{"userAgent":"test"}}\n');
 		await initialized;
 		await waitForWrite({ writes: fake.writes, count: 2 });
@@ -162,7 +183,9 @@ describe("Codex app-server JSON-RPC client", () => {
 
 	test("answers OpenCut MCP approval elicitations without blocking the turn", async () => {
 		const fake = appServerProcess();
-		new CodexAppServerRpcClient(fake.process);
+		const client = new CodexAppServerRpcClient(fake.process);
+		const subscription = client.subscribe("thread-1");
+		const approvalEvent = subscription[Symbol.asyncIterator]().next();
 
 		fake.stdout.write(
 			`${JSON.stringify({
@@ -192,6 +215,19 @@ describe("Codex app-server JSON-RPC client", () => {
 				_meta: { persist: "session" },
 			},
 		});
+		expect(await approvalEvent).toMatchObject({
+			done: false,
+			value: {
+				id: "elicitation-1",
+				method: "mcpServer/elicitation/request",
+				params: {
+					threadId: "thread-1",
+					turnId: "turn-1",
+					serverName: "opencut",
+				},
+			},
+		});
+		subscription.close();
 	});
 
 	test("declines non-approval MCP elicitations instead of hanging", async () => {
@@ -348,6 +384,23 @@ describe("Codex direct Smart Edit streaming chat", () => {
 
 		expect(events).toEqual([
 			{ type: "session", sessionId: "thread-project-1" },
+			{
+				type: "protocol",
+				id: "thread:thread-project-1",
+				method: "thread/start",
+				threadId: "thread-project-1",
+				status: "completed",
+				title: "Codex 会话已连接",
+			},
+			{
+				type: "protocol",
+				id: "turn:turn-1",
+				method: "turn/start",
+				threadId: "thread-project-1",
+				turnId: "turn-1",
+				status: "started",
+				title: "开始处理",
+			},
 			{ type: "delta", delta: "已" },
 			{ type: "delta", delta: "完成" },
 			{
@@ -363,6 +416,225 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(JSON.stringify(calls[1]?.params)).toContain("统一字幕样式");
 		expect(JSON.stringify(calls[1]?.params)).toContain("引用 A");
 		expect(closed).toBe(true);
+	});
+
+	test("forwards native Codex reasoning, plan, MCP and command lifecycle frames", async () => {
+		const connection: CodexAppServerConnection = {
+			request: async ({ method }) =>
+				method === "thread/start"
+					? { thread: { id: "thread-1" } }
+					: { turn: { id: "turn-1" } },
+			subscribe: (threadId) =>
+				subscriptionOf({
+					notifications: [
+						{
+							method: "item/reasoning/summaryTextDelta",
+							params: {
+								threadId,
+								turnId: "turn-1",
+								itemId: "reasoning-1",
+								summaryIndex: 0,
+								delta: "先读取工程结构。",
+							},
+						},
+						{
+							method: "turn/plan/updated",
+							params: {
+								threadId,
+								turnId: "turn-1",
+								explanation: "执行剪辑",
+								plan: [
+									{ step: "读取工程", status: "completed" },
+									{ step: "修改时间线", status: "inProgress" },
+								],
+							},
+						},
+						{
+							method: "item/started",
+							params: {
+								threadId,
+								turnId: "turn-1",
+								item: {
+									type: "mcpToolCall",
+									id: "tool-1",
+									server: "opencut",
+									tool: "read_project",
+									status: "inProgress",
+									arguments: { projectId: "project-1" },
+								},
+							},
+						},
+						{
+							method: "item/mcpToolCall/progress",
+							params: {
+								threadId,
+								turnId: "turn-1",
+								itemId: "tool-1",
+								message: "正在读取工程",
+							},
+						},
+						{
+							method: "item/completed",
+							params: {
+								threadId,
+								turnId: "turn-1",
+								item: {
+									type: "mcpToolCall",
+									id: "tool-1",
+									server: "opencut",
+									tool: "read_project",
+									status: "completed",
+									arguments: { projectId: "project-1" },
+									result: {
+										content: [{ type: "text", text: "读取完成" }],
+									},
+									error: null,
+								},
+							},
+						},
+						{
+							method: "item/started",
+							params: {
+								threadId,
+								turnId: "turn-1",
+								item: {
+									type: "commandExecution",
+									id: "command-1",
+									command: "git status --short",
+									cwd: "/workspace/opencut-classic",
+									status: "inProgress",
+								},
+							},
+						},
+						{
+							method: "item/commandExecution/outputDelta",
+							params: {
+								threadId,
+								turnId: "turn-1",
+								itemId: "command-1",
+								delta: " M timeline.json\n",
+							},
+						},
+						{
+							method: "item/completed",
+							params: {
+								threadId,
+								turnId: "turn-1",
+								item: {
+									type: "commandExecution",
+									id: "command-1",
+									command: "git status --short",
+									cwd: "/workspace/opencut-classic",
+									status: "completed",
+									aggregatedOutput: " M timeline.json\n",
+									exitCode: 0,
+								},
+							},
+						},
+						{
+							method: "turn/completed",
+							params: {
+								threadId,
+								turn: {
+									id: "turn-1",
+									status: "completed",
+									error: null,
+									durationMs: 820,
+									items: [
+										{
+											type: "agentMessage",
+											id: "message-1",
+											text: "已完成",
+										},
+									],
+								},
+							},
+						},
+					],
+				}),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+		});
+
+		const events = [];
+		for await (const event of service.stream({
+			input: {
+				projectId: "project-1",
+				message: "读取并修改",
+				context: "",
+			},
+		})) {
+			events.push(event);
+		}
+
+		expect(events).toContainEqual({
+			type: "protocol",
+			id: "reasoning-1",
+			method: "item/reasoning/summaryTextDelta",
+			threadId: "thread-1",
+			turnId: "turn-1",
+			itemId: "reasoning-1",
+			itemType: "reasoning",
+			status: "streaming",
+			title: "分析",
+			detail: "先读取工程结构。",
+			append: true,
+		});
+		expect(events).toContainEqual(
+			expect.objectContaining({
+				type: "protocol",
+				id: "turn-1:plan",
+				method: "turn/plan/updated",
+				itemType: "plan",
+				title: "更新执行计划",
+				detail: expect.stringContaining("修改时间线"),
+			}),
+		);
+		expect(events).toContainEqual(
+			expect.objectContaining({
+				type: "protocol",
+				id: "tool-1",
+				method: "item/started",
+				itemType: "mcpToolCall",
+				status: "started",
+				title: "OpenCut · read_project",
+				detail: expect.stringContaining('"projectId": "project-1"'),
+			}),
+		);
+		expect(events).toContainEqual(
+			expect.objectContaining({
+				type: "protocol",
+				id: "tool-1",
+				method: "item/completed",
+				status: "completed",
+				title: "OpenCut · read_project",
+				detail: expect.stringContaining("读取完成"),
+			}),
+		);
+		expect(events).toContainEqual(
+			expect.objectContaining({
+				type: "protocol",
+				id: "command-1",
+				method: "item/commandExecution/outputDelta",
+				itemType: "commandExecution",
+				status: "streaming",
+				title: "运行命令",
+				detail: " M timeline.json\n",
+				append: true,
+			}),
+		);
+		expect(events).toContainEqual(
+			expect.objectContaining({
+				type: "protocol",
+				id: "turn:turn-1",
+				method: "turn/completed",
+				status: "completed",
+				title: "处理完成",
+				detail: "耗时 820ms",
+			}),
+		);
 	});
 
 	test("resumes the exact browser-held Codex session instead of relying on server memory", async () => {
