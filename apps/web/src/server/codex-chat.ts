@@ -8,6 +8,7 @@ import { configuredCodexBinary } from "@/server/codex-config";
 import { ensureOpenCutWorkspaceConfig } from "@/server/codex-workspace-config";
 
 const REQUEST_TIMEOUT_MS = 30_000;
+const MCP_REQUEST_TIMEOUT_MS = 120_000;
 const TURN_IDLE_TIMEOUT_MS = 6 * 60 * 1_000;
 const MAX_STDERR_CHARS = 16_384;
 const MAX_PROTOCOL_DETAIL_CHARS = 8_000;
@@ -183,6 +184,12 @@ export class CodexChatError extends Error {
 		super(message);
 		this.name = "CodexChatError";
 	}
+}
+
+export function codexRequestTimeoutMs(method: string): number {
+	return method === "mcpServerStatus/list" || method === "mcpServer/tool/call"
+		? MCP_REQUEST_TIMEOUT_MS
+		: REQUEST_TIMEOUT_MS;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -531,7 +538,7 @@ export class CodexAppServerRpcClient implements CodexAppServerConnection {
 			const timer = setTimeout(() => {
 				this.pending.delete(id);
 				reject(new CodexChatError(`Codex ${method} 请求超时。`));
-			}, REQUEST_TIMEOUT_MS);
+			}, codexRequestTimeoutMs(method));
 			this.pending.set(id, { resolve, reject, timer });
 			this.write({ method, id, params });
 		});
