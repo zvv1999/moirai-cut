@@ -1742,7 +1742,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		});
 	});
 
-	test("refreshes the desktop project after every completed browser turn without blocking chat", async () => {
+	test("refreshes the desktop project when each browser turn starts and completes without blocking chat", async () => {
 		const syncCalls: string[] = [];
 		const syncObservedCompletedTurn: boolean[] = [];
 		const syncObservedPersistedTurn: boolean[] = [];
@@ -1855,9 +1855,11 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(syncCalls).toEqual([
 			"thread-desktop-project",
 			"thread-desktop-project",
+			"thread-desktop-project",
+			"thread-desktop-project",
 		]);
-		expect(syncObservedCompletedTurn).toEqual([true, true]);
-		expect(syncObservedPersistedTurn).toEqual([true, true]);
+		expect(syncObservedCompletedTurn).toEqual([false, true, false, true]);
+		expect(syncObservedPersistedTurn).toEqual([true, true, true, true]);
 	});
 
 	test("refreshes the desktop project when a browser turn is interrupted", async () => {
@@ -1937,7 +1939,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		};
 
 		expect(consume()).rejects.toThrow("Codex 本轮处理已中断");
-		expect(syncCalls).toEqual(["thread-interrupted"]);
+		expect(syncCalls).toEqual(["thread-interrupted", "thread-interrupted"]);
 	});
 
 	test("surfaces a failed Codex turn without replacing it with local validation", async () => {
