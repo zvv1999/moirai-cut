@@ -1940,6 +1940,12 @@ export function createCodexChatService({
 	connect?: CodexAppServerConnector;
 } = {}): CodexChatService {
 	const sessions = new Map<string, string>();
+	const sessionCacheKey = (input: CodexChatInput) => {
+		const conversationId = input.conversationId?.trim();
+		return conversationId
+			? JSON.stringify([input.projectId, conversationId])
+			: input.projectId;
+	};
 	return {
 		async capabilities({ toolProfile = "edit" } = {}) {
 			const connection = await connect({ runtime, toolProfile });
@@ -2005,8 +2011,9 @@ export function createCodexChatService({
 		async *stream({ input, signal }) {
 			const toolProfile = input.toolProfile ?? "edit";
 			const connection = await connect({ runtime, toolProfile });
+			const cacheKey = sessionCacheKey(input);
 			const requestedSessionId =
-				input.sessionId?.trim() || sessions.get(input.projectId);
+				input.sessionId?.trim() || sessions.get(cacheKey);
 			const developerInstructions = buildOpenCutThreadInstructions(
 				input.projectId,
 			);
@@ -2067,7 +2074,7 @@ export function createCodexChatService({
 					},
 				});
 			}
-			sessions.set(input.projectId, sessionId);
+			sessions.set(cacheKey, sessionId);
 			const subscription = connection.subscribe(sessionId);
 			const iterator = subscription[Symbol.asyncIterator]();
 			let turnId: string | null = null;
