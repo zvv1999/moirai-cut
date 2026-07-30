@@ -33,6 +33,7 @@ export interface CodexRuntimeConfig {
 	mcpServerPath: string;
 	projectFilesDir: string;
 	baseUrl: string;
+	sharedAppServerSocket?: string;
 	disabledMcpServers?: string[];
 }
 
@@ -249,6 +250,14 @@ export function buildCodexAppServerArgs({
 	runtime: CodexRuntimeConfig;
 	toolProfile?: CodexToolProfile;
 }): string[] {
+	if (toolProfile === "edit" && runtime.sharedAppServerSocket) {
+		return [
+			"app-server",
+			"proxy",
+			"--sock",
+			runtime.sharedAppServerSocket,
+		];
+	}
 	return [
 		"app-server",
 		"--stdio",
@@ -738,6 +747,8 @@ export function resolveCodexRuntimeConfig(): CodexRuntimeConfig {
 			process.env.OPENCUT_BASE_URL?.trim() ||
 			process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
 			"http://127.0.0.1:3000",
+		sharedAppServerSocket:
+			process.env.OPENCUT_CODEX_APP_SERVER_SOCKET?.trim() || undefined,
 		disabledMcpServers: configuredMcpServerNames(),
 	};
 }
