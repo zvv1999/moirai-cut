@@ -31,6 +31,47 @@ async function fixture() {
 }
 
 describe("project-scoped Codex conversation storage", () => {
+	test("does not rewrite unchanged App history on every browser refresh", async () => {
+		const { store, projectId } = await fixture();
+		await store.merge({
+			projectId,
+			conversationId: "conversation-stable",
+			sessionId: "thread-stable",
+			messages: [
+				{
+					id: "user-stable",
+					role: "user",
+					content: "保持历史稳定",
+					turnId: "turn-stable",
+					createdAt: 100,
+					updatedAt: 100,
+				},
+			],
+		});
+		const synchronize = () =>
+			store.synchronizeThread({
+				projectId,
+				conversationId: "conversation-stable",
+				sessionId: "thread-stable",
+				title: "保持历史稳定",
+				messages: [
+					{
+						id: "user-stable",
+						role: "user",
+						content: "保持历史稳定",
+						turnId: "turn-stable",
+						createdAt: 100,
+						updatedAt: 100,
+					},
+				],
+			});
+
+		const first = await synchronize();
+		const second = await synchronize();
+
+		expect(second.revision).toBe(first.revision);
+	});
+
 	test("synchronizes App thread messages without duplicating browser placeholders", async () => {
 		const { store, projectId } = await fixture();
 		await store.merge({
