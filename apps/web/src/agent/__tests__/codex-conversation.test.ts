@@ -109,7 +109,7 @@ describe("Codex conversation client synchronization", () => {
 			"/api/codex/history/project-1?conversationId=conversation%201",
 		);
 		expect(requestedInit).toMatchObject({ cache: "no-store" });
-		expect(conversation.revision).toBe(3);
+		expect(conversation?.revision).toBe(3);
 	});
 
 	test("uses conditional local refreshes and skips parsing an unchanged history body", async () => {
