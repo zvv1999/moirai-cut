@@ -24,14 +24,8 @@ export interface MediaJobsApiService {
 		projectId: string;
 		jobId: string;
 	}): Promise<NativeMediaJob | null>;
-	cancel(input: {
-		projectId: string;
-		jobId: string;
-	}): Promise<NativeMediaJob>;
-	retry(input: {
-		projectId: string;
-		jobId: string;
-	}): Promise<NativeMediaJob>;
+	cancel(input: { projectId: string; jobId: string }): Promise<NativeMediaJob>;
+	retry(input: { projectId: string; jobId: string }): Promise<NativeMediaJob>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -68,8 +62,7 @@ function operationError({ error }: { error: unknown }): NextResponse {
 		{
 			error: {
 				code: "media_job_failed",
-				message:
-					error instanceof Error ? error.message : String(error),
+				message: error instanceof Error ? error.message : String(error),
 			},
 		},
 		{ status: 400 },
@@ -81,7 +74,6 @@ export function createMediaJobsRouteHandlers({
 }: {
 	service: MediaJobsApiService;
 }) {
-	// eslint-disable-next-line opencut/prefer-object-params -- Next.js route handlers require (request, context).
 	const GET = async (request: Request, { params }: Context) => {
 		try {
 			const { projectId } = await params;
@@ -103,7 +95,6 @@ export function createMediaJobsRouteHandlers({
 		}
 	};
 
-	// eslint-disable-next-line opencut/prefer-object-params -- Next.js route handlers require (request, context).
 	const POST = async (request: Request, { params }: Context) => {
 		let body: unknown;
 		try {
@@ -124,10 +115,7 @@ export function createMediaJobsRouteHandlers({
 							message: "ensureProxy requires assetId",
 						});
 					}
-					if (
-						body.profile !== undefined &&
-						!isProxyProfile(body.profile)
-					) {
+					if (body.profile !== undefined && !isProxyProfile(body.profile)) {
 						return requestError({
 							message: "Unknown proxy profile",
 						});
@@ -144,17 +132,17 @@ export function createMediaJobsRouteHandlers({
 					return NextResponse.json({ data: job }, { status: 202 });
 				}
 				case "cancel":
-				if (typeof body.jobId !== "string") {
-					return requestError({
-						message: "cancel requires jobId",
+					if (typeof body.jobId !== "string") {
+						return requestError({
+							message: "cancel requires jobId",
+						});
+					}
+					return NextResponse.json({
+						data: await service.cancel({
+							projectId,
+							jobId: body.jobId,
+						}),
 					});
-				}
-				return NextResponse.json({
-					data: await service.cancel({
-						projectId,
-						jobId: body.jobId,
-					}),
-				});
 				case "retry":
 					if (typeof body.jobId !== "string") {
 						return requestError({

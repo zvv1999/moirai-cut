@@ -109,15 +109,9 @@ describe("agent media codec client", () => {
 			createdAt: "2026-07-29T00:00:00.000Z",
 			updatedAt: "2026-07-29T00:00:00.000Z",
 		};
-		// eslint-disable-next-line opencut/prefer-object-params -- fetch-compatible test double follows the platform signature.
-		const fetcher = async (
-			input: RequestInfo | URL,
-			init?: RequestInit,
-		) => {
+		const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
 			const body =
-				typeof init?.body === "string"
-					? JSON.parse(init.body)
-					: undefined;
+				typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
 			calls.push({ url: String(input), action: body?.action });
 			if (String(input).includes("jobId=")) {
 				polls += 1;

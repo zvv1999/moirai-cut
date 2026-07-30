@@ -8,9 +8,7 @@ import {
 
 describe("Agent native delivery jobs", () => {
 	test("starts asynchronously, completes with validated output, and remains inspectable", async () => {
-		let resolveRequest:
-			| ((response: Response) => void)
-			| undefined;
+		let resolveRequest: ((response: Response) => void) | undefined;
 		const fetcher = async () =>
 			new Promise<Response>((resolve) => {
 				resolveRequest = resolve;
@@ -55,17 +53,13 @@ describe("Agent native delivery jobs", () => {
 			progress: 1,
 			result: { validated: true },
 		});
-		expect(
-			listNativeDeliveryJobs().some((job) => job.id === started.id),
-		).toBe(true);
+		expect(listNativeDeliveryJobs().some((job) => job.id === started.id)).toBe(
+			true,
+		);
 	});
 
 	test("aborts a running request and records cancellation", async () => {
-		// eslint-disable-next-line opencut/prefer-object-params -- fetch-compatible test double follows the platform signature.
-		const fetcher = async (
-			_input: RequestInfo | URL,
-			init?: RequestInit,
-		) =>
+		const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) =>
 			new Promise<Response>((_resolve, reject) => {
 				init?.signal?.addEventListener(
 					"abort",

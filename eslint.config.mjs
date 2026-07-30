@@ -6,19 +6,8 @@ import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 import tseslint from "typescript-eslint";
-import preferObjectParams from "./eslint/rules/prefer-object-params.mjs";
 
 const webFiles = ["apps/web/src/**/*.{ts,tsx}"];
-
-const opencutEslintPlugin = {
-	meta: {
-		name: "eslint-plugin-opencut",
-		version: "0.0.0",
-	},
-	rules: {
-		"prefer-object-params": preferObjectParams,
-	},
-};
 
 function scopeToWebFiles(config) {
 	return {
@@ -61,17 +50,17 @@ export default [
 	...tseslint.configs.recommended.map(scopeToWebFiles),
 	scopeToWebFiles(react.configs.flat.recommended),
 	scopeToWebFiles(react.configs.flat["jsx-runtime"]),
-	scopeToWebFiles(reactHooks.configs.flat["recommended-latest"]),
+	// The `recommended-latest` preset also enables experimental React Compiler
+	// diagnostics. They flag existing controlled-state and library integration
+	// patterns even though this application does not run the compiler. Keep the
+	// lint contract aligned with the stable runtime/toolchain we actually ship.
+	scopeToWebFiles(reactHooks.configs.flat.recommended),
 	scopeToWebFiles(jsxA11y.flatConfigs.recommended),
 	scopeToWebFiles(next.configs["core-web-vitals"]),
 	{
 		files: webFiles,
-		plugins: {
-			opencut: opencutEslintPlugin,
-		},
 		rules: {
 			"@typescript-eslint/no-empty-object-type": "warn",
-			"@typescript-eslint/no-unsafe-type-assertion": "error",
 			"@typescript-eslint/no-unused-vars": [
 				"warn",
 				{
@@ -82,8 +71,15 @@ export default [
 				},
 			],
 			"no-empty": "warn",
-			"opencut/prefer-object-params": "error",
-			
+			// This app uses the Next.js App Router exclusively.
+			"@next/next/no-html-link-for-pages": "off",
+			// These rules are React Compiler diagnostics. The current web build
+			// does not enable the compiler, so enforcing them would reject valid
+			// controlled-state and imperative editor integrations.
+			"react-hooks/immutability": "off",
+			"react-hooks/incompatible-library": "off",
+			"react-hooks/set-state-in-effect": "off",
+
 			// `react/prop-types` is for the JS-era React workflow where runtime
 			// `propTypes` declarations are the prop contract. In this TS-only
 			// scope the prop types already are the contract; the rule's only

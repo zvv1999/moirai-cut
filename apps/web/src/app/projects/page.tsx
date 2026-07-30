@@ -978,7 +978,7 @@ function EmptyState() {
 					<div className="flex flex-col items-center gap-3">
 						<h3 className="text-lg font-medium">No results found</h3>
 						<p className="text-muted-foreground max-w-md">
-							Your search for "{searchQuery}" did not return any results.
+							Your search for “{searchQuery}” did not return any results.
 						</p>
 					</div>
 				</div>

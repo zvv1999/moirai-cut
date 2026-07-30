@@ -7,12 +7,11 @@ import {
 
 function memoryStorage(seed?: Record<string, string>): RecoverySessionStorage {
 	const values = new Map(Object.entries(seed ?? {}));
-		return {
-			getItem: (key) => values.get(key) ?? null,
-			// Storage's browser contract is intentionally positional.
-			// eslint-disable-next-line opencut/prefer-object-params
-			setItem: (key, value) => values.set(key, value),
-			removeItem: (key) => values.delete(key),
+	return {
+		getItem: (key) => values.get(key) ?? null,
+		// Storage's browser contract is intentionally positional.
+		setItem: (key, value) => values.set(key, value),
+		removeItem: (key) => values.delete(key),
 	};
 }
 

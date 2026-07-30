@@ -58,7 +58,6 @@ function hasErrorCode({
 	);
 }
 
-// eslint-disable-next-line opencut/prefer-object-params -- Next.js route handlers require (request, context).
 export async function GET(_request: Request, { params }: Context) {
 	const { projectId, name } = await params;
 	try {
@@ -100,7 +99,6 @@ export async function GET(_request: Request, { params }: Context) {
 	}
 }
 
-// eslint-disable-next-line opencut/prefer-object-params -- Next.js route handlers require (request, context).
 export async function PUT(request: Request, { params }: Context) {
 	const { projectId, name } = await params;
 	try {
@@ -122,7 +120,6 @@ export async function PUT(request: Request, { params }: Context) {
 	}
 }
 
-// eslint-disable-next-line opencut/prefer-object-params -- Next.js route handlers require (request, context).
 export async function DELETE(_request: Request, { params }: Context) {
 	const { projectId, name } = await params;
 	try {

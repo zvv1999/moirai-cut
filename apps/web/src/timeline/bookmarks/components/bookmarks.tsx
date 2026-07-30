@@ -77,6 +77,7 @@ export function TimelineBookmarksRow({
 	handleRulerTrackingMouseDown,
 	handleRulerMouseDown,
 }: TimelineBookmarksRowProps) {
+	const editor = useEditor();
 	const bookmarks = useEditor((e) => e.scenes.getActiveScene().bookmarks);
 
 	return (
@@ -96,9 +97,21 @@ export function TimelineBookmarksRow({
 					width: `${dynamicTimelineWidth}px`,
 				}}
 				aria-label="时间线标尺"
+				aria-keyshortcuts="Home End"
 				onClick={(event) => {
 					if (!event.currentTarget.contains(event.target as Node)) return;
 					handleTimelineContentClick(event);
+				}}
+				onKeyDown={(event) => {
+					if (event.key !== "Home" && event.key !== "End") return;
+					event.preventDefault();
+					seekToBookmarkTime({
+						editor,
+						time:
+							event.key === "Home"
+								? ZERO_MEDIA_TIME
+								: editor.timeline.getTotalDuration(),
+					});
 				}}
 				onMouseDown={(event) => {
 					if (!event.currentTarget.contains(event.target as Node)) return;

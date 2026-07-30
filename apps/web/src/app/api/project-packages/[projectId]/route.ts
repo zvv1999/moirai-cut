@@ -158,7 +158,6 @@ function captionPayload(document: Record<string, unknown>) {
 	);
 }
 
-// eslint-disable-next-line opencut/prefer-object-params -- Next.js route handlers require (request, context).
 export async function GET(_request: Request, { params }: Context) {
 	try {
 		const { projectId } = await params;
@@ -198,7 +197,6 @@ export async function GET(_request: Request, { params }: Context) {
 	}
 }
 
-// eslint-disable-next-line opencut/prefer-object-params -- Next.js route handlers require (request, context).
 export async function POST(request: Request, { params }: Context) {
 	const { projectId } = await params;
 	const sourceDir = projectDir(projectId);
@@ -338,7 +336,6 @@ export async function POST(request: Request, { params }: Context) {
 	}
 }
 
-// eslint-disable-next-line opencut/prefer-object-params -- Next.js route handlers require (request, context).
 export async function DELETE(request: Request, { params }: Context) {
 	try {
 		const { projectId } = await params;

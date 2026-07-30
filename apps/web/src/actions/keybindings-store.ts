@@ -140,7 +140,6 @@ export const useKeybindingsStore = create<KeybindingsState>()(
 					}
 					if (action !== undefined) {
 						// Public type's keys are `ShortcutKey`; trust the caller's typing.
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 						next.set(key as ShortcutKey, action);
 					}
 				}
@@ -192,7 +191,6 @@ export const useKeybindingsStore = create<KeybindingsState>()(
 				if (!isPersistedState(persisted)) return current;
 				const entries = Object.entries(persisted.keybindings);
 				// Persistence boundary: keys are normalized by the migration chain.
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 				const typedEntries = entries as Array<
 					[ShortcutKey, TActionWithOptionalArgs]
 				>;

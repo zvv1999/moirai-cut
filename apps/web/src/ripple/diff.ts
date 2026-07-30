@@ -1,4 +1,4 @@
-import type { SceneTracks, TimelineElement, TimelineTrack } from "@/timeline/types";
+import type { SceneTracks, TimelineElement } from "@/timeline/types";
 import type { RippleAdjustment } from "./apply";
 
 interface Interval {
@@ -27,9 +27,13 @@ export function computeRippleAdjustments({
 		afterTracks.main,
 		...afterTracks.audio,
 	];
-	const afterTracksById = new Map(afterTrackList.map((track) => [track.id, track]));
+	const afterTracksById = new Map(
+		afterTrackList.map((track) => [track.id, track]),
+	);
 	const allAfterElementIds = new Set(
-		afterTrackList.flatMap((track) => track.elements.map((element) => element.id)),
+		afterTrackList.flatMap((track) =>
+			track.elements.map((element) => element.id),
+		),
 	);
 
 	return beforeTrackList.flatMap((beforeTrack): RippleAdjustment[] =>
@@ -237,10 +241,10 @@ function subtractSingleInterval({
 
 	for (const overlappingInterval of overlappingIntervals) {
 		remainingIntervals = remainingIntervals.flatMap((remainingInterval) => {
-		if (
-			overlappingInterval.endTime <= remainingInterval.startTime ||
-			overlappingInterval.startTime >= remainingInterval.endTime
-		) {
+			if (
+				overlappingInterval.endTime <= remainingInterval.startTime ||
+				overlappingInterval.startTime >= remainingInterval.endTime
+			) {
 				return [remainingInterval];
 			}
 
@@ -270,7 +274,11 @@ function pushInterval({
 	intervals,
 	startTime,
 	endTime,
-}: { intervals: Interval[]; startTime: number; endTime: number }): void {
+}: {
+	intervals: Interval[];
+	startTime: number;
+	endTime: number;
+}): void {
 	if (endTime <= startTime) {
 		return;
 	}

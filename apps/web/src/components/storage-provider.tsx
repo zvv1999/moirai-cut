@@ -35,6 +35,7 @@ export function StorageProvider({ children }: StorageProviderProps) {
 	});
 
 	const editor = useEditor();
+	const projectManager = editor.project;
 	const hasInitialized = useRef(false);
 
 	useEffect(() => {
@@ -53,7 +54,7 @@ export function StorageProvider({ children }: StorageProviderProps) {
 					);
 				}
 
-				await editor.project.loadAllProjects();
+				await projectManager.loadAllProjects();
 
 				setStatus({
 					isInitialized: true,
@@ -73,7 +74,7 @@ export function StorageProvider({ children }: StorageProviderProps) {
 		};
 
 		initializeStorage();
-	}, [editor.project.loadAllProjects]);
+	}, [projectManager]);
 
 	return (
 		<StorageContext.Provider value={status}>{children}</StorageContext.Provider>

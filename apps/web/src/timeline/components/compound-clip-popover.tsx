@@ -18,11 +18,7 @@ import { useEditor } from "@/editor/use-editor";
 import { useElementSelection } from "@/timeline/hooks/element/use-element-selection";
 import { planCompoundClip } from "@/timeline/compound-clips";
 import { generateUUID } from "@/utils/id";
-import {
-	mediaTime,
-	mediaTimeToSeconds,
-	TICKS_PER_SECOND,
-} from "@/wasm";
+import { mediaTime, mediaTimeToSeconds, TICKS_PER_SECOND } from "@/wasm";
 
 export function CompoundClipPopover() {
 	const editor = useEditor();
@@ -38,6 +34,9 @@ export function CompoundClipPopover() {
 				})[0] ?? null)
 			: null;
 	const selectedCompound = selected?.element.compound;
+	const selectedCompoundName = selectedCompound
+		? selected?.element.name
+		: undefined;
 	const plan = useMemo(
 		() => planCompoundClip({ tracks, selection: selectedElements }),
 		[selectedElements, tracks],
@@ -53,8 +52,8 @@ export function CompoundClipPopover() {
 	);
 
 	useEffect(() => {
-		if (selectedCompound && selected) setName(selected.element.name);
-	}, [selected?.element.name, selectedCompound?.id]);
+		if (selectedCompoundName) setName(selectedCompoundName);
+	}, [selectedCompoundName]);
 
 	const create = () => {
 		if (!plan.available) return;
@@ -219,10 +218,7 @@ export function CompoundClipPopover() {
 												onClick={() =>
 													updateChild({
 														childElementId: child.element.id,
-														relativeSeconds: Math.max(
-															0,
-															relativeSeconds - 0.1,
-														),
+														relativeSeconds: Math.max(0, relativeSeconds - 0.1),
 													})
 												}
 											>

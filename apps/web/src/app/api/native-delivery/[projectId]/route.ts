@@ -48,7 +48,6 @@ export function createNativeDeliveryRouteHandlers({
 }: {
 	execute: NativeDeliveryExecutor;
 }) {
-	// eslint-disable-next-line opencut/prefer-object-params -- Next.js route handlers require (request, context).
 	const POST = async (request: Request, { params }: Context) => {
 		let body: unknown;
 		try {
@@ -60,12 +59,10 @@ export function createNativeDeliveryRouteHandlers({
 			!isRecord(body) ||
 			typeof body.sourceName !== "string" ||
 			!isDeliveryPreset(body.preset) ||
-			(body.outputName !== undefined &&
-				typeof body.outputName !== "string")
+			(body.outputName !== undefined && typeof body.outputName !== "string")
 		) {
 			return invalidRequest({
-				message:
-					"sourceName and a supported delivery preset are required",
+				message: "sourceName and a supported delivery preset are required",
 			});
 		}
 
@@ -86,10 +83,7 @@ export function createNativeDeliveryRouteHandlers({
 				{
 					error: {
 						code: "native_delivery_failed",
-						message:
-							error instanceof Error
-								? error.message
-								: String(error),
+						message: error instanceof Error ? error.message : String(error),
 					},
 				},
 				{ status: 400 },

@@ -54,13 +54,13 @@ export function DeleteProjectDialog({
 						<AlertTitle>Warning</AlertTitle>
 						<AlertDescription>
 							This will permanently delete{" "}
-							{singleName ? `"${singleName}"` : `${count} projects`} and all
+							{singleName ? `“${singleName}”` : `${count} projects`} and all
 							associated files.
 						</AlertDescription>
 					</Alert>
 					<div className="flex flex-col gap-3">
 						<Label className="text-xs font-semibold text-slate-500">
-							Type "DELETE" to confirm
+							Type “DELETE” to confirm
 						</Label>
 						<Input
 							type="text"

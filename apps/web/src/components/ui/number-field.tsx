@@ -2,7 +2,13 @@
 
 import { cn } from "@/utils/ui";
 import { clamp } from "@/utils/math";
-import { useRef, useState, useLayoutEffect, type ComponentProps } from "react";
+import {
+	useImperativeHandle,
+	useLayoutEffect,
+	useRef,
+	useState,
+	type ComponentProps,
+} from "react";
 import { useFocusLock } from "@/hooks/use-focus-lock";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -97,8 +103,10 @@ function scrubAcrossRanges({
 	return clampScrubValue({ value: currentValue, min, max });
 }
 
-interface NumberFieldProps
-	extends Omit<ComponentProps<"input">, "size" | "type"> {
+interface NumberFieldProps extends Omit<
+	ComponentProps<"input">,
+	"size" | "type"
+> {
 	icon?: React.ReactNode;
 	suffix?: string;
 	suffixClassName?: string;
@@ -141,7 +149,15 @@ function NumberField({
 	const cumulativeDeltaRef = useRef(0);
 	const [isInputFocused, setIsInputFocused] = useState(false);
 	const [suffixLeft, setSuffixLeft] = useState(0);
-	const ghostValue = Array.isArray(value) ? value.join(", ") : String(value ?? "");
+	const ghostValue = Array.isArray(value)
+		? value.join(", ")
+		: String(value ?? "");
+	useImperativeHandle(ref, () => {
+		if (!inputRef.current) {
+			throw new Error("NumberField input is not mounted");
+		}
+		return inputRef.current;
+	}, []);
 
 	useLayoutEffect(() => {
 		if (!suffix) {

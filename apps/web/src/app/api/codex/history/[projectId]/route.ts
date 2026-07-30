@@ -82,7 +82,6 @@ export async function readSharedProjectConversation({
 }
 
 // Next route handlers must use the framework's positional request/context API.
-// eslint-disable-next-line opencut/prefer-object-params
 export async function GET(request: Request, { params }: RouteContext) {
 	const { projectId } = await params;
 	try {
@@ -107,7 +106,6 @@ export async function GET(request: Request, { params }: RouteContext) {
 }
 
 // Next route handlers must use the framework's positional request/context API.
-// eslint-disable-next-line opencut/prefer-object-params
 export async function POST(request: Request, { params }: RouteContext) {
 	const { projectId } = await params;
 	try {

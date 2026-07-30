@@ -10,7 +10,7 @@ import {
 	VolumeOffIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TimelineTrack } from "@/timeline/types";
 import {
 	canTrackBeHidden,
@@ -83,11 +83,17 @@ export function TrackControlRowView({
 	onSetHeight,
 	onDelete,
 }: TrackControlRowViewProps) {
+	const renameInputRef = useRef<HTMLInputElement>(null);
 	const [isRenaming, setIsRenaming] = useState(false);
 	const [draftName, setDraftName] = useState(track.name);
 	const compatibilityLabel = getTrackCompatibilityLabel({
 		trackType: track.type,
 	});
+
+	useEffect(() => {
+		if (isRenaming) renameInputRef.current?.focus();
+	}, [isRenaming]);
+
 	const commitRename = () => {
 		onRename(draftName);
 		setIsRenaming(false);
@@ -111,7 +117,7 @@ export function TrackControlRowView({
 				</span>
 				{isRenaming ? (
 					<input
-						autoFocus
+						ref={renameInputRef}
 						value={draftName}
 						aria-label={`${track.name} 的轨道名称`}
 						className="border-input bg-background h-6 min-w-0 flex-1 rounded border px-1 text-xs outline-none focus:border-primary"

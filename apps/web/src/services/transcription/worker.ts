@@ -59,7 +59,6 @@ async function handleInit({ modelId }: { modelId: string }) {
 	try {
 		// The library's generic overload returns a broader pipeline union even
 		// though this task name fixes the runtime result to ASR.
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 		transcriber = (await pipeline("automatic-speech-recognition", modelId, {
 			dtype: "q4",
 			device: "auto",

@@ -9,11 +9,7 @@ type Context = {
 	params: Promise<{ projectId: string; assetId: string }>;
 };
 
-function queryBoolean({
-	value,
-}: {
-	value: string | null;
-}): boolean | null {
+function queryBoolean({ value }: { value: string | null }): boolean | null {
 	if (value === "true") {
 		return true;
 	}
@@ -39,7 +35,6 @@ async function nativeTranscodeAvailable(): Promise<boolean> {
 	});
 }
 
-// eslint-disable-next-line opencut/prefer-object-params -- Next.js route handlers require (request, context).
 export async function GET(
 	request: Request,
 	{ params }: Context,
@@ -51,9 +46,10 @@ export async function GET(
 			probeProjectMedia({
 				projectId,
 				assetId,
-				force: queryBoolean({
-					value: url.searchParams.get("force"),
-				}) === true,
+				force:
+					queryBoolean({
+						value: url.searchParams.get("force"),
+					}) === true,
 			}),
 			nativeTranscodeAvailable(),
 		]);
@@ -77,8 +73,7 @@ export async function GET(
 			{
 				error: {
 					code: "media_probe_failed",
-					message:
-						error instanceof Error ? error.message : String(error),
+					message: error instanceof Error ? error.message : String(error),
 				},
 			},
 			{ status: 400 },
