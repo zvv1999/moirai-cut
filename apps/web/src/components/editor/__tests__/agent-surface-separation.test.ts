@@ -68,7 +68,10 @@ describe("智能剪辑与工程历史分面", () => {
 			"const [followSelection, setFollowSelection] = useState(true);",
 		);
 		expect(workbenchSource).toContain(
-			"if (!followSelection || selectedElements.length === 0) return;",
+			"if (!followSelection) return;",
+		);
+		expect(workbenchSource).toContain(
+			'if (selectedElements.length === 0) {\n\t\t\tfollowedSelectionKey.current = "";\n\t\t\treturn;\n\t\t}',
 		);
 		expect(workbenchSource).toContain("选中即引用");
 		expect(workbenchSource).toContain(
