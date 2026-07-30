@@ -26,8 +26,8 @@ flowchart LR
 
 1. **OpenCut 内置智能剪辑**：编辑器把当前引用上下文随消息发送到
    `/api/codex/chat`，服务端通过 Codex app-server 流式返回文本和 MCP 活动。
-2. **Codex App 工程会话**：项目根目录的 `.codex/config.toml` 注册 `opencut`
-   MCP。Codex 可调用 `get_active_project` 找到最近活跃的编辑器，再通过
+2. **Codex App 工程会话**：仓库和 Codex App 保存工程所对应的工作区目录都注册
+   `opencut` MCP。Codex 可调用 `get_active_project` 找到最近活跃的编辑器，再通过
    `read_agent_context` 读取用户当前选中的上下文。
 
 工程文件是两条链路共同的事实来源。Agent 用文件工具写入后，已打开的编辑器会跟随
@@ -73,6 +73,13 @@ OPENCUT_PROJECTS_DIR = "../opencut-projects"
 
 必须使用 Bun 启动 MCP。当前运行环境中的旧版 Node 不提供服务所需的原生
 `fetch`。这份配置只注册 OpenCut，不依赖 LocalCut。
+
+智能剪辑 task 在 Codex App 中归入上层工作区时，服务端会在首次后台同步前确保
+`<workspace>/.codex/config.toml` 也包含等价的 `opencut` 配置。自动写入只追加带
+`BEGIN/END OPENCUT MANAGED MCP` 标记的区块；若用户已经配置
+`[mcp_servers.opencut]`，则完全保留用户版本。这样 Codex App 的主 app-server 从
+同一 task 续聊时会从 task 的真实 `cwd` 加载 OpenCut MCP，不依赖网页专用
+app-server 的启动参数。
 
 编辑器每 5 秒发布一次心跳。Codex App 中的标准入口顺序是：
 
@@ -362,11 +369,17 @@ OpenCut 智能剪辑创建、恢复或迁移 task 时使用 `OPENCUT_CODEX_WORKS
 因此 task 在 Codex App 的全局任务历史中可见、可打开和续聊，并同时具备当前编辑器
 工程和 MCP 工具上下文。
 
+每次 task 绑定工程时，服务端先通过 `read_project(detail: "summary")` 取得真实
+`projectName`，再调用 `thread/name/set`。浏览器会话列表和 Codex App 因而统一显示
+工程项目名；用户首条提问只作为正文和摘要，不再充当 task 标题。已有 task 从智能
+剪辑再次续聊时也会被校准为当前工程名。
+
 App Server 的 `thread/start`、`thread/resume`、`thread/fork` 协议只接受执行目录和
 运行时根，不接受 Codex 桌面端项目的 `projectId`。OpenCut 不修改
 `.codex-global-state.json`，也不伪造宿主元数据；在 macOS 上，新 task 的首轮原生
-turn 完成后，服务端会用后台深链 `codex://threads/<threadId>` 让 Codex App 加载一次
-该 task。桌面 App 随后依据 task 的真实 `cwd` 把它归入已保存的 `chatcut` 项目。
+turn 完成后，服务端先增量确保工作区 MCP 配置，再用后台深链
+`codex://threads/<threadId>` 让 Codex App 加载一次该 task。桌面 App 随后依据 task
+的真实 `cwd` 把它归入已保存的 `chatcut` 项目。
 
 归组刻意放在 turn 完成后执行，避免桌面 App 在外部 App Server 仍在流式运行时把 task
 误判为空闲并产生并发续聊。每个新 task 只触发一次；`thread/resume` 不重复触发。桌面
@@ -410,6 +423,7 @@ OpenCut 内置智能剪辑已经随消息携带上下文，Codex App 则通过 P
 | `fetch is not defined`        | MCP 被旧 Node 启动；改用项目配置中的 `bun`。                                                 |
 | `edit_project` 一直 started   | 检查 app-server 客户端是否响应 `mcpServer/elicitation/request`。                             |
 | 页面刷新后仍显示处理中        | 检查消息是否保存 `runId/runSequence`，再调用重连接口；不要新开 turn。                        |
+| Codex App 续聊缺少 OpenCut    | 检查 task 的 `cwd` 所在工作区 `.codex/config.toml` 是否包含 `mcp_servers.opencut`。           |
 | 选区没有作为图片输入          | 确认开启“自动识别选区画面”，且 MCP 暴露 `inspect_timeline_range` 或 `inspect_media_scenes`。 |
 | 完整能力仍缺少某个工具        | 先查看 `~/.codex/config.toml` 是否配置该 MCP；工具档位不会凭空安装服务。                     |
 | `revision_conflict`           | 重新 `read_project`，重新生成操作，不要盲重试。                                              |
