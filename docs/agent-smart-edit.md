@@ -381,11 +381,12 @@ turn 完成后，服务端先增量确保工作区 MCP 配置，再用后台深�
 `codex://threads/<threadId>` 让 Codex App 加载一次该 task。桌面 App 随后依据 task
 的真实 `cwd` 把它归入已保存的 `chatcut` 项目。
 
-归组刻意放在 turn 完成后执行，避免桌面 App 在外部 App Server 仍在流式运行时把 task
-误判为空闲并产生并发续聊。每个新 task 只触发一次；`thread/resume` 不重复触发。桌面
-App 未安装、深链失败或设置 `OPENCUT_CODEX_DESKTOP_SYNC=0` 时，只跳过自动归组，不
-中断 SSE、原生历史或工程编辑。若未来 App Server 公开 `projectId`，应改为在
-`thread/start` 中直接传入并删除这层宿主发现兼容逻辑。
+桌面刷新刻意放在每个 turn 进入终态后执行，避免桌面 App 在外部 App Server 仍在流式
+运行时把 task 误判为空闲并产生并发续聊。新 task 和 `thread/resume` 的后续 turn
+都会在完成、失败或中断后重新发送后台深链，让已经打开的 Codex App 页面加载同一
+task 的最新原生历史。桌面 App 未安装、深链失败或设置
+`OPENCUT_CODEX_DESKTOP_SYNC=0` 时，只跳过自动刷新，不中断 SSE、原生历史或工程编辑。
+若未来 App Server 原生支持跨客户端实时订阅，应删除这层宿主刷新兼容逻辑。
 
 ## 8. 二次编辑范式
 
