@@ -1545,6 +1545,185 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		});
 	});
 
+	test("isolates cached native sessions for different conversations in the same project", async () => {
+		const calls: Array<{ method: string; params: unknown }> = [];
+		let nextThread = 0;
+		let nextTurn = 0;
+		const turnByThread = new Map<string, string>();
+		const connection: CodexAppServerConnection = {
+			request: async ({ method, params }) => {
+				calls.push({ method, params });
+				if (method === "thread/start") {
+					nextThread += 1;
+					return { thread: { id: `thread-${nextThread}` } };
+				}
+				if (method === "thread/resume") {
+					if (!isRecord(params) || typeof params.threadId !== "string") {
+						throw new Error("invalid thread/resume request");
+					}
+					return { thread: { id: params.threadId, threadSource: "user" } };
+				}
+				if (method === "thread/name/set") return {};
+				if (method === "mcpServerStatus/list") return readyOpenCutStatus();
+				if (method === "mcpServer/tool/call") return projectSummary();
+				if (method === "turn/start") {
+					if (!isRecord(params) || typeof params.threadId !== "string") {
+						throw new Error("invalid turn/start request");
+					}
+					nextTurn += 1;
+					const turnId = `turn-${nextTurn}`;
+					turnByThread.set(params.threadId, turnId);
+					return { turn: { id: turnId } };
+				}
+				throw new Error(`unexpected method ${method}`);
+			},
+			subscribe: (threadId) => ({
+				async *[Symbol.asyncIterator]() {
+					await Promise.resolve();
+					const turnId = turnByThread.get(threadId);
+					if (!turnId) throw new Error(`missing turn for ${threadId}`);
+					yield {
+						method: "turn/completed",
+						params: {
+							threadId,
+							turn: {
+								id: turnId,
+								status: "completed",
+								error: null,
+								items: [
+									{
+										type: "agentMessage",
+										id: `message-${turnId}`,
+										text: `完成 ${threadId}`,
+									},
+								],
+							},
+						},
+					};
+				},
+				close() {},
+			}),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+		});
+
+		for (const conversationId of ["conversation-a", "conversation-b"]) {
+			for await (const _event of service.stream({
+				input: {
+					projectId: "project-1",
+					conversationId,
+					message: `处理 ${conversationId}`,
+					context: "",
+				},
+			})) {
+				// Consume the complete native turn.
+			}
+		}
+
+		expect(
+			calls
+				.filter((call) => call.method.startsWith("thread/"))
+				.map((call) => call.method),
+		).toEqual([
+			"thread/start",
+			"thread/name/set",
+			"thread/start",
+			"thread/name/set",
+		]);
+	});
+
+	test("resumes the cached native session only for the same conversation", async () => {
+		const calls: Array<{ method: string; params: unknown }> = [];
+		let nextTurn = 0;
+		const turnByThread = new Map<string, string>();
+		const connection: CodexAppServerConnection = {
+			request: async ({ method, params }) => {
+				calls.push({ method, params });
+				if (method === "thread/start") {
+					return { thread: { id: "thread-conversation-a" } };
+				}
+				if (method === "thread/resume") {
+					return {
+						thread: {
+							id: "thread-conversation-a",
+							threadSource: "user",
+						},
+					};
+				}
+				if (method === "thread/name/set") return {};
+				if (method === "mcpServerStatus/list") return readyOpenCutStatus();
+				if (method === "mcpServer/tool/call") return projectSummary();
+				if (method === "turn/start") {
+					if (!isRecord(params) || typeof params.threadId !== "string") {
+						throw new Error("invalid turn/start request");
+					}
+					nextTurn += 1;
+					const turnId = `turn-${nextTurn}`;
+					turnByThread.set(params.threadId, turnId);
+					return { turn: { id: turnId } };
+				}
+				throw new Error(`unexpected method ${method}`);
+			},
+			subscribe: (threadId) => ({
+				async *[Symbol.asyncIterator]() {
+					await Promise.resolve();
+					const turnId = turnByThread.get(threadId);
+					if (!turnId) throw new Error(`missing turn for ${threadId}`);
+					yield {
+						method: "turn/completed",
+						params: {
+							threadId,
+							turn: {
+								id: turnId,
+								status: "completed",
+								error: null,
+								items: [
+									{
+										type: "agentMessage",
+										id: `message-${turnId}`,
+										text: "已继续同一会话",
+									},
+								],
+							},
+						},
+					};
+				},
+				close() {},
+			}),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+		});
+
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			for await (const _event of service.stream({
+				input: {
+					projectId: "project-1",
+					conversationId: "conversation-a",
+					message: "继续同一会话",
+					context: "",
+				},
+			})) {
+				// Consume the complete native turn.
+			}
+		}
+
+		expect(
+			calls
+				.filter((call) =>
+					["thread/start", "thread/resume"].includes(call.method),
+				)
+				.map((call) => call.method),
+		).toEqual(["thread/start", "thread/resume"]);
+		expect(calls.find((call) => call.method === "thread/resume")).toEqual({
+			method: "thread/resume",
+			params: expect.objectContaining({ threadId: "thread-conversation-a" }),
+		});
+	});
+
 	test("surfaces a failed Codex turn without replacing it with local validation", async () => {
 		const connection: CodexAppServerConnection = {
 			request: async ({ method }) => {
