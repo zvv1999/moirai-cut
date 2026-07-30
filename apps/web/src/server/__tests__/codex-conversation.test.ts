@@ -193,6 +193,73 @@ describe("project-scoped Codex conversation storage", () => {
 		]);
 	});
 
+	test("uses authoritative App timestamps to restore user then assistant order", async () => {
+		const { store, projectId } = await fixture();
+		await store.merge({
+			projectId,
+			conversationId: "conversation-order",
+			sessionId: "thread-order",
+			messages: [
+				{
+					id: "assistant-placeholder",
+					role: "assistant",
+					content: "处理中",
+					streaming: true,
+					turnId: "turn-order",
+					createdAt: 90,
+					updatedAt: 90,
+				},
+				{
+					id: "user-browser",
+					role: "user",
+					content: "只读验收",
+					createdAt: 100,
+					updatedAt: 100,
+				},
+			],
+		});
+
+		const synchronized = await store.synchronizeThread({
+			projectId,
+			conversationId: "conversation-order",
+			sessionId: "thread-order",
+			title: "只读验收",
+			messages: [
+				{
+					id: "user-browser",
+					role: "user",
+					content: "只读验收",
+					turnId: "turn-order",
+					createdAt: 200,
+					updatedAt: 210,
+				},
+				{
+					id: "assistant-native",
+					role: "assistant",
+					content: "验收完成",
+					turnId: "turn-order",
+					createdAt: 201,
+					updatedAt: 211,
+				},
+			],
+		});
+
+		expect(synchronized.conversations[0]?.messages).toEqual([
+			expect.objectContaining({
+				id: "user-browser",
+				role: "user",
+				createdAt: 200,
+			}),
+			expect.objectContaining({
+				id: "assistant-placeholder",
+				role: "assistant",
+				content: "验收完成",
+				createdAt: 201,
+				streaming: false,
+			}),
+		]);
+	});
+
 	test("treats App thread history as authoritative and removes stale local-only messages", async () => {
 		const { store, projectId } = await fixture();
 		await store.merge({
