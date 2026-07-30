@@ -161,7 +161,13 @@ export function isCodexProjectConversation(
 	);
 }
 
-function historyUrl(projectId: string, conversationId?: string): string {
+function historyUrl({
+	projectId,
+	conversationId,
+}: {
+	projectId: string;
+	conversationId?: string;
+}): string {
 	const base = `/api/codex/history/${encodeURIComponent(projectId)}`;
 	return conversationId
 		? `${base}?conversationId=${encodeURIComponent(conversationId)}`
@@ -195,10 +201,13 @@ export async function fetchCodexConversation({
 	signal?: AbortSignal;
 }): Promise<CodexProjectConversation> {
 	const response = await fetch(
-		historyUrl(projectId, conversationId?.trim() || undefined),
+		historyUrl({
+			projectId,
+			conversationId: conversationId?.trim() || undefined,
+		}),
 		{
-		cache: "no-store",
-		...(signal ? { signal } : {}),
+			cache: "no-store",
+			...(signal ? { signal } : {}),
 		},
 	);
 	return conversationFromResponse(response);
@@ -219,7 +228,7 @@ export async function persistCodexConversation({
 	messages: CodexConversationMessage[];
 	signal?: AbortSignal;
 }): Promise<CodexProjectConversation> {
-	const response = await fetch(historyUrl(projectId), {
+	const response = await fetch(historyUrl({ projectId }), {
 		method: "POST",
 		headers: { "content-type": "application/json" },
 		body: JSON.stringify({

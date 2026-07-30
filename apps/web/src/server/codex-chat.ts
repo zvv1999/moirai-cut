@@ -755,7 +755,9 @@ function turnIdFromResponse(response: unknown): string {
 function cleanStoredUserText(text: string): string {
 	const marker = "\n用户消息：\n";
 	const markerIndex = text.lastIndexOf(marker);
-	return (markerIndex >= 0 ? text.slice(markerIndex + marker.length) : text).trim();
+	return (
+		markerIndex >= 0 ? text.slice(markerIndex + marker.length) : text
+	).trim();
 }
 
 function userTextFromItem(item: Record<string, unknown>): string {
@@ -763,7 +765,9 @@ function userTextFromItem(item: Record<string, unknown>): string {
 	return cleanStoredUserText(
 		item.content
 			.filter(isRecord)
-			.map((part) => (part.type === "text" && typeof part.text === "string" ? part.text : ""))
+			.map((part) =>
+				part.type === "text" && typeof part.text === "string" ? part.text : "",
+			)
 			.filter(Boolean)
 			.join("\n"),
 	);
@@ -2011,10 +2015,7 @@ export function createCodexChatService({
 					params: {
 						threadId: requestedSessionId,
 						cwd: runtime.repoRoot,
-						runtimeWorkspaceRoots: [
-							runtime.repoRoot,
-							runtime.projectFilesDir,
-						],
+						runtimeWorkspaceRoots: [runtime.repoRoot, runtime.projectFilesDir],
 						developerInstructions,
 						approvalPolicy: "never",
 						sandbox: "read-only",

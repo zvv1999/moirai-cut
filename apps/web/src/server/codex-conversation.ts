@@ -433,7 +433,10 @@ export class CodexConversationStore {
 		if (!conversation || conversation.sessionId !== input.sessionId) {
 			return current;
 		}
-		if (!Array.isArray(input.messages) || input.messages.length > MAX_MESSAGES) {
+		if (
+			!Array.isArray(input.messages) ||
+			input.messages.length > MAX_MESSAGES
+		) {
 			throw new Error("messages must be a bounded array");
 		}
 		const canonicalMessages: CodexConversationMessage[] = [];
