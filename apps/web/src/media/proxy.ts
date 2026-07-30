@@ -93,14 +93,52 @@ export function shouldAutoGenerateProxy({
 }: {
 	asset: Pick<
 		MediaAsset,
-		"type" | "browserCanDecode" | "proxy" | "proxyFile"
+		| "type"
+		| "browserCanDecode"
+		| "proxy"
+		| "proxyFile"
+		| "file"
+		| "width"
+		| "height"
+		| "fps"
+		| "duration"
 	>;
 }): boolean {
 	return (
 		asset.type === "video" &&
-		asset.browserCanDecode === false &&
+		(asset.browserCanDecode === false || isExpensivePreviewSource({ asset })) &&
 		(!asset.proxy || !asset.proxyFile)
 	);
+}
+
+function isExpensivePreviewSource({
+	asset,
+}: {
+	asset: Pick<
+		MediaAsset,
+		"file" | "width" | "height" | "fps" | "duration"
+	>;
+}): boolean {
+	const pixels = (asset.width ?? 0) * (asset.height ?? 0);
+	const estimatedBitrate =
+		asset.duration && asset.duration > 0
+			? (asset.file.size * 8) / asset.duration
+			: 0;
+	return (
+		pixels >= 2560 * 1440 ||
+		(asset.fps ?? 0) > 30 ||
+		estimatedBitrate > 20_000_000
+	);
+}
+
+export function automaticProxyProfile({
+	asset,
+}: {
+	asset: Pick<MediaAsset, "width" | "height">;
+}): "standard" | "high" {
+	return (asset.width ?? 0) * (asset.height ?? 0) >= 2560 * 1440
+		? "high"
+		: "standard";
 }
 
 function fileExtension({ name }: { name: string }): string {

@@ -353,6 +353,30 @@ export function decidePlaybackStrategy({
 	if (probe.videoStreams.some((stream) => stream.hdr)) {
 		reasonCodes.push("hdr-source");
 	}
+	if (
+		probe.videoStreams.some(
+			(stream) =>
+				(stream.width ?? 0) * (stream.height ?? 0) >= 2560 * 1440,
+		)
+	) {
+		reasonCodes.push("large-frame");
+	}
+	if (
+		probe.videoStreams.some(
+			(stream) =>
+				(stream.averageFrameRate ?? stream.nominalFrameRate ?? 0) > 30,
+		)
+	) {
+		reasonCodes.push("high-frame-rate");
+	}
+	if (
+		Math.max(
+			probe.container.bitrate ?? 0,
+			...probe.videoStreams.map((stream) => stream.bitrate ?? 0),
+		) > 20_000_000
+	) {
+		reasonCodes.push("high-bitrate");
+	}
 
 	if (reasonCodes.length > 0) {
 		return { kind: "proxy-recommended", reasonCodes };

@@ -12,6 +12,7 @@ import {
 	UpdateMediaAssetCommand,
 } from "@/commands";
 import {
+	automaticProxyProfile,
 	buildBatchMediaNames,
 	shouldAutoGenerateProxy,
 } from "@/media/proxy";
@@ -83,7 +84,7 @@ export class MediaManager {
 			const queued = await ensureNativeProxy({
 				projectId,
 				assetId: asset.id,
-				profile: "standard",
+				profile: automaticProxyProfile({ asset }),
 			});
 			const completed = await waitForNativeMediaJob({
 				projectId,
