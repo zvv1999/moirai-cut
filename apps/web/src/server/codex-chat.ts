@@ -10,6 +10,9 @@ const TURN_IDLE_TIMEOUT_MS = 6 * 60 * 1_000;
 const MAX_STDERR_CHARS = 16_384;
 const MAX_PROTOCOL_DETAIL_CHARS = 8_000;
 const MAX_PROJECT_SNAPSHOT_CHARS = 120_000;
+const DESKTOP_REFRESH_ROUTE_SETTLE_MS = 180;
+const THREAD_PERSISTENCE_RETRY_MS = 40;
+const THREAD_PERSISTENCE_MAX_ATTEMPTS = 5;
 const REQUIRED_OPENCUT_TOOLS = ["read_project", "edit_project"] as const;
 const BLOCKED_MCP_SERVERS = new Set(["localcut"]);
 const VERIFY_MCP_SERVERS = new Set([
@@ -737,6 +740,33 @@ export function resolveCodexRuntimeConfig(): CodexRuntimeConfig {
 	};
 }
 
+export function codexDesktopRefreshUrls(threadId: string): string[] {
+	return [
+		"codex://threads/new",
+		`codex://threads/${encodeURIComponent(threadId)}`,
+	];
+}
+
+function wait(milliseconds: number): Promise<void> {
+	return new Promise((resolve) => {
+		setTimeout(resolve, milliseconds);
+	});
+}
+
+async function openCodexDesktopUrl(url: string): Promise<void> {
+	await new Promise<void>((resolve, reject) => {
+		const child = spawn("/usr/bin/open", ["-g", url], { stdio: "ignore" });
+		child.once("error", reject);
+		child.once("exit", (code) => {
+			if (code === 0) {
+				resolve();
+				return;
+			}
+			reject(new Error(`Codex desktop sync exited with code ${code}.`));
+		});
+	});
+}
+
 export async function syncCodexThreadToDesktop({
 	threadId,
 	runtime = resolveCodexRuntimeConfig(),
@@ -764,21 +794,14 @@ export async function syncCodexThreadToDesktop({
 		projectFilesDir: runtime.projectFilesDir,
 		baseUrl: runtime.baseUrl,
 	});
-	await new Promise<void>((resolve, reject) => {
-		const child = spawn(
-			"/usr/bin/open",
-			["-g", `codex://threads/${encodeURIComponent(threadId)}`],
-			{ stdio: "ignore" },
-		);
-		child.once("error", reject);
-		child.once("exit", (code) => {
-			if (code === 0) {
-				resolve();
-				return;
-			}
-			reject(new Error(`Codex desktop sync exited with code ${code}.`));
-		});
-	});
+	const [resetUrl, threadUrl] = codexDesktopRefreshUrls(threadId);
+	try {
+		await openCodexDesktopUrl(resetUrl);
+		await wait(DESKTOP_REFRESH_ROUTE_SETTLE_MS);
+	} catch {
+		// Reopening the target task remains useful if the reset route is unavailable.
+	}
+	await openCodexDesktopUrl(threadUrl);
 }
 
 function appWorkspaceRoot(runtime: CodexRuntimeConfig): string {
@@ -1042,6 +1065,42 @@ function completionFromNotification(
 		return null;
 	}
 	return notification.params.turn;
+}
+
+function threadReadContainsTurn(response: unknown, turnId: string): boolean {
+	return (
+		isRecord(response) &&
+		isRecord(response.thread) &&
+		Array.isArray(response.thread.turns) &&
+		response.thread.turns.some(
+			(turn) => isRecord(turn) && turn.id === turnId,
+		)
+	);
+}
+
+async function waitForThreadPersistence({
+	connection,
+	threadId,
+	turnId,
+}: {
+	connection: CodexAppServerConnection;
+	threadId: string;
+	turnId: string;
+}): Promise<void> {
+	for (
+		let attempt = 0;
+		attempt < THREAD_PERSISTENCE_MAX_ATTEMPTS;
+		attempt += 1
+	) {
+		const response = await connection.request({
+			method: "thread/read",
+			params: { threadId, includeTurns: true },
+		});
+		if (threadReadContainsTurn(response, turnId)) return;
+		if (attempt + 1 < THREAD_PERSISTENCE_MAX_ATTEMPTS) {
+			await wait(THREAD_PERSISTENCE_RETRY_MS);
+		}
+	}
 }
 
 function truncated(value: string): string {
@@ -2343,6 +2402,17 @@ export function createCodexChatService({
 
 					const completedTurn = completionFromNotification(notification);
 					if (!completedTurn) continue;
+					if (syncThreadToDesktop) {
+						try {
+							await waitForThreadPersistence({
+								connection,
+								threadId: sessionId,
+								turnId,
+							});
+						} catch {
+							// A failed persistence probe must not block the final refresh.
+						}
+					}
 					try {
 						await syncThreadToDesktop?.(sessionId);
 					} catch {
