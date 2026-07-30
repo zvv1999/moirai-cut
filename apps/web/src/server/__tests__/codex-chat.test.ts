@@ -593,6 +593,192 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		]);
 	});
 
+	test("deduplicates concurrent capability discovery and reuses the warm result", async () => {
+		const calls: string[] = [];
+		let release = () => {};
+		const barrier = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const connection: CodexAppServerConnection = {
+			request: async ({ method }) => {
+				calls.push(method);
+				await barrier;
+				if (method === "model/list") return { data: [] };
+				if (method === "collaborationMode/list") return { data: [] };
+				if (method === "skills/list") return { data: [] };
+				throw new Error(`unexpected method ${method}`);
+			},
+			subscribe: () => subscriptionOf({ notifications: [] }),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+			capabilitiesCacheTtlMs: 60_000,
+		});
+
+		const first = service.capabilities({ toolProfile: "edit" });
+		const second = service.capabilities({ toolProfile: "edit" });
+		await Bun.sleep(1);
+		expect(calls).toHaveLength(3);
+		release();
+		await Promise.all([first, second]);
+		await service.capabilities({ toolProfile: "edit" });
+
+		expect(calls).toEqual([
+			"model/list",
+			"collaborationMode/list",
+			"skills/list",
+		]);
+	});
+
+	test("starts OpenCut capability validation and project preload concurrently", async () => {
+		const calls: string[] = [];
+		let releaseStatus = () => {};
+		const statusBarrier = new Promise<void>((resolve) => {
+			releaseStatus = resolve;
+		});
+		const connection: CodexAppServerConnection = {
+			request: async ({ method, params }) => {
+				calls.push(
+					method === "mcpServer/tool/call" && isRecord(params)
+						? `${method}:${String(params.tool)}`
+						: method,
+				);
+				if (method === "thread/start") {
+					return { thread: { id: "thread-concurrent-bind" } };
+				}
+				if (method === "mcpServerStatus/list") {
+					await statusBarrier;
+					return readyOpenCutStatus();
+				}
+				if (method === "mcpServer/tool/call") return projectSummary();
+				if (method === "thread/name/set") return {};
+				if (method === "turn/start") {
+					return { turn: { id: "turn-concurrent-bind" } };
+				}
+				throw new Error(`unexpected method ${method}`);
+			},
+			subscribe: (threadId) =>
+				subscriptionOf({
+					notifications: [
+						{
+							method: "turn/completed",
+							params: {
+								threadId,
+								turn: {
+									id: "turn-concurrent-bind",
+									status: "completed",
+									error: null,
+									items: [
+										{
+											type: "agentMessage",
+											id: "message-concurrent-bind",
+											text: "完成",
+										},
+									],
+								},
+							},
+						},
+					],
+				}),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+		});
+		const iterator = service
+			.stream({
+				input: {
+					projectId: "project-1",
+					message: "并行准备",
+					context: "",
+				},
+			})
+			[Symbol.asyncIterator]();
+
+		await iterator.next();
+		await iterator.next();
+		const binding = iterator.next();
+		await Bun.sleep(1);
+		expect(calls).toContain("mcpServerStatus/list");
+		expect(calls).toContain("mcpServer/tool/call:read_project");
+		releaseStatus();
+		await binding;
+		while (!(await iterator.next()).done) {
+			// consume
+		}
+	});
+
+	test("does not delay turn start while the project name is synchronized", async () => {
+		const calls: string[] = [];
+		let releaseName = () => {};
+		const nameBarrier = new Promise<void>((resolve) => {
+			releaseName = resolve;
+		});
+		const connection: CodexAppServerConnection = {
+			request: async ({ method }) => {
+				calls.push(method);
+				if (method === "thread/start") {
+					return { thread: { id: "thread-background-name" } };
+				}
+				if (method === "mcpServerStatus/list") return readyOpenCutStatus();
+				if (method === "mcpServer/tool/call") return projectSummary();
+				if (method === "thread/name/set") {
+					await nameBarrier;
+					return {};
+				}
+				if (method === "turn/start") {
+					return { turn: { id: "turn-background-name" } };
+				}
+				throw new Error(`unexpected method ${method}`);
+			},
+			subscribe: (threadId) =>
+				subscriptionOf({
+					notifications: [
+						{
+							method: "turn/completed",
+							params: {
+								threadId,
+								turn: {
+									id: "turn-background-name",
+									status: "completed",
+									error: null,
+									items: [
+										{
+											type: "agentMessage",
+											id: "message-background-name",
+											text: "完成",
+										},
+									],
+								},
+							},
+						},
+					],
+				}),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+		});
+		const consuming = (async () => {
+			for await (const _event of service.stream({
+				input: {
+					projectId: "project-1",
+					message: "立即开始",
+					context: "",
+				},
+			})) {
+				// consume
+			}
+		})();
+
+		await Bun.sleep(5);
+		expect(calls).toContain("thread/name/set");
+		expect(calls).toContain("turn/start");
+		releaseName();
+		await consuming;
+	});
+
 	test("sends native multimodal range frames and App model settings into the turn", async () => {
 		const calls: Array<{ method: string; params: unknown }> = [];
 		const connection: CodexAppServerConnection = {

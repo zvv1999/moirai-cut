@@ -212,6 +212,50 @@ describe("Codex Smart Edit SSE API", () => {
 		});
 	});
 
+	test("keeps a long native turn connected with lightweight SSE heartbeats", async () => {
+		let release = () => {};
+		const barrier = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const service: CodexChatApiService = {
+			stream: async function* () {
+				yield { type: "session", sessionId: "thread-heartbeat" };
+				await barrier;
+				yield {
+					type: "done",
+					sessionId: "thread-heartbeat",
+					message: "完成",
+				};
+			},
+		};
+		const { POST } = createCodexChatRouteHandlers({
+			service,
+			heartbeatIntervalMs: 1,
+		});
+		const response = await POST(
+			new Request("http://localhost/api/codex/chat", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					projectId: "project-1",
+					message: "长任务",
+					context: "",
+				}),
+			}),
+		);
+		const reader = response.body?.getReader();
+		expect(reader).toBeDefined();
+		let body = "";
+		for (let attempt = 0; attempt < 20 && !body.includes(": heartbeat"); attempt += 1) {
+			const chunk = await reader?.read();
+			if (!chunk || chunk.done) break;
+			body += new TextDecoder().decode(chunk.value);
+		}
+		expect(body).toContain(": heartbeat");
+		release();
+		await reader?.cancel();
+	});
+
 	test("rejects malformed or incomplete requests before starting Codex", async () => {
 		let calls = 0;
 		const service: CodexChatApiService = {

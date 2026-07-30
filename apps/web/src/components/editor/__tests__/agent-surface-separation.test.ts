@@ -171,7 +171,20 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain(
 			"const hydrateConversation = async ({",
 		);
+		expect(workbenchSource).toContain(
+			"void hydrateConversation({ synchronizeNative: false }).then",
+		);
 		expect(workbenchSource).not.toContain("void refreshConversation().finally");
+	});
+
+	test("会话首屏先读本地投影并在新消息到达时跟随最新内容", () => {
+		expect(workbenchSource).toContain("conversationLogRef");
+		expect(workbenchSource).toContain("shouldFollowConversationTail");
+		expect(workbenchSource).toContain("scrollTo({");
+		expect(workbenchSource).toContain('behavior: "smooth"');
+		expect(workbenchSource).not.toContain(
+			"if (!conversationHydrated || sending) return;\n\t\tif (!conversationHydrated || sending) return;",
+		);
 	});
 
 	test("展示工程内的不同会话并可选择原上下文继续对话", () => {

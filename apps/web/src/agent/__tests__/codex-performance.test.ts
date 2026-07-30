@@ -10,7 +10,7 @@ describe("Codex smart-edit performance presets", () => {
 		expect(DEFAULT_CODEX_PERFORMANCE_MODE).toBe("balanced");
 		expect(getCodexPerformancePreset(DEFAULT_CODEX_PERFORMANCE_MODE)).toMatchObject(
 			{
-				effort: "high",
+				effort: "medium",
 				toolProfile: "edit",
 				visualMode: "off",
 				verificationMode: "basic",
@@ -25,7 +25,7 @@ describe("Codex smart-edit performance presets", () => {
 			"director",
 		]);
 		expect(getCodexPerformancePreset("fast")).toMatchObject({
-			effort: "medium",
+			effort: "low",
 			verificationMode: "off",
 		});
 		expect(getCodexPerformancePreset("director")).toMatchObject({
