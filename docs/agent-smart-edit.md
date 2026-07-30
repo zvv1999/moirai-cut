@@ -377,14 +377,17 @@ OpenCut 智能剪辑创建、恢复或迁移 task 时使用 `OPENCUT_CODEX_WORKS
 App Server 的 `thread/start`、`thread/resume`、`thread/fork` 协议只接受执行目录和
 运行时根，不接受 Codex 桌面端项目的 `projectId`。OpenCut 不修改
 `.codex-global-state.json`，也不伪造宿主元数据；在 macOS 上，新 task 的首轮原生
-turn 完成后，服务端先增量确保工作区 MCP 配置，再用后台深链
-`codex://threads/<threadId>` 让 Codex App 加载一次该 task。桌面 App 随后依据 task
-的真实 `cwd` 把它归入已保存的 `chatcut` 项目。
+turn 完成后，服务端先用 `thread/read(includeTurns: true)` 确认这一轮已经进入原生
+历史，再增量确保工作区 MCP 配置。随后依次发送后台深链
+`codex://threads/new` 和 `codex://threads/<threadId>`：第一步让已经停留在同一 task
+路由上的 Codex App 卸载旧视图，第二步触发一次新的 `thread/read` 并重新加载该 task。
+桌面 App 随后依据 task 的真实 `cwd` 把它归入已保存的 `chatcut` 项目。
 
 桌面刷新刻意放在每个 turn 进入终态后执行，避免桌面 App 在外部 App Server 仍在流式
 运行时把 task 误判为空闲并产生并发续聊。新 task 和 `thread/resume` 的后续 turn
-都会在完成、失败或中断后重新发送后台深链，让已经打开的 Codex App 页面加载同一
-task 的最新原生历史。桌面 App 未安装、深链失败或设置
+都会在完成、失败或中断后重新发送这组后台深链，让已经打开的 Codex App 页面加载同一
+task 的最新原生历史。若持久化探测或临时重置路由失败，服务端仍会尝试直接打开目标
+task；桌面 App 未安装、深链失败或设置
 `OPENCUT_CODEX_DESKTOP_SYNC=0` 时，只跳过自动刷新，不中断 SSE、原生历史或工程编辑。
 若未来 App Server 原生支持跨客户端实时订阅，应删除这层宿主刷新兼容逻辑。
 
