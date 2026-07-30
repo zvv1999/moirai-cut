@@ -352,7 +352,9 @@ task，通过 `POST /api/codex/history/:projectId` 保存绑定和流式 UI 投�
 下一次 `thread/read` 都必须得到相同正文。
 
 这不是把 Codex App 窗口嵌入网页。浏览器只实现轻量展示和 OpenCut 引用交互，
-认证、任务历史、续聊、模型执行与流式事件均来自同一 App Server 协议。
+认证、任务历史、续聊、模型执行与流式事件均使用 Codex 原生 App Server 协议。
+浏览器智能剪辑和 Codex App 当前各自持有一个 app-server 进程：两端共享原生 task
+历史，但不共享进程内的实时事件订阅。
 
 ### Codex App 工作区与任务可见性
 
@@ -376,20 +378,23 @@ OpenCut 智能剪辑创建、恢复或迁移 task 时使用 `OPENCUT_CODEX_WORKS
 
 App Server 的 `thread/start`、`thread/resume`、`thread/fork` 协议只接受执行目录和
 运行时根，不接受 Codex 桌面端项目的 `projectId`。OpenCut 不修改
-`.codex-global-state.json`，也不伪造宿主元数据；在 macOS 上，新 task 的首轮原生
-turn 完成后，服务端先用 `thread/read(includeTurns: true)` 确认这一轮已经进入原生
-历史，再增量确保工作区 MCP 配置。随后依次发送后台深链
+`.codex-global-state.json`，也不伪造宿主元数据；在 macOS 上，每个原生 turn 开始
+后，服务端先用 `thread/read(includeTurns: true)` 确认这一轮已经进入原生历史，再
+增量确保工作区 MCP 配置。随后依次发送后台深链
 `codex://threads/new` 和 `codex://threads/<threadId>`：第一步让已经停留在同一 task
 路由上的 Codex App 卸载旧视图，第二步触发一次新的 `thread/read` 并重新加载该 task。
 桌面 App 随后依据 task 的真实 `cwd` 把它归入已保存的 `chatcut` 项目。
 
-桌面刷新刻意放在每个 turn 进入终态后执行，避免桌面 App 在外部 App Server 仍在流式
-运行时把 task 误判为空闲并产生并发续聊。新 task 和 `thread/resume` 的后续 turn
-都会在完成、失败或中断后重新发送这组后台深链，让已经打开的 Codex App 页面加载同一
-task 的最新原生历史。若持久化探测或临时重置路由失败，服务端仍会尝试直接打开目标
-task；桌面 App 未安装、深链失败或设置
+桌面刷新分两阶段执行：turn 刚进入原生历史时刷新一次，让 Codex App 立即看到浏览器
+发起的用户消息和运行中 task；turn 完成、失败或中断后再刷新一次，让 App 读取最终
+回复和状态。浏览器自己的 SSE 仍实时展示增量文本和工具步骤。由于 Codex App 尚未
+提供连接外部 app-server 实时订阅的公开宿主入口，桌面端当前不能逐 token 镜像浏览器
+进程中的事件；安装的 app-server 虽支持 `ws://`、`unix://` 和 daemon 传输，也不能
+让已经由桌面 App 私有 stdio 进程承载的窗口自动改接外部连接。若持久化探测或临时
+重置路由失败，服务端仍会尝试直接打开目标 task；桌面 App 未安装、深链失败或设置
 `OPENCUT_CODEX_DESKTOP_SYNC=0` 时，只跳过自动刷新，不中断 SSE、原生历史或工程编辑。
-若未来 App Server 原生支持跨客户端实时订阅，应删除这层宿主刷新兼容逻辑。
+若未来 Codex App 暴露共享连接或跨客户端实时订阅入口，应以单一 app-server 事件流
+替代这层两阶段宿主刷新兼容逻辑。
 
 ## 8. 二次编辑范式
 
