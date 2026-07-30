@@ -337,6 +337,28 @@ function conversationsEqual({
 	);
 }
 
+function settleProtocolFrames({
+	frames,
+	failed,
+}: {
+	frames: CodexProtocolFrame[] | undefined;
+	failed: boolean;
+}): CodexProtocolFrame[] | undefined {
+	if (!frames) return undefined;
+	let changed = false;
+	const settled = frames.map((frame) => {
+		if (frame.status !== "started" && frame.status !== "streaming") {
+			return frame;
+		}
+		changed = true;
+		return {
+			...frame,
+			status: failed ? ("failed" as const) : ("completed" as const),
+		};
+	});
+	return changed ? settled : frames;
+}
+
 export class CodexConversationStore {
 	readonly rootDirectory: string;
 	private readonly queues = new Map<string, Promise<void>>();
@@ -467,11 +489,20 @@ export class CodexConversationStore {
 				);
 			if (!existing) return incoming;
 			usedExistingIds.add(existing.id);
+			const streaming = incoming.streaming ?? false;
+			const protocol =
+				streaming
+					? existing.protocol
+					: settleProtocolFrames({
+							frames: existing.protocol,
+							failed: incoming.role === "error",
+						});
 			const changed =
 				existing.content !== incoming.content ||
 				existing.role !== incoming.role ||
 				existing.turnId !== incoming.turnId ||
-				existing.streaming === true;
+				(existing.streaming ?? false) !== streaming ||
+				protocol !== existing.protocol;
 			return {
 				...existing,
 				...incoming,
@@ -479,18 +510,16 @@ export class CodexConversationStore {
 				createdAt: existing.createdAt,
 				updatedAt: changed
 					? Math.max(incoming.updatedAt, existing.updatedAt + 1, this.now())
-					: Math.max(incoming.updatedAt, existing.updatedAt),
+					: existing.updatedAt,
 				...(existing.referenceCount === undefined
 					? {}
 					: { referenceCount: existing.referenceCount }),
-				...(existing.protocol === undefined
-					? {}
-					: { protocol: existing.protocol }),
+				...(protocol === undefined ? {} : { protocol }),
 				...(existing.runId === undefined ? {} : { runId: existing.runId }),
 				...(existing.runSequence === undefined
 					? {}
 					: { runSequence: existing.runSequence }),
-				streaming: false,
+				streaming,
 			};
 		});
 		return this.merge({

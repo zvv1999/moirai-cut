@@ -11,7 +11,7 @@ import {
 describe("Codex Smart Edit SSE API", () => {
 	test("opens SSE immediately and forwards session, delta, and completion events", async () => {
 		const calls: unknown[] = [];
-		let release: (() => void) | null = null;
+		let release = () => {};
 		const barrier = new Promise<void>((resolve) => {
 			release = resolve;
 		});
@@ -71,7 +71,7 @@ describe("Codex Smart Edit SSE API", () => {
 		const first = await reader?.read();
 		expect(new TextDecoder().decode(first?.value)).toContain(": connected");
 
-		release?.();
+		release();
 		let body = "";
 		for (;;) {
 			const next = await reader?.read();
@@ -166,7 +166,7 @@ describe("Codex Smart Edit SSE API", () => {
 	});
 
 	test("keeps the native turn running when the browser cancels only its SSE subscription", async () => {
-		let release: (() => void) | null = null;
+		let release = () => {};
 		const barrier = new Promise<void>((resolve) => {
 			release = resolve;
 		});
@@ -203,7 +203,7 @@ describe("Codex Smart Edit SSE API", () => {
 		const reader = response.body?.getReader();
 		await reader?.read();
 		await reader?.cancel();
-		release?.();
+		release();
 		await manager.waitForCompletion("run-background");
 
 		expect(manager.get("run-background")).toMatchObject({

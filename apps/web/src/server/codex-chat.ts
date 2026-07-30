@@ -1,4 +1,4 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline";
@@ -114,6 +114,7 @@ export interface CodexThreadMessage {
 	role: "user" | "assistant" | "error";
 	content: string;
 	turnId: string;
+	streaming?: boolean;
 	createdAt: number;
 	updatedAt: number;
 }
@@ -408,6 +409,14 @@ interface PendingRpcRequest {
 	timer: ReturnType<typeof setTimeout>;
 }
 
+interface CodexAppServerChildProcess {
+	stdin: Pick<NodeJS.WritableStream, "write">;
+	stdout: NodeJS.ReadableStream;
+	stderr: NodeJS.ReadableStream;
+	on(event: "error", listener: (error: Error) => void): unknown;
+	on(event: "close", listener: (code: number | null) => void): unknown;
+}
+
 export class CodexAppServerRpcClient implements CodexAppServerConnection {
 	private nextRequestId = 0;
 	private readonly pending = new Map<number, PendingRpcRequest>();
@@ -418,7 +427,7 @@ export class CodexAppServerRpcClient implements CodexAppServerConnection {
 	private stderr = "";
 	isOpen = true;
 
-	constructor(private readonly child: ChildProcessWithoutNullStreams) {
+	constructor(private readonly child: CodexAppServerChildProcess) {
 		const lines = createInterface({ input: child.stdout });
 		lines.on("line", (line) => this.handleLine(line));
 		child.stderr.on("data", (chunk: Buffer) => {
@@ -864,6 +873,10 @@ function threadHistoryFromResponse(response: unknown): CodexThreadHistory {
 				role: "assistant",
 				content: String(finalAgent.text).trim(),
 				turnId,
+				streaming:
+					rawTurn.status !== "completed" &&
+					rawTurn.status !== "failed" &&
+					rawTurn.status !== "interrupted",
 				createdAt: timestampMilliseconds({
 					value: startedAt,
 					fallback: thread.createdAt,

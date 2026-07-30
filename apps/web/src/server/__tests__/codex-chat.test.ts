@@ -28,7 +28,7 @@ const runtime: CodexRuntimeConfig = {
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null;
+	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function readyOpenCutStatus(): unknown {
@@ -102,7 +102,7 @@ function appServerProcess() {
 			const line = buffer.slice(0, newline);
 			buffer = buffer.slice(newline + 1);
 			const message: unknown = JSON.parse(line);
-			if (!message || typeof message !== "object" || Array.isArray(message)) {
+			if (!isRecord(message)) {
 				throw new Error("Expected a JSON-RPC object.");
 			}
 			writes.push(message);
@@ -791,6 +791,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 					role: "assistant",
 					content: "已把开场缩短一秒。",
 					turnId: "turn-browser",
+					streaming: false,
 					createdAt: 101_001,
 					updatedAt: 110_001,
 				},
@@ -807,6 +808,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 					role: "assistant",
 					content: "已继续压缩停顿。",
 					turnId: "turn-app",
+					streaming: false,
 					createdAt: 111_001,
 					updatedAt: 120_001,
 				},

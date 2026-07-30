@@ -16,7 +16,7 @@ function input() {
 
 describe("Codex reconnectable run manager", () => {
 	test("keeps the App turn alive after one subscriber disconnects and replays later events", async () => {
-		let release: (() => void) | null = null;
+		let release = () => {};
 		const barrier = new Promise<void>((resolve) => {
 			release = resolve;
 		});
@@ -57,7 +57,7 @@ describe("Codex reconnectable run manager", () => {
 		});
 		await firstSubscriber.return?.();
 
-		release?.();
+		release();
 		await manager.waitForCompletion("run-1");
 
 		const replayed = [];
@@ -82,7 +82,7 @@ describe("Codex reconnectable run manager", () => {
 
 	test("routes steer, interrupt, and compact actions to the active native thread", async () => {
 		const actions: unknown[] = [];
-		let release: (() => void) | null = null;
+		let release = () => {};
 		const barrier = new Promise<void>((resolve) => {
 			release = resolve;
 		});
@@ -106,7 +106,7 @@ describe("Codex reconnectable run manager", () => {
 			},
 			interrupt: async (action) => {
 				actions.push({ action: "interrupt", ...action });
-				release?.();
+				release();
 			},
 			compact: async (action) => {
 				actions.push({ action: "compact", ...action });
