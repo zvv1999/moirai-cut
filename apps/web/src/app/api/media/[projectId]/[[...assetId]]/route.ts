@@ -34,6 +34,23 @@ const indexPath = (projectId: string) => path.join(mediaDir(projectId), "index.j
 
 type MediaIndex = Record<string, { ext: string; mimeType?: string } & Record<string, unknown>>;
 
+function mediaResponseHeaders({
+  id,
+  entry,
+}: {
+  id: string;
+  entry: MediaIndex[string];
+}): Record<string, string> {
+  return {
+    "x-opencut-media-name": encodeURIComponent(
+      typeof entry.name === "string" ? entry.name : id,
+    ),
+    "x-opencut-media-last-modified": String(
+      typeof entry.lastModified === "number" ? entry.lastModified : 0,
+    ),
+  };
+}
+
 async function readIndex(projectId: string): Promise<MediaIndex> {
   try {
     return JSON.parse(await readFile(indexPath(projectId), "utf8")) as MediaIndex;
@@ -122,6 +139,7 @@ export async function GET(request: Request, { params }: Context) {
           "content-range": `bytes ${start}-${end}/${size}`,
           "accept-ranges": "bytes",
           "cache-control": "no-store",
+          ...mediaResponseHeaders({ id, entry }),
         },
       });
     }
@@ -132,6 +150,7 @@ export async function GET(request: Request, { params }: Context) {
         "content-length": String(size),
         "accept-ranges": "bytes",
         "cache-control": "no-store",
+        ...mediaResponseHeaders({ id, entry }),
       },
     });
   } catch (error) {

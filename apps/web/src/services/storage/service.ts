@@ -14,6 +14,7 @@ import {
 } from "./quota";
 import type {
 	MediaAssetData,
+	StorageAdapter,
 	StorageConfig,
 	SerializedProject,
 	SerializedScene,
@@ -66,6 +67,32 @@ function normalizeBookmarks({ raw }: { raw: unknown }): Bookmark[] {
 			};
 		})
 		.filter((b): b is Bookmark => b !== null);
+}
+
+async function mapWithConcurrency<T, R>({
+	items,
+	limit,
+	map,
+}: {
+	items: T[];
+	limit: number;
+	map: (item: T) => Promise<R>;
+}): Promise<R[]> {
+	if (items.length === 0) return [];
+	const results = new Array<R>(items.length);
+	let nextIndex = 0;
+	const worker = async () => {
+		for (;;) {
+			const index = nextIndex;
+			nextIndex += 1;
+			if (index >= items.length) return;
+			results[index] = await map(items[index]!);
+		}
+	};
+	await Promise.all(
+		Array.from({ length: Math.min(Math.max(1, limit), items.length) }, worker),
+	);
+	return results;
 }
 
 /**
@@ -497,7 +524,22 @@ class StorageService {
 		]);
 
 		if (!file || !metadata) return null;
+		return this.materializeMediaAsset({
+			file,
+			metadata,
+			mediaAssetsAdapter,
+		});
+	}
 
+	private async materializeMediaAsset({
+		file,
+		metadata,
+		mediaAssetsAdapter,
+	}: {
+		file: File;
+		metadata: MediaAssetData;
+		mediaAssetsAdapter: StorageAdapter<File>;
+	}): Promise<MediaAsset> {
 		let url: string;
 		if (metadata.type === "image" && (!file.type || file.type === "")) {
 			try {
@@ -545,23 +587,34 @@ class StorageService {
 	}: {
 		projectId: string;
 	}): Promise<MediaAsset[]> {
-		const { mediaMetadataAdapter } = this.getProjectMediaAdapters({
+		const { mediaMetadataAdapter, mediaAssetsAdapter } =
+			this.getProjectMediaAdapters({
 			projectId,
 		});
 
-		const mediaIds = (await mediaMetadataAdapter.list()).filter(
-			(id) => !isMediaProxyStorageId({ storageId: id }),
+		const metadata = (await mediaMetadataAdapter.getAll()).filter(
+			(item) =>
+				typeof item.id === "string" &&
+				!isMediaProxyStorageId({ storageId: item.id }) &&
+				(item.type === "video" ||
+					item.type === "audio" ||
+					item.type === "image"),
 		);
-		const mediaItems: MediaAsset[] = [];
-
-		for (const id of mediaIds) {
-			const item = await this.loadMediaAsset({ projectId, id });
-			if (item) {
-				mediaItems.push(item);
-			}
-		}
-
-		return mediaItems;
+		const mediaItems = await mapWithConcurrency({
+			items: metadata,
+			limit: 4,
+			map: async (item): Promise<MediaAsset | null> => {
+				const file = await mediaAssetsAdapter.get(item.id);
+				return file
+					? this.materializeMediaAsset({
+							file,
+							metadata: item,
+							mediaAssetsAdapter,
+						})
+					: null;
+			},
+		});
+		return mediaItems.filter((item): item is MediaAsset => item !== null);
 	}
 
 	async deleteMediaAsset({

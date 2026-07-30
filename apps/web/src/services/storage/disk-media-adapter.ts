@@ -50,13 +50,20 @@ export class DiskMediaFileAdapter implements StorageAdapter<File> {
     if (response.status === 404) return null;
     if (!response.ok) throw new Error(`Media read failed: ${response.statusText}`);
     const blob = await response.blob();
-    const index = await this.index();
-    const entry = index[key];
-    // Name and lastModified come back from the index so `file.name`'s extension
-    // and the assets panel's size/date sort keep working.
-    return new File([blob], String(entry?.name ?? key), {
-      type: blob.type || String(entry?.mimeType ?? "application/octet-stream"),
-      lastModified: Number(entry?.lastModified ?? 0),
+    const encodedName = response.headers.get("x-opencut-media-name");
+    let name = key;
+    if (encodedName) {
+      try {
+        name = decodeURIComponent(encodedName);
+      } catch {
+        // Keep the stable storage id when a non-OpenCut server returns bad metadata.
+      }
+    }
+    return new File([blob], name, {
+      type: blob.type || response.headers.get("content-type") || "application/octet-stream",
+      lastModified: Number(
+        response.headers.get("x-opencut-media-last-modified") ?? 0,
+      ),
     });
   }
 
