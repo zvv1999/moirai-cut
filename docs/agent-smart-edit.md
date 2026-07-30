@@ -248,7 +248,8 @@ MCP 工具审批，并只在当前会话持久化；其他服务器或普通表�
 - `session`：Codex thread/session ID；
 - `delta`：模型文本增量；
 - `protocol`：Codex/app-server 的实时执行步骤；内置智能剪辑将其渲染为面向用户的
-  “处理过程”，保留状态、步骤、详情与流式增量，但不暴露“原生协议”等技术文案；
+  单行处理状态，默认只显示最新动作，可展开最近的用户可读步骤；方法名、内部类型和
+  执行详情不直接展示；
 - `done`：本轮权威最终消息；
 - `error`：连接、工具或本轮失败。
 
@@ -257,16 +258,22 @@ MCP 工具审批，并只在当前会话持久化；其他服务器或普通表�
 
 ### 工程级会话一致性
 
-同一个 `projectId` 只有一份权威智能剪辑会话。服务端将 `sessionId`、用户消息、
-Codex 回复和处理步骤原子写入工程目录的
-`agent/codex-conversation.json`。智能剪辑入口打开时通过
-`GET /api/codex/history/:projectId` 恢复，流式变化通过
-`POST /api/codex/history/:projectId` 合并保存。
+同一个 `projectId` 只有一份权威会话索引，但索引内可以包含多条独立会话。每条会话
+都有自己的 `conversationId`、标题、Codex `sessionId`、用户消息、回复和处理步骤。
+用户可以新建会话或选择历史会话，选择后必须传回该记录自己的 `sessionId`，从原上下文
+继续对话，禁止把不同会话的消息或 Codex thread 合并。
+
+服务端将会话索引原子写入工程目录的 `agent/codex-conversation.json`。智能剪辑入口
+打开时通过 `GET /api/codex/history/:projectId` 恢复，流式变化通过
+`POST /api/codex/history/:projectId` 按 `conversationId` 合并保存。旧版
+`opencut.codex-conversation.v1` 文件读取时会迁移为一条 `legacy-conversation`，
+已有消息与 `sessionId` 保持不变。
 
 同源页面使用 `BroadcastChannel` 即时通知，另以一秒轮询作为跨窗口、跨浏览器和通知
 丢失时的兜底。消息 ID 必须使用 UUID，按 `updatedAt` 合并，禁止页面用自己的完整
-快照覆盖其他页面的新消息。关闭面板、刷新页面或重新打开工程后，消息、处理步骤和
-Codex `sessionId` 必须保持一致。
+快照覆盖其他页面的新消息。关闭面板、刷新页面或重新打开工程后，会话列表、每条会话
+的消息、处理步骤和 Codex `sessionId` 必须保持一致；当前选中哪条会话属于页面交互
+状态，不强制其他标签页同步切换。
 
 ## 8. 二次编辑范式
 
