@@ -21,7 +21,7 @@ const envExampleSource = readFileSync(
 
 describe("智能剪辑与工程历史分面", () => {
 	test("提供两个独立且可访问的入口，不再使用合并入口", () => {
-		expect(source).toContain('aria-label="打开智能剪辑"');
+		expect(source).toContain('aria-label="进入智能剪辑"');
 		expect(source).toContain('aria-label="打开工程历史"');
 		expect(source).not.toContain("智能剪辑与工程历史");
 		expect(source).not.toContain("打开工程快照和智能体活动");
@@ -48,7 +48,7 @@ describe("智能剪辑与工程历史分面", () => {
 	});
 
 	test("智能剪辑直接打开为可访问的对话框", () => {
-		expect(source).toContain('<Dialog open={openSurface === "smart-edit"}');
+		expect(source).toContain('open={openSurface === "smart-edit"}');
 		expect(source).toContain('aria-label="智能剪辑对话框"');
 		expect(workbenchSource).toContain('role="log"');
 		expect(workbenchSource).toContain('aria-label="智能剪辑对话记录"');

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
 	buildAgentContextSnapshot,
@@ -240,12 +240,14 @@ export function AgentWorkbench() {
 	const [codexSettingsOpen, setCodexSettingsOpen] = useState(false);
 	const [codexChecking, setCodexChecking] = useState(true);
 	const [referencePickerOpen, setReferencePickerOpen] = useState(false);
+	const [followSelection, setFollowSelection] = useState(true);
 	const [referencePickerTab, setReferencePickerTab] = useState<
 		"timeline" | "library"
 	>("timeline");
 	const [referenceSearch, setReferenceSearch] = useState("");
 	const [rangeStartInput, setRangeStartInput] = useState("");
 	const [rangeEndInput, setRangeEndInput] = useState("");
+	const followedSelectionKey = useRef("");
 
 	const refreshCodexConnection = useCallback(async () => {
 		setCodexChecking(true);
@@ -281,6 +283,25 @@ export function AgentWorkbench() {
 			reference.projectId === semanticState.projectId &&
 			reference.sceneId === semanticState.sceneId,
 	);
+	useEffect(() => {
+		if (!followSelection || selectedElements.length === 0) return;
+		const selectionKey = selectedElements
+			.map(({ trackId, elementId }) => `${trackId}:${elementId}`)
+			.sort()
+			.join("|");
+		if (selectionKey === followedSelectionKey.current) return;
+		followedSelectionKey.current = selectionKey;
+		const references = buildElementContextReferences({
+			state: editor.agent.getState(),
+			selectedElements,
+		});
+		if (references.length > 0) addReferences(references);
+	}, [addReferences, editor, followSelection, selectedElements]);
+
+	useEffect(() => {
+		if (!followSelection) followedSelectionKey.current = "";
+	}, [followSelection]);
+
 	const contextSnapshot = buildAgentContextSnapshot({
 		state: semanticState,
 		pinnedReferences: visibleReferences,
@@ -346,9 +367,11 @@ export function AgentWorkbench() {
 	});
 
 	const selectedLabel =
-		selectedElements.length === 0
-			? "未选择素材"
-			: `已选 ${selectedElements.length} 个素材`;
+		visibleReferences.length > 0
+			? `已引用 ${visibleReferences.length} 项`
+			: selectedElements.length === 0
+				? "未选择素材"
+				: `已选 ${selectedElements.length} 个素材`;
 	const codexStatusLabel = codexChecking
 		? "检测中"
 		: codexConnection?.status === "ready"
@@ -637,6 +660,25 @@ export function AgentWorkbench() {
 					</div>
 				</div>
 				<div className="flex items-center gap-2">
+					<button
+						type="button"
+						aria-label="选中即引用"
+						aria-pressed={followSelection}
+						onClick={() => setFollowSelection((enabled) => !enabled)}
+						className={`flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[9px] transition-colors ${
+							followSelection
+								? "border-cyan-400/25 bg-cyan-400/8 text-cyan-200"
+								: "border-white/10 text-slate-500 hover:text-slate-200"
+						}`}
+						title="打开后继续点击时间轴素材，会自动加入本轮上下文"
+					>
+						<span
+							className={`size-1.5 rounded-full ${
+								followSelection ? "bg-cyan-300" : "bg-slate-600"
+							}`}
+						/>
+						选中即引用
+					</button>
 					<button
 						type="button"
 						aria-label="配置 Codex 连接"

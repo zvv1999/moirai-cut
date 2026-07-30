@@ -300,12 +300,18 @@ export function AgentBadge() {
 
 	return (
 		<>
-			<Dialog open={openSurface === "smart-edit"} onOpenChange={(open) => {
-				setOpenSurface(open ? "smart-edit" : null);
-			}}>
+			<Dialog
+				modal={false}
+				open={openSurface === "smart-edit"}
+				onOpenChange={(open) => {
+					setOpenSurface(open ? "smart-edit" : null);
+				}}
+			>
 				<DialogContent
+					showOverlay={false}
 					aria-label="智能剪辑对话框"
-					className="max-h-[86vh] w-[min(920px,calc(100vw-2rem))] max-w-[920px] gap-0 overflow-hidden border-white/10 bg-[#111315] p-0 text-slate-100 shadow-2xl"
+					onInteractOutside={(event) => event.preventDefault()}
+					className="right-4 bottom-14 top-auto left-auto max-h-[86vh] w-[min(720px,calc(100vw-2rem))] max-w-[720px] translate-x-0 translate-y-0 gap-0 overflow-hidden border-white/10 bg-[#111315] p-0 text-slate-100 shadow-2xl"
 				>
 					<DialogHeader className="sr-only">
 						<DialogTitle>智能剪辑对话框</DialogTitle>
@@ -636,7 +642,7 @@ export function AgentBadge() {
 				<div className="bg-border h-4 w-px" aria-hidden="true" />
 				<button
 					type="button"
-					aria-label="打开智能剪辑"
+					aria-label="进入智能剪辑"
 					aria-pressed={openSurface === "smart-edit"}
 					onClick={() =>
 						setOpenSurface((current) =>
@@ -654,7 +660,7 @@ export function AgentBadge() {
 							agent.active ? "animate-pulse bg-emerald-500" : "bg-cyan-500"
 						}`}
 					/>
-					{agent.active ? `${agent.actor ?? "智能体"} 已连接` : "智能剪辑"}
+					<span>进入智能剪辑</span>
 				</button>
 			</div>
 			</div>
