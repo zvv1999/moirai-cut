@@ -741,7 +741,17 @@ describe("Codex direct Smart Edit streaming chat", () => {
 										id: "user-app",
 										clientId: null,
 										type: "userMessage",
-										content: [{ type: "text", text: "再快一点" }],
+										content: [
+											{
+												type: "text",
+												text: [
+													"<codex_delegation>",
+													"<source_thread_id>thread-source</source_thread_id>",
+													"<input>再快一点</input>",
+													"</codex_delegation>",
+												].join("\n"),
+											},
+										],
 									},
 									{
 										id: "assistant-app",
@@ -1105,7 +1115,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(closed).toBe(true);
 	});
 
-	test("uses the saved Codex App workspace for thread grouping while keeping OpenCut roots available", async () => {
+	test("uses the configured App workspace cwd while keeping OpenCut roots available", async () => {
 		const calls: Array<{ method: string; params: unknown }> = [];
 		const groupedRuntime = {
 			...runtime,
