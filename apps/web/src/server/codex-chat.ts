@@ -2132,8 +2132,6 @@ export function createCodexChatService({
 				migratedLegacyThread = true;
 			}
 			const sessionId = threadIdFromResponse(threadResponse);
-			const shouldSyncThreadToDesktop =
-				!requestedSessionId || migratedLegacyThread;
 			sessions.set(cacheKey, sessionId);
 			const subscription = connection.subscribe(sessionId);
 			const iterator = subscription[Symbol.asyncIterator]();
@@ -2345,6 +2343,11 @@ export function createCodexChatService({
 
 					const completedTurn = completionFromNotification(notification);
 					if (!completedTurn) continue;
+					try {
+						await syncThreadToDesktop?.(sessionId);
+					} catch {
+						// Desktop refresh is best-effort; App Server remains authoritative.
+					}
 					if (completedTurn.status === "failed") {
 						const message =
 							isRecord(completedTurn.error) &&
@@ -2385,13 +2388,6 @@ export function createCodexChatService({
 								detail:
 									error instanceof Error ? error.message : "验证工具返回异常。",
 							};
-						}
-					}
-					if (shouldSyncThreadToDesktop) {
-						try {
-							await syncThreadToDesktop?.(sessionId);
-						} catch {
-							// Desktop discovery is best-effort; App Server remains authoritative.
 						}
 					}
 					yield { type: "done", sessionId, message };
