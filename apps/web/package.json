@@ -8,9 +8,9 @@
 		"node": ">=20.9.0"
 	},
 	"scripts": {
-		"dev": "next dev --turbopack",
-		"build": "next build",
-		"start": "next start",
+		"dev": "bun --bun next dev --turbopack",
+		"build": "bun --bun next build",
+		"start": "bun --bun next start",
 		"preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
 		"deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
 		"lint": "bunx --bun eslint src --ext .ts,.tsx",

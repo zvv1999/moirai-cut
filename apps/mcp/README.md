@@ -39,58 +39,54 @@ and compare-and-swap below are for.
 
 ## Setup
 
-**1. Start the editor** (from the repo root):
+For users, start OpenCut once and use **智能剪辑 → 设置**:
 
 ```bash
-bun dev
+bun run setup:local
 ```
 
-**2. Start Chrome with a debugging port.** Use a separate profile so this never
-touches your normal browser session:
+OpenCut detects the existing Codex and Claude login, then installs this MCP with
+one click. Installation is user-scoped, idempotent, and verified with the
+client's own `mcp get opencut` command.
+
+Developer-only manual equivalents:
 
 ```bash
-"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --remote-debugging-port=9222 --user-data-dir=/tmp/opencut-agent-profile http://localhost:3000/projects
+codex mcp add \
+  --env OPENCUT_BASE_URL=http://127.0.0.1:3000 \
+  --env OPENCUT_PROJECTS_DIR=/absolute/path/to/OpenCutProjects \
+  opencut -- bun /absolute/path/to/opencut-classic/apps/mcp/src/server.mjs
+
+claude mcp add --scope user \
+  --env OPENCUT_BASE_URL=http://127.0.0.1:3000 \
+  --env OPENCUT_PROJECTS_DIR=/absolute/path/to/OpenCutProjects \
+  opencut -- bun /absolute/path/to/opencut-classic/apps/mcp/src/server.mjs
 ```
 
-**3. Open a project** in that Chrome. The bridge is installed by the editor
-provider, so it only exists once a project is actually open.
-
-**4. Register the server** with your MCP client:
-
-```json
-{
-  "mcpServers": {
-    "opencut": {
-      "command": "bun",
-      "args": ["/absolute/path/to/opencut-classic/apps/mcp/src/server.mjs"]
-    }
-  }
-}
-```
-
-Environment overrides: `OPENCUT_CDP_PORT` (default `9222`), `OPENCUT_URL_MATCH`
-(default `/editor/`).
+File tools require no debug browser. Only tab-only inspection and undo tools
+need CDP; set `OPENCUT_CDP_PORT` (default `9222`) and `OPENCUT_URL_MATCH`
+(default `/editor/`) when developing those tools.
 
 ## Two ways in
 
 **File tools — the normal way to edit.** They change `project.json` on disk and
 need no browser at all. The open editor notices the file changed and follows it.
 
-| Tool | Purpose |
-| --- | --- |
-| `list_projects` | Every project file on disk, and the directory they live in. |
-| `read_project` | Revision, scene, and every track with its clips and effects. Read this first. |
-| `edit_project` | Apply a batch of operations to the file, atomically. |
-| `list_media` | The project's media assets, with duration, dimensions and frame rate. |
-| `import_media` | Copy a file from disk into the project. Probed with ffprobe. |
-| `delete_media` | Remove a media asset and report any timeline elements removed with it. |
-| `inspect_media` | Sample source footage into one labeled JPEG contact sheet. |
-| `inspect_media_scenes` | Detect shot boundaries and sample every scene or long-shot time sequence. |
-| `inspect_timeline_range` | Map a timeline interval through trims/retiming to source frames. |
-| `build_media_catalog` / `read_media_catalog` | Maintain compact Agent-readable metadata and timeline uses. |
-| `save_media_analysis` | Persist Codex multimodal observations for later turns. |
-| `analyze_audio` | Find silence and loudness intervals without opening the editor. |
-| `lint_cut` | Check timeline gaps, overlaps, slivers, missing media and duration drift. |
+| Tool                                         | Purpose                                                                       |
+| -------------------------------------------- | ----------------------------------------------------------------------------- |
+| `list_projects`                              | Every project file on disk, and the directory they live in.                   |
+| `read_project`                               | Revision, scene, and every track with its clips and effects. Read this first. |
+| `edit_project`                               | Apply a batch of operations to the file, atomically.                          |
+| `list_media`                                 | The project's media assets, with duration, dimensions and frame rate.         |
+| `import_media`                               | Copy a file from disk into the project. Probed with ffprobe.                  |
+| `delete_media`                               | Remove a media asset and report any timeline elements removed with it.        |
+| `inspect_media`                              | Sample source footage into one labeled JPEG contact sheet.                    |
+| `inspect_media_scenes`                       | Detect shot boundaries and sample every scene or long-shot time sequence.     |
+| `inspect_timeline_range`                     | Map a timeline interval through trims/retiming to source frames.              |
+| `build_media_catalog` / `read_media_catalog` | Maintain compact Agent-readable metadata and timeline uses.                   |
+| `save_media_analysis`                        | Persist Codex multimodal observations for later turns.                        |
+| `analyze_audio`                              | Find silence and loudness intervals without opening the editor.               |
+| `lint_cut`                                   | Check timeline gaps, overlaps, slivers, missing media and duration drift.     |
 
 `edit_project` is **all-or-nothing**: the batch is applied to a working copy, and
 if any step fails nothing is written. Operations compose — later ones see the
@@ -99,18 +95,18 @@ results of earlier ones — so a whole sequence can be built in one call.
 **Tab tools — for what only a running editor knows.** Human-selected Codex
 context, rendered pixels, and the undo history. These drive a live tab over CDP.
 
-| Tool | Purpose |
-| --- | --- |
-| `status` | Is a debugging port and an editor tab reachable? Start here when anything fails. |
-| `get_state` | Revision, project id, frame rate, media library, and every track with its clips. |
-| `get_context` | Compact pinned/live selection with stable `opencut://` paths and a prompt-ready block. |
-| `reveal_context` | Select an `opencut://` element or range and move the playhead to it. |
-| `list_operations` | What this build can execute — read from the page's registry, not from this server. |
-| `apply_operation` | Apply one edit. Requires `baseRevision` and `projectId`. |
-| `render_frames` | Render full PNGs, or one labeled JPEG contact sheet, to check an edit. |
+| Tool                                            | Purpose                                                                                           |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `status`                                        | Is a debugging port and an editor tab reachable? Start here when anything fails.                  |
+| `get_state`                                     | Revision, project id, frame rate, media library, and every track with its clips.                  |
+| `get_context`                                   | Compact pinned/live selection with stable `opencut://` paths and a prompt-ready block.            |
+| `reveal_context`                                | Select an `opencut://` element or range and move the playhead to it.                              |
+| `list_operations`                               | What this build can execute — read from the page's registry, not from this server.                |
+| `apply_operation`                               | Apply one edit. Requires `baseRevision` and `projectId`.                                          |
+| `render_frames`                                 | Render full PNGs, or one labeled JPEG contact sheet, to check an edit.                            |
 | `start_export` / `get_export` / `cancel_export` | Encode to a video file, including fast agent-only draft reviews. Long-running, so start and poll. |
-| `start_transcribe` / `get_transcribe` | Transcribe the timeline's audio to caption chunks. |
-| `undo` / `redo` | Move through the editor's history — including the human's edits. |
+| `start_transcribe` / `get_transcribe`           | Transcribe the timeline's audio to caption chunks.                                                |
+| `undo` / `redo`                                 | Move through the editor's history — including the human's edits.                                  |
 
 ## The edit vocabulary
 
@@ -162,18 +158,18 @@ reports elements nested under their track, so both halves are always at hand. Id
 change when a clip is split or replaced, so re-read rather than caching them.
 
 Use `element.insert` rather than `track.add` when you want a new track: it creates
-a compatible track *and* puts the clip on it in one command, which is what makes
+a compatible track _and_ puts the clip on it in one command, which is what makes
 it survive the prune reactor. `track.add` alone always reports `noEffect`.
 
 ## Errors worth distinguishing
 
-| code | meaning |
-| --- | --- |
-| `revision_conflict` | Someone edited between your read and your write. Re-read and re-decide. |
-| `project_mismatch` | The tab is on a different project than the one you read. |
-| `unresolved_reference` | A `{trackId, elementId}` pair does not resolve — the message says where the element actually is. |
-| `no_editor_tab` / `ambiguous_editor_tab` | Tab selection, before anything was evaluated. |
-| `target_gone` | The tab closed or navigated mid-call. |
+| code                                     | meaning                                                                                          |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `revision_conflict`                      | Someone edited between your read and your write. Re-read and re-decide.                          |
+| `project_mismatch`                       | The tab is on a different project than the one you read.                                         |
+| `unresolved_reference`                   | A `{trackId, elementId}` pair does not resolve — the message says where the element actually is. |
+| `no_editor_tab` / `ambiguous_editor_tab` | Tab selection, before anything was evaluated.                                                    |
+| `target_gone`                            | The tab closed or navigated mid-call.                                                            |
 
 ## The three guarantees
 
@@ -194,7 +190,7 @@ retry so a lost response cannot apply the batch twice. See `editWithRetry` in
 `probe-file.mjs` for the shape.
 
 **Optimistic concurrency.** An operation built against a stale revision is
-*rejected* (`revision_conflict`), never merged. If the human moved a clip between
+_rejected_ (`revision_conflict`), never merged. If the human moved a clip between
 your read and your write, you find out instead of silently clobbering them.
 Re-read and re-decide — do not blindly retry with a bumped number.
 
@@ -235,7 +231,7 @@ image whose revision is not the one you edited at is a picture of a document
 state you know nothing about, not evidence.
 
 Times are clamped to the last frame, and `renderedAtSeconds` reports where the
-frame was actually taken — comparing pixels against the time you *asked* for
+frame was actually taken — comparing pixels against the time you _asked_ for
 would otherwise silently compare the wrong moment.
 
 ## The review loop

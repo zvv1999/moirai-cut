@@ -122,13 +122,13 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain("复制 JSON");
 	});
 
-	test("侧栏展示可配置的 Codex Path 连接状态", () => {
+	test("侧栏自动发现 Agent 并把路径细节收进部署服务", () => {
 		expect(workbenchSource).toContain('fetch("/api/codex/config")');
 		expect(workbenchSource).toContain('aria-label="打开智能剪辑设置"');
-		expect(workbenchSource).toContain('aria-label="Codex Path"');
-		expect(envExampleSource).toContain(
-			"CODEX_BIN=/Applications/ChatGPT.app/Contents/Resources/codex",
-		);
+		expect(workbenchSource).toContain("<AgentSetupPanel compact");
+		expect(workbenchSource).not.toContain('aria-label="Codex Path"');
+		expect(envExampleSource).toContain("# CODEX_BIN=/absolute/path/to/codex");
+		expect(envExampleSource).toContain("# CLAUDE_BIN=/absolute/path/to/claude");
 	});
 
 	test("每条智能剪辑消息直接进入 Codex，不再经过本地计划和质检", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	ArrowUp,
 	CircleStop,
@@ -41,6 +41,7 @@ import { CodexSseDecoder } from "@/agent/codex-sse";
 import { toMediaTime, toSeconds } from "@/agent/time";
 import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
 import { useEditor } from "@/editor/use-editor";
+import { AgentSetupPanel } from "./agent-setup-panel";
 
 interface CodexConnection {
 	provider: "path";
@@ -759,17 +760,6 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 		sessionId: string | null;
 		messages: ChatMessage[];
 	}>({ conversationId: null, sessionId: null, messages: [] });
-
-	const refreshCodexConnection = useCallback(async () => {
-		setCodexChecking(true);
-		try {
-			setCodexConnection(await fetchCodexConnection());
-		} catch {
-			setCodexConnection(unavailableCodexConnection());
-		} finally {
-			setCodexChecking(false);
-		}
-	}, []);
 
 	useEffect(() => {
 		let active = true;
@@ -1690,7 +1680,7 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 		} catch (error) {
 			toast.error("无法定位此引用", {
 				description:
-					error instanceof Error ? error.message : "Codex Path 已失效。",
+					error instanceof Error ? error.message : "Codex 运行环境已失效。",
 			});
 		}
 	};
@@ -1798,25 +1788,7 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 					aria-label="智能剪辑设置"
 					className="absolute right-3 top-13 z-20 max-h-[calc(100%-4rem)] w-[min(320px,calc(100%-1.5rem))] overflow-y-auto rounded-xl border border-white/10 bg-[#1a1c1f] p-3 shadow-2xl"
 				>
-					<div className="flex items-center justify-between gap-3 border-b border-white/7 pb-3">
-						<div className="min-w-0">
-							<div className="flex items-center gap-2 text-[11px] font-medium text-slate-200">
-								<span className={`size-1.5 rounded-full ${codexStatusClass}`} />
-								{codexStatusLabel}
-							</div>
-							<p className="mt-0.5 truncate text-[9px] text-slate-500">
-								{codexConnection?.message ?? "正在检测桌面内置 Codex…"}
-							</p>
-						</div>
-						<button
-							type="button"
-							className="shrink-0 rounded-md px-2 py-1 text-[9px] text-slate-400 transition hover:bg-white/[0.06] hover:text-slate-100 disabled:opacity-40"
-							disabled={codexChecking}
-							onClick={() => void refreshCodexConnection()}
-						>
-							{codexChecking ? "检测中…" : "重新检测"}
-						</button>
-					</div>
+					<AgentSetupPanel compact />
 					<label className="mt-3 block">
 						<span className="mb-1 block text-[9px] text-slate-500">
 							响应模式
@@ -1996,20 +1968,6 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 								</span>
 							</button>
 						</div>
-						<label className="mt-2 block">
-							<span className="mb-1 block text-[9px] text-slate-500">
-								Codex Path
-							</span>
-							<input
-								aria-label="Codex Path"
-								readOnly
-								value={
-									codexConnection?.path ??
-									"/Applications/ChatGPT.app/Contents/Resources/codex"
-								}
-								className="h-7 w-full rounded-md border border-white/8 bg-black/25 px-2 font-mono text-[9px] text-slate-400 outline-none"
-							/>
-						</label>
 						<div className="mt-2 flex flex-wrap items-center gap-1 border-t border-white/7 pt-2">
 							{visibleReferences.length > 0 ? (
 								<>
@@ -2165,7 +2123,7 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 						<div>
 							<div className="text-[11px] font-semibold">添加上下文</div>
 							<div className="text-[9px] text-slate-500">
-								选择后会以 Codex Path 随消息发送
+								选择后会随消息发送给智能剪辑
 							</div>
 						</div>
 						<button

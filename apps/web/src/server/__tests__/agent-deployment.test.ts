@@ -32,10 +32,9 @@ describe("Agent provider discovery", () => {
 			}
 			if (args[0] === "--version") {
 				return {
-					stdout:
-						binary.endsWith("/claude")
-							? "2.1.91 (Claude Code)"
-							: "codex-cli 0.146.0",
+					stdout: binary.endsWith("/claude")
+						? "2.1.91 (Claude Code)"
+						: "codex-cli 0.146.0",
 					stderr: "",
 				};
 			}

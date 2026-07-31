@@ -50,30 +50,46 @@ Codex task，不维护两份独立会话。
 
 ### 环境要求
 
-- [Bun](https://bun.sh/) 最新稳定版
-- Node.js 20+；建议 Node.js 24，用于 ESLint 和生产构建
+- [Bun](https://bun.sh/) 1.3.14+
 - [FFmpeg](https://ffmpeg.org/) 与 FFprobe，用于媒体探测、代理和导出
-- 已登录的 Codex / ChatGPT 桌面 App，或可用的 Codex CLI
+- 可选：已登录的 Codex / ChatGPT 桌面 App、Codex CLI 或 Claude Code
 - Docker 与 Docker Compose（仅数据库、Redis 和完整自托管需要）
 
-### 启动 Web 编辑器
+### 一条命令启动本地编辑器
 
 ```bash
 git clone https://github.com/zvv1999/opencut-classic.git
 cd opencut-classic
 git switch feat/agent-drivable
 
-bun install
-cp apps/web/.env.example apps/web/.env.local
-
-# 需要数据库功能时再启动
-docker compose up -d db redis serverless-redis-http
-
-bun run dev:web
+bun run setup:local
 ```
 
-打开 [http://127.0.0.1:3000](http://127.0.0.1:3000)，新建或进入工程。
-`.env.example` 已包含本地开发默认值；只体验编辑器时可以不启动 Docker。
+该命令会创建本地工程目录、补齐文件模式配置、按需安装依赖、启动编辑器、执行环境诊断
+并打开 [http://127.0.0.1:3000](http://127.0.0.1:3000)。重复运行会复用现有配置和进程。
+只体验编辑器时不需要 Docker。
+
+随时检查当前环境：
+
+```bash
+bun run agent:doctor
+```
+
+首次进入工程时，OpenCut 会自动检测 Codex、Claude、Bun、FFmpeg 和工程目录。设置页提供
+两种使用方式：
+
+- **在 OpenCut 中使用**：自动复用本机 Codex 登录，不再填写 `Codex Path`。
+- **在 Codex / Claude 中使用**：点击“安装 OpenCut MCP”，安装后即可从对应 App
+  读取和修改所有 OpenCut 工程。
+
+需要数据库、Redis 和多人服务端能力时再运行：
+
+```bash
+BETTER_AUTH_SECRET="$(openssl rand -hex 32)" docker compose up -d
+```
+
+Docker 是服务器模式，不会读取宿主机 Codex/Claude 登录；浏览器智能剪辑应接入服务端
+API Provider。本机账号复用和 App MCP 推荐使用上面的本地模式。
 
 ### 让浏览器与 Codex App 使用同一会话
 
@@ -116,11 +132,11 @@ WebSocket 地址。
 
 ## 性能与画质档位
 
-| 档位 | 推理强度 | 画面识别 | 回写验证 | 适用场景 |
-| --- | --- | --- | --- | --- |
-| 快速 | `low` | 关闭 | 关闭 | 文案、重命名、确定性的简单修改 |
-| 均衡（默认） | `medium` | 关闭 | 基础 | 日常剪辑与 revision 落盘确认 |
-| 导演 | `xhigh` | 自动 | 完整 | 镜头判断、节奏重排、多模态与画面质检 |
+| 档位         | 推理强度 | 画面识别 | 回写验证 | 适用场景                             |
+| ------------ | -------- | -------- | -------- | ------------------------------------ |
+| 快速         | `low`    | 关闭     | 关闭     | 文案、重命名、确定性的简单修改       |
+| 均衡（默认） | `medium` | 关闭     | 基础     | 日常剪辑与 revision 落盘确认         |
+| 导演         | `xhigh`  | 自动     | 完整     | 镜头判断、节奏重排、多模态与画面质检 |
 
 当前链路针对交互和首字延迟做了以下处理：
 
@@ -140,8 +156,9 @@ WebSocket 地址。
 常用环境变量位于 `apps/web/.env.example`：
 
 ```bash
-# 桌面 App 内置 Codex CLI
-CODEX_BIN=/Applications/ChatGPT.app/Contents/Resources/codex
+# 默认自动发现；仅自定义安装位置时填写
+# CODEX_BIN=/absolute/path/to/codex
+# CLAUDE_BIN=/absolute/path/to/claude
 
 # OpenCut 与 Codex App 共享的 app-server
 OPENCUT_CODEX_APP_SERVER_URL=ws://127.0.0.1:48721
@@ -203,17 +220,17 @@ ESLint、生产构建和依赖审计。
 
 ## 常见问题
 
-| 现象 | 处理 |
-| --- | --- |
+| 现象                                  | 处理                                                                        |
+| ------------------------------------- | --------------------------------------------------------------------------- |
 | `Codex mcpServerStatus/list 请求超时` | 首次冷启动允许 MCP 初始化；确认 `.codex/config.toml` 使用 `bun`，然后重试。 |
-| 浏览器有回复，Codex App 没有回显 | 退出桌面 App 后运行 `bun run codex:shared-app`，确认两端连接同一端口。 |
-| task 已归档，无法续聊 | 执行 `codex unarchive <threadId>`，或在智能剪辑中新建会话。 |
-| `fetch is not defined` | MCP 被旧 Node 启动；恢复项目配置中的 Bun 启动方式。 |
-| 页面刷新后仍显示处理中 | 保留原 run 并等待自动重连；不要重复发送同一条剪辑指令。 |
-| Codex App 续聊缺少 OpenCut 工具 | 检查 task 工作区的 `.codex/config.toml` 是否注册 `mcp_servers.opencut`。 |
-| `revision_conflict` | 重新读取工程并基于新 revision 生成操作，不要盲目重试。 |
-| `noEffect: true` | 操作执行但没有改变结果；检查轨道、元素选择和时间范围。 |
-| 预览卡顿但导出正常 | 等待代理任务完成；代理只影响预览，最终导出仍使用原片。 |
+| 浏览器有回复，Codex App 没有回显      | 退出桌面 App 后运行 `bun run codex:shared-app`，确认两端连接同一端口。      |
+| task 已归档，无法续聊                 | 执行 `codex unarchive <threadId>`，或在智能剪辑中新建会话。                 |
+| `fetch is not defined`                | MCP 被旧 Node 启动；恢复项目配置中的 Bun 启动方式。                         |
+| 页面刷新后仍显示处理中                | 保留原 run 并等待自动重连；不要重复发送同一条剪辑指令。                     |
+| Codex App 续聊缺少 OpenCut 工具       | 检查 task 工作区的 `.codex/config.toml` 是否注册 `mcp_servers.opencut`。    |
+| `revision_conflict`                   | 重新读取工程并基于新 revision 生成操作，不要盲目重试。                      |
+| `noEffect: true`                      | 操作执行但没有改变结果；检查轨道、元素选择和时间范围。                      |
+| 预览卡顿但导出正常                    | 等待代理任务完成；代理只影响预览，最终导出仍使用原片。                      |
 
 更多协议、上下文 JSON、媒体目录和故障处理细节见
 [docs/agent-smart-edit.md](docs/agent-smart-edit.md)。

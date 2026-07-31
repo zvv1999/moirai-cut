@@ -10,6 +10,8 @@
 		"packages/*"
 	],
 	"scripts": {
+		"agent:doctor": "bun apps/mcp/src/agent-doctor.mjs",
+		"agent:up": "bun apps/mcp/src/agent-up.mjs",
 		"build:tools": "turbo run build --filter=@opencut/tools",
 		"build:wasm": "wasm-pack build rust/wasm --target bundler --out-dir pkg",
 		"build:web": "turbo run build --filter=@opencut/web",
@@ -25,6 +27,7 @@
 		"preview:web": "turbo run preview --filter=@opencut/web",
 		"publish:wasm": "bun run build:wasm && npm publish rust/wasm/pkg --access public",
 		"start:tools": "turbo run start --filter=@opencut/tools",
+		"setup:local": "bun apps/mcp/src/setup-local.mjs",
 		"test": "bun test",
 		"typecheck:web": "bun --cwd apps/web typecheck"
 	},

@@ -22,9 +22,7 @@ describe("Codex CLI configuration", () => {
 			exists: (candidate) => existing.has(candidate),
 		});
 
-		expect(desktop).toBe(
-			"/Applications/ChatGPT.app/Contents/Resources/codex",
-		);
+		expect(desktop).toBe("/Applications/ChatGPT.app/Contents/Resources/codex");
 		expect(pathOnly).toBe("/usr/local/bin/codex");
 	});
 

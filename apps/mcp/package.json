@@ -7,10 +7,12 @@
 		"opencut-mcp": "./src/server.mjs"
 	},
 	"scripts": {
-		"start": "node src/server.mjs",
-		"probe": "node src/probe.mjs",
+		"start": "bun src/server.mjs",
+		"probe": "bun src/probe.mjs",
 		"test": "node --test src/__tests__",
-		"agent:up": "node src/agent-up.mjs"
+		"agent:doctor": "bun src/agent-doctor.mjs",
+		"agent:up": "bun src/agent-up.mjs",
+		"setup:local": "bun src/setup-local.mjs"
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.30.0",

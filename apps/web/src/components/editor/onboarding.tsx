@@ -1,17 +1,22 @@
 "use client";
 
-import { ArrowRightIcon } from "lucide-react";
+import { ArrowRightIcon, Film, Sparkles } from "lucide-react";
 import { useState } from "react";
-import ReactMarkdown from "react-markdown";
-import { SOCIAL_LINKS } from "@/site/social";
 import { useLocalStorage } from "@/services/storage/use-local-storage";
+import { AgentSetupPanel } from "./agent-setup-panel";
 import { Button } from "../ui/button";
-import { Dialog, DialogBody, DialogContent, DialogTitle } from "../ui/dialog";
+import {
+	Dialog,
+	DialogBody,
+	DialogContent,
+	DialogDescription,
+	DialogTitle,
+} from "../ui/dialog";
 
 export function Onboarding() {
 	const [step, setStep] = useState(0);
 	const [hasSeenOnboarding, setHasSeenOnboarding] = useLocalStorage({
-		key: "hasSeenOnboarding",
+		key: "hasSeenAgentOnboardingV2",
 		defaultValue: false,
 	});
 
@@ -28,11 +33,9 @@ export function Onboarding() {
 	const getStepTitle = () => {
 		switch (step) {
 			case 0:
-				return "欢迎使用 OpenCut Beta！🎉";
+				return "欢迎使用 OpenCut";
 			case 1:
-				return "⚠️ 当前仍处于早期测试阶段";
-			case 2:
-				return "🦋 祝你体验愉快！";
+				return "连接智能剪辑环境";
 			default:
 				return "OpenCut 使用引导";
 		}
@@ -43,35 +46,50 @@ export function Onboarding() {
 			case 0:
 				return (
 					<div className="space-y-5">
-						<div className="space-y-3">
-							<Title title="欢迎使用 OpenCut Beta！🎉" />
-							<Description description="你正在率先体验 OpenCut——完全开源的视频剪辑工具。" />
+						<div className="flex size-11 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-500">
+							<Film className="size-5" />
 						</div>
-						<NextButton onClick={handleNext}>下一步</NextButton>
+						<div className="space-y-2">
+							<Title title="欢迎使用 OpenCut" />
+							<p className="text-sm leading-relaxed text-muted-foreground">
+								在浏览器中完成专业剪辑，也可以复用本机 Codex 或 Claude 让 Agent
+								直接理解并修改当前工程。
+							</p>
+						</div>
+						<div className="grid gap-2 text-xs sm:grid-cols-2">
+							<div className="rounded-lg border bg-muted/30 p-3">
+								<div className="font-medium">浏览器智能剪辑</div>
+								<p className="mt-1 text-muted-foreground">
+									自动携带工程、选区和素材上下文。
+								</p>
+							</div>
+							<div className="rounded-lg border bg-muted/30 p-3">
+								<div className="font-medium">Agent App 控制</div>
+								<p className="mt-1 text-muted-foreground">
+									安装 MCP 后可从 Codex 或 Claude 操作。
+								</p>
+							</div>
+						</div>
+						<NextButton onClick={handleNext}>检测环境</NextButton>
 					</div>
 				);
 			case 1:
 				return (
-					<div className="space-y-5">
-						<div className="space-y-3">
+					<div className="space-y-4">
+						<div className="flex items-center gap-2">
+							<Sparkles className="size-4 text-cyan-500" />
 							<Title title={getStepTitle()} />
-							<Description description="我们仍在持续完善这款编辑器。" />
-							<Description description="部分功能还在开发中，欢迎和我们一起见证它变得更好。" />
-							<Description description="想了解后续计划，可以查看[产品路线图](https://opencut.app/roadmap)。" />
 						</div>
-						<NextButton onClick={handleNext}>下一步</NextButton>
-					</div>
-				);
-			case 2:
-				return (
-					<div className="space-y-5">
-						<div className="space-y-3">
-							<Title title={getStepTitle()} />
-							<Description
-								description={`欢迎加入我们的 [Discord](${SOCIAL_LINKS.discord})，交流想法并提交反馈，帮助 OpenCut 变得更好。`}
-							/>
+						<AgentSetupPanel />
+						<div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+							<Button variant="ghost" onClick={handleClose}>
+								稍后配置
+							</Button>
+							<Button onClick={handleClose}>
+								开始创作
+								<ArrowRightIcon className="size-4" />
+							</Button>
 						</div>
-						<NextButton onClick={handleClose}>完成</NextButton>
 					</div>
 				);
 			default:
@@ -81,10 +99,13 @@ export function Onboarding() {
 
 	return (
 		<Dialog open={isOpen} onOpenChange={handleClose}>
-			<DialogContent className="sm:max-w-[425px]">
+			<DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-[720px]">
 				<DialogTitle>
 					<span className="sr-only">{getStepTitle()}</span>
 				</DialogTitle>
+				<DialogDescription className="sr-only">
+					配置 OpenCut 本地智能剪辑与 Agent App 工程工具。
+				</DialogDescription>
 				<DialogBody>{renderStepContent()}</DialogBody>
 			</DialogContent>
 		</Dialog>
@@ -93,30 +114,6 @@ export function Onboarding() {
 
 function Title({ title }: { title: string }) {
 	return <h2 className="text-lg font-bold md:text-xl">{title}</h2>;
-}
-
-function Description({ description }: { description: string }) {
-	return (
-		<div className="text-muted-foreground">
-			<ReactMarkdown
-				components={{
-					p: ({ children }) => <p className="mb-0">{children}</p>,
-					a: ({ href, children }) => (
-						<a
-							href={href}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="text-foreground hover:text-foreground/80 underline"
-						>
-							{children}
-						</a>
-					),
-				}}
-			>
-				{description}
-			</ReactMarkdown>
-		</div>
-	);
 }
 
 function NextButton({

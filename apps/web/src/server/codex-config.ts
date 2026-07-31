@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import path from "node:path";
 
 export type CodexConnectionStatus =
@@ -47,8 +48,44 @@ const runCodexCommand: CodexCommandRunner = ({ binary, args }) =>
 		);
 	});
 
+export function resolveCodexBinary({
+	env = process.env,
+	platform = process.platform,
+	exists = existsSync,
+}: {
+	env?: Record<string, string | undefined>;
+	platform?: NodeJS.Platform;
+	exists?: (candidate: string) => boolean;
+} = {}): string {
+	const configured = env.CODEX_BIN?.trim();
+	if (configured) return configured;
+
+	const candidates: string[] = [];
+	if (platform === "darwin") {
+		candidates.push(
+			DESKTOP_CODEX_BIN,
+			"/Applications/Codex.app/Contents/Resources/codex",
+		);
+	}
+	const extensions =
+		platform === "win32"
+			? (env.PATHEXT ?? ".EXE;.CMD;.BAT").split(";")
+			: [""];
+	for (const directory of (env.PATH ?? "").split(path.delimiter).filter(Boolean)) {
+		for (const extension of extensions) {
+			candidates.push(path.join(directory, `codex${extension.toLowerCase()}`));
+		}
+	}
+	return (
+		candidates.find((candidate) => exists(candidate)) ??
+		(platform === "darwin"
+			? DESKTOP_CODEX_BIN
+			: path.resolve(process.cwd(), platform === "win32" ? "codex.exe" : "codex"))
+	);
+}
+
 export function configuredCodexBinary(): string {
-	return process.env.CODEX_BIN?.trim() || DESKTOP_CODEX_BIN;
+	return resolveCodexBinary();
 }
 
 export async function inspectCodexBinary({
@@ -59,9 +96,10 @@ export async function inspectCodexBinary({
 	run?: CodexCommandRunner;
 }): Promise<CodexConnection> {
 	const resolvedBinary = binary.trim();
+	const binaryName = path.basename(resolvedBinary).toLowerCase();
 	if (
 		!path.isAbsolute(resolvedBinary) ||
-		path.basename(resolvedBinary) !== "codex"
+		!["codex", "codex.exe", "codex.cmd"].includes(binaryName)
 	) {
 		return {
 			provider: "path",
@@ -70,7 +108,7 @@ export async function inspectCodexBinary({
 			executable: false,
 			authenticated: false,
 			version: null,
-			message: "Codex Path 必须是名为 codex 的绝对路径。",
+			message: "Codex 可执行文件必须使用名为 codex 的绝对路径。",
 		};
 	}
 
@@ -92,7 +130,7 @@ export async function inspectCodexBinary({
 			executable: false,
 			authenticated: false,
 			version: null,
-			message: "无法执行 Codex CLI，请检查 Path。",
+			message: "无法执行 Codex CLI，请检查本机安装。",
 		};
 	}
 
