@@ -10,6 +10,12 @@ const workbenchSource = readFileSync(
 	fileURLToPath(new URL("../agent-workbench.tsx", import.meta.url)),
 	"utf8",
 );
+const editorPageSource = readFileSync(
+	fileURLToPath(
+		new URL("../../../app/editor/[project_id]/page.tsx", import.meta.url),
+	),
+	"utf8",
+);
 const conversationSource = readFileSync(
 	fileURLToPath(
 		new URL("../../../agent/codex-conversation.ts", import.meta.url),
@@ -18,10 +24,6 @@ const conversationSource = readFileSync(
 );
 const performanceSource = readFileSync(
 	fileURLToPath(new URL("../../../agent/codex-performance.ts", import.meta.url)),
-	"utf8",
-);
-const dialogSource = readFileSync(
-	fileURLToPath(new URL("../../ui/dialog.tsx", import.meta.url)),
 	"utf8",
 );
 const envExampleSource = readFileSync(
@@ -55,20 +57,29 @@ describe("智能剪辑与工程历史分面", () => {
 		);
 	});
 
-	test("智能剪辑直接打开为可访问的对话框", () => {
-		expect(source).toContain('open={openSurface === "smart-edit"}');
-		expect(source).toContain('aria-label="智能剪辑对话框"');
+	test("智能剪辑打开为编辑器左侧的独立侧栏", () => {
+		expect(source).toContain('aria-label="智能剪辑侧栏"');
+		expect(source).toContain('data-testid="agent-workbench-sidebar"');
+		expect(source).toContain('openSurface === "smart-edit"');
+		expect(source).not.toContain('aria-label="智能剪辑对话框"');
+		expect(source).not.toContain("<Dialog");
+		expect(editorPageSource).toContain("<AgentBadge />");
+		expect(editorPageSource).toContain('data-testid="editor-workspace"');
+		expect(editorPageSource).toContain(
+			'className="flex min-h-0 min-w-0 flex-1 overflow-hidden"',
+		);
 		expect(workbenchSource).toContain('role="log"');
 		expect(workbenchSource).toContain('aria-label="智能剪辑对话记录"');
 		expect(workbenchSource).toContain('aria-label="发送智能剪辑需求"');
 	});
 
-	test("智能剪辑保持非模态，打开后仍可继续操作时间线", () => {
-		expect(source).toContain("modal={false}");
-		expect(source).toContain("showOverlay={false}");
-		expect(source).toContain("onInteractOutside");
-		expect(dialogSource).toContain("showOverlay = true");
-		expect(dialogSource).toContain("{showOverlay ? <DialogOverlay /> : null}");
+	test("侧栏参与左右布局并提供收起操作，右侧工作区仍可交互", () => {
+		expect(source).toContain('aria-controls="agent-workbench-sidebar"');
+		expect(source).toContain('aria-expanded={openSurface === "smart-edit"}');
+		expect(source).toContain("<AgentWorkbench onClose=");
+		expect(workbenchSource).toContain('aria-label="收起智能剪辑侧栏"');
+		expect(workbenchSource).toContain("h-full min-h-0");
+		expect(editorPageSource).toContain("min-w-0 flex-1");
 	});
 
 	test("打开后默认把时间线选择直接加入上下文", () => {
@@ -247,7 +258,7 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).not.toContain("semanticTextCount");
 		expect(workbenchSource).not.toContain("semanticKeyframeCount");
 		expect(workbenchSource).not.toContain("API 模式");
-		expect(source).toContain("max-w-[640px]");
-		expect(source).toContain("w-[min(640px,calc(100vw-2rem))]");
+		expect(source).toContain("w-[clamp(340px,28vw,440px)]");
+		expect(source).toContain("shrink-0");
 	});
 });
