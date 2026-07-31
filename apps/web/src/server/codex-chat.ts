@@ -1131,9 +1131,7 @@ function threadHistoryFromResponse(response: unknown): CodexThreadHistory {
 		const completedAt =
 			typeof rawTurn.completedAt === "number"
 				? rawTurn.completedAt
-				: typeof thread.updatedAt === "number"
-					? thread.updatedAt
-					: startedAt;
+				: Math.max(thread.updatedAt, startedAt);
 		let offset = 0;
 		for (const item of rawTurn.items.filter(isRecord)) {
 			if (item.type !== "userMessage" || typeof item.id !== "string") continue;
