@@ -1,10 +1,33 @@
 import { describe, expect, test } from "bun:test";
 import {
 	inspectCodexBinary,
+	resolveCodexBinary,
 	type CodexCommandRunner,
 } from "@/server/codex-config";
 
 describe("Codex CLI configuration", () => {
+	test("auto-discovers a desktop or PATH runtime without requiring a manual path", () => {
+		const existing = new Set([
+			"/Applications/ChatGPT.app/Contents/Resources/codex",
+			"/usr/local/bin/codex",
+		]);
+		const desktop = resolveCodexBinary({
+			env: { PATH: "/usr/local/bin" },
+			platform: "darwin",
+			exists: (candidate) => existing.has(candidate),
+		});
+		const pathOnly = resolveCodexBinary({
+			env: { PATH: "/usr/local/bin" },
+			platform: "linux",
+			exists: (candidate) => existing.has(candidate),
+		});
+
+		expect(desktop).toBe(
+			"/Applications/ChatGPT.app/Contents/Resources/codex",
+		);
+		expect(pathOnly).toBe("/usr/local/bin/codex");
+	});
+
 	test("rejects relative or non-Codex paths before running a process", async () => {
 		let calls = 0;
 		const run: CodexCommandRunner = async () => {
