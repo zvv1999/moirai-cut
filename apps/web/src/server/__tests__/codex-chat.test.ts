@@ -1101,6 +1101,59 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		});
 	});
 
+	test("keeps timestamps valid while the native App turn is still running", async () => {
+		const connection: CodexAppServerConnection = {
+			request: async ({ method }) => {
+				if (method !== "thread/read") {
+					throw new Error(`unexpected method ${method}`);
+				}
+				return {
+					thread: {
+						id: "thread-running",
+						name: "运行中的会话",
+						createdAt: 100,
+						updatedAt: 100,
+						turns: [
+							{
+								id: "turn-running",
+								status: "inProgress",
+								startedAt: 110,
+								completedAt: null,
+								items: [
+									{
+										id: "user-running",
+										type: "userMessage",
+										content: [{ type: "text", text: "继续处理" }],
+									},
+									{
+										id: "assistant-running",
+										type: "agentMessage",
+										phase: "commentary",
+										text: "正在读取工程。",
+									},
+								],
+							},
+						],
+					},
+				};
+			},
+			subscribe: () => subscriptionOf({ notifications: [] }),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+		});
+
+		const history = await service.readThread({
+			sessionId: "thread-running",
+		});
+
+		expect(history.messages).toHaveLength(2);
+		for (const message of history.messages) {
+			expect(message.updatedAt).toBeGreaterThanOrEqual(message.createdAt);
+		}
+	});
+
 	test("forks a legacy hidden thread into a user-visible App task", async () => {
 		const calls: Array<{ method: string; params: unknown }> = [];
 		const connection: CodexAppServerConnection = {
