@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, CircleStop, Plus, Settings2, Sparkles } from "lucide-react";
+import {
+	ArrowUp,
+	CircleStop,
+	PanelLeftClose,
+	Plus,
+	Settings2,
+	Sparkles,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
 	buildAgentContextSnapshot,
@@ -135,9 +142,7 @@ function timestampNow(): number {
 }
 
 function shouldFollowConversationTail(element: HTMLElement): boolean {
-	return (
-		element.scrollHeight - element.clientHeight - element.scrollTop <= 96
-	);
+	return element.scrollHeight - element.clientHeight - element.scrollTop <= 96;
 }
 
 function isCodexConnection(value: unknown): value is CodexConnection {
@@ -662,7 +667,11 @@ async function runCodexAction(
 	}
 }
 
-export function AgentWorkbench() {
+interface AgentWorkbenchProps {
+	onClose?: () => void;
+}
+
+export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 	const editor = useEditor();
 	const semanticState = editor.agent.getState();
 	const projectId = semanticState.projectId;
@@ -1706,10 +1715,10 @@ export function AgentWorkbench() {
 
 	return (
 		<section
-			className="relative flex h-[min(70vh,680px)] min-h-[500px] flex-col overflow-hidden bg-[#111315]"
+			className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[#111315]"
 			aria-label="智能剪辑工作台"
 		>
-			<header className="flex h-13 shrink-0 items-center gap-3 border-b border-white/8 px-4 pr-12">
+			<header className="flex h-13 shrink-0 items-center gap-3 border-b border-white/8 px-4">
 				<div className="flex min-w-0 flex-1 items-center gap-2.5">
 					<span className="relative flex size-7 shrink-0 items-center justify-center rounded-lg bg-[#e6e8eb] text-[10px] font-black text-[#111315]">
 						AI
@@ -1770,6 +1779,17 @@ export function AgentWorkbench() {
 					>
 						<Settings2 className="size-3.5" />
 					</button>
+					{onClose ? (
+						<button
+							type="button"
+							aria-label="收起智能剪辑侧栏"
+							onClick={onClose}
+							className="flex size-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/[0.06] hover:text-slate-100"
+							title="收起侧栏"
+						>
+							<PanelLeftClose className="size-3.5" />
+						</button>
+					) : null}
 				</div>
 			</header>
 

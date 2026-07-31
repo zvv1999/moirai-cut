@@ -23,7 +23,9 @@ const conversationSource = readFileSync(
 	"utf8",
 );
 const performanceSource = readFileSync(
-	fileURLToPath(new URL("../../../agent/codex-performance.ts", import.meta.url)),
+	fileURLToPath(
+		new URL("../../../agent/codex-performance.ts", import.meta.url),
+	),
 	"utf8",
 );
 const envExampleSource = readFileSync(
@@ -103,7 +105,7 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(source).not.toContain("问 Codex");
 	});
 
-	test("对话框提供时间轴与素材库两类上下文选择器", () => {
+	test("侧栏提供时间轴与素材库两类上下文选择器", () => {
 		expect(workbenchSource).toContain('aria-label="添加上下文引用"');
 		expect(workbenchSource).toContain('aria-label="选择时间轴素材"');
 		expect(workbenchSource).toContain('aria-label="选择素材库元素"');
@@ -120,7 +122,7 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain("复制 JSON");
 	});
 
-	test("对话框展示可配置的 Codex Path 连接状态", () => {
+	test("侧栏展示可配置的 Codex Path 连接状态", () => {
 		expect(workbenchSource).toContain('fetch("/api/codex/config")');
 		expect(workbenchSource).toContain('aria-label="打开智能剪辑设置"');
 		expect(workbenchSource).toContain('aria-label="Codex Path"');
@@ -179,9 +181,7 @@ describe("智能剪辑与工程历史分面", () => {
 		);
 		expect(workbenchSource).toContain("conversationHydrated");
 		expect(workbenchSource).toContain("crypto.randomUUID()");
-		expect(workbenchSource).toContain(
-			"const hydrateConversation = async ({",
-		);
+		expect(workbenchSource).toContain("const hydrateConversation = async ({");
 		expect(workbenchSource).toContain(
 			"void hydrateConversation({ synchronizeNative: false }).then",
 		);
@@ -258,7 +258,8 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).not.toContain("semanticTextCount");
 		expect(workbenchSource).not.toContain("semanticKeyframeCount");
 		expect(workbenchSource).not.toContain("API 模式");
-		expect(source).toContain("w-[clamp(340px,28vw,440px)]");
+		expect(source).toContain("w-[clamp(320px,28vw,440px)]");
+		expect(source).toContain("max-w-[46%]");
 		expect(source).toContain("shrink-0");
 	});
 });

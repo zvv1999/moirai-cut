@@ -11,6 +11,7 @@ import { PropertiesPanel } from "@/components/editor/panels/properties";
 import { Timeline } from "@/timeline/components";
 import { PreviewPanel } from "@/preview/components";
 import { EditorHeader } from "@/components/editor/editor-header";
+import { AgentBadge } from "@/components/editor/agent-badge";
 import { EditorProvider } from "@/components/providers/editor-provider";
 import { Onboarding } from "@/components/editor/onboarding";
 import { MigrationDialog } from "@/project/components/migration-dialog";
@@ -45,8 +46,11 @@ export default function Editor() {
 				<div className="dark editor-studio-shell bg-background flex h-screen w-screen flex-col overflow-hidden">
 					<DegradedRendererBanner />
 					<EditorHeader />
-					<div className="min-h-0 min-w-0 flex-1">
-						<EditorLayout />
+					<div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+						<AgentBadge />
+						<main className="min-w-0 flex-1" data-testid="editor-workspace">
+							<EditorLayout />
+						</main>
 					</div>
 					<Onboarding />
 					<MigrationDialog />

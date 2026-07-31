@@ -14,7 +14,6 @@ import { buildAgentContextSnapshot } from "@/agent/context-references";
 import { useAgentContextStore } from "@/agent/context-store";
 import { toSeconds } from "@/agent/time";
 import { watchProjectFile } from "@/services/storage/project-file-sync";
-import { AgentBadge } from "@/components/editor/agent-badge";
 import { loadFontAtlas } from "@/fonts/google-fonts";
 import {
 	initializeGpuRenderer,
@@ -88,9 +87,7 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 						delete (window as Window & { __wasmPanic?: string }).__wasmPanic;
 						setError(wasmPanic);
 					} else {
-						setError(
-							err instanceof Error ? err.message : "加载工程失败",
-						);
+						setError(err instanceof Error ? err.message : "加载工程失败");
 					}
 					setIsLoading(false);
 				}
@@ -194,8 +191,7 @@ function EditorRuntimeBindings() {
 				state,
 				pinnedReferences: useAgentContextStore.getState().references,
 				selectedElements: editor.selection.getSelectedElements(),
-				playheadSeconds:
-					toSeconds(editor.playback.getCurrentTime()) ?? 0,
+				playheadSeconds: toSeconds(editor.playback.getCurrentTime()) ?? 0,
 			});
 			await fetch("/api/editor-presence", {
 				method: "POST",
@@ -230,13 +226,7 @@ function EditorRuntimeBindings() {
 
 	useEditorActions();
 	useKeybindingsListener();
-	// Fixed-position, so where it mounts in the tree is irrelevant.
-	return (
-		<>
-			<AgentBadge />
-			<RecoverySessionGuard />
-		</>
-	);
+	return <RecoverySessionGuard />;
 }
 
 function RecoverySessionGuard() {
@@ -336,8 +326,7 @@ function RecoverySessionGuard() {
 			);
 		} catch (error) {
 			toast.error("恢复失败", {
-				description:
-					error instanceof Error ? error.message : "请重试",
+				description: error instanceof Error ? error.message : "请重试",
 			});
 		} finally {
 			setRestoring(false);
@@ -377,9 +366,7 @@ function RecoverySessionGuard() {
 						className="border-input hover:bg-accent rounded-md border px-3 py-2 text-sm disabled:opacity-50"
 						onClick={() => void restoreOpeningRevision()}
 					>
-						{restoring
-							? "恢复中…"
-							: `恢复版本 ${candidate.openingRevision}`}
+						{restoring ? "恢复中…" : `恢复版本 ${candidate.openingRevision}`}
 					</button>
 					<button
 						type="button"
