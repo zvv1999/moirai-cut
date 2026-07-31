@@ -138,6 +138,8 @@
 	font-family:
 		"PingFang SC", "SF Pro Text", "Microsoft YaHei", system-ui, sans-serif;
 	background: hsl(225 9% 8%);
+	color: var(--foreground);
+	color-scheme: dark;
 }
 
 .editor-studio-shell .panel {
@@ -166,6 +168,25 @@
 .editor-studio-shell input,
 .editor-studio-shell textarea {
 	color-scheme: dark;
+}
+
+@layer base {
+	:where(.editor-studio-shell) :where(button) {
+		color: inherit;
+	}
+
+	:where(.editor-studio-shell) :where(input, select, textarea) {
+		color: var(--foreground);
+	}
+
+	:where(.editor-studio-shell) :where(select option) {
+		background-color: var(--popover);
+		color: var(--popover-foreground);
+	}
+
+	:where(.editor-studio-shell) :where(input, select, textarea)::placeholder {
+		color: var(--muted-foreground);
+	}
 }
 
 .editor-studio-shell .inspector-range {

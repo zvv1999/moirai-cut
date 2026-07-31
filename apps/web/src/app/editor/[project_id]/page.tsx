@@ -18,7 +18,7 @@ import { MigrationDialog } from "@/project/components/migration-dialog";
 import { usePanelStore } from "@/editor/panel-store";
 import { usePasteMedia } from "@/media/use-paste-media";
 import { MobileGate } from "@/components/editor/mobile-gate";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useEditor } from "@/editor/use-editor";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -35,6 +35,11 @@ import {
 	bookmarkNotesPreviewOverlay,
 	getBookmarkPreviewOverlaySource,
 } from "@/timeline/bookmarks/index";
+import {
+	type EditorSurface,
+	resolveEditorWorkspaceMode,
+} from "@/components/editor/editor-responsive-layout";
+import { FolderOpen, MonitorPlay, SlidersHorizontal } from "lucide-react";
 
 export default function Editor() {
 	const params = useParams<{ project_id: string }>();
@@ -85,6 +90,13 @@ function DegradedRendererBanner() {
 function EditorLayout() {
 	usePasteMedia();
 	const { panels, setPanel } = usePanelStore();
+	const workspaceRef = useRef<HTMLDivElement>(null);
+	const [workspaceWidth, setWorkspaceWidth] = useState(0);
+	const [activeSurface, setActiveSurface] = useState<EditorSurface>("preview");
+	const selectedElementCount = useEditor(
+		(editor) => editor.selection.getSelectedElements().length,
+	);
+	const previousSelectedElementCount = useRef(selectedElementCount);
 	const activeScene = useEditor((editor) =>
 		editor.scenes.getActiveSceneOrNull(),
 	);
@@ -98,6 +110,38 @@ function EditorLayout() {
 		overlay: bookmarkNotesPreviewOverlay,
 		overlays,
 	});
+	const workspaceMode = resolveEditorWorkspaceMode(workspaceWidth);
+
+	useEffect(() => {
+		const workspace = workspaceRef.current;
+		if (!workspace) return;
+
+		const updateWidth = (width: number) => {
+			setWorkspaceWidth((current) =>
+				Math.abs(current - width) >= 1 ? width : current,
+			);
+		};
+		updateWidth(workspace.getBoundingClientRect().width);
+
+		const observer = new ResizeObserver((entries) => {
+			const entry = entries[0];
+			if (entry) updateWidth(entry.contentRect.width);
+		});
+		observer.observe(workspace);
+		return () => observer.disconnect();
+	}, []);
+
+	useEffect(() => {
+		const previousCount = previousSelectedElementCount.current;
+		previousSelectedElementCount.current = selectedElementCount;
+		if (
+			workspaceMode === "focus" &&
+			previousCount === 0 &&
+			selectedElementCount > 0
+		) {
+			setActiveSurface("properties");
+		}
+	}, [selectedElementCount, workspaceMode]);
 
 	const overlaySource = useMemo(
 		() =>
@@ -129,86 +173,188 @@ function EditorLayout() {
 		[overlaySource.definitions, overlays],
 	);
 
+	const previewPanel = (
+		<PreviewPanel
+			overlayControls={overlayControls}
+			overlayInstances={overlaySource.instances}
+			onOverlayVisibilityChange={setOverlayVisibility}
+		/>
+	);
+
 	return (
-		<ResizablePanelGroup
-			direction="vertical"
-			className="size-full gap-1"
-			data-workbench-layout="jianying"
-			onLayout={(sizes) => {
-				setPanel({
-					panel: "mainContent",
-					size: sizes[0] ?? panels.mainContent,
-				});
-				setPanel({
-					panel: "timeline",
-					size: sizes[1] ?? panels.timeline,
-				});
-			}}
+		<div
+			ref={workspaceRef}
+			className="relative size-full min-h-0 min-w-0"
+			data-editor-layout-mode={workspaceMode}
 		>
-			<ResizablePanel
-				defaultSize={panels.mainContent}
-				minSize={30}
-				maxSize={85}
-				className="min-h-0"
+			<ResizablePanelGroup
+				direction="vertical"
+				className="size-full gap-1"
+				data-workbench-layout="jianying"
+				onLayout={(sizes) => {
+					setPanel({
+						panel: "mainContent",
+						size: sizes[0] ?? panels.mainContent,
+					});
+					setPanel({
+						panel: "timeline",
+						size: sizes[1] ?? panels.timeline,
+					});
+				}}
 			>
-				<ResizablePanelGroup
-					direction="horizontal"
-					className="size-full gap-1 px-1"
-					onLayout={(sizes) => {
-						setPanel({ panel: "tools", size: sizes[0] ?? panels.tools });
-						setPanel({ panel: "preview", size: sizes[1] ?? panels.preview });
-						setPanel({
-							panel: "properties",
-							size: sizes[2] ?? panels.properties,
-						});
-					}}
+				<ResizablePanel
+					defaultSize={panels.mainContent}
+					minSize={30}
+					maxSize={85}
+					className="relative min-h-0"
 				>
-					<ResizablePanel
-						defaultSize={panels.tools}
-						minSize={15}
-						maxSize={40}
-						className="min-w-0"
+					{workspaceMode === "focus" ? (
+						<div className="flex size-full min-h-0 flex-col px-1">
+							<header className="flex h-10 shrink-0 items-center justify-between border-x border-t border-white/8 bg-[#17191d] px-2">
+								<span className="text-[10px] font-medium tracking-wide text-slate-500">
+									紧凑工作区
+								</span>
+								<FocusSurfaceSwitcher
+									activeSurface={activeSurface}
+									onSurfaceChange={setActiveSurface}
+								/>
+							</header>
+							<div
+								className="min-h-0 min-w-0 flex-1"
+								data-workbench-surface={activeSurface}
+							>
+								{activeSurface === "assets" ? <AssetsPanel /> : null}
+								{activeSurface === "preview" ? previewPanel : null}
+								{activeSurface === "properties" ? <PropertiesPanel /> : null}
+							</div>
+						</div>
+					) : (
+						<ResizablePanelGroup
+							direction="horizontal"
+							className="size-full gap-1 px-1"
+							onLayout={(sizes) => {
+								setPanel({
+									panel: "tools",
+									size: sizes[0] ?? panels.tools,
+								});
+								setPanel({
+									panel: "preview",
+									size: sizes[1] ?? panels.preview,
+								});
+								setPanel({
+									panel: "properties",
+									size: sizes[2] ?? panels.properties,
+								});
+							}}
+						>
+							<ResizablePanel
+								defaultSize={panels.tools}
+								minSize={15}
+								maxSize={40}
+								className="min-w-0"
+							>
+								<AssetsPanel />
+							</ResizablePanel>
+
+							<ResizableHandle withHandle />
+
+							<ResizablePanel
+								defaultSize={panels.preview}
+								minSize={30}
+								className="min-h-0 min-w-0 flex-1"
+							>
+								{previewPanel}
+							</ResizablePanel>
+
+							<ResizableHandle withHandle />
+
+							<ResizablePanel
+								defaultSize={panels.properties}
+								minSize={15}
+								maxSize={40}
+								className="min-w-0"
+							>
+								<PropertiesPanel />
+							</ResizablePanel>
+						</ResizablePanelGroup>
+					)}
+				</ResizablePanel>
+
+				<ResizableHandle withHandle />
+
+				<ResizablePanel
+					defaultSize={panels.timeline}
+					minSize={15}
+					maxSize={70}
+					className="min-h-0 px-1 pb-1"
+				>
+					<Timeline />
+				</ResizablePanel>
+			</ResizablePanelGroup>
+		</div>
+	);
+}
+
+function FocusSurfaceSwitcher({
+	activeSurface,
+	onSurfaceChange,
+}: {
+	activeSurface: EditorSurface;
+	onSurfaceChange: (surface: EditorSurface) => void;
+}) {
+	const surfaces = [
+		{
+			id: "assets",
+			label: "素材",
+			ariaLabel: "切换到素材面板",
+			icon: FolderOpen,
+		},
+		{
+			id: "preview",
+			label: "画面",
+			ariaLabel: "切换到预览画面",
+			icon: MonitorPlay,
+		},
+		{
+			id: "properties",
+			label: "属性",
+			ariaLabel: "切换到属性面板",
+			icon: SlidersHorizontal,
+		},
+	] satisfies Array<{
+		id: EditorSurface;
+		label: string;
+		ariaLabel: string;
+		icon: typeof FolderOpen;
+	}>;
+
+	return (
+		<nav
+			aria-label="紧凑工作区面板"
+			className="flex items-center gap-0.5 rounded-lg border border-white/10 bg-[#111418] p-0.5 text-slate-300 shadow-sm"
+		>
+			{surfaces.map((surface) => {
+				const Icon = surface.icon;
+				const active = activeSurface === surface.id;
+				return (
+					<button
+						key={surface.id}
+						type="button"
+						aria-label={surface.ariaLabel}
+						aria-pressed={active}
+						title={surface.label}
+						className={`flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] font-medium transition ${
+							active
+								? "bg-cyan-400 text-slate-950 shadow-sm"
+								: "text-slate-400 hover:bg-white/8 hover:text-slate-100"
+						}`}
+						onClick={() => onSurfaceChange(surface.id)}
 					>
-						<AssetsPanel />
-					</ResizablePanel>
-
-					<ResizableHandle withHandle />
-
-					<ResizablePanel
-						defaultSize={panels.preview}
-						minSize={30}
-						className="min-h-0 min-w-0 flex-1"
-					>
-						<PreviewPanel
-							overlayControls={overlayControls}
-							overlayInstances={overlaySource.instances}
-							onOverlayVisibilityChange={setOverlayVisibility}
-						/>
-					</ResizablePanel>
-
-					<ResizableHandle withHandle />
-
-					<ResizablePanel
-						defaultSize={panels.properties}
-						minSize={15}
-						maxSize={40}
-						className="min-w-0"
-					>
-						<PropertiesPanel />
-					</ResizablePanel>
-				</ResizablePanelGroup>
-			</ResizablePanel>
-
-			<ResizableHandle withHandle />
-
-			<ResizablePanel
-				defaultSize={panels.timeline}
-				minSize={15}
-				maxSize={70}
-				className="min-h-0 px-1 pb-1"
-			>
-				<Timeline />
-			</ResizablePanel>
-		</ResizablePanelGroup>
+						<Icon className="size-3.5" aria-hidden="true" />
+						<span>{surface.label}</span>
+					</button>
+				);
+			})}
+		</nav>
 	);
 }

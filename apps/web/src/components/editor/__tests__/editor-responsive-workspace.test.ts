@@ -46,10 +46,13 @@ describe("编辑器多栏工作区", () => {
 
 	test("工作区公开响应式模式与素材、画面、属性切换入口", () => {
 		expect(editorPageSource).toContain("ResizeObserver");
-		expect(editorPageSource).toContain('data-editor-layout-mode={workspaceMode}');
-		expect(editorPageSource).toContain('aria-label="切换到素材面板"');
-		expect(editorPageSource).toContain('aria-label="切换到预览画面"');
-		expect(editorPageSource).toContain('aria-label="切换到属性面板"');
+		expect(editorPageSource).toContain(
+			"data-editor-layout-mode={workspaceMode}",
+		);
+		expect(editorPageSource).toContain('ariaLabel: "切换到素材面板"');
+		expect(editorPageSource).toContain('ariaLabel: "切换到预览画面"');
+		expect(editorPageSource).toContain('ariaLabel: "切换到属性面板"');
+		expect(editorPageSource).toContain("aria-label={surface.ariaLabel}");
 	});
 
 	test("暗色工作台为继承文字和原生下拉提供明确的高对比颜色", () => {
