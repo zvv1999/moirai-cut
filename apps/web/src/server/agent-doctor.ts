@@ -178,7 +178,7 @@ export async function runAgentDoctor({
 	const checks: AgentDoctorCheck[] = [
 		{
 			id: "web",
-			label: "OpenCut 服务",
+			label: "OneCut 服务",
 			status: "pass",
 			detail: "浏览器编辑器与本地 API 正常",
 		},
@@ -226,9 +226,9 @@ export async function runAgentDoctor({
 				? `${providers
 						.filter((provider) => provider.mcpInstalled)
 						.map((provider) => provider.label)
-						.join("、")} 已安装 OpenCut MCP`
+						.join("、")} 已安装 OneCut MCP`
 				: "浏览器可用；在 App 控制工程前需安装 MCP",
-			action: anyMcp ? undefined : "安装 OpenCut MCP",
+			action: anyMcp ? undefined : "安装 OneCut MCP",
 		},
 	];
 	return {

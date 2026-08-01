@@ -1,9 +1,9 @@
-# @opencut/mcp
+# @onecut/mcp
 
-An MCP server that lets an agent edit OpenCut projects — normally by writing the
+An MCP server that lets an agent edit OneCut projects — normally by writing the
 **project file**, and optionally by driving a **live editor tab**.
 
-For the complete OpenCut ↔ Codex Smart Edit orchestration, context schemas,
+For the complete OneCut ↔ Codex Smart Edit orchestration, context schemas,
 scene-aware multimodal workflow, and iterative editing protocol, read
 [`../../docs/agent-smart-edit.md`](../../docs/agent-smart-edit.md).
 
@@ -24,7 +24,7 @@ human's.
 
 While the document lived in IndexedDB + OPFS it was reachable only from inside a
 tab — which is why driving the editor needed CDP at all. As a file it is
-reachable by any Node process: this server, LocalCut's harness, git, your editor.
+reachable by any Node process: this server, automation harnesses, git, or your editor.
 The browser becomes a shell that loads it.
 
 Turn it on with `NEXT_PUBLIC_OPENCUT_PROJECT_FILES=1` and point
@@ -39,13 +39,13 @@ and compare-and-swap below are for.
 
 ## Setup
 
-For users, start OpenCut once and use **智能剪辑 → 设置**:
+For users, start OneCut once and use **智能剪辑 → 设置**:
 
 ```bash
 bun run setup:local
 ```
 
-OpenCut detects the existing Codex and Claude login, then installs this MCP with
+OneCut detects the existing Codex and Claude login, then installs this MCP with
 one click. Installation is user-scoped, idempotent, and verified with the
 client's own `mcp get opencut` command.
 
@@ -54,12 +54,12 @@ Developer-only manual equivalents:
 ```bash
 codex mcp add \
   --env OPENCUT_BASE_URL=http://127.0.0.1:3000 \
-  --env OPENCUT_PROJECTS_DIR=/absolute/path/to/OpenCutProjects \
+  --env OPENCUT_PROJECTS_DIR=/absolute/path/to/OneCutProjects \
   opencut -- bun /absolute/path/to/opencut-classic/apps/mcp/src/server.mjs
 
 claude mcp add --scope user \
   --env OPENCUT_BASE_URL=http://127.0.0.1:3000 \
-  --env OPENCUT_PROJECTS_DIR=/absolute/path/to/OpenCutProjects \
+  --env OPENCUT_PROJECTS_DIR=/absolute/path/to/OneCutProjects \
   opencut -- bun /absolute/path/to/opencut-classic/apps/mcp/src/server.mjs
 ```
 

@@ -13,7 +13,10 @@ const DEV_LOG = path.join(tmpdir(), "opencut-dev.log");
 const envText = existsSync(WEB_ENV) ? readFileSync(WEB_ENV, "utf8") : "";
 const configuredBase =
 	process.env.OPENCUT_BASE_URL?.trim() ||
-	envText.match(/^NEXT_PUBLIC_SITE_URL=(.+)$/m)?.[1]?.trim().replace(/^["']|["']$/g, "") ||
+	envText
+		.match(/^NEXT_PUBLIC_SITE_URL=(.+)$/m)?.[1]
+		?.trim()
+		.replace(/^["']|["']$/g, "") ||
 	"http://127.0.0.1:3000";
 const BASE = configuredBase.replace("localhost", "127.0.0.1");
 const noOpen =
@@ -51,7 +54,7 @@ async function openBrowser(url) {
 
 let running = await reachable();
 if (!running) {
-	console.log(`正在启动 OpenCut（日志：${DEV_LOG}）…`);
+	console.log(`正在启动 OneCut（日志：${DEV_LOG}）…`);
 	const log = openSync(DEV_LOG, "a");
 	const child = spawn(process.execPath, ["run", "dev:web"], {
 		cwd: REPO,
@@ -70,7 +73,7 @@ if (!running) {
 }
 
 if (!running) {
-	console.error(`OpenCut 未能启动，请查看 ${DEV_LOG}`);
+	console.error(`OneCut 未能启动，请查看 ${DEV_LOG}`);
 	process.exit(1);
 }
 
@@ -81,7 +84,7 @@ try {
 	await openBrowser(`${BASE}/projects`);
 } catch (error) {
 	console.error(
-		`OpenCut 已启动，但环境检查失败：${
+		`OneCut 已启动，但环境检查失败：${
 			error instanceof Error ? error.message : String(error)
 		}`,
 	);

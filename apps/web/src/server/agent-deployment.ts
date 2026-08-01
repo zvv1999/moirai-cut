@@ -195,7 +195,7 @@ async function inspectCandidate({
 		version,
 		message:
 			provider === "codex"
-				? "已复用本机 Codex 登录，可直接在 OpenCut 中使用。"
+				? "已复用本机 Codex 登录，可直接在 OneCut 中使用。"
 				: "已复用本机 Claude 登录，可安装 MCP 后在 Claude 中控制工程。",
 	};
 }
@@ -381,7 +381,7 @@ export async function installOpenCutMcp({
 			provider,
 			changed: false,
 			verified: true,
-			message: `${providerLabel(provider)} 已安装 OpenCut MCP。`,
+			message: `${providerLabel(provider)} 已安装 OneCut MCP。`,
 		};
 	}
 
@@ -421,13 +421,13 @@ export async function installOpenCutMcp({
 	});
 	if (!verified) {
 		throw new Error(
-			`${providerLabel(provider)} 已写入配置，但 OpenCut MCP 验证失败。`,
+			`${providerLabel(provider)} 已写入配置，但 OneCut MCP 验证失败。`,
 		);
 	}
 	return {
 		provider,
 		changed: true,
 		verified: true,
-		message: `${providerLabel(provider)} 已安装并验证 OpenCut MCP。`,
+		message: `${providerLabel(provider)} 已安装并验证 OneCut MCP。`,
 	};
 }

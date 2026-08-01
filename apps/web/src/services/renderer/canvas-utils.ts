@@ -9,7 +9,7 @@ export function createCanvasSurface({
 	context: OffscreenCanvasRenderingContext2D;
 } {
 	const canvas = new OffscreenCanvas(width, height);
-	// OpenCut's compositing working space is explicitly SDR sRGB. Wide-gamut or
+	// OneCut's compositing working space is explicitly SDR sRGB. Wide-gamut or
 	// HDR sources are converted before they reach this canvas (native proxies
 	// tone-map PQ/HLG to tagged BT.709); authored colours are linearized by the
 	// parameter layer and presented through this sRGB surface.

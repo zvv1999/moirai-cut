@@ -1,198 +1,60 @@
-# Contributing to OpenCut
+# Contributing to OneCut
 
-⚠️ We are currently NOT accepting feature PRs while we build out the core editor.
+Thanks for helping build an open, local-first, agent-native video editor.
 
-If you want to contribute:
+## Before you start
 
-1. Open an issue first to discuss
-2. Wait for maintainer approval
-3. Only then start coding
+1. Search existing issues and discussions.
+2. Open an issue before a large feature, project-format change, protocol change or UI redesign.
+3. Keep pull requests focused; do not mix a mechanical rebrand, behavior change and unrelated cleanup.
+4. Never commit API keys, private media, local project files, generated caches or Codex/Claude session data.
 
-Critical bug fixes may be accepted on a case-by-case basis.
+## Local setup
 
-Thank you for your interest in contributing to OpenCut! This document provides guidelines and instructions for contributing.
+```bash
+git clone https://github.com/zvv1999/opencut-classic.git onecut
+cd onecut
+git switch feat/agent-drivable
+bun install
+bun run setup:local
+```
 
-## Getting Started
+Docker is optional for local editing. Use it only when working on database, Redis or server-hosted features.
 
-### Prerequisites
+The web app currently consumes the published `opencut-wasm` compatibility package. If you edit `rust/wasm`, build and link it locally:
 
-- [Node.js](https://nodejs.org/en/) (v18 or later)
-- [Bun](https://bun.sh/docs/installation)
-  (for `npm` alternative)
-- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
-- Rust toolchain (only needed for `apps/desktop`)
+```bash
+bun run build:wasm
+cd rust/wasm/pkg && bun link
+cd ../../../apps/web && bun link opencut-wasm
+```
 
-> **Note:** Docker is optional, but it's essential for running the local database and Redis services. If you're planning to contribute to frontend features, you can skip the Docker setup. If you have followed the steps below in [Setup](#setup), you're all set to go!
+## Quality gates
 
-### Setup
+Run the checks relevant to your change, and run the full set before requesting review:
 
-1. Fork the repository
-2. Clone your fork locally
-3. Navigate to the web app directory: `cd apps/web`
-4. Copy `.env.example` to `.env.local`:
+```bash
+bun test
+node --test apps/mcp/src/__tests__/*.test.mjs
+bun run typecheck:web
+bun run lint:web
+bun run build:web
+bun audit
+```
 
-   ```bash
-   # Unix/Linux/Mac
-   cp .env.example .env.local
+For timeline, preview or editor interaction changes, include a regression test and a screenshot or short recording. For MCP changes, document the schema, failure mode and revision behavior.
 
-   # Windows Command Prompt
-   copy .env.example .env.local
+## Compatibility
 
-   # Windows PowerShell
-   Copy-Item .env.example .env.local
-   ```
+The public product name is **OneCut**. Legacy `OPENCUT_*` environment variables, `opencut://` references, `.opencut` project packages, `opencut-wasm` and selected internal type names remain for data and protocol compatibility. Do not rename them without a migration and backwards-compatibility test.
 
-5. Install dependencies: `bun install`
-6. Start the development server: `bun run dev`
+OneCut uses original brand assets. Do not reintroduce the upstream OpenCut logo or imply that OneCut is an official OpenCut release.
 
-> **Note:** Web development uses the published `opencut-wasm` package by default, so a fresh clone does not need a local WASM build.
->
-> If you are editing `rust/wasm`, run `bun run build:wasm`, then `cd rust/wasm/pkg && bun link`, then `cd ../../../apps/web && bun link opencut-wasm`.
+## Pull requests
 
-### Desktop setup
+- Explain the user problem and the chosen behavior.
+- List tests and manual verification performed.
+- Call out migrations, compatibility risks and deferred work.
+- Update documentation when behavior, configuration or public APIs change.
 
-Only needed if you're working on `apps/desktop`. See [`apps/desktop/README.md`](../apps/desktop/README.md) — it's a two-step process: Rust toolchain first via `script/setup-rust`, then desktop native dependencies via `apps/desktop/script/setup`.
-
-## What to Focus On
-
-**🎯 Good Areas to Contribute:**
-
-- Timeline functionality and UI improvements
-- Project management features
-- Performance optimizations
-- Bug fixes in existing functionality
-- UI/UX improvements
-- Documentation and testing
-
-**⚠️ Areas to Avoid:**
-
-- Preview panel enhancements (text fonts, stickers, effects)
-- Export functionality improvements
-- Preview rendering optimizations
-
-**Why?** We're currently planning a major refactor of the preview system. The current preview renders DOM elements (HTML), but we're moving to a binary rendering approach similar to CapCut. This new system will ensure consistency between preview and export, and provide much better performance and quality.
-
-The current HTML-based preview is essentially a prototype - the binary approach will be the "real deal." To avoid wasted effort, please focus on other areas of the application until this refactor is complete.
-
-If you're unsure whether your idea falls into the preview category, feel free to ask us [directly in discord](https://discord.gg/zmR9N35cjK) or create a GitHub issue!
-
-## Development Setup
-
-### Local Development
-
-1. Start the database and Redis services:
-
-   ```bash
-   # From project root
-   docker-compose up -d
-   ```
-
-2. Navigate to the web app directory:
-
-   ```bash
-   cd apps/web
-   ```
-
-3. Copy `.env.example` to `.env.local`:
-
-   ```bash
-   # Unix/Linux/Mac
-   cp .env.example .env.local
-
-   # Windows Command Prompt
-   copy .env.example .env.local
-
-   # Windows PowerShell
-   Copy-Item .env.example .env.local
-   ```
-
-4. Configure required environment variables in `.env.local`:
-
-   **Required Variables:**
-
-   ```bash
-   # Database (matches docker-compose.yaml)
-   DATABASE_URL="postgresql://opencut:opencut@localhost:5432/opencut"
-
-   # Generate a secure secret for Better Auth
-   BETTER_AUTH_SECRET="your-generated-secret-here"
-   NEXT_PUBLIC_SITE_URL="http://localhost:3000"
-
-   # Redis (matches docker-compose.yaml)
-   UPSTASH_REDIS_REST_URL="http://localhost:8079"
-   UPSTASH_REDIS_REST_TOKEN="example_token"
-
-   # Development
-   NODE_ENV="development"
-   ```
-
-   **Generate BETTER_AUTH_SECRET:**
-
-   ```bash
-   # Unix/Linux/Mac
-   openssl rand -base64 32
-
-   # Windows PowerShell (simple method)
-   [System.Web.Security.Membership]::GeneratePassword(32, 0)
-
-   # Cross-platform (using Node.js)
-   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-
-   # Or use an online generator: https://generate-secret.vercel.app/32
-   ```
-
-5. Run database migrations: `bun run db:migrate`
-6. Start the development server: `bun run dev`
-
-### Desktop
-
-Working on `apps/desktop`? See [`apps/desktop/README.md`](../apps/desktop/README.md) for setup. Web-only contributors can ignore this entirely.
-
-## How to Contribute
-
-### Reporting Bugs
-
-- Use the bug report template
-- Include steps to reproduce
-- Provide screenshots if applicable
-
-### Suggesting Features
-
-- Use the feature request template
-- Explain the use case
-- Consider implementation details
-
-### Code Contributions
-
-1. Create a new branch: `git checkout -b feature/your-feature-name`
-2. Make your changes
-3. Run the relevant checks for the area you touched:
-
-   - Web changes: from `apps/web`, run `bun run lint` and `bun run format`
-   - Desktop changes: run `./apps/desktop/script/setup` if your environment isn't set up yet
-
-4. Commit your changes with a descriptive message
-5. Push to your fork and create a pull request
-
-## Code Style
-
-- We use ESLint for linting and Prettier for formatting
-- Run `bun run format` from the `apps/web` directory to format code
-- Run `bun run lint` from the `apps/web` directory to check for linting issues
-- Follow the existing code patterns
-
-## Pull Request Process
-
-1. Fill out the pull request template completely
-2. Link any related issues
-3. Ensure CI passes
-4. Request review from maintainers
-5. Address any feedback
-
-## Community
-
-- Be respectful and inclusive
-- Follow our Code of Conduct
-- Help others in discussions and issues
-
-Thank you for contributing!
+By contributing, you agree that your contribution is licensed under the repository's MIT License and to follow the [Code of Conduct](CODE_OF_CONDUCT.md).

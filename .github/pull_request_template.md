@@ -1,11 +1,22 @@
-⚠️ READ BEFORE SUBMITTING ⚠️
+## What changed
 
-We are not currently accepting PRs except for critical bugs.
+<!-- Describe the user problem and the resulting behavior. -->
 
-If this is a bug fix:
-- [ ] I've opened an issue first
-- [ ] This was approved by a maintainer
+## Verification
 
-If this is a feature:
+- [ ] Added or updated regression tests
+- [ ] Ran affected tests
+- [ ] Ran `bun run typecheck:web`
+- [ ] Ran `bun run lint:web`
+- [ ] Ran `bun run build:web`
+- [ ] Reviewed screenshots or recordings for UI changes
 
-This PR will be closed. Please open an issue to discuss first.
+## Compatibility and safety
+
+- [ ] No secrets, private media, local projects or Agent task data are included
+- [ ] Legacy project/protocol identifiers remain compatible or have a documented migration
+- [ ] Documentation and public assets are updated where needed
+
+## Evidence
+
+<!-- Link the issue and attach screenshots, recordings, benchmark results or logs. -->

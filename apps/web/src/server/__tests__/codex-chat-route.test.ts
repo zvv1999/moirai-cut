@@ -29,7 +29,7 @@ describe("Codex Smart Edit SSE API", () => {
 					itemId: "tool-1",
 					itemType: "mcpToolCall",
 					status: "started",
-					title: "OpenCut · read_project",
+					title: "OneCut · read_project",
 					detail: '{\n  "projectId": "project-1"\n}',
 				};
 				yield { type: "delta", delta: "已" };
@@ -80,7 +80,7 @@ describe("Codex Smart Edit SSE API", () => {
 		}
 		expect(body).toContain('event: session\ndata: {"sessionId":"thread-1"}');
 		expect(body).toContain(
-			'event: protocol\ndata: {"id":"tool-1","method":"item/started","threadId":"thread-1","turnId":"turn-1","itemId":"tool-1","itemType":"mcpToolCall","status":"started","title":"OpenCut · read_project","detail":"{\\n  \\"projectId\\": \\"project-1\\"\\n}"}',
+			'event: protocol\ndata: {"id":"tool-1","method":"item/started","threadId":"thread-1","turnId":"turn-1","itemId":"tool-1","itemType":"mcpToolCall","status":"started","title":"OneCut · read_project","detail":"{\\n  \\"projectId\\": \\"project-1\\"\\n}"}',
 		);
 		expect(body).toContain('event: delta\ndata: {"delta":"已"}');
 		expect(body).toContain('event: delta\ndata: {"delta":"完成"}');
@@ -246,7 +246,11 @@ describe("Codex Smart Edit SSE API", () => {
 		const reader = response.body?.getReader();
 		expect(reader).toBeDefined();
 		let body = "";
-		for (let attempt = 0; attempt < 20 && !body.includes(": heartbeat"); attempt += 1) {
+		for (
+			let attempt = 0;
+			attempt < 20 && !body.includes(": heartbeat");
+			attempt += 1
+		) {
 			const chunk = await reader?.read();
 			if (!chunk || chunk.done) break;
 			body += new TextDecoder().decode(chunk.value);

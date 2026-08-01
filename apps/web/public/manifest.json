@@ -1,6 +1,9 @@
 {
-	"name": "OpenCut",
-	"description": "A simple but powerful video editor that gets the job done. In your browser.",
+	"name": "OneCut",
+	"short_name": "OneCut",
+	"description": "The agent-native video editor. Edit by intent, finish with control.",
+	"theme_color": "#0A0D10",
+	"background_color": "#0A0D10",
 	"display": "standalone",
 	"start_url": "/",
 	"icons": [

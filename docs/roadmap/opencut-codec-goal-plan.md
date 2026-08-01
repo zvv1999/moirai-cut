@@ -1,4 +1,4 @@
-# OpenCut Codec Goal Plan
+# OneCut Codec Goal Plan
 
 Status: COMPLETE
 Owner: Codex goal `019fa427-c03a-7dd2-850c-0e25523c914f`
@@ -8,8 +8,8 @@ Target report: `docs/reports/opencut-codec-goal/index.html`
 
 ## Objective
 
-Bring OpenCut's everyday codec, proxy, preview, and delivery workflow to the
-reliability expected from Jianying/CapCut Desktop while preserving OpenCut's
+Bring OneCut's everyday codec, proxy, preview, and delivery workflow to the
+reliability expected from Jianying/CapCut Desktop while preserving OneCut's
 local-first and agent-drivable architecture.
 
 The goal is complete only when every row is `DONE`, `SUPERSEDED`, or an
@@ -213,7 +213,7 @@ After every GREEN checkpoint:
 
 ## Final qualification summary
 
-The target scope is complete. OpenCut now has a validated native FFmpeg fallback
+The target scope is complete. OneCut now has a validated native FFmpeg fallback
 for media the browser cannot decode, automatic and manageable proxies, colour
 normalization for SDR preview, explicit delivery presets, real source
 diagnostics, and matching Agent operations. The current project was exercised

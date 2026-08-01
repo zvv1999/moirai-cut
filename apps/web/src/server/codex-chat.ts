@@ -297,21 +297,21 @@ export function buildCodexPrompt({
 				? "- 本轮以 opencut MCP 为主，可使用浏览器、桌面和文档工具做必要验收；不要调用无关能力。"
 				: "- 本轮只使用 opencut MCP 完成剪辑，不要调用共享宿主中的其他工具。";
 	return [
-		"你正在 OpenCut 编辑器的“智能剪辑”直接 Codex 会话中。",
+		"你正在 OneCut 编辑器的“智能剪辑”直接 Codex 会话中。",
 		`唯一允许操作的工程 ID：${projectId}`,
 		"",
 		"本轮系统预绑定：",
-		"- OpenCut MCP 已由系统验证就绪，服务器名为 opencut，工具入口已直接暴露给当前会话。",
+		"- OneCut MCP 已由系统验证就绪，服务器名为 opencut，工具入口已直接暴露给当前会话。",
 		"- 当前工程摘要已由系统预读；编辑器中的当前选区、播放头和显式引用也已随本消息提供。",
-		"- 不要声称没有 OpenCut 工具、正在连接或正在查找 OpenCut MCP；不要自行连接或启动 MCP。若后续调用失败，只报告具体调用错误。",
+		"- 不要声称没有 OneCut 工具、正在连接或正在查找 OneCut MCP；不要自行连接或启动 MCP。若后续调用失败，只报告具体调用错误。",
 		"",
 		"工作方式：",
 		planning
 			? "- 这是规划型会话。读取和分析工程后给出可执行计划，不要调用 edit_project 修改工程。"
 			: "- 这是执行型会话。用户提出明确的剪辑要求时，直接执行，不要只给计划。",
-		"- 任何工程读取和改动都必须使用 opencut MCP；不要修改 OpenCut 源码仓库。",
+		"- 任何工程读取和改动都必须使用兼容名为 opencut 的 OneCut MCP；不要修改 OneCut 源码仓库。",
 		toolGuidance,
-		"- 这是 OpenCut 工程，不是 LocalCut 任务。不要读取、调用或套用 LocalCut、localcut-native-video 技能、MCP、运行时或工作流。",
+		"- 这是 OneCut 工程，不是 LocalCut 任务。不要读取、调用或套用 LocalCut、localcut-native-video 技能、MCP、运行时或工作流。",
 		"- 当前运行在内置浏览器，使用 read_project 和 edit_project 这组文件工具读取及修改工程。",
 		"- 不要调用 status、get_context、open_editor、reveal_context 等依赖 Chrome 9222 的标签页工具；引用上下文已随本消息提供。",
 		"- 若上下文包含时间段且任务需要理解画面，调用 inspect_timeline_range；若要先理解某个完整源视频，调用 inspect_media_scenes。",
@@ -337,9 +337,9 @@ export function buildCodexPrompt({
 
 function buildOpenCutThreadInstructions(projectId: string): string {
 	return [
-		"你是 OpenCut 编辑器的智能剪辑 Agent。",
+		"你是 OneCut 编辑器的智能剪辑 Agent。",
 		`唯一允许操作的工程 ID：${projectId}`,
-		"所有工程读取和修改必须使用 opencut MCP，不要修改 OpenCut 源码。",
+		"所有工程读取和修改必须使用兼容名为 opencut 的 OneCut MCP，不要修改 OneCut 源码。",
 		"不要使用 LocalCut、localcut-native-video 或 localcut MCP。",
 		"继续会话时先读取工程的最新 revision，再基于用户最新指令编辑。",
 		"用户从 Codex App 继续对话时，当前工作区的项目级配置会提供 opencut MCP。",
@@ -348,7 +348,7 @@ function buildOpenCutThreadInstructions(projectId: string): string {
 
 function visibleThreadName(name: string): string {
 	const normalized = name.trim().replace(/\s+/g, " ");
-	return (normalized || "OpenCut 智能剪辑").slice(0, 80);
+	return (normalized || "OneCut 智能剪辑").slice(0, 80);
 }
 
 function passthroughEnvironment(
@@ -507,7 +507,7 @@ export class CodexAppServerRpcClient implements CodexAppServerConnection {
 			params: {
 				clientInfo: {
 					name: "opencut_smart_edit",
-					title: "OpenCut 智能剪辑",
+					title: "OneCut 智能剪辑",
 					version: "1.0.0",
 				},
 				capabilities: {
@@ -627,7 +627,7 @@ export class CodexAppServerRpcClient implements CodexAppServerConnection {
 			id: message.id,
 			error: {
 				code: -32601,
-				message: `OpenCut 不支持 Codex app-server 请求：${message.method}`,
+				message: `OneCut 不支持 Codex app-server 请求：${message.method}`,
 			},
 		});
 		return true;
@@ -932,7 +932,7 @@ function repoRootFromCurrentWorkingDirectory(): string {
 		existsSync(path.join(candidate, "apps/mcp/src/server.mjs")),
 	);
 	if (!root) {
-		throw new CodexChatError("无法定位 OpenCut MCP 服务。");
+		throw new CodexChatError("无法定位 OneCut MCP 服务。");
 	}
 	return root;
 }
@@ -1221,7 +1221,7 @@ function threadHistoryFromResponse(response: unknown): CodexThreadHistory {
 	const title =
 		typeof thread.name === "string" && thread.name.trim()
 			? thread.name.trim()
-			: firstUserMessage?.content.slice(0, 80) || "OpenCut 智能剪辑";
+			: firstUserMessage?.content.slice(0, 80) || "OneCut 智能剪辑";
 	return {
 		sessionId: thread.id,
 		title,
@@ -1411,7 +1411,7 @@ function itemLifecycleFrame({
 		}
 		return {
 			...base,
-			title: `${server === "opencut" ? "OpenCut" : server} · ${tool}`,
+			title: `${server === "opencut" ? "OneCut" : server} · ${tool}`,
 			detail: truncated(detailParts.join("\n\n")),
 		};
 	}
@@ -1659,7 +1659,7 @@ function protocolFrameFromNotification(
 			turnId,
 			itemType: "approval",
 			status: accepted ? "completed" : "failed",
-			title: accepted ? "OpenCut 调用已授权" : `${serverName} 请求已拒绝`,
+			title: accepted ? "OneCut 调用已授权" : `${serverName} 请求已拒绝`,
 			...(typeof params.message === "string"
 				? { detail: truncated(params.message) }
 				: {}),
@@ -1710,14 +1710,12 @@ function terminalTurnFromThreadRead(
 	const turn = response.thread.turns.find(
 		(candidate) => isRecord(candidate) && candidate.id === turnId,
 	);
-	return (
-		isRecord(turn) &&
-			(turn.status === "completed" ||
-				turn.status === "failed" ||
-				turn.status === "interrupted")
-			? turn
-			: null
-	);
+	return isRecord(turn) &&
+		(turn.status === "completed" ||
+			turn.status === "failed" ||
+			turn.status === "interrupted")
+		? turn
+		: null;
 }
 
 async function nextWithTurnReconciliation({
@@ -1789,7 +1787,7 @@ interface OpenCutSessionBinding {
 
 function projectSnapshotFromToolResponse(response: unknown): string {
 	if (!isRecord(response)) {
-		throw new CodexChatError("当前工程上下文读取失败：OpenCut 返回格式无效。");
+		throw new CodexChatError("当前工程上下文读取失败：OneCut 返回格式无效。");
 	}
 	const content = Array.isArray(response.content) ? response.content : [];
 	const text = content
@@ -1804,13 +1802,11 @@ function projectSnapshotFromToolResponse(response: unknown): string {
 	const snapshot = text || fallback;
 	if (response.isError === true) {
 		throw new CodexChatError(
-			`当前工程上下文读取失败：${snapshot || "OpenCut MCP 调用失败。"}`,
+			`当前工程上下文读取失败：${snapshot || "OneCut MCP 调用失败。"}`,
 		);
 	}
 	if (!snapshot) {
-		throw new CodexChatError(
-			"当前工程上下文读取失败：OpenCut 未返回工程摘要。",
-		);
+		throw new CodexChatError("当前工程上下文读取失败：OneCut 未返回工程摘要。");
 	}
 	if (snapshot.length <= MAX_PROJECT_SNAPSHOT_CHARS) return snapshot;
 	return `${snapshot.slice(0, MAX_PROJECT_SNAPSHOT_CHARS)}\n…工程摘要已截断`;
@@ -2209,7 +2205,7 @@ async function listOpenCutTools({
 	const openCut = servers.find((server) => server.name === "opencut");
 	if (!openCut || !isRecord(openCut.tools)) {
 		throw new CodexChatError(
-			"OpenCut MCP 未就绪：当前 Codex 会话没有可用的 opencut 工具入口。",
+			"OneCut MCP 未就绪：当前 Codex 会话没有可用的 opencut 工具入口。",
 		);
 	}
 	const tools = Object.keys(openCut.tools);
@@ -2218,7 +2214,7 @@ async function listOpenCutTools({
 	);
 	if (missingTools.length > 0) {
 		throw new CodexChatError(
-			`OpenCut MCP 未就绪：缺少 ${missingTools.join("、")} 工具。`,
+			`OneCut MCP 未就绪：缺少 ${missingTools.join("、")} 工具。`,
 		);
 	}
 	return tools;
@@ -2275,7 +2271,7 @@ const TOOL_PROFILES: CodexToolProfileCapability[] = [
 	{
 		id: "edit",
 		label: "专注剪辑",
-		description: "本轮只使用 OpenCut 工程工具，适合日常剪辑。",
+		description: "本轮只使用 OneCut 工程工具，适合日常剪辑。",
 	},
 	{
 		id: "verify",
@@ -2421,8 +2417,8 @@ export function createCodexChatService({
 			if (pending) return pending;
 			const discovery = (async () => {
 				const connection = await connect({ runtime, toolProfile });
-				const [modelsResponse, modesResponse, skillsResponse] = await Promise.all(
-					[
+				const [modelsResponse, modesResponse, skillsResponse] =
+					await Promise.all([
 						connection.request({
 							method: "model/list",
 							params: { limit: 50, includeHidden: false },
@@ -2438,8 +2434,7 @@ export function createCodexChatService({
 								forceReload: false,
 							},
 						}),
-					],
-				);
+					]);
 				const value = capabilitiesFromResponses({
 					modelsResponse,
 					modesResponse,
@@ -2590,14 +2585,13 @@ export function createCodexChatService({
 					projectId: input.projectId,
 					knownTools: validatedTools.get(`${toolProfile}:${sessionId}`),
 					requireCompleteToolInventory:
-						input.visualMode === "auto" ||
-						input.verificationMode === "full",
+						input.visualMode === "auto" || input.verificationMode === "full",
 				});
 				if (binding.completeToolInventory) {
 					validatedTools.set(`${toolProfile}:${sessionId}`, binding.tools);
 				}
 				const nextThreadName = visibleThreadName(
-					binding.projectName || `OpenCut · ${input.projectId}`,
+					binding.projectName || `OneCut · ${input.projectId}`,
 				);
 				if (visibleThreadNames.get(sessionId) !== nextThreadName) {
 					visibleThreadNames.set(sessionId, nextThreadName);
@@ -2622,7 +2616,7 @@ export function createCodexChatService({
 					threadId: sessionId,
 					itemType: "mcpToolCall",
 					status: "completed",
-					title: "OpenCut MCP 已就绪",
+					title: "OneCut MCP 已就绪",
 					detail: binding.tools.join(" · "),
 				};
 				yield {

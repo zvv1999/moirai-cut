@@ -10,9 +10,9 @@ describe("Agent setup surface", () => {
 		const setup = readSource("../agent-setup-panel.tsx");
 		const workbench = readSource("../agent-workbench.tsx");
 
-		expect(setup).toContain("在 OpenCut 中使用");
+		expect(setup).toContain("在 OneCut 中使用");
 		expect(setup).toContain("在 Codex / Claude 中使用");
-		expect(setup).toContain("安装 OpenCut MCP");
+		expect(setup).toContain("安装 OneCut MCP");
 		expect(setup).toContain("重新检测");
 		expect(workbench).toContain("<AgentSetupPanel");
 		expect(workbench).not.toContain("Codex Path");

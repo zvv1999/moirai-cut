@@ -27,7 +27,7 @@ function repoRootFromCurrentWorkingDirectory(): string {
 	const root = candidates.find((candidate) =>
 		existsSync(path.join(candidate, "apps/mcp/src/server.mjs")),
 	);
-	if (!root) throw new Error("无法定位 OpenCut MCP 服务。");
+	if (!root) throw new Error("无法定位 OneCut MCP 服务。");
 	return root;
 }
 
@@ -155,7 +155,7 @@ export function createAgentSetupRouteHandlers({
 		async POST(request: Request) {
 			if (!isAllowedMutationRequest(request)) {
 				return NextResponse.json(
-					{ error: "Agent 配置只能从本机 OpenCut 发起。" },
+					{ error: "Agent 配置只能从本机 OneCut 发起。" },
 					{ status: 403 },
 				);
 			}
@@ -171,7 +171,7 @@ export function createAgentSetupRouteHandlers({
 			const input = parseInstallRequest(body);
 			if (!input) {
 				return NextResponse.json(
-					{ error: "只支持为 Codex 或 Claude 安装 OpenCut MCP。" },
+					{ error: "只支持为 Codex 或 Claude 安装 OneCut MCP。" },
 					{ status: 400 },
 				);
 			}
@@ -182,7 +182,7 @@ export function createAgentSetupRouteHandlers({
 				return NextResponse.json(
 					{
 						error:
-							error instanceof Error ? error.message : "OpenCut MCP 安装失败。",
+							error instanceof Error ? error.message : "OneCut MCP 安装失败。",
 					},
 					{ status: 500 },
 				);

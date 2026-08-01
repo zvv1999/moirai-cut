@@ -1,6 +1,6 @@
-# OpenCut colour pipeline
+# OneCut colour pipeline
 
-OpenCut currently uses an explicit SDR working path:
+OneCut currently uses an explicit SDR working path:
 
 1. SDR browser-decodable media is decoded by WebCodecs/Mediabunny.
 2. The compositor renders authored colours in a linearized sRGB model.

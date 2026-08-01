@@ -1,13 +1,14 @@
-export const SITE_URL = "https://opencut.app";
+export const SITE_URL =
+	process.env.NEXT_PUBLIC_SITE_URL?.trim() || "http://localhost:3000";
 
 export const SITE_INFO = {
-	title: "OpenCut",
+	title: "OneCut",
 	description:
-		"A simple but powerful video editor that gets the job done. In your browser.",
+		"The agent-native video editor. Edit by intent, finish with control.",
 	url: SITE_URL,
 	openGraphImage: "/open-graph/default.jpg",
 	twitterImage: "/open-graph/default.jpg",
 	favicon: "/favicon.ico",
 };
 
-export const DEFAULT_LOGO_URL = "/logos/opencut/svg/logo.svg";
+export const DEFAULT_LOGO_URL = "/logos/onecut/icon.svg";

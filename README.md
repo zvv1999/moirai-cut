@@ -1,155 +1,140 @@
-# OpenCut Classic · Agent-Drivable
+<div align="center">
+  <img src="apps/web/public/logos/onecut/logo-light.svg" alt="OneCut" width="360" />
+  <h3>一句话，剪出成片。</h3>
+  <p><strong>Edit by intent. Finish with control.</strong></p>
+  <p>本地优先、Agent 原生、可人工精修的开源视频编辑器。</p>
+</div>
 
-本地优先、可被 Agent 精确控制的视频编辑器。这个分支在 OpenCut Classic 的时间轴、
-预览、属性面板与导出能力之上，打通了 OpenCut 编辑器、Codex App 和 OpenCut MCP：
-用户可以在浏览器里选中素材、元素或时间段，直接交给 Codex 理解和修改；也可以在
-Codex App 中继续同一个工程任务。
+![OneCut agent-native video editor](docs/brand/assets/onecut-launch-landscape.png)
 
-> 本仓库基于已经归档的
-> [OpenCut Classic](https://github.com/opencut-app/opencut-classic) 开发。
-> 上游的新版本位于 [opencut-app/opencut](https://github.com/opencut-app/opencut)；
-> `feat/agent-drivable` 是本仓库维护的实验分支。
+## OneCut 是什么
 
-![OpenCut Agent-Drivable 编辑器](docs/reports/opencut-codec-goal/assets/editor-overview.png)
+OneCut 把专业时间轴与 Codex、Claude 等 Agent 连接在一起。用户可以在浏览器中选中素材、
+元素或时间段，用自然语言生成剪辑计划并把修改精确写回工程；也可以从 Agent App 通过
+MCP 读取和控制同一个项目。
 
-## 能做什么
+它不是“一键生成后无法修改”的视频工具。工程文件、时间轴、素材、关键帧、字幕、调色、
+音频和导出设置始终可见、可撤销、可人工继续编辑。
 
-- **完整剪辑工作台**：素材库、多轨时间轴、预览、关键帧、变速、调色、字幕、音频、
+> OneCut is an independent fork of
+> [OpenCut Classic](https://github.com/opencut-app/opencut-classic). It uses an
+> original name and visual identity and is not affiliated with or endorsed by
+> the OpenCut project. See [NOTICE.md](NOTICE.md) for attribution.
+
+## 核心能力
+
+- **专业剪辑工作台**：素材库、多轨时间轴、预览、关键帧、变速、调色、字幕、音频、
   导出队列与工程历史。
-- **智能剪辑**：通过对话完成读取工程、拆分片段、重排时间轴、修改属性、字幕处理、
-  素材理解和画面质检。
-- **精确引用上下文**：引用当前选区、播放头附近时间段、素材库元素或时间轴元素，
-  使用稳定的 `opencut://` URI 交给 Agent。
-- **浏览器与 Codex App 双向续聊**：两端连接同一个 app-server、同一个原生 task 和
-  同一条事件通道；会话名称与工程名称保持一致。
-- **Agent 原子操作**：OpenCut MCP 提供工程读写、媒体场景检测、时间线取帧、实时标签页
-  操作、渲染验证以及 revision 冲突保护。
-- **本地素材与高画质输出**：预览按素材能力自动选择原片或代理，最终导出始终读取原片。
+- **Agent 智能剪辑**：通过对话读取工程、拆分片段、重排时间轴、修改属性、处理字幕、
+  理解素材和执行画面质检。
+- **精确上下文引用**：把时间轴选区、播放头范围、素材库元素或轨道片段一键加入对话。
+- **浏览器与 App 双向续聊**：浏览器和 Codex App 连接同一个 app-server、原生 task 与
+  事件通道。
+- **开放 MCP 原子能力**：Agent 可进行工程读写、场景检测、时间序列取帧、实时标签页
+  操作、渲染验证和 revision 冲突保护。
+- **本地素材与高画质输出**：预览可使用高质量代理，最终导出始终读取原片。
 
 ## 工作方式
 
 ```mermaid
 flowchart LR
-  Editor["OpenCut 编辑器"] -->|"选择素材 / 元素 / 时间段"| Context["工程上下文"]
+  Editor["OneCut 编辑器"] -->|"素材 / 元素 / 时间段"| Context["工程上下文"]
   Context --> Chat["智能剪辑"]
-  Chat <-->|"SSE + 可恢复 run"| Host["共享 Codex app-server"]
-  App["Codex App"] <-->|"同一 task + 事件通道"| Host
-  Host --> MCP["OpenCut MCP"]
+  Chat <-->|"SSE + 可恢复 run"| Host["共享 Agent 宿主"]
+  App["Codex / Claude App"] <-->|"同一 task + 事件通道"| Host
+  Host --> MCP["OneCut MCP"]
   MCP <-->|"revision + 原子操作"| Project["工程文件"]
-  Project --> Editor
   MCP --> Vision["场景识别 / 时间序列帧"]
   Vision --> Catalog["media-catalog.json"]
-  Catalog --> Host
+  Project --> Editor
 ```
 
-工程文件是唯一事实来源。用户在界面中的修改会写入工程；Agent 每一轮先读取最新
-revision，再通过 MCP 落盘。浏览器与 Codex App 只是在不同入口查看、续聊同一个原生
-Codex task，不维护两份独立会话。
+工程文件是唯一事实来源。Agent 每轮先读取最新 revision，再通过 MCP 落盘；浏览器与
+Agent App 只是同一任务的不同入口，不维护两份独立会话。
 
 ## 快速开始
 
 ### 环境要求
 
 - [Bun](https://bun.sh/) 1.3.14+
-- [FFmpeg](https://ffmpeg.org/) 与 FFprobe，用于媒体探测、代理和导出
-- 可选：已登录的 Codex / ChatGPT 桌面 App、Codex CLI 或 Claude Code
-- Docker 与 Docker Compose（仅数据库、Redis 和完整自托管需要）
+- [FFmpeg](https://ffmpeg.org/) 与 FFprobe
+- 推荐：已经登录的 Codex / ChatGPT 桌面 App、Codex CLI 或 Claude Code
+- 可选：Docker 与 Docker Compose（数据库、Redis 和完整自托管模式）
 
-### 一条命令启动本地编辑器
+### 一条命令启动
 
 ```bash
-git clone https://github.com/zvv1999/opencut-classic.git
-cd opencut-classic
+git clone https://github.com/zvv1999/opencut-classic.git onecut
+cd onecut
 git switch feat/agent-drivable
-
 bun run setup:local
 ```
 
-该命令会创建本地工程目录、补齐文件模式配置、按需安装依赖、启动编辑器、执行环境诊断
-并打开 [http://127.0.0.1:3000](http://127.0.0.1:3000)。重复运行会复用现有配置和进程。
-只体验编辑器时不需要 Docker。
+该命令会创建本地工程目录、安装依赖、启动编辑器、执行环境诊断，并打开
+[http://127.0.0.1:3000](http://127.0.0.1:3000)。重复运行会复用已有配置和进程；只体验
+编辑器不需要 Docker。
 
-随时检查当前环境：
+检查当前环境：
 
 ```bash
 bun run agent:doctor
 ```
 
-首次进入工程时，OpenCut 会自动检测 Codex、Claude、Bun、FFmpeg 和工程目录。设置页提供
-两种使用方式：
+### 两种使用方式
 
-- **在 OpenCut 中使用**：自动复用本机 Codex 登录，不再填写 `Codex Path`。
-- **在 Codex / Claude 中使用**：点击“安装 OpenCut MCP”，安装后即可从对应 App
-  读取和修改所有 OpenCut 工程。
+1. **在 OneCut 中使用 Agent**：进入工程后打开“智能剪辑”，复用本机已有的 Codex
+   登录，无需再次填写账号或 API Key。
+2. **在 Agent App 中控制 OneCut**：在设置页为 Codex 或 Claude 安装 OneCut MCP，
+   然后直接从 App 读取和修改当前工程。
 
-需要数据库、Redis 和多人服务端能力时再运行：
+需要数据库、Redis 和服务端 Provider 时再运行：
 
 ```bash
 BETTER_AUTH_SECRET="$(openssl rand -hex 32)" docker compose up -d
 ```
 
-Docker 是服务器模式，不会读取宿主机 Codex/Claude 登录；浏览器智能剪辑应接入服务端
-API Provider。本机账号复用和 App MCP 推荐使用上面的本地模式。
+Docker 模式不会读取宿主机 Codex/Claude 登录；服务端智能剪辑需要单独配置 API
+Provider。本机账号复用和 App MCP 推荐使用本地模式。
 
-### 让浏览器与 Codex App 使用同一会话
+## 浏览器与 Codex App 共用会话
 
-OpenCut 默认在 `ws://127.0.0.1:48721` 按需启动共享 app-server。Codex App 只在进程
-启动时选择传输，所以第一次使用或从旧版私有宿主迁移时：
+OneCut 默认在 `ws://127.0.0.1:48721` 按需启动共享 app-server。首次使用或从旧宿主迁移：
 
 1. 正常退出 Codex / ChatGPT 桌面 App。
-2. 在仓库根目录运行：
+2. 在仓库根目录运行 `bun run codex:shared-app`。
+3. 从 OneCut 智能剪辑发送一条消息。
+4. Codex App 会出现以工程名命名的同一任务，之后可从任一端继续。
 
-   ```bash
-   bun run codex:shared-app
-   ```
-
-3. 从编辑器打开“智能剪辑”，发送一条消息。
-4. 在 Codex App 中会看到以工程名命名的同一个任务，可从任一端继续。
-
-不要同时启动第二个私有 app-server。自定义端口时，OpenCut 与桌面 App 必须使用同一
+不要同时启动第二个私有 app-server。自定义端口时，浏览器和桌面 App 必须使用同一个
 WebSocket 地址。
 
-## 推荐使用链路
+## 推荐剪辑链路
 
-1. **建立工程**：导入素材，完成基础轨道与画布设置。
-2. **选择上下文**：在时间轴选择片段或范围，或在素材库选择一个或多个素材。
-3. **进入智能剪辑**：点击“添加引用”确认上下文，然后用自然语言描述结果。
-4. **选择性能档位**：确定性修改用“快速”，日常编辑用“均衡”，镜头判断和最终验收用
-   “导演”。
-5. **观察执行**：回复、工具调用和工程修改持续流式展示；断线后会恢复同一个 run。
-6. **人工复核**：在编辑器里播放、微调；下一轮 Agent 会重新读取人工修改后的 revision。
-7. **跨端续聊**：需要更完整的 Codex 工作区体验时，直接在 Codex App 打开同名任务。
+1. 导入素材并建立基础轨道。
+2. 在时间轴或素材库选择需要 Agent 理解的对象。
+3. 点击“添加引用”，确认上下文后描述目标。
+4. 简单确定性修改用“快速”，日常编辑用“均衡”，镜头判断和最终验收用“导演”。
+5. 观察流式回复、工具调用与工程修改。
+6. 在编辑器里播放和微调；下一轮会读取人工修改后的 revision。
+7. 需要完整工作区能力时，在 Codex App 打开同名任务继续。
 
-示例指令：
+示例：
 
 ```text
 把我选中的 21.3–29.0 秒压到 5 秒左右，保留人物动作起点和落点，不要改其他片段。
 
-分析这三个素材的场景变化，为 30 秒竖屏短片挑选可用区间并先给出方案。
+分析这三个素材的场景变化，为 30 秒竖屏短片挑选可用区间，先给方案再落工程。
 
 保留我刚才手动调整的切点，把后半段节奏再收紧，并在落点前加 4 帧缓冲。
 ```
 
-## 性能与画质档位
+## 性能档位
 
 | 档位         | 推理强度 | 画面识别 | 回写验证 | 适用场景                             |
 | ------------ | -------- | -------- | -------- | ------------------------------------ |
-| 快速         | `low`    | 关闭     | 关闭     | 文案、重命名、确定性的简单修改       |
-| 均衡（默认） | `medium` | 关闭     | 基础     | 日常剪辑与 revision 落盘确认         |
+| 快速         | `low`    | 关闭     | 关闭     | 文案、重命名、确定性修改             |
+| 均衡（默认） | `medium` | 关闭     | 基础     | 日常剪辑与 revision 确认             |
 | 导演         | `xhigh`  | 自动     | 完整     | 镜头判断、节奏重排、多模态与画面质检 |
-
-当前链路针对交互和首字延迟做了以下处理：
-
-- 本地会话投影先恢复界面，原生 `thread/read` 在后台校准，不阻塞输入框；
-- 模型、模式和技能能力发现使用 5 分钟缓存与并发请求合并；
-- 普通回合用 `read_project` 直接完成 MCP 就绪校验与工程预读，不再等待全量 MCP
-  状态枚举；只有导演级能力发现或失败诊断才读取完整工具目录；
-- task 命名在后台完成，不阻塞 `turn/start`；
-- SSE 每 15 秒发送心跳，长任务经过代理时不易被空闲断开；
-- 流式期间自动跟随最新内容，用户向上查看历史后不会被强制拉回；
-- run 具备序列号、重连和遗漏事件补偿；多标签页使用 BroadcastChannel 与 ETag 同步；
-- 高分辨率、高帧率、高码率或浏览器不兼容素材自动生成高画质代理；
-- 代理只用于交互预览，导出使用原始素材，避免用响应速度换最终画质。
 
 ## 配置
 
@@ -160,88 +145,63 @@ WebSocket 地址。
 # CODEX_BIN=/absolute/path/to/codex
 # CLAUDE_BIN=/absolute/path/to/claude
 
-# OpenCut 与 Codex App 共享的 app-server
 OPENCUT_CODEX_APP_SERVER_URL=ws://127.0.0.1:48721
-
-# 可选：Codex App 中归类 task 的工作区根目录
 OPENCUT_CODEX_WORKSPACE_ROOT=/absolute/path/to/chatcut
-
-# 可选：工程文件目录
 OPENCUT_PROJECTS_DIR=/absolute/path/to/opencut-projects
-
-# 可选：关闭自动导航到桌面任务；不影响会话与事件同步
 OPENCUT_CODEX_DESKTOP_SYNC=0
 ```
 
-项目级 `.codex/config.toml` 已注册 `opencut` MCP，并显式使用 Bun 启动。不要改用缺少
-原生 `fetch` 的旧 Node，也不要为智能剪辑注册 LocalCut。
+`OPENCUT_*`、`opencut://` 和 `.opencut` 是为兼容上游工程、现有会话与协议保留的稳定
+标识，不是公开品牌。新版本会在兼容旧数据的前提下逐步提供 `ONECUT_*` 别名。
 
-## 目录
+项目级 `.codex/config.toml` 目前仍以兼容名 `opencut` 注册 MCP。不要改用缺少原生
+`fetch` 的旧 Node，也不要为智能剪辑注册 LocalCut。
+
+## 仓库结构
 
 ```text
 apps/web/       Next.js 编辑器、智能剪辑 UI、API 与共享 app-server 客户端
-apps/mcp/       OpenCut MCP：工程文件、媒体分析和实时编辑器原子能力
+apps/mcp/       OneCut MCP：工程文件、媒体分析和实时编辑器原子能力
 apps/desktop/   GPUI 原生桌面壳（开发中）
 rust/           GPU 合成、效果、遮罩和 WASM 核心
+docs/brand/     Logo、视觉规范与宣传物料
 docs/           架构、路线图、验收报告与 Agent 工作规范
 ```
 
 进一步阅读：
 
 - [智能剪辑双向工作流与 Agent 操作规范](docs/agent-smart-edit.md)
+- [品牌资产与使用规范](docs/brand/README.md)
 - [编辑器目标计划](docs/roadmap/opencut-editor-goal-plan.md)
 - [编解码与画质目标计划](docs/roadmap/opencut-codec-goal-plan.md)
 - [编辑器功能与截图报告](docs/reports/opencut-editor-goal/index.html)
 - [编解码、播放与导出报告](docs/reports/opencut-codec-goal/index.html)
-- [关键帧架构](docs/keyframes.md)
-- [颜色处理链路](docs/architecture/color-pipeline.md)
 
 ## 开发与验证
 
 ```bash
-# Agent、会话、路由与交互回归
-bun test apps/web/src/agent/__tests__
-bun test apps/web/src/components/editor/__tests__/agent-surface-separation.test.ts
-bun test apps/web/src/server/__tests__/codex-chat.test.ts
-bun test apps/web/src/server/__tests__/codex-run-manager.test.ts
-bun test apps/web/src/server/__tests__/codex-chat-route.test.ts
-
-# MCP、全量测试和发布门禁
-node --test apps/mcp/src/__tests__/*.test.mjs
+bun install
 bun test
+node --test apps/mcp/src/__tests__/*.test.mjs
 bun run typecheck:web
 bun run lint:web
 bun run build:web
 bun audit
 ```
 
-测试遵循先写失败回归、再实现修复的方式。提交前至少运行受影响模块测试、类型检查、
-ESLint、生产构建和依赖审计。
+提交前至少运行受影响模块测试、类型检查、ESLint、生产构建和依赖审计。请勿提交真实
+素材、API Key、个人路径、项目缓存或本地 Agent 会话。
 
-## 常见问题
+## 贡献
 
-| 现象                                  | 处理                                                                        |
-| ------------------------------------- | --------------------------------------------------------------------------- |
-| `Codex mcpServerStatus/list 请求超时` | 首次冷启动允许 MCP 初始化；确认 `.codex/config.toml` 使用 `bun`，然后重试。 |
-| 浏览器有回复，Codex App 没有回显      | 退出桌面 App 后运行 `bun run codex:shared-app`，确认两端连接同一端口。      |
-| task 已归档，无法续聊                 | 执行 `codex unarchive <threadId>`，或在智能剪辑中新建会话。                 |
-| `fetch is not defined`                | MCP 被旧 Node 启动；恢复项目配置中的 Bun 启动方式。                         |
-| 页面刷新后仍显示处理中                | 保留原 run 并等待自动重连；不要重复发送同一条剪辑指令。                     |
-| Codex App 续聊缺少 OpenCut 工具       | 检查 task 工作区的 `.codex/config.toml` 是否注册 `mcp_servers.opencut`。    |
-| `revision_conflict`                   | 重新读取工程并基于新 revision 生成操作，不要盲目重试。                      |
-| `noEffect: true`                      | 操作执行但没有改变结果；检查轨道、元素选择和时间范围。                      |
-| 预览卡顿但导出正常                    | 等待代理任务完成；代理只影响预览，最终导出仍使用原片。                      |
+Issue、文档、测试、性能优化和可复现的 Bug 修复都欢迎。开始大功能前请先阅读
+[贡献指南](.github/CONTRIBUTING.md) 并开 Issue 对齐设计边界。
 
-更多协议、上下文 JSON、媒体目录和故障处理细节见
-[docs/agent-smart-edit.md](docs/agent-smart-edit.md)。
+## 上游、商标与许可证
 
-## 上游、贡献与许可证
+OneCut 延续 OpenCut Classic 的本地优先方向，并在 Agent 协作、时间轴、媒体理解和专业
+编辑体验上持续迭代。代码采用 [MIT License](LICENSE)。原项目归属与第三方声明见
+[NOTICE.md](NOTICE.md)。
 
-这个分支延续 OpenCut “隐私、本地优先、简单易用”的方向，并针对时间轴、媒体处理、
-Agent 协作和专业编辑体验持续迭代。提交改动前请阅读
-[贡献指南](.github/CONTRIBUTING.md)。
-
-感谢 [Vercel](https://vercel.com?utm_source=github-opencut&utm_campaign=oss) 和
-[fal.ai](https://fal.ai?utm_source=github-opencut&utm_campaign=oss) 对原项目的支持。
-
-本项目采用 [MIT License](LICENSE)。
+OneCut 名称与本仓库的 Logo 是独立设计，不使用 OpenCut 官方 Logo。公开发布前仍应完成
+目标国家/地区的商标与域名核查；代码许可证不等同于商标许可。

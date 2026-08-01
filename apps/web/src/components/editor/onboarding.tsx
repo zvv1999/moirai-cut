@@ -33,11 +33,11 @@ export function Onboarding() {
 	const getStepTitle = () => {
 		switch (step) {
 			case 0:
-				return "欢迎使用 OpenCut";
+				return "欢迎使用 OneCut";
 			case 1:
 				return "连接智能剪辑环境";
 			default:
-				return "OpenCut 使用引导";
+				return "OneCut 使用引导";
 		}
 	};
 
@@ -50,7 +50,7 @@ export function Onboarding() {
 							<Film className="size-5" />
 						</div>
 						<div className="space-y-2">
-							<Title title="欢迎使用 OpenCut" />
+							<Title title="欢迎使用 OneCut" />
 							<p className="text-sm leading-relaxed text-muted-foreground">
 								在浏览器中完成专业剪辑，也可以复用本机 Codex 或 Claude 让 Agent
 								直接理解并修改当前工程。
@@ -104,7 +104,7 @@ export function Onboarding() {
 					<span className="sr-only">{getStepTitle()}</span>
 				</DialogTitle>
 				<DialogDescription className="sr-only">
-					配置 OpenCut 本地智能剪辑与 Agent App 工程工具。
+					配置 OneCut 本地智能剪辑与 Agent App 工程工具。
 				</DialogDescription>
 				<DialogBody>{renderStepContent()}</DialogBody>
 			</DialogContent>

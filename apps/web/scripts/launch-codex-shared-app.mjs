@@ -57,7 +57,7 @@ async function ensureOpenCutStartedHost({ appServerUrl, openCutUrl }) {
 		await new Promise((resolve) => setTimeout(resolve, 100));
 	}
 	throw new Error(
-		`OpenCut 未能启动共享 Codex 宿主。请先确认 ${openCutUrl} 正常运行。`,
+		`OneCut 未能启动共享 Codex 宿主。请先确认 ${openCutUrl} 正常运行。`,
 	);
 }
 
@@ -100,7 +100,7 @@ async function main() {
 		stdio: "ignore",
 	});
 	child.unref();
-	console.log(`Codex App 已连接 OpenCut 共享宿主：${appServerUrl}`);
+	console.log(`Codex App 已连接 OneCut 共享宿主：${appServerUrl}`);
 }
 
 main().catch((error) => {

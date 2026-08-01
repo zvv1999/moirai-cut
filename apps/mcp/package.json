@@ -1,9 +1,10 @@
 {
-	"name": "@opencut/mcp",
+	"name": "@onecut/mcp",
 	"version": "0.1.0",
 	"private": true,
 	"type": "module",
 	"bin": {
+		"onecut-mcp": "./src/server.mjs",
 		"opencut-mcp": "./src/server.mjs"
 	},
 	"scripts": {

@@ -1,27 +1,9 @@
-# Getting Help
+# Getting help with OneCut
 
-Thanks for using OpenCut! If you need help, here are your options:
+- Read the [README](../README.md) and [Agent workflow guide](../docs/agent-smart-edit.md).
+- Use the bug template for reproducible defects.
+- Use the feature template for proposals and workflow ideas.
+- Use GitHub Discussions for setup questions and general help when enabled.
+- Report security problems privately according to [SECURITY.md](SECURITY.md).
 
-## Documentation
-
-- Check our [README](../README.md) for basic setup instructions
-- Review the [Contributing Guidelines](CONTRIBUTING.md) for development setup
-
-## Issues
-
-- **Bug reports**: Use the bug report template
-- **Feature requests**: Use the feature request template
-- **Questions**: Use GitHub Discussions for general questions
-
-## Community
-
-- Join our discussions on GitHub
-- Follow the [Code of Conduct](CODE_OF_CONDUCT.md)
-
-## Response Times
-
-- Issues are typically triaged within 2-3 business days
-- Feature requests may take longer to evaluate
-- Security issues are handled with priority
-
-We appreciate your patience and contributions to making OpenCut better!
+When asking for help, include your operating system, Bun version, browser, FFmpeg version, the output of `bun run agent:doctor`, and the smallest safe reproduction. Remove private paths, API keys, media and task content before posting logs.

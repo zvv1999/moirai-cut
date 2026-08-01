@@ -73,7 +73,7 @@ function DegradedRendererBanner() {
 
 	return (
 		<div className="bg-accent border-b h-9 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-			<span>为获得最佳预览性能，建议使用 Chrome 打开 OpenCut。</span>
+			<span>为获得最佳预览性能，建议使用 Chrome 打开 OneCut。</span>
 			<Button
 				variant="text"
 				size="icon"

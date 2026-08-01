@@ -57,8 +57,7 @@ export function Header() {
 							<Link href="/" className="flex items-center gap-3">
 								<Image
 									src={DEFAULT_LOGO_URL}
-									alt="OpenCut Logo"
-									className="invert dark:invert-0"
+									alt="OneCut Logo"
 									width={32}
 									height={32}
 								/>
@@ -79,7 +78,7 @@ export function Header() {
 								onClick={() => {
 									const a = document.createElement("a");
 									a.href = DEFAULT_LOGO_URL;
-									a.download = "opencut-logo.svg";
+									a.download = "onecut-logo.svg";
 									a.click();
 								}}
 							>

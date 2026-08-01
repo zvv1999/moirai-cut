@@ -3,7 +3,7 @@ export type EditorSurface = "assets" | "preview" | "properties";
 
 /**
  * Below this width three resizable columns stop being useful. This commonly
- * happens when OpenCut shares the screen with Codex or Claude, or when the
+ * happens when OneCut shares the screen with Codex or Claude, or when the
  * in-editor Agent dock is open.
  */
 export const EDITOR_FOCUS_MODE_WIDTH = 1040;

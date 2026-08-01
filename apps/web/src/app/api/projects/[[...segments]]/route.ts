@@ -464,7 +464,7 @@ export async function POST(request: Request, { params }: Context) {
 			const sourceName =
 				metadata && typeof metadata.name === "string"
 					? metadata.name
-					: "OpenCut project";
+					: "OneCut project";
 			const requestedName =
 				isRecord(body) && typeof body.name === "string" ? body.name.trim() : "";
 			if (requestedName.length > 100) {

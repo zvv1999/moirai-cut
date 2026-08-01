@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { RiDiscordFill, RiTwitterXLine } from "react-icons/ri";
 import { FaGithub } from "react-icons/fa6";
 import Image from "next/image";
 import { DEFAULT_LOGO_URL } from "@/site/brand";
@@ -41,15 +40,14 @@ export function Footer() {
 						<div className="mb-4 flex items-center justify-start gap-2">
 							<Image
 								src={DEFAULT_LOGO_URL}
-								alt="OpenCut"
+								alt="OneCut"
 								width={24}
 								height={24}
-								className="invert dark:invert-0"
 							/>
-							<span className="text-lg font-bold">OpenCut</span>
+							<span className="text-lg font-bold">OneCut</span>
 						</div>
 						<p className="text-muted-foreground mb-5 text-sm md:text-left">
-							The privacy-first video editor that feels simple to use.
+							Edit by intent. Finish with control.
 						</p>
 						<div className="flex justify-start gap-3">
 							<Link
@@ -59,22 +57,6 @@ export function Footer() {
 								rel="noopener noreferrer"
 							>
 								<FaGithub className="size-5" />
-							</Link>
-							<Link
-								href={SOCIAL_LINKS.x}
-								className="text-muted-foreground hover:text-foreground transition-colors"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								<RiTwitterXLine className="size-5" />
-							</Link>
-							<Link
-								href={SOCIAL_LINKS.discord}
-								className="text-muted-foreground hover:text-foreground transition-colors"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								<RiDiscordFill className="size-5" />
 							</Link>
 						</div>
 					</div>
@@ -114,7 +96,7 @@ export function Footer() {
 				<div className="flex flex-col items-start justify-between gap-4 pt-2 md:flex-row">
 					<div className="text-muted-foreground flex items-center gap-4 text-sm">
 						<span>
-							© {new Date().getFullYear()} OpenCut, All Rights Reserved
+							© {new Date().getFullYear()} OneCut contributors · MIT License
 						</span>
 					</div>
 				</div>

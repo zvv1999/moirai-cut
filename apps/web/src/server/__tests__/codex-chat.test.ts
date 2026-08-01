@@ -288,7 +288,7 @@ describe("Codex app-server JSON-RPC client", () => {
 		).rejects.toThrow("Codex app-server 未连接");
 	});
 
-	test("answers OpenCut MCP approval elicitations without blocking the turn", async () => {
+	test("answers OneCut MCP approval elicitations without blocking the turn", async () => {
 		const fake = appServerProcess();
 		const client = new CodexAppServerRpcClient(fake.process);
 		const subscription = client.subscribe("thread-1");
@@ -475,10 +475,10 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(prompt).toContain(
 			"不要读取、调用或套用 LocalCut、localcut-native-video",
 		);
-		expect(prompt).toContain("OpenCut MCP 已由系统验证就绪");
+		expect(prompt).toContain("OneCut MCP 已由系统验证就绪");
 		expect(prompt).toContain("当前工程摘要已由系统预读");
 		expect(prompt).toContain('{"projectId":"project-1","revision":7}');
-		expect(prompt).toContain("不要声称没有 OpenCut 工具");
+		expect(prompt).toContain("不要声称没有 OneCut 工具");
 		expect(prompt).toContain("不要自行连接或启动 MCP");
 		expect(prompt).not.toContain("优先使用 get_context");
 		expect(prompt).not.toContain("至少需要两个字幕素材");
@@ -1350,7 +1350,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				threadId: "thread-project-1",
 				itemType: "mcpToolCall",
 				status: "completed",
-				title: "OpenCut MCP 已就绪",
+				title: "OneCut MCP 已就绪",
 				detail: "read_project · edit_project",
 			},
 			{
@@ -1474,7 +1474,8 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			subscribe: () => ({
 				[Symbol.asyncIterator]() {
 					return {
-						next: async () => await new Promise<IteratorResult<unknown>>(() => {}),
+						next: async () =>
+							await new Promise<IteratorResult<unknown>>(() => {}),
 					};
 				},
 				close() {},
@@ -1575,7 +1576,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		});
 	});
 
-	test("fails before starting a turn when the current session has no OpenCut MCP", async () => {
+	test("fails before starting a turn when the current session has no OneCut MCP", async () => {
 		const calls: Array<{ method: string; params: unknown }> = [];
 		const connection: CodexAppServerConnection = {
 			request: async ({ method, params }) => {
@@ -1608,7 +1609,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			}
 		};
 
-		expect(consume()).rejects.toThrow("OpenCut MCP 未就绪");
+		expect(consume()).rejects.toThrow("OneCut MCP 未就绪");
 		expect(calls.map((call) => call.method)).toEqual([
 			"thread/start",
 			"mcpServer/tool/call",
@@ -1662,7 +1663,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 								threadId,
 								turnId: "turn-1",
 								serverName: "opencut",
-								message: "允许 OpenCut 读取工程？",
+								message: "允许 OneCut 读取工程？",
 								_meta: {
 									codex_approval_kind: "mcp_tool_call",
 								},
@@ -1819,8 +1820,8 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			turnId: "turn-1",
 			itemType: "approval",
 			status: "completed",
-			title: "OpenCut 调用已授权",
-			detail: "允许 OpenCut 读取工程？",
+			title: "OneCut 调用已授权",
+			detail: "允许 OneCut 读取工程？",
 		});
 		expect(events).toContainEqual(
 			expect.objectContaining({
@@ -1829,7 +1830,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				method: "item/started",
 				itemType: "mcpToolCall",
 				status: "started",
-				title: "OpenCut · read_project",
+				title: "OneCut · read_project",
 				detail: expect.stringContaining('"projectId": "project-1"'),
 			}),
 		);
@@ -1839,7 +1840,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				id: "tool-1",
 				method: "item/completed",
 				status: "completed",
-				title: "OpenCut · read_project",
+				title: "OneCut · read_project",
 				detail: expect.stringContaining("读取完成"),
 			}),
 		);

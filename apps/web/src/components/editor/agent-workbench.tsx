@@ -340,7 +340,12 @@ function protocolActivityLabel(frame: CodexProtocolFrame): string {
 	) {
 		return "智能剪辑已连接";
 	}
-	if (frame.title === "OpenCut MCP 已就绪") return "工程工具已就绪";
+	if (
+		frame.title === "OneCut MCP 已就绪" ||
+		frame.title === "OpenCut MCP 已就绪"
+	) {
+		return "工程工具已就绪";
+	}
 	return frame.title.replaceAll("Codex", "智能剪辑");
 }
 

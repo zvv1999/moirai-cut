@@ -6,18 +6,14 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
-	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import Link from "next/link";
 import { RenameProjectDialog } from "@/project/components/rename-project-dialog";
 import { DeleteProjectDialog } from "@/project/components/delete-project-dialog";
 import { useRouter } from "next/navigation";
-import { FaDiscord } from "react-icons/fa6";
 import { ExportButton } from "./export-button";
 import { FeedbackPopover } from "@/feedback/components/feedback-popover";
 import { DEFAULT_LOGO_URL } from "@/site/brand";
-import { SOCIAL_LINKS } from "@/site/social";
 import { toast } from "sonner";
 import { useEditor } from "@/editor/use-editor";
 import { CommandIcon, Logout05Icon } from "@hugeicons/core-free-icons";
@@ -184,7 +180,7 @@ function ProjectDropdown() {
 							alt="工程菜单"
 							width={32}
 							height={32}
-							className="size-5 brightness-0 invert"
+							className="size-5"
 						/>
 					</Button>
 				</DropdownMenuTrigger>
@@ -202,18 +198,6 @@ function ProjectDropdown() {
 						icon={<HugeiconsIcon icon={CommandIcon} />}
 					>
 						快捷键
-					</DropdownMenuItem>
-
-					<DropdownMenuSeparator />
-
-					<DropdownMenuItem asChild icon={<FaDiscord className="size-4!" />}>
-						<Link
-							href={SOCIAL_LINKS.discord}
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							Discord
-						</Link>
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>

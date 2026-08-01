@@ -219,7 +219,7 @@ export function AgentSetupPanel({
 					"message" in value &&
 					typeof value.message === "string"
 					? value.message
-					: "OpenCut MCP 已安装。",
+					: "OneCut MCP 已安装。",
 			);
 			await refresh(true);
 		} catch (nextError) {
@@ -294,7 +294,7 @@ export function AgentSetupPanel({
 							<div className="flex min-w-0 items-center gap-2">
 								<Sparkles className="size-3.5 text-cyan-500" />
 								<span className="min-w-0 text-xs leading-tight font-medium">
-									在 OpenCut 中使用
+									在 OneCut 中使用
 								</span>
 							</div>
 							<span
@@ -371,7 +371,7 @@ export function AgentSetupPanel({
 										{canInstall ? (
 											<button
 												type="button"
-												aria-label={`为 ${provider.label} 安装 OpenCut MCP`}
+												aria-label={`为 ${provider.label} 安装 OneCut MCP`}
 												disabled={installing !== null}
 												onClick={() => void installMcp(provider.provider)}
 												className="inline-flex shrink-0 items-center gap-1 rounded-md border border-cyan-500/25 bg-cyan-500/8 px-2 py-1 text-[9px] text-cyan-700 transition hover:bg-cyan-500/15 disabled:opacity-50 dark:text-cyan-300"
@@ -381,7 +381,7 @@ export function AgentSetupPanel({
 												) : (
 													<Download className="size-3" />
 												)}
-												{compact ? "安装" : "安装 OpenCut MCP"}
+												{compact ? "安装" : "安装 OneCut MCP"}
 											</button>
 										) : provider.mcpInstalled ? (
 											<Check className="size-3.5 shrink-0 text-emerald-500" />

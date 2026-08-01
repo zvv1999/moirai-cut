@@ -1,28 +1,19 @@
 # Security Policy
 
-## Supported Versions
+## Supported versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.x.x   | :white_check_mark: |
+Security fixes are applied to the latest commit on the actively maintained branch. Pre-release builds may change quickly and are not guaranteed long-term support.
 
-## Reporting a Vulnerability
+## Report a vulnerability
 
-We take security vulnerabilities seriously. If you discover a security vulnerability within OpenCut, please send an email to security@opencut.app. All security vulnerabilities will be promptly addressed.
+Do not open a public issue for a suspected vulnerability. Use GitHub's **Report a vulnerability** flow in the repository Security tab to start a private security advisory.
 
-Please do not report security vulnerabilities through public GitHub issues.
+Include:
 
-### What to include in your report
+- affected commit or version;
+- reproduction steps or a minimal proof of concept;
+- expected impact and attack prerequisites;
+- any suggested mitigation;
+- whether the issue exposes local media, project files, credentials or Agent access.
 
-- Description of the vulnerability
-- Steps to reproduce
-- Potential impact
-- Any suggested fixes
-
-### Response timeline
-
-- We will acknowledge receipt within 48 hours
-- We will provide a detailed response within 5 business days
-- We will keep you updated on our progress
-
-Thank you for helping keep OpenCut secure!
+Please do not test against systems, accounts or media you do not own. We will acknowledge actionable reports through the private advisory and coordinate disclosure after a fix is available.

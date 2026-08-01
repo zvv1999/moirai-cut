@@ -216,7 +216,7 @@ export async function POST(request: Request, { params }: Context) {
 	const projectName =
 		typeof document.metadata.name === "string"
 			? document.metadata.name
-			: "OpenCut project";
+			: "OneCut project";
 	const revision =
 		typeof document.revision === "number" ? document.revision : 0;
 	const safeBase =
@@ -224,7 +224,7 @@ export async function POST(request: Request, { params }: Context) {
 			.normalize("NFKC")
 			.replace(/[^\p{L}\p{N}_. -]+/gu, "-")
 			.trim()
-			.slice(0, 70) || "OpenCut-project";
+			.slice(0, 70) || "OneCut-project";
 	const packageName = `${safeBase}-r${revision}.opencut`;
 	const packagesDir = path.join(sourceDir, "packages");
 	const destination = path.join(packagesDir, packageName);
