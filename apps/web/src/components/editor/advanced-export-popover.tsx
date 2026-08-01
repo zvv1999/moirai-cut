@@ -12,10 +12,12 @@ import {
 	buildComponentExportPlan,
 	buildExportEstimate,
 	buildExportPreflight,
+	createFfmpegIntermediateDraft,
 	createExportDraftFromPreset,
 	detectExportCapabilities,
 	estimateRemainingSeconds,
 	exportDraftToOptions,
+	resolveExportRenderPlan,
 	validateExportDraft,
 	type ComponentExportPlanItem,
 	type ExportCapabilitySummary,
@@ -195,20 +197,30 @@ function localizePreflightMessage(
 		.replace(" is muted but contains ", " 已静音，但仍包含 ")
 		.replace(" clip(s).", " 个素材。")
 		.replace(" and may read as a flash frame.", "，可能会呈现为闪帧。")
-		.replace(" references media that is not in the library.", " 引用了素材库中不存在的媒体。")
-		.replace(" extends past its source and may freeze or render black.", " 超出源素材范围，可能冻结或渲染黑屏。")
-		.replace(" gain and should be checked for clipping.", " 增益，请检查是否削波。")
+		.replace(
+			" references media that is not in the library.",
+			" 引用了素材库中不存在的媒体。",
+		)
+		.replace(
+			" extends past its source and may freeze or render black.",
+			" 超出源素材范围，可能冻结或渲染黑屏。",
+		)
+		.replace(
+			" gain and should be checked for clipping.",
+			" 增益，请检查是否削波。",
+		)
 		.replace(" characters on one line.", " 个字符集中在一行。")
-		.replace(" is outside the title-safe vertical area.", " 超出了标题安全区的垂直范围。")
+		.replace(
+			" is outside the title-safe vertical area.",
+			" 超出了标题安全区的垂直范围。",
+		)
 		.replace(
 			" hole on the main track will export as black.",
 			" 秒的主轨空隙会导出为黑屏。",
 		);
 }
 
-function isDeliverySelection(
-	value: string,
-): value is DeliverySelection {
+function isDeliverySelection(value: string): value is DeliverySelection {
 	return (
 		value === "browser" ||
 		DELIVERY_PRESET_NAMES.some((preset) => preset === value)
@@ -388,6 +400,17 @@ export function AdvancedExportPopover({
 			}),
 		[draft, capabilities, durationSeconds],
 	);
+	const canAttemptFfmpegFallback =
+		draft.format === "mp4" &&
+		draft.videoCodec === "avc" &&
+		draft.audioCodec === "aac" &&
+		!draft.includeAlpha;
+	const actionableValidationIssues = validationIssues.filter(
+		(issue) =>
+			!canAttemptFfmpegFallback ||
+			(issue.code !== "video_codec_unavailable" &&
+				issue.code !== "audio_codec_unavailable"),
+	);
 	const estimate = useMemo(
 		() => buildExportEstimate({ draft, durationSeconds }),
 		[draft, durationSeconds],
@@ -535,6 +558,38 @@ export function AdvancedExportPopover({
 		});
 	};
 
+	const prepareRenderPlan = async ({
+		requestDraft,
+	}: {
+		requestDraft: ExportDraft;
+	}) => {
+		const directCapabilities = await detectExportCapabilities({
+			draft: requestDraft,
+		});
+		const directUnavailable =
+			!directCapabilities.videoCodecSupported ||
+			(requestDraft.includeAudio && !directCapabilities.audioCodecSupported);
+		const fallbackDraft = createFfmpegIntermediateDraft({
+			draft: requestDraft,
+		});
+		const fallbackCapabilities =
+			directUnavailable && requestDraft.format === "mp4"
+				? await detectExportCapabilities({ draft: fallbackDraft })
+				: undefined;
+		const plan = resolveExportRenderPlan({
+			draft: requestDraft,
+			requestedDelivery: deliverySelection,
+			directCapabilities,
+			...(fallbackCapabilities ? { fallbackCapabilities } : {}),
+		});
+		return {
+			plan,
+			capabilities: plan.usesFfmpegFallback
+				? (fallbackCapabilities ?? directCapabilities)
+				: directCapabilities,
+		};
+	};
+
 	const performVideoExport = async ({
 		requestDraft,
 		label,
@@ -544,11 +599,12 @@ export function AdvancedExportPopover({
 		label: string;
 		queueId?: string;
 	}): Promise<boolean> => {
-		const requestCapabilities = await detectExportCapabilities({
-			draft: requestDraft,
-		});
+		const { plan, capabilities: requestCapabilities } = await prepareRenderPlan(
+			{ requestDraft },
+		);
+		const renderDraft = plan.renderDraft;
 		const issues = validateExportDraft({
-			draft: requestDraft,
+			draft: renderDraft,
 			capabilities: requestCapabilities,
 			timelineDurationSeconds: durationSeconds,
 		});
@@ -574,11 +630,13 @@ export function AdvancedExportPopover({
 		const destinationName = safeDestinationName({
 			projectName: project.metadata.name,
 			label,
-			draft: requestDraft,
+			draft: renderDraft,
 		});
 		let completedBytes: number | null = null;
 		let completedDestinationName = destinationName;
-		let completedEncoderSummary = `浏览器编码 · ${requestDraft.hardwareAcceleration}`;
+		let completedEncoderSummary = plan.usesFfmpegFallback
+			? "浏览器 VP9 中间文件 · FFmpeg H.264 软件编码"
+			: `浏览器编码 · ${renderDraft.hardwareAcceleration}`;
 		let completedError: string | null = null;
 		let cancelled = false;
 		const handle = backgroundJobs.start({
@@ -609,7 +667,7 @@ export function AdvancedExportPopover({
 				try {
 					const result = await editor.project.export({
 						options: {
-							...exportDraftToOptions({ draft: requestDraft }),
+							...exportDraftToOptions({ draft: renderDraft }),
 							destinationName,
 						},
 					});
@@ -617,16 +675,16 @@ export function AdvancedExportPopover({
 						cancelled = true;
 						return;
 					}
-				if (!result.success || !result.buffer) {
-					throw new Error(result.error || "导出未生成文件");
-				}
-				if (deliverySelection === "browser") {
-					update({ progress: 0.99, step: "正在准备下载" });
+					if (!result.success || !result.buffer) {
+						throw new Error(result.error || "导出未生成文件");
+					}
+					if (plan.delivery === "browser") {
+						update({ progress: 0.99, step: "正在准备下载" });
 						downloadBuffer({
 							buffer: result.buffer,
 							filename: destinationName,
 							mimeType: getExportMimeType({
-								format: requestDraft.format,
+								format: renderDraft.format,
 							}),
 						});
 						completedBytes = result.buffer.byteLength;
@@ -641,7 +699,7 @@ export function AdvancedExportPopover({
 								method: "PUT",
 								headers: {
 									"content-type": getExportMimeType({
-										format: requestDraft.format,
+										format: renderDraft.format,
 									}),
 								},
 								body: result.buffer,
@@ -653,32 +711,26 @@ export function AdvancedExportPopover({
 						const nativeJob = startNativeDeliveryJob({
 							projectId: project.metadata.id,
 							sourceName: destinationName,
-							preset: deliverySelection,
+							preset: plan.delivery,
 						});
 						nativeJobId = nativeJob.id;
 						update({
 							progress: 0.94,
-							step: `原生编码 ${deliverySelection}`,
+							step: `原生编码 ${plan.delivery}`,
 						});
 						const delivered = await waitForNativeDeliveryJob({
 							jobId: nativeJob.id,
 						});
-						if (
-							delivered.status !== "succeeded" ||
-							!delivered.result
-						) {
+						if (delivered.status !== "succeeded" || !delivered.result) {
 							throw new Error(
-								delivered.error ??
-									`原生编码状态：${delivered.status}`,
+								delivered.error ?? `原生编码状态：${delivered.status}`,
 							);
 						}
-						completedDestinationName =
-							delivered.result.outputName;
+						completedDestinationName = delivered.result.outputName;
 						completedBytes = delivered.result.sizeBytes;
-						completedEncoderSummary =
-							formatNativeDeliveryResultSummary({
-								result: delivered.result,
-							});
+						completedEncoderSummary = formatNativeDeliveryResultSummary({
+							result: delivered.result,
+						});
 						const outputResponse = await fetch(
 							`/api/exports/${encodeURIComponent(project.metadata.id)}/${encodeURIComponent(delivered.result.outputName)}`,
 						);
@@ -755,7 +807,9 @@ export function AdvancedExportPopover({
 	const runPreflight = async () => {
 		setRunningPreflight(true);
 		setTab("preflight");
-		const checkedCapabilities = await detectExportCapabilities({ draft });
+		const { plan, capabilities: checkedCapabilities } = await prepareRenderPlan(
+			{ requestDraft: draft },
+		);
 		setCapabilities(checkedCapabilities);
 		const handle = backgroundJobs.start({
 			kind: "analysis",
@@ -794,7 +848,7 @@ export function AdvancedExportPopover({
 						health,
 						renderSamples,
 						encodingIssues: validateExportDraft({
-							draft,
+							draft: plan.renderDraft,
 							capabilities: checkedCapabilities,
 							timelineDurationSeconds: durationSeconds,
 						}),
@@ -1088,9 +1142,7 @@ export function AdvancedExportPopover({
 									</select>
 								</label>
 								<label className="text-[10px]">
-									<span className="mb-1 block opacity-60">
-										交付编码
-									</span>
+									<span className="mb-1 block opacity-60">交付编码</span>
 									<select
 										aria-label="原生交付编码"
 										className="bg-background border-input h-8 w-full rounded border px-2"
@@ -1098,26 +1150,18 @@ export function AdvancedExportPopover({
 										onChange={(event) => {
 											const value = event.target.value;
 											setDeliverySelection(
-												isDeliverySelection(value)
-													? value
-													: "browser",
+												isDeliverySelection(value) ? value : "browser",
 											);
 										}}
 									>
 										<option value="browser">浏览器直接导出</option>
 										<option value="h264-mp4">H.264 MP4</option>
 										<option value="hevc-mp4">HEVC MP4</option>
-										<option value="hevc10-mp4">
-											HEVC 10-bit MP4
-										</option>
+										<option value="hevc10-mp4">HEVC 10-bit MP4</option>
 										<option value="h264-mov">H.264 MOV</option>
 										<option value="hevc-mov">HEVC MOV</option>
-										<option value="hevc10-mov">
-											HEVC 10-bit MOV
-										</option>
-										<option value="h264-mov-pcm">
-											H.264 MOV + PCM
-										</option>
+										<option value="hevc10-mov">HEVC 10-bit MOV</option>
+										<option value="h264-mov-pcm">H.264 MOV + PCM</option>
 										<option value="hevc10-mov-pcm">
 											HEVC 10-bit MOV + PCM
 										</option>
@@ -1453,9 +1497,7 @@ export function AdvancedExportPopover({
 
 						<div className="grid grid-cols-3 gap-2">
 							<div className="bg-muted/40 rounded-lg p-2">
-								<div className="text-muted-foreground text-[9px]">
-									时长估算
-								</div>
+								<div className="text-muted-foreground text-[9px]">时长估算</div>
 								<div className="text-xs font-semibold">
 									{formatDuration(estimate.durationSeconds)}
 								</div>
@@ -1481,9 +1523,9 @@ export function AdvancedExportPopover({
 							根据已配置码率和像素吞吐量进行规划估算。
 						</p>
 
-						{validationIssues.length > 0 ? (
+						{actionableValidationIssues.length > 0 ? (
 							<ul className="space-y-1">
-								{validationIssues.map((issue) => (
+								{actionableValidationIssues.map((issue) => (
 									<li
 										key={issue.code}
 										className={`rounded p-2 text-[10px] ${
@@ -1496,6 +1538,15 @@ export function AdvancedExportPopover({
 									</li>
 								))}
 							</ul>
+						) : null}
+						{canAttemptFfmpegFallback &&
+						capabilities &&
+						(!capabilities.videoCodecSupported ||
+							(draft.includeAudio && !capabilities.audioCodecSupported)) ? (
+							<p className="rounded bg-sky-500/10 p-2 text-[10px] text-sky-700">
+								浏览器 H.264 不可用；导出时将自动生成 VP9 中间文件，并用本机
+								FFmpeg 交付 H.264 MP4。
+							</p>
 						) : null}
 					</div>
 				) : null}
@@ -1527,9 +1578,7 @@ export function AdvancedExportPopover({
 									}`}
 								>
 									<div className="text-xs font-semibold">
-										{preflight.ready
-											? "可以导出"
-											: "请先解决阻塞问题"}
+										{preflight.ready ? "可以导出" : "请先解决阻塞问题"}
 									</div>
 									<div className="text-[9px] opacity-65">
 										已渲染 {preflight.checkedSamples} 个代表性画面 ·{" "}
@@ -1664,8 +1713,8 @@ export function AdvancedExportPopover({
 													{item.label}
 												</div>
 												<div className="text-muted-foreground text-[8px]">
-													版本 {item.projectRevision} · 第 {item.attempts} 次尝试 ·{" "}
-													{item.options.width}×{item.options.height}
+													版本 {item.projectRevision} · 第 {item.attempts}{" "}
+													次尝试 · {item.options.width}×{item.options.height}
 												</div>
 											</div>
 											<div className="flex items-center gap-2">
@@ -1768,9 +1817,7 @@ export function AdvancedExportPopover({
 										<div className="text-muted-foreground mt-1 text-[8px]">
 											{entry.destinationName
 												? `${entry.destinationName} · ${
-														entry.available
-															? "文件可用"
-															: "文件不可用"
+														entry.available ? "文件可用" : "文件不可用"
 													}`
 												: entry.error}
 										</div>
@@ -1814,11 +1861,10 @@ export function AdvancedExportPopover({
 							onClick={() =>
 								void performVideoExport({
 									requestDraft: draft,
-									label:
-										getPresetCopy(draft.presetId).name,
+									label: getPresetCopy(draft.presetId).name,
 								})
 							}
-							disabled={validationIssues.some(
+							disabled={actionableValidationIssues.some(
 								(issue) => issue.severity === "error",
 							)}
 						>

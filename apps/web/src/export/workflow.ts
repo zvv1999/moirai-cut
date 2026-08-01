@@ -8,6 +8,7 @@ import type {
 	ExportRange,
 	ExportVideoCodec,
 } from "@/export";
+import type { DeliveryPresetName } from "@/export/native-delivery-contract";
 import type {
 	ProjectHealthFinding,
 	ProjectHealthResult,
@@ -195,6 +196,96 @@ export interface ExportCapabilitySummary {
 	videoCodecSupported: boolean;
 	audioCodecSupported: boolean;
 	hardwareAccelerationAvailable: boolean;
+}
+
+export type ExportDeliverySelection = "browser" | DeliveryPresetName;
+
+export interface ExportRenderPlan {
+	renderDraft: ExportDraft;
+	delivery: ExportDeliverySelection;
+	usesFfmpegFallback: boolean;
+}
+
+function capabilitiesSupportDraft({
+	draft,
+	capabilities,
+}: {
+	draft: ExportDraft;
+	capabilities: ExportCapabilitySummary;
+}): boolean {
+	return (
+		capabilities.videoCodecSupported &&
+		(!draft.includeAudio || capabilities.audioCodecSupported)
+	);
+}
+
+export function createFfmpegIntermediateDraft({
+	draft,
+}: {
+	draft: ExportDraft;
+}): ExportDraft {
+	return {
+		...draft,
+		format: "webm",
+		videoCodec: "vp9",
+		audioCodec: "opus",
+		includeAlpha: false,
+		hardwareAcceleration: "no-preference",
+	};
+}
+
+/**
+ * Keep canvas rendering in the browser, but route an unsupported MP4 encode
+ * through a browser-compatible VP9 intermediate and the local FFmpeg delivery
+ * service. This preserves every rendered caption/MG frame while avoiding a
+ * hard dependency on Chrome's optional AVC encoder.
+ */
+export function resolveExportRenderPlan({
+	draft,
+	requestedDelivery,
+	directCapabilities,
+	fallbackCapabilities,
+}: {
+	draft: ExportDraft;
+	requestedDelivery: ExportDeliverySelection;
+	directCapabilities: ExportCapabilitySummary;
+	fallbackCapabilities?: ExportCapabilitySummary;
+}): ExportRenderPlan {
+	if (capabilitiesSupportDraft({ draft, capabilities: directCapabilities })) {
+		return {
+			renderDraft: draft,
+			delivery: requestedDelivery,
+			usesFfmpegFallback: false,
+		};
+	}
+
+	const canFallback =
+		draft.format === "mp4" &&
+		draft.videoCodec === "avc" &&
+		draft.audioCodec === "aac" &&
+		!draft.includeAlpha;
+	const renderDraft = createFfmpegIntermediateDraft({ draft });
+	if (
+		canFallback &&
+		fallbackCapabilities &&
+		capabilitiesSupportDraft({
+			draft: renderDraft,
+			capabilities: fallbackCapabilities,
+		})
+	) {
+		return {
+			renderDraft,
+			delivery:
+				requestedDelivery === "browser" ? "h264-mp4" : requestedDelivery,
+			usesFfmpegFallback: true,
+		};
+	}
+
+	return {
+		renderDraft: draft,
+		delivery: requestedDelivery,
+		usesFfmpegFallback: false,
+	};
 }
 
 export type ExportValidationCode =
