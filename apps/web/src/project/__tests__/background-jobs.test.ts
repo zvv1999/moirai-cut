@@ -84,4 +84,25 @@ describe("background jobs", () => {
 			"cancelled",
 		);
 	});
+
+	test("never lets a multi-phase job report progress backwards", async () => {
+		const registry = new BackgroundJobRegistry({
+			createId: () => "job-monotonic",
+			now: () => "2026-08-01T00:00:00.000Z",
+		});
+		const handle = registry.start({
+			kind: "export",
+			label: "Render then transcode",
+			run: async ({ update }) => {
+				update({ progress: 0.72, step: "Rendering" });
+				update({ progress: 0.4, step: "Transcoding" });
+			},
+		});
+
+		expect(registry.get({ jobId: handle.job.jobId })).toMatchObject({
+			progress: 0.72,
+			step: "Transcoding",
+		});
+		await handle.done;
+	});
 });

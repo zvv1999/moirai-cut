@@ -4,6 +4,9 @@ import {
 	buildExportEstimate,
 	buildExportPreflight,
 	createExportDraftFromPreset,
+	detectExportCapabilities,
+	advanceIndeterminateExportProgress,
+	mapExportPhaseProgress,
 	resolveExportRenderPlan,
 	validateExportDraft,
 	type ExportDraft,
@@ -18,6 +21,106 @@ const SOURCE = {
 };
 
 describe("advanced export workflow", () => {
+	test("capability detection uses a canvas-fit AVC level and caches the probe", async () => {
+		const originalVideoEncoder = Object.getOwnPropertyDescriptor(
+			globalThis,
+			"VideoEncoder",
+		);
+		const originalAudioEncoder = Object.getOwnPropertyDescriptor(
+			globalThis,
+			"AudioEncoder",
+		);
+		const videoConfigs: VideoEncoderConfig[] = [];
+		let audioChecks = 0;
+		Object.defineProperty(globalThis, "VideoEncoder", {
+			configurable: true,
+			value: {
+				isConfigSupported: async (config: VideoEncoderConfig) => {
+					videoConfigs.push(config);
+					return { supported: true, config };
+				},
+			},
+		});
+		Object.defineProperty(globalThis, "AudioEncoder", {
+			configurable: true,
+			value: {
+				isConfigSupported: async (config: AudioEncoderConfig) => {
+					audioChecks += 1;
+					return { supported: true, config };
+				},
+			},
+		});
+
+		try {
+			const draft = createExportDraftFromPreset({
+				presetId: "source",
+				source: {
+					width: 1080,
+					height: 1440,
+					fps: SOURCE.fps,
+				},
+			});
+			await detectExportCapabilities({ draft });
+			await detectExportCapabilities({ draft });
+
+			expect(videoConfigs).toHaveLength(1);
+			expect(videoConfigs[0]).toMatchObject({
+				codec: "avc1.640028",
+				width: 1080,
+				height: 1440,
+				hardwareAcceleration: "prefer-hardware",
+			});
+			expect(audioChecks).toBe(1);
+		} finally {
+			if (originalVideoEncoder) {
+				Object.defineProperty(
+					globalThis,
+					"VideoEncoder",
+					originalVideoEncoder,
+				);
+			} else {
+				Reflect.deleteProperty(globalThis, "VideoEncoder");
+			}
+			if (originalAudioEncoder) {
+				Object.defineProperty(
+					globalThis,
+					"AudioEncoder",
+					originalAudioEncoder,
+				);
+			} else {
+				Reflect.deleteProperty(globalThis, "AudioEncoder");
+			}
+		}
+	});
+
+	test("maps every export phase to continuous monotonic progress", () => {
+		const progress = [
+			mapExportPhaseProgress({ phase: "preparing", progress: 0.5 }),
+			mapExportPhaseProgress({ phase: "rendering", progress: 0 }),
+			mapExportPhaseProgress({ phase: "rendering", progress: 0.5 }),
+			mapExportPhaseProgress({ phase: "saving", progress: 1 }),
+			mapExportPhaseProgress({ phase: "transcoding", progress: 0.5 }),
+			mapExportPhaseProgress({ phase: "downloading", progress: 1 }),
+		];
+
+		expect(progress).toEqual([0.02, 0.04, 0.46, 0.91, 0.945, 0.995]);
+		expect(progress.every((value, index) => index === 0 || value >= progress[index - 1])).toBe(
+			true,
+		);
+	});
+
+	test("keeps long FFmpeg phases visibly moving without ever claiming completion", () => {
+		const first = advanceIndeterminateExportProgress({ current: 0.91 });
+		const second = advanceIndeterminateExportProgress({ current: first });
+
+		expect(first).toBeGreaterThan(0.91);
+		expect(second).toBeGreaterThan(first);
+		expect(second).toBeLessThan(0.98);
+		expect(
+			advanceIndeterminateExportProgress({ current: 0.98 }),
+		).toBe(0.98);
+	});
+
 	test("platform presets cover source, horizontal, vertical, square, and delivery starts without locking edits", () => {
 		const source = createExportDraftFromPreset({
 			presetId: "source",
