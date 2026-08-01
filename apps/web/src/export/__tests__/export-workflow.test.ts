@@ -75,20 +75,12 @@ describe("advanced export workflow", () => {
 			expect(audioChecks).toBe(1);
 		} finally {
 			if (originalVideoEncoder) {
-				Object.defineProperty(
-					globalThis,
-					"VideoEncoder",
-					originalVideoEncoder,
-				);
+				Object.defineProperty(globalThis, "VideoEncoder", originalVideoEncoder);
 			} else {
 				Reflect.deleteProperty(globalThis, "VideoEncoder");
 			}
 			if (originalAudioEncoder) {
-				Object.defineProperty(
-					globalThis,
-					"AudioEncoder",
-					originalAudioEncoder,
-				);
+				Object.defineProperty(globalThis, "AudioEncoder", originalAudioEncoder);
 			} else {
 				Reflect.deleteProperty(globalThis, "AudioEncoder");
 			}
@@ -106,9 +98,11 @@ describe("advanced export workflow", () => {
 		];
 
 		expect(progress).toEqual([0.02, 0.04, 0.46, 0.91, 0.945, 0.995]);
-		expect(progress.every((value, index) => index === 0 || value >= progress[index - 1])).toBe(
-			true,
-		);
+		expect(
+			progress.every(
+				(value, index) => index === 0 || value >= progress[index - 1],
+			),
+		).toBe(true);
 	});
 
 	test("keeps long FFmpeg phases visibly moving without ever claiming completion", () => {
@@ -118,9 +112,7 @@ describe("advanced export workflow", () => {
 		expect(first).toBeGreaterThan(0.91);
 		expect(second).toBeGreaterThan(first);
 		expect(second).toBeLessThan(0.98);
-		expect(
-			advanceIndeterminateExportProgress({ current: 0.98 }),
-		).toBe(0.98);
+		expect(advanceIndeterminateExportProgress({ current: 0.98 })).toBe(0.98);
 	});
 
 	test("creates an immediate busy state and keeps later UI progress monotonic", () => {

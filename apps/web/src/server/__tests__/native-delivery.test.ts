@@ -1,11 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-	mkdir,
-	mkdtemp,
-	readFile,
-	stat,
-	writeFile,
-} from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -74,16 +68,9 @@ describe("native delivery presets", () => {
 		const projectsRoot = await mkdtemp(
 			path.join(tmpdir(), "opencut-delivery-"),
 		);
-		const exportDirectory = path.join(
-			projectsRoot,
-			"project",
-			"exports",
-		);
+		const exportDirectory = path.join(projectsRoot, "project", "exports");
 		await mkdir(exportDirectory, { recursive: true });
-		await writeFile(
-			path.join(exportDirectory, "source.mp4"),
-			"source",
-		);
+		await writeFile(path.join(exportDirectory, "source.mp4"), "source");
 		let runs = 0;
 		const runner: DeliveryRunner = async ({
 			temporaryOutputPath,
