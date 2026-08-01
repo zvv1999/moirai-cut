@@ -22,4 +22,12 @@ describe("root package manifest", () => {
 
 		expect(localRootReferences).toEqual([]);
 	});
+
+	test("runs Turbo scripts with Bun's native architecture", () => {
+		const nodeDispatchedTurboScripts = Object.entries(
+			manifest.scripts ?? {},
+		).filter(([, command]) => command.startsWith("turbo "));
+
+		expect(nodeDispatchedTurboScripts).toEqual([]);
+	});
 });
