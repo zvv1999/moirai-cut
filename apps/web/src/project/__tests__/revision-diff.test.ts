@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
 	compareProjectRevisions,
+	decideProjectVersion,
+	hasVersionableProjectChanges,
 	summarizeProjectRevision,
 } from "@/project/revision-diff";
 
@@ -65,6 +67,71 @@ const before = project({
 });
 
 describe("project revision diffs", () => {
+	test("does not create versions for autosaved view state and generated metadata", () => {
+		const current = {
+			...before,
+			revision: 91,
+			metadata: {
+				...before.metadata,
+				thumbnail: "data:image/png;base64,old",
+				updatedAt: "2026-08-01T15:00:00.000Z",
+			},
+			timelineViewState: {
+				zoomLevel: 3.65,
+				scrollLeft: 8_031,
+				playheadTime: 5_752_000,
+			},
+		};
+		const autosave = {
+			...current,
+			revision: 4,
+			metadata: {
+				...current.metadata,
+				thumbnail: "data:image/png;base64,new",
+				updatedAt: "2026-08-01T15:01:00.000Z",
+			},
+			timelineViewState: {
+				zoomLevel: 3.65,
+				scrollLeft: 8_700.5,
+				playheadTime: 6_192_000,
+			},
+		};
+
+		expect(
+			hasVersionableProjectChanges({ current, incoming: autosave }),
+		).toBe(false);
+		expect(decideProjectVersion({ current, incoming: autosave })).toEqual({
+			revision: 91,
+			versionCreated: false,
+		});
+	});
+
+	test("creates a version when editorial content or project settings change", () => {
+		const current = { ...before, revision: 91 };
+		const changedClip = structuredClone(current);
+		changedClip.scenes[0].tracks.main.elements[0].duration = 120_000;
+		const changedSettings = structuredClone(current);
+		changedSettings.settings.canvasSize.width = 1080;
+
+		expect(
+			hasVersionableProjectChanges({ current, incoming: changedClip }),
+		).toBe(true);
+		expect(
+			hasVersionableProjectChanges({ current, incoming: changedSettings }),
+		).toBe(true);
+		expect(decideProjectVersion({ current, incoming: changedClip })).toEqual({
+			revision: 92,
+			versionCreated: true,
+		});
+	});
+
+	test("creates revision one for the first persisted document", () => {
+		expect(decideProjectVersion({ current: null, incoming: before })).toEqual({
+			revision: 1,
+			versionCreated: true,
+		});
+	});
+
 	test("summarizes timeline structure without copying media payloads", () => {
 		expect(summarizeProjectRevision({ document: before })).toEqual({
 			revision: 4,
