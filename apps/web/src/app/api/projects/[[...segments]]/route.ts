@@ -16,6 +16,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import {
 	compareProjectRevisions,
+	decideProjectVersion,
 	summarizeProjectRevision,
 } from "@/project/revision-diff";
 import { prepareRevisionDuplicate } from "@/project/version-duplicate";
@@ -267,17 +268,32 @@ export async function GET(_request: Request, { params }: Context) {
 	}
 }
 
-/** Current on-disk revision, or 0 when the project does not exist yet. */
-async function currentRevision(id: string): Promise<number> {
+interface CurrentProjectFile {
+	document: Record<string, unknown>;
+	revision: number;
+	text: string;
+}
+
+async function readCurrentProjectFile(
+	id: string,
+): Promise<CurrentProjectFile | null> {
 	try {
-		const parsed = JSON.parse(await readFile(projectFile(id), "utf8")) as {
-			revision?: unknown;
+		const text = await readFile(projectFile(id), "utf8");
+		const document = JSON.parse(text) as Record<string, unknown>;
+		return {
+			document,
+			revision: typeof document.revision === "number" ? document.revision : 0,
+			text,
 		};
-		return typeof parsed.revision === "number" ? parsed.revision : 0;
 	} catch (error) {
-		if ((error as NodeJS.ErrnoException).code === "ENOENT") return 0;
+		if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
 		throw error;
 	}
+}
+
+/** Current on-disk revision, or 0 when the project does not exist yet. */
+async function currentRevision(id: string): Promise<number> {
+	return (await readCurrentProjectFile(id))?.revision ?? 0;
 }
 
 export async function PUT(request: Request, { params }: Context) {
@@ -304,7 +320,8 @@ async function writeProjectFile(
 		// each write their whole copy and the later one silently erases the other's
 		// work — which is exactly what happens today when an agent edits the file
 		// while the editor has it open. A conflict must be an error, not a merge.
-		const onDisk = await currentRevision(id);
+		const current = await readCurrentProjectFile(id);
+		const onDisk = current?.revision ?? 0;
 		if (ifMatch !== null && Number(ifMatch) !== onDisk) {
 			return NextResponse.json(
 				{
@@ -317,8 +334,12 @@ async function writeProjectFile(
 		}
 
 		// The route owns the revision: a client-supplied one is discarded, so a
-		// caller cannot rewind history by echoing back a stale number.
-		const revision = onDisk + 1;
+		// caller cannot rewind history by echoing back a stale number. Resume-state
+		// autosaves are still persisted, but only editorial changes create versions.
+		const { revision, versionCreated } = decideProjectVersion({
+			current: current?.document ?? null,
+			incoming: document,
+		});
 		const contents = JSON.stringify({ ...document, revision }, null, 2);
 
 		const dir = projectDir(id);
@@ -329,14 +350,13 @@ async function writeProjectFile(
 		// not in any tab's undo stack, so without these files a bad batch is simply
 		// permanent. Bounded to the newest 50 — a history that grows forever is a
 		// disk leak wearing a feature's clothes.
-		if (onDisk > 0) {
+		if (versionCreated && onDisk > 0 && current) {
 			try {
-				const previous = await readFile(projectFile(id), "utf8");
 				const revDir = path.join(dir, "revisions");
 				await mkdir(revDir, { recursive: true });
 				await writeFile(
 					path.join(revDir, `${String(onDisk).padStart(6, "0")}.json`),
-					previous,
+					current.text,
 					"utf8",
 				);
 				await pruneRevisionHistory({ revDir });
@@ -350,10 +370,17 @@ async function writeProjectFile(
 		// project in the same process would otherwise resolve to the SAME temp path
 		// and interleave their writes into one file before either rename. The
 		// rename is atomic; what it renames would not have been either document.
-		const temporary = path.join(dir, `.project.json.${randomUUID()}.tmp`);
-		await writeFile(temporary, contents, "utf8");
-		await rename(temporary, projectFile(id));
-		return NextResponse.json({ ok: true, path: projectFile(id), revision });
+		if (current?.text !== contents) {
+			const temporary = path.join(dir, `.project.json.${randomUUID()}.tmp`);
+			await writeFile(temporary, contents, "utf8");
+			await rename(temporary, projectFile(id));
+		}
+		return NextResponse.json({
+			ok: true,
+			path: projectFile(id),
+			revision,
+			versionCreated,
+		});
 	} catch (error) {
 		return failed(error);
 	}

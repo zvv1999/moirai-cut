@@ -37,6 +37,11 @@ export interface ProjectRevisionDiff {
 	changes: RevisionElementChange[];
 }
 
+export interface ProjectVersionDecision {
+	revision: number;
+	versionCreated: boolean;
+}
+
 interface RevisionElement {
 	id: string;
 	name: string;
@@ -44,6 +49,41 @@ interface RevisionElement {
 	trackId: string;
 	startTime: number | null;
 	comparable: string;
+}
+
+/**
+ * Returns whether a save changes the project a user can meaningfully restore.
+ *
+ * The editor persists playhead/zoom state and generated thumbnails so the next
+ * session can resume naturally. Those writes are useful, but they are not edit
+ * versions. Timestamps and the server-owned revision are bookkeeping as well.
+ */
+export function hasVersionableProjectChanges({
+	current,
+	incoming,
+}: {
+	current: unknown;
+	incoming: unknown;
+}): boolean {
+	return !versionValuesEqual({ current, incoming, path: [] });
+}
+
+export function decideProjectVersion({
+	current,
+	incoming,
+}: {
+	current: unknown | null;
+	incoming: unknown;
+}): ProjectVersionDecision {
+	const currentRevision = finiteNumber(asRecord(current).revision) ?? 0;
+	const versionCreated =
+		current === null ||
+		currentRevision <= 0 ||
+		hasVersionableProjectChanges({ current, incoming });
+	return {
+		revision: versionCreated ? currentRevision + 1 : currentRevision,
+		versionCreated,
+	};
 }
 
 export function summarizeProjectRevision({
@@ -226,6 +266,63 @@ function stableJson(value: unknown): string {
 			.join(",")}}`;
 	}
 	return JSON.stringify(value) ?? "undefined";
+}
+
+function versionValuesEqual({
+	current,
+	incoming,
+	path,
+}: {
+	current: unknown;
+	incoming: unknown;
+	path: string[];
+}): boolean {
+	if (Object.is(current, incoming)) return true;
+	if (Array.isArray(current) || Array.isArray(incoming)) {
+		if (!Array.isArray(current) || !Array.isArray(incoming)) return false;
+		if (current.length !== incoming.length) return false;
+		return current.every((value, index) =>
+			versionValuesEqual({
+				current: value,
+				incoming: incoming[index],
+				path: [...path, String(index)],
+			}),
+		);
+	}
+	if (!isRecord(current) || !isRecord(incoming)) return false;
+
+	const currentKeys = versionableKeys({ value: current, path });
+	const incomingKeys = versionableKeys({ value: incoming, path });
+	if (currentKeys.length !== incomingKeys.length) return false;
+	const incomingKeySet = new Set(incomingKeys);
+	return currentKeys.every(
+		(key) =>
+			incomingKeySet.has(key) &&
+			versionValuesEqual({
+				current: current[key],
+				incoming: incoming[key],
+				path: [...path, key],
+			}),
+	);
+}
+
+function versionableKeys({
+	value,
+	path,
+}: {
+	value: Record<string, unknown>;
+	path: string[];
+}): string[] {
+	return Object.keys(value).filter((key) => {
+		if (key === "updatedAt") return false;
+		if (path.length === 0 && (key === "revision" || key === "timelineViewState")) {
+			return false;
+		}
+		if (path.length === 1 && path[0] === "metadata" && key === "thumbnail") {
+			return false;
+		}
+		return true;
+	});
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
