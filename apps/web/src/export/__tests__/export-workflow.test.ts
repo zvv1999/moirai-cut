@@ -6,7 +6,9 @@ import {
 	createExportDraftFromPreset,
 	detectExportCapabilities,
 	advanceIndeterminateExportProgress,
+	createActiveExportUiState,
 	mapExportPhaseProgress,
+	mergeActiveExportUiState,
 	resolveExportRenderPlan,
 	validateExportDraft,
 	type ExportDraft,
@@ -119,6 +121,33 @@ describe("advanced export workflow", () => {
 		expect(
 			advanceIndeterminateExportProgress({ current: 0.98 }),
 		).toBe(0.98);
+	});
+
+	test("creates an immediate busy state and keeps later UI progress monotonic", () => {
+		const started = createActiveExportUiState({ startedAtMs: 1000 });
+		const rendering = mergeActiveExportUiState({
+			current: started,
+			progress: 0.7,
+			step: "正在渲染画面",
+			jobId: "job-1",
+		});
+		const transcoding = mergeActiveExportUiState({
+			current: rendering,
+			progress: 0.5,
+			step: "正在使用 FFmpeg 编码",
+		});
+
+		expect(started).toMatchObject({
+			jobId: null,
+			progress: 0,
+			step: "正在准备导出",
+			startedAtMs: 1000,
+		});
+		expect(transcoding).toMatchObject({
+			jobId: "job-1",
+			progress: 0.7,
+			step: "正在使用 FFmpeg 编码",
+		});
 	});
 
 	test("platform presets cover source, horizontal, vertical, square, and delivery starts without locking edits", () => {

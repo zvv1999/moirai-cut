@@ -58,6 +58,18 @@ describe("native delivery presets", () => {
 		}
 	});
 
+	test("uses a low-latency x264 preset for interactive MP4 delivery", () => {
+		const args = buildDeliveryFfmpegArgs({
+			inputPath: "/tmp/input.webm",
+			outputPath: "/tmp/output.mp4",
+			preset: "h264-mp4",
+		});
+		const presetIndex = args.indexOf("-preset");
+
+		expect(presetIndex).toBeGreaterThan(-1);
+		expect(args[presetIndex + 1]).toBe("veryfast");
+	});
+
 	test("atomically writes, probes, decodes, and reports a delivery", async () => {
 		const projectsRoot = await mkdtemp(
 			path.join(tmpdir(), "opencut-delivery-"),
