@@ -1,13 +1,7 @@
 export type BackgroundJobKind =
-	| "export"
-	| "proxy"
-	| "transcription"
-	| "analysis";
+	"export" | "proxy" | "transcription" | "analysis";
 export type BackgroundJobStatus =
-	| "running"
-	| "completed"
-	| "failed"
-	| "cancelled";
+	"running" | "completed" | "failed" | "cancelled";
 
 export interface BackgroundJobState {
 	jobId: string;
@@ -156,12 +150,17 @@ export class BackgroundJobRegistry {
 				signal: record.controller.signal,
 				update: ({ progress, step }) => {
 					if (record.state.status !== "running") return;
+					const nextProgress =
+						progress === undefined
+							? undefined
+							: Math.max(
+									record.state.progress,
+									Math.max(0, Math.min(1, progress)),
+								);
 					this.patch({
 						record,
 						update: {
-							...(progress === undefined
-								? {}
-								: { progress: Math.max(0, Math.min(1, progress)) }),
+							...(nextProgress === undefined ? {} : { progress: nextProgress }),
 							...(step === undefined ? {} : { step }),
 						},
 					});

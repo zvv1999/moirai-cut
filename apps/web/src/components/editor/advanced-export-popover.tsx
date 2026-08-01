@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -9,18 +9,23 @@ import { useEditor } from "@/editor/use-editor";
 import { downloadBuffer, getExportMimeType } from "@/export";
 import {
 	EXPORT_PLATFORM_PRESETS,
+	advanceIndeterminateExportProgress,
 	buildComponentExportPlan,
 	buildExportEstimate,
 	buildExportPreflight,
 	createFfmpegIntermediateDraft,
+	createActiveExportUiState,
 	createExportDraftFromPreset,
 	detectExportCapabilities,
 	estimateRemainingSeconds,
 	exportDraftToOptions,
+	mapExportPhaseProgress,
+	mergeActiveExportUiState,
 	resolveExportRenderPlan,
 	validateExportDraft,
 	type ComponentExportPlanItem,
 	type ExportCapabilitySummary,
+	type ActiveExportUiState,
 	type ExportDraft,
 	type ExportPreflightResult,
 	type ExportPresetId,
@@ -287,9 +292,6 @@ export function AdvancedExportPopover({
 	const project = useEditor((instance) => instance.project.getActive());
 	const scene = useEditor((instance) => instance.scenes.getActiveScene());
 	const media = useEditor((instance) => instance.media.getAssets());
-	const exportState = useEditor((instance) =>
-		instance.project.getExportState(),
-	);
 	const durationSeconds = mediaTimeToSeconds({
 		time: editor.timeline.getTotalDuration(),
 	});
@@ -330,8 +332,8 @@ export function AdvancedExportPopover({
 	const [deliverySelection, setDeliverySelection] =
 		useState<DeliverySelection>("browser");
 	const [elapsedSeconds, setElapsedSeconds] = useState(0);
-	const currentJobIdRef = useRef<string | null>(null);
-	const exportStartedAtRef = useRef<number | null>(null);
+	const [activeExportUi, setActiveExportUi] =
+		useState<ActiveExportUiState | null>(null);
 
 	useEffect(
 		() =>
@@ -350,22 +352,47 @@ export function AdvancedExportPopover({
 	);
 
 	useEffect(() => {
-		if (!exportState.isExporting) {
-			exportStartedAtRef.current = null;
+		const syncActiveExport = () => {
+			const active = backgroundJobs
+				.list()
+				.find((job) => job.kind === "export" && job.status === "running");
+			if (!active) {
+				setActiveExportUi(null);
+				return;
+			}
+			setActiveExportUi((current) =>
+				mergeActiveExportUiState({
+					current:
+						current ??
+						createActiveExportUiState({
+							startedAtMs: Date.parse(active.createdAt) || Date.now(),
+						}),
+					jobId: active.jobId,
+					progress: active.progress,
+					step: active.step,
+				}),
+			);
+		};
+		syncActiveExport();
+		return backgroundJobs.subscribe(syncActiveExport);
+	}, []);
+
+	useEffect(() => {
+		if (!activeExportUi) {
+			setElapsedSeconds(0);
 			return;
 		}
-		if (exportStartedAtRef.current === null) {
-			exportStartedAtRef.current = performance.now();
-		}
-		const timer = window.setInterval(() => {
+		const updateElapsed = () => {
 			setElapsedSeconds(
-				(performance.now() -
-					(exportStartedAtRef.current ?? performance.now())) /
-					1000,
+				Math.max(0, (Date.now() - activeExportUi.startedAtMs) / 1000),
 			);
+		};
+		updateElapsed();
+		const timer = window.setInterval(() => {
+			updateElapsed();
 		}, 500);
 		return () => window.clearInterval(timer);
-	}, [exportState.isExporting]);
+	}, [activeExportUi]);
 
 	const revision =
 		editor.project.getKnownFileRevision(project.metadata.id) ??
@@ -416,8 +443,8 @@ export function AdvancedExportPopover({
 		[draft, durationSeconds],
 	);
 	const remainingSeconds = estimateRemainingSeconds({
-		elapsedSeconds: exportState.isExporting ? elapsedSeconds : 0,
-		progress: exportState.progress,
+		elapsedSeconds: activeExportUi ? elapsedSeconds : 0,
+		progress: activeExportUi?.progress ?? 0,
 	});
 
 	const healthInput = useMemo(() => {
@@ -599,51 +626,32 @@ export function AdvancedExportPopover({
 		label: string;
 		queueId?: string;
 	}): Promise<boolean> => {
-		const { plan, capabilities: requestCapabilities } = await prepareRenderPlan(
-			{ requestDraft },
-		);
-		const renderDraft = plan.renderDraft;
-		const issues = validateExportDraft({
-			draft: renderDraft,
-			capabilities: requestCapabilities,
-			timelineDurationSeconds: durationSeconds,
-		});
-		const blocking = issues.find((issue) => issue.severity === "error");
-		if (blocking) {
-			toast.error("请检查导出设置", {
-				description:
-					VALIDATION_MESSAGE_LABELS[blocking.code] ?? blocking.message,
-			});
-			if (queueId) {
-				exportQueue.fail({ id: queueId, error: blocking.message });
-			}
-			recordHistory({
-				requestDraft,
-				label,
-				status: "failed",
-				destinationName: null,
-				sizeBytes: null,
-				error: blocking.message,
+		if (
+			backgroundJobs
+				.list()
+				.some((job) => job.kind === "export" && job.status === "running")
+		) {
+			toast.info("已有导出任务正在运行", {
+				description: "可在下方查看进度或取消当前任务。",
 			});
 			return false;
 		}
-		const destinationName = safeDestinationName({
-			projectName: project.metadata.name,
-			label,
-			draft: renderDraft,
-		});
+
+		let renderDraft = requestDraft;
+		let delivery: DeliverySelection = deliverySelection;
+		let destinationName: string | null = null;
 		let completedBytes: number | null = null;
-		let completedDestinationName = destinationName;
-		let completedEncoderSummary = plan.usesFfmpegFallback
-			? "浏览器 VP9 中间文件 · FFmpeg H.264 软件编码"
-			: `浏览器编码 · ${renderDraft.hardwareAcceleration}`;
+		let completedDestinationName: string | null = null;
+		let completedEncoderSummary = "浏览器编码";
 		let completedError: string | null = null;
+		let validationError: string | null = null;
 		let cancelled = false;
 		const handle = backgroundJobs.start({
 			kind: "export",
 			label,
 			run: async ({ signal, update }) => {
 				let nativeJobId: string | null = null;
+				let unsubscribe: () => void = () => undefined;
 				const cancel = () => {
 					editor.project.cancelExport();
 					if (nativeJobId) {
@@ -651,24 +659,65 @@ export function AdvancedExportPopover({
 					}
 				};
 				signal.addEventListener("abort", cancel, { once: true });
-				const unsubscribe = editor.project.subscribe(() => {
-					const state = editor.project.getExportState();
+				try {
 					update({
-						progress: state.progress,
-						step: `正在编码 ${Math.round(state.progress * 100)}%`,
+						progress: mapExportPhaseProgress({
+							phase: "preparing",
+							progress: 0.25,
+						}),
+						step: "正在检查编码器",
 					});
-					if (queueId) {
-						exportQueue.update({
-							id: queueId,
+					const prepared = await prepareRenderPlan({ requestDraft });
+					if (signal.aborted) return;
+					renderDraft = prepared.plan.renderDraft;
+					delivery = prepared.plan.delivery;
+					const issues = validateExportDraft({
+						draft: renderDraft,
+						capabilities: prepared.capabilities,
+						timelineDurationSeconds: durationSeconds,
+					});
+					const blocking = issues.find((issue) => issue.severity === "error");
+					if (blocking) {
+						validationError =
+							VALIDATION_MESSAGE_LABELS[blocking.code] ?? blocking.message;
+						throw new Error(validationError);
+					}
+					destinationName = safeDestinationName({
+						projectName: project.metadata.name,
+						label,
+						draft: renderDraft,
+					});
+					completedDestinationName = destinationName;
+					completedEncoderSummary = prepared.plan.usesFfmpegFallback
+						? "浏览器 VP9 中间文件 · FFmpeg H.264 软件编码"
+						: `浏览器 H.264 · ${renderDraft.hardwareAcceleration}`;
+					update({
+						progress: mapExportPhaseProgress({
+							phase: "preparing",
+							progress: 1,
+						}),
+						step: prepared.plan.usesFfmpegFallback
+							? "正在准备兼容编码路径"
+							: "编码器就绪，开始渲染",
+					});
+					unsubscribe = editor.project.subscribe(() => {
+						const state = editor.project.getExportState();
+						const progress = mapExportPhaseProgress({
+							phase: "rendering",
 							progress: state.progress,
 						});
-					}
-				});
-				try {
+						update({
+							progress,
+							step: `正在渲染与编码 ${Math.round(state.progress * 100)}%`,
+						});
+						if (queueId) {
+							exportQueue.update({ id: queueId, progress });
+						}
+					});
 					const result = await editor.project.export({
 						options: {
 							...exportDraftToOptions({ draft: renderDraft }),
-							destinationName,
+							destinationName: destinationName,
 						},
 					});
 					if (result.cancelled || signal.aborted) {
@@ -678,8 +727,14 @@ export function AdvancedExportPopover({
 					if (!result.success || !result.buffer) {
 						throw new Error(result.error || "导出未生成文件");
 					}
-					if (plan.delivery === "browser") {
-						update({ progress: 0.99, step: "正在准备下载" });
+					if (delivery === "browser") {
+						update({
+							progress: mapExportPhaseProgress({
+								phase: "downloading",
+								progress: 0.5,
+							}),
+							step: "正在准备下载",
+						});
 						downloadBuffer({
 							buffer: result.buffer,
 							filename: destinationName,
@@ -690,7 +745,10 @@ export function AdvancedExportPopover({
 						completedBytes = result.buffer.byteLength;
 					} else {
 						update({
-							progress: 0.9,
+							progress: mapExportPhaseProgress({
+								phase: "saving",
+								progress: 0.2,
+							}),
 							step: "保存高质量中间文件",
 						});
 						const saveResponse = await fetch(
@@ -711,16 +769,29 @@ export function AdvancedExportPopover({
 						const nativeJob = startNativeDeliveryJob({
 							projectId: project.metadata.id,
 							sourceName: destinationName,
-							preset: plan.delivery,
+							preset: delivery,
 						});
 						nativeJobId = nativeJob.id;
-						update({
-							progress: 0.94,
-							step: `原生编码 ${plan.delivery}`,
+						let transcodeProgress = mapExportPhaseProgress({
+							phase: "transcoding",
+							progress: 0,
 						});
+						update({
+							progress: transcodeProgress,
+							step: `正在使用 FFmpeg 编码 ${delivery}`,
+						});
+						const progressTimer = window.setInterval(() => {
+							transcodeProgress = advanceIndeterminateExportProgress({
+								current: transcodeProgress,
+							});
+							update({
+								progress: transcodeProgress,
+								step: `正在使用 FFmpeg 编码 ${delivery}`,
+							});
+						}, 500);
 						const delivered = await waitForNativeDeliveryJob({
 							jobId: nativeJob.id,
-						});
+						}).finally(() => window.clearInterval(progressTimer));
 						if (delivered.status !== "succeeded" || !delivered.result) {
 							throw new Error(
 								delivered.error ?? `原生编码状态：${delivered.status}`,
@@ -731,12 +802,26 @@ export function AdvancedExportPopover({
 						completedEncoderSummary = formatNativeDeliveryResultSummary({
 							result: delivered.result,
 						});
+						update({
+							progress: mapExportPhaseProgress({
+								phase: "downloading",
+								progress: 0.25,
+							}),
+							step: "正在读取交付文件",
+						});
 						const outputResponse = await fetch(
 							`/api/exports/${encodeURIComponent(project.metadata.id)}/${encodeURIComponent(delivered.result.outputName)}`,
 						);
 						if (!outputResponse.ok) {
 							throw new Error("原生交付文件读取失败");
 						}
+						update({
+							progress: mapExportPhaseProgress({
+								phase: "downloading",
+								progress: 0.75,
+							}),
+							step: "正在准备下载",
+						});
 						downloadBlob({
 							blob: await outputResponse.blob(),
 							filename: delivered.result.outputName,
@@ -759,26 +844,37 @@ export function AdvancedExportPopover({
 				}
 			},
 		});
-		currentJobIdRef.current = handle.job.jobId;
+		setActiveExportUi(
+			mergeActiveExportUiState({
+				current: createActiveExportUiState({
+					startedAtMs: Date.parse(handle.job.createdAt),
+				}),
+				jobId: handle.job.jobId,
+				progress: handle.job.progress,
+				step: handle.job.step,
+			}),
+		);
 		await handle.done;
-		currentJobIdRef.current = null;
 		const finalJob = backgroundJobs.get({ jobId: handle.job.jobId });
-		const succeeded =
-			finalJob?.status === "completed" && completedBytes !== null;
-		if (succeeded) {
+		if (
+			finalJob?.status === "completed" &&
+			completedBytes !== null &&
+			completedDestinationName !== null
+		) {
+			const finalName = completedDestinationName;
 			recordHistory({
 				requestDraft,
 				label,
 				status: "completed",
-				destinationName: completedDestinationName,
+				destinationName: finalName,
 				sizeBytes: completedBytes,
 				error: null,
 			});
-			toast.success(`已导出 ${completedDestinationName}`, {
+			toast.success(`已导出 ${finalName}`, {
 				description: `${formatBytes(completedBytes ?? 0)} · ${completedEncoderSummary}`,
 			});
-			await refreshAvailability({
-				expectedName: completedDestinationName,
+			void refreshAvailability({
+				expectedName: finalName,
 				attempts: 24,
 			});
 			return true;
@@ -792,6 +888,11 @@ export function AdvancedExportPopover({
 		if (queueId) {
 			if (status === "cancelled") exportQueue.cancel({ id: queueId });
 			else exportQueue.fail({ id: queueId, error });
+		}
+		if (status === "failed") {
+			toast.error(validationError ? "请检查导出设置" : "导出失败", {
+				description: error,
+			});
 		}
 		recordHistory({
 			requestDraft,
@@ -1020,8 +1121,8 @@ export function AdvancedExportPopover({
 	};
 
 	const cancelCurrent = () => {
-		if (currentJobIdRef.current) {
-			backgroundJobs.cancel({ jobId: currentJobIdRef.current });
+		if (activeExportUi?.jobId) {
+			backgroundJobs.cancel({ jobId: activeExportUi.jobId });
 		}
 		editor.project.cancelExport();
 	};
@@ -1830,17 +1931,17 @@ export function AdvancedExportPopover({
 			</div>
 
 			<div className="border-border border-t p-3">
-				{exportState.isExporting ? (
+				{activeExportUi ? (
 					<div className="space-y-2">
 						<div className="flex justify-between text-[10px]">
-							<span>正在编码 {Math.round(exportState.progress * 100)}%</span>
+							<span>{activeExportUi.step}</span>
 							<span>
 								{remainingSeconds === null
 									? "正在估算时间…"
 									: `约剩余 ${formatDuration(remainingSeconds)}`}
 							</span>
 						</div>
-						<Progress value={exportState.progress * 100} />
+						<Progress value={activeExportUi.progress * 100} />
 						<Button
 							variant="outline"
 							className="w-full"

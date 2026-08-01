@@ -1,4 +1,5 @@
 import type { FrameRate } from "opencut-wasm";
+import { canEncodeVideo } from "mediabunny";
 import type {
 	ExportAudioCodec,
 	ExportFormat,
@@ -196,6 +197,89 @@ export interface ExportCapabilitySummary {
 	videoCodecSupported: boolean;
 	audioCodecSupported: boolean;
 	hardwareAccelerationAvailable: boolean;
+}
+
+export type ExportProgressPhase =
+	"preparing" | "rendering" | "saving" | "transcoding" | "downloading";
+
+export interface ActiveExportUiState {
+	jobId: string | null;
+	progress: number;
+	step: string;
+	startedAtMs: number;
+}
+
+export function createActiveExportUiState({
+	startedAtMs,
+}: {
+	startedAtMs: number;
+}): ActiveExportUiState {
+	return {
+		jobId: null,
+		progress: 0,
+		step: "正在准备导出",
+		startedAtMs,
+	};
+}
+
+export function mergeActiveExportUiState({
+	current,
+	progress,
+	step,
+	jobId,
+}: {
+	current: ActiveExportUiState;
+	progress: number;
+	step: string;
+	jobId?: string;
+}): ActiveExportUiState {
+	return {
+		...current,
+		...(jobId ? { jobId } : {}),
+		progress: Math.max(current.progress, Math.max(0, Math.min(1, progress))),
+		step,
+	};
+}
+
+const EXPORT_PROGRESS_RANGES: Record<
+	ExportProgressPhase,
+	{ start: number; end: number }
+> = {
+	preparing: { start: 0, end: 0.04 },
+	rendering: { start: 0.04, end: 0.88 },
+	saving: { start: 0.88, end: 0.91 },
+	transcoding: { start: 0.91, end: 0.98 },
+	downloading: { start: 0.98, end: 0.995 },
+};
+
+export function mapExportPhaseProgress({
+	phase,
+	progress,
+}: {
+	phase: ExportProgressPhase;
+	progress: number;
+}): number {
+	const range = EXPORT_PROGRESS_RANGES[phase];
+	const bounded = Math.max(0, Math.min(1, progress));
+	return (
+		Math.round((range.start + (range.end - range.start) * bounded) * 1000) /
+		1000
+	);
+}
+
+export function advanceIndeterminateExportProgress({
+	current,
+	ceiling = EXPORT_PROGRESS_RANGES.transcoding.end,
+}: {
+	current: number;
+	ceiling?: number;
+}): number {
+	if (current >= ceiling) return ceiling;
+	const remaining = ceiling - current;
+	return Math.min(
+		ceiling - 0.0001,
+		current + Math.max(0.001, remaining * 0.08),
+	);
 }
 
 export type ExportDeliverySelection = "browser" | DeliveryPresetName;
@@ -446,57 +530,69 @@ export function validateExportDraft({
 	return issues;
 }
 
+const exportCapabilityCache = new Map<
+	string,
+	Promise<ExportCapabilitySummary>
+>();
+
 export async function detectExportCapabilities({
 	draft,
 }: {
 	draft: ExportDraft;
 }): Promise<ExportCapabilitySummary> {
-	const videoConfig = {
-		codec:
-			draft.videoCodec === "avc"
-				? "avc1.42001f"
-				: draft.videoCodec === "vp9"
-					? "vp09.00.10.08"
-					: "av01.0.04M.08",
+	const cacheKey = JSON.stringify({
+		format: draft.format,
 		width: draft.width,
 		height: draft.height,
-		bitrate: draft.videoBitrate,
-		framerate: draft.fps.numerator / draft.fps.denominator,
+		videoCodec: draft.videoCodec,
+		videoBitrate: draft.videoBitrate,
+		includeAudio: draft.includeAudio,
+		audioCodec: draft.audioCodec,
+		audioBitrate: draft.audioBitrate,
 		hardwareAcceleration: draft.hardwareAcceleration,
-	} satisfies VideoEncoderConfig;
-	let videoCodecSupported = typeof VideoEncoder !== "undefined";
-	let hardwareAccelerationAvailable = false;
-	if (videoCodecSupported) {
+	});
+	const cached = exportCapabilityCache.get(cacheKey);
+	if (cached) return cached;
+
+	const probe = (async (): Promise<ExportCapabilitySummary> => {
+		let videoCodecSupported = false;
 		try {
-			const result = await VideoEncoder.isConfigSupported(videoConfig);
-			videoCodecSupported = result.supported === true;
-			hardwareAccelerationAvailable =
-				result.supported === true &&
-				draft.hardwareAcceleration === "prefer-hardware";
+			videoCodecSupported = await canEncodeVideo(draft.videoCodec, {
+				width: draft.width,
+				height: draft.height,
+				bitrate: draft.videoBitrate,
+				hardwareAcceleration: draft.hardwareAcceleration,
+				alpha: draft.includeAlpha ? "keep" : "discard",
+			});
 		} catch {
 			videoCodecSupported = false;
 		}
-	}
-	let audioCodecSupported =
-		!draft.includeAudio || typeof AudioEncoder !== "undefined";
-	if (audioCodecSupported && draft.includeAudio) {
-		try {
-			const result = await AudioEncoder.isConfigSupported({
-				codec: draft.audioCodec === "aac" ? "mp4a.40.2" : "opus",
-				sampleRate: 44_100,
-				numberOfChannels: 2,
-				bitrate: draft.audioBitrate,
-			});
-			audioCodecSupported = result.supported === true;
-		} catch {
-			audioCodecSupported = false;
+		const hardwareAccelerationAvailable =
+			videoCodecSupported && draft.hardwareAcceleration === "prefer-hardware";
+		let audioCodecSupported =
+			!draft.includeAudio || typeof AudioEncoder !== "undefined";
+		if (audioCodecSupported && draft.includeAudio) {
+			try {
+				const result = await AudioEncoder.isConfigSupported({
+					codec: draft.audioCodec === "aac" ? "mp4a.40.2" : "opus",
+					sampleRate: 44_100,
+					numberOfChannels: 2,
+					bitrate: draft.audioBitrate,
+				});
+				audioCodecSupported = result.supported === true;
+			} catch {
+				audioCodecSupported = false;
+			}
 		}
-	}
-	return {
-		videoCodecSupported,
-		audioCodecSupported,
-		hardwareAccelerationAvailable,
-	};
+		return {
+			videoCodecSupported,
+			audioCodecSupported,
+			hardwareAccelerationAvailable,
+		};
+	})();
+	exportCapabilityCache.set(cacheKey, probe);
+	void probe.catch(() => exportCapabilityCache.delete(cacheKey));
+	return probe;
 }
 
 export interface ExportEstimate {

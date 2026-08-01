@@ -52,7 +52,7 @@ const DELIVERY_PRESETS: Record<DeliveryPresetName, DeliveryPreset> = {
 			"-c:v",
 			"libx264",
 			"-preset",
-			"medium",
+			"veryfast",
 			"-crf",
 			"16",
 			"-pix_fmt",
