@@ -4,6 +4,7 @@ import {
 	buildExportEstimate,
 	buildExportPreflight,
 	createExportDraftFromPreset,
+	resolveExportRenderPlan,
 	validateExportDraft,
 	type ExportDraft,
 } from "@/export/workflow";
@@ -73,6 +74,82 @@ describe("advanced export workflow", () => {
 			"video_codec_unavailable",
 			"hardware_unavailable",
 		]);
+	});
+
+	test("falls back from unavailable browser AVC to a VP9 intermediate and FFmpeg H.264 delivery", () => {
+		const draft = createExportDraftFromPreset({
+			presetId: "source",
+			source: { width: 1080, height: 1440, fps: SOURCE.fps },
+		});
+		const plan = resolveExportRenderPlan({
+			draft,
+			requestedDelivery: "browser",
+			directCapabilities: {
+				videoCodecSupported: false,
+				audioCodecSupported: true,
+				hardwareAccelerationAvailable: false,
+			},
+			fallbackCapabilities: {
+				videoCodecSupported: true,
+				audioCodecSupported: true,
+				hardwareAccelerationAvailable: false,
+			},
+		});
+
+		expect(plan).toMatchObject({
+			delivery: "h264-mp4",
+			usesFfmpegFallback: true,
+			renderDraft: {
+				format: "webm",
+				videoCodec: "vp9",
+				audioCodec: "opus",
+				width: 1080,
+				height: 1440,
+				fps: SOURCE.fps,
+			},
+		});
+	});
+
+	test("keeps browser MP4 when AVC is available and fails closed when VP9 is also unavailable", () => {
+		const draft = createExportDraftFromPreset({
+			presetId: "source",
+			source: SOURCE,
+		});
+		const supported = {
+			videoCodecSupported: true,
+			audioCodecSupported: true,
+			hardwareAccelerationAvailable: true,
+		};
+
+		expect(
+			resolveExportRenderPlan({
+				draft,
+				requestedDelivery: "browser",
+				directCapabilities: supported,
+			}),
+		).toMatchObject({
+			delivery: "browser",
+			usesFfmpegFallback: false,
+			renderDraft: { format: "mp4", videoCodec: "avc" },
+		});
+		expect(
+			resolveExportRenderPlan({
+				draft,
+				requestedDelivery: "browser",
+				directCapabilities: {
+					...supported,
+					videoCodecSupported: false,
+				},
+				fallbackCapabilities: {
+					...supported,
+					videoCodecSupported: false,
+				},
+			}),
+		).toMatchObject({
+			delivery: "browser",
+			usesFfmpegFallback: false,
+			renderDraft: { format: "mp4", videoCodec: "avc" },
+		});
 	});
 
 	test("size and render estimates are evidence-based and explicitly approximate", () => {
