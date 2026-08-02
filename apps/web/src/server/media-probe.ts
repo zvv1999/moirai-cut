@@ -276,15 +276,49 @@ export async function runFfprobe({
 	filePath,
 	ffprobeBinary = process.env.FFPROBE_BIN ?? "ffprobe",
 	timeoutMs = DEFAULT_TIMEOUT_MS,
+	run = runFfprobeCommand,
 }: {
 	filePath: string;
 	ffprobeBinary?: string;
 	timeoutMs?: number;
+	run?: FfprobeCommandRunner;
 }): Promise<RawFfprobeOutput> {
-	const stdout = await new Promise<string>((resolve, reject) => {
+	const stdout = await run({
+		binary: ffprobeBinary,
+		args: [
+			"-v",
+			"error",
+			"-show_format",
+			"-show_streams",
+			"-of",
+			"json",
+			filePath,
+		],
+		timeoutMs,
+	});
+
+	const parsed: unknown = JSON.parse(stdout);
+	if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+		throw new Error("FFprobe returned invalid JSON");
+	}
+	return parsed as RawFfprobeOutput;
+}
+
+export type FfprobeCommandRunner = (options: {
+	binary: string;
+	args: string[];
+	timeoutMs: number;
+}) => Promise<string>;
+
+const runFfprobeCommand: FfprobeCommandRunner = ({
+	binary,
+	args,
+	timeoutMs,
+}) =>
+	new Promise((resolve, reject) => {
 		execFile(
-			ffprobeBinary,
-			["-v", "error", "-show_format", "-show_streams", "-of", "json", filePath],
+			binary,
+			args,
 			{
 				encoding: "utf8",
 				maxBuffer: MAX_FFPROBE_OUTPUT_BYTES,
@@ -303,13 +337,6 @@ export async function runFfprobe({
 			},
 		);
 	});
-
-	const parsed: unknown = JSON.parse(stdout);
-	if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-		throw new Error("FFprobe returned invalid JSON");
-	}
-	return parsed as RawFfprobeOutput;
-}
 
 export async function probeProjectMedia({
 	projectId,

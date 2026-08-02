@@ -61,6 +61,7 @@ export function resolveCodexBinary({
 	if (configured) return configured;
 
 	const candidates: string[] = [];
+	const platformPath = platform === "win32" ? path.win32 : path.posix;
 	if (platform === "darwin") {
 		candidates.push(
 			DESKTOP_CODEX_BIN,
@@ -71,16 +72,29 @@ export function resolveCodexBinary({
 		platform === "win32"
 			? (env.PATHEXT ?? ".EXE;.CMD;.BAT").split(";")
 			: [""];
-	for (const directory of (env.PATH ?? "").split(path.delimiter).filter(Boolean)) {
+	for (const directory of (env.PATH ?? "")
+		.split(platformPath.delimiter)
+		.filter(Boolean)) {
 		for (const extension of extensions) {
-			candidates.push(path.join(directory, `codex${extension.toLowerCase()}`));
+			candidates.push(
+				platformPath.join(directory, `codex${extension.toLowerCase()}`),
+			);
 		}
 	}
+	const fallbackRoot =
+		platform === process.platform
+			? process.cwd()
+			: platform === "win32"
+				? "C:\\"
+				: "/";
 	return (
 		candidates.find((candidate) => exists(candidate)) ??
 		(platform === "darwin"
 			? DESKTOP_CODEX_BIN
-			: path.resolve(process.cwd(), platform === "win32" ? "codex.exe" : "codex"))
+			: platformPath.resolve(
+					fallbackRoot,
+					platform === "win32" ? "codex.exe" : "codex",
+				))
 	);
 }
 
