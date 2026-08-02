@@ -1,34 +1,20 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import {
-	chmod,
-	mkdir,
-	mkdtemp,
-	writeFile,
-} from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { GET } from "@/app/api/media/[projectId]/[assetId]/probe/route";
+import {
+	GET,
+	handleMediaProbeRequest,
+} from "@/app/api/media/[projectId]/[assetId]/probe/route";
 import type { RawFfprobeOutput } from "@/media/codec-capabilities";
 
 const originalProjectsRoot = process.env.OPENCUT_PROJECTS_DIR;
-const originalFfprobeBinary = process.env.FFPROBE_BIN;
-const originalFfmpegBinary = process.env.FFMPEG_BIN;
 
 afterEach(() => {
 	if (originalProjectsRoot === undefined) {
 		delete process.env.OPENCUT_PROJECTS_DIR;
 	} else {
 		process.env.OPENCUT_PROJECTS_DIR = originalProjectsRoot;
-	}
-	if (originalFfprobeBinary === undefined) {
-		delete process.env.FFPROBE_BIN;
-	} else {
-		process.env.FFPROBE_BIN = originalFfprobeBinary;
-	}
-	if (originalFfmpegBinary === undefined) {
-		delete process.env.FFMPEG_BIN;
-	} else {
-		process.env.FFMPEG_BIN = originalFfmpegBinary;
 	}
 });
 
@@ -66,33 +52,23 @@ async function routeFixture() {
 			},
 		],
 	};
-	const fakeFfprobe = path.join(root, "ffprobe");
-	await writeFile(
-		fakeFfprobe,
-		`#!/bin/sh\nprintf '%s' '${JSON.stringify(raw)}'\n`,
-	);
-	await chmod(fakeFfprobe, 0o755);
-	const fakeFfmpeg = path.join(root, "ffmpeg");
-	await writeFile(fakeFfmpeg, "#!/bin/sh\nexit 0\n");
-	await chmod(fakeFfmpeg, 0o755);
-
 	process.env.OPENCUT_PROJECTS_DIR = root;
-	process.env.FFPROBE_BIN = fakeFfprobe;
-	process.env.FFMPEG_BIN = fakeFfmpeg;
-	return { projectId, assetId };
+	return { projectId, assetId, raw };
 }
 
 describe("media probe route", () => {
 	test("returns normalized metadata and browser compatibility", async () => {
 		const fixture = await routeFixture();
-		const response = await GET(
-			new Request(
+		const response = await handleMediaProbeRequest({
+			request: new Request(
 				`http://localhost/api/media/${fixture.projectId}/${fixture.assetId}/probe?browserCanDecode=false`,
 			),
-			{
+			context: {
 				params: Promise.resolve(fixture),
 			},
-		);
+			probeFile: async () => fixture.raw,
+			checkNativeTranscode: async () => true,
+		});
 		const body = await response.json();
 
 		expect(response.status).toBe(200);
