@@ -52,7 +52,7 @@ export function MobileGate({ children }: MobileGateProps) {
 						暂仅支持桌面端
 					</h1>
 					<p className="text-muted-foreground text-sm leading-relaxed">
-						OneCut 尚未针对手机或 iPad
+						Moirai Cut 尚未针对手机或 iPad
 						优化，部分功能和布局可能异常。建议使用桌面端获得完整体验。
 					</p>
 				</div>

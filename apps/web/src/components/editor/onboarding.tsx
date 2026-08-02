@@ -33,11 +33,11 @@ export function Onboarding() {
 	const getStepTitle = () => {
 		switch (step) {
 			case 0:
-				return "欢迎使用 OneCut";
+				return "欢迎使用 Moirai Cut";
 			case 1:
 				return "连接智能剪辑环境";
 			default:
-				return "OneCut 使用引导";
+				return "Moirai Cut 使用引导";
 		}
 	};
 
@@ -50,23 +50,24 @@ export function Onboarding() {
 							<Film className="size-5" />
 						</div>
 						<div className="space-y-2">
-							<Title title="欢迎使用 OneCut" />
+							<Title title="欢迎使用 Moirai Cut" />
 							<p className="text-sm leading-relaxed text-muted-foreground">
-								在浏览器中完成专业剪辑，也可以复用本机 Codex 或 Claude 让 Agent
-								直接理解并修改当前工程。
+								通过对话表达意图，让 Agent
+								把变化落到同一条可编辑时间线；你可以随时
+								直接操作、实时预览、撤销并继续协作。
 							</p>
 						</div>
 						<div className="grid gap-2 text-xs sm:grid-cols-2">
 							<div className="rounded-lg border bg-muted/30 p-3">
-								<div className="font-medium">浏览器智能剪辑</div>
+								<div className="font-medium">共享编辑循环</div>
 								<p className="mt-1 text-muted-foreground">
-									自动携带工程、选区和素材上下文。
+									对话、直接操作与实时预览共享工程状态。
 								</p>
 							</div>
 							<div className="rounded-lg border bg-muted/30 p-3">
-								<div className="font-medium">Agent App 控制</div>
+								<div className="font-medium">双向 Agent 控制</div>
 								<p className="mt-1 text-muted-foreground">
-									安装 MCP 后可从 Codex 或 Claude 操作。
+									浏览器与 Codex 或 Claude 都从当前工程继续。
 								</p>
 							</div>
 						</div>
@@ -104,7 +105,7 @@ export function Onboarding() {
 					<span className="sr-only">{getStepTitle()}</span>
 				</DialogTitle>
 				<DialogDescription className="sr-only">
-					配置 OneCut 本地智能剪辑与 Agent App 工程工具。
+					配置 Moirai Cut 本地智能剪辑与 Agent App 工程工具。
 				</DialogDescription>
 				<DialogBody>{renderStepContent()}</DialogBody>
 			</DialogContent>

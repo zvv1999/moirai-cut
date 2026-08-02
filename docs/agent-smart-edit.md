@@ -1,20 +1,33 @@
-# OneCut × Codex 智能剪辑工作流
+# Moirai Cut × Codex 智能剪辑工作流
 
-本文是 OneCut `agent-drivable` 工程的 Agent 操作规范。目标是让编辑器内的
+本文是 Moirai Cut `agent-drivable` 工程的 Agent 操作规范。目标是让编辑器内的
 “智能剪辑”和 Codex App 中的工程会话共享同一份上下文、素材理解结果和工程文件，
 并允许用户与 Agent 反复交替编辑。
+
+## 0. 共享编辑循环
+
+Moirai Cut 不把 Agent 输出当作一次性成片，而是把三种交互放进同一个工程状态：
+
+1. 用户通过对话提出复杂意图，并引用素材、元素或时间段；
+2. Agent 读取最新 revision，提出或执行修改；
+3. 变化落到当前可编辑时间线，过程和结果对用户可见；
+4. 用户直接拖动、裁切、调整参数并实时预览；
+5. Agent 从人工修改后的同一工程继续下一轮。
+
+Agent 的编辑必须可回读、可人工修改、可撤销、可验证。不得为了续聊生成一个脱离当前
+工程的新时间线，也不得把“已生成结果”伪装成无法检查的黑盒输出。
 
 ## 1. 双向链路
 
 ```mermaid
 flowchart LR
-  UI["OneCut 编辑器"] -->|"选择元素 / 时间段 / 素材"| Context["Agent Context v1"]
+  UI["Moirai Cut 编辑器"] -->|"选择元素 / 时间段 / 素材"| Context["Agent Context v1"]
   Context --> Presence["编辑器 Presence API"]
   Context --> Chat["智能剪辑 SSE 会话"]
   Chat --> Host["共享 Codex app-server"]
   App["Codex App"] --> Host
   Host --> Codex["同一 thread 与事件通道"]
-  Codex --> MCP["OneCut MCP"]
+  Codex --> MCP["Moirai Cut MCP"]
   MCP --> Project["project.json"]
   Project -->|"文件 revision 更新"| UI
   MCP --> Frames["场景检测与时间序列帧"]
@@ -26,7 +39,7 @@ flowchart LR
 
 有两个等价入口：
 
-1. **OneCut 内置智能剪辑**：编辑器把当前引用上下文随消息发送到
+1. **Moirai Cut 内置智能剪辑**：编辑器把当前引用上下文随消息发送到
    `/api/codex/chat`，服务端通过 Codex app-server 流式返回文本和 MCP 活动。
 2. **Codex App 工程会话**：仓库和 Codex App 保存工程所对应的工作区目录都注册
    `opencut` MCP。Codex 可调用 `get_active_project` 找到最近活跃的编辑器，再通过
@@ -49,7 +62,7 @@ flowchart LR
 `opencut`、始终禁用 `localcut`，并装载 Codex App 已配置的其他能力。工具档位只用于
 约束本轮的工作重点和验收深度，不再切换 app-server：
 
-- **专注剪辑**：本轮只使用 OneCut；
+- **专注剪辑**：本轮只使用 Moirai Cut；
 - **剪辑与验收**：本轮可使用 Node REPL、桌面/浏览器验收和 OpenAI 官方文档能力；
 - **完整能力**：本轮可使用 Codex App 已配置的其他 MCP，仍强制禁用 LocalCut。
 
@@ -102,13 +115,13 @@ OPENCUT_PROJECTS_DIR = "../opencut-projects"
 ```
 
 必须使用 Bun 启动 MCP。当前运行环境中的旧版 Node 不提供服务所需的原生
-`fetch`。这份配置只注册 OneCut，不依赖 LocalCut。
+`fetch`。这份配置只注册 Moirai Cut，不依赖 LocalCut。
 
 智能剪辑 task 在 Codex App 中归入上层工作区时，服务端会在首次打开桌面任务前确保
 `<workspace>/.codex/config.toml` 也包含等价的 `opencut` 配置。自动写入只追加带
 `BEGIN/END OPENCUT MANAGED MCP` 标记的区块；若用户已经配置
 `[mcp_servers.opencut]`，则完全保留用户版本。共享宿主同时通过启动参数显式装载
-OneCut MCP；工作区配置作为用户从非共享入口启动 Codex 时的兼容兜底。
+Moirai Cut MCP；工作区配置作为用户从非共享入口启动 Codex 时的兼容兜底。
 
 编辑器每 5 秒发布一次心跳。Codex App 中的标准入口顺序是：
 
@@ -383,36 +396,36 @@ task，通过 `POST /api/codex/history/:projectId` 保存绑定和流式 UI 投�
 避免一个标签页用旧快照覆盖另一个标签页的新流式状态。关闭面板、刷新页面或在 Codex
 App 继续对话后，下一次权威 `thread/read` 都必须得到相同正文。
 
-这不是把 Codex App 窗口嵌入网页。浏览器只实现轻量展示和 OneCut 引用交互，
+这不是把 Codex App 窗口嵌入网页。浏览器只实现轻量展示和 Moirai Cut 引用交互，
 认证、任务历史、续聊、模型执行与流式事件均使用 Codex 原生 App Server 协议。
-OneCut 和 Codex App 必须连接同一个 loopback WebSocket 宿主；默认地址为：
+Moirai Cut 和 Codex App 必须连接同一个 loopback WebSocket 宿主；默认地址为：
 
 ```bash
 OPENCUT_CODEX_APP_SERVER_URL=ws://127.0.0.1:48721
 ```
 
-OneCut 在首次请求能力或发起会话时检查 `/readyz`，宿主不存在时以当前 Codex
-运行时自动启动一次；同一 OneCut 服务进程内的所有工具档位、API 路由和工程会话
+Moirai Cut 在首次请求能力或发起会话时检查 `/readyz`，宿主不存在时以当前 Codex
+运行时自动启动一次；同一 Moirai Cut 服务进程内的所有工具档位、API 路由和工程会话
 复用一个 WebSocket 客户端。Codex App 使用同一个 URL 启动后，会对打开或恢复的
 thread 建立自己的订阅；浏览器和桌面端因此从同一宿主读取同一 task，并接收同一轮
 事件，不再依赖“两份 app-server + 落盘后刷新”的伪同步。
 
 Codex App 只在进程启动时选择传输，因此从旧版私有 stdio 宿主迁移需要正常退出一次
-桌面 App，然后在 OneCut 仓库执行：
+桌面 App，然后在 Moirai Cut 仓库执行：
 
 ```bash
 bun run codex:shared-app
 ```
 
-启动器先触发 OneCut 建立共享宿主，再以
+启动器先触发 Moirai Cut 建立共享宿主，再以
 `CODEX_APP_SERVER_WS_URL=ws://127.0.0.1:48721` 启动桌面 App。若 App 仍在运行，
 启动器会停止并提示先退出，避免同时出现一个私有宿主和一个共享宿主。之后浏览器与
 桌面端可以在同一 task 上继续对话；切换工具档位、刷新网页或关闭智能剪辑面板都不会
-改变宿主。自定义端口时，OneCut 环境变量和桌面 App 启动环境必须使用同一个 URL。
+改变宿主。自定义端口时，Moirai Cut 环境变量和桌面 App 启动环境必须使用同一个 URL。
 
 ### Codex App 工作区与任务可见性
 
-OneCut 智能剪辑创建、恢复或迁移 task 时使用 `OPENCUT_CODEX_WORKSPACE_ROOT` 作为
+Moirai Cut 智能剪辑创建、恢复或迁移 task 时使用 `OPENCUT_CODEX_WORKSPACE_ROOT` 作为
 `cwd`；未设置时默认使用 `opencut-classic` 的父目录。当前仓库布局下即
 `opencut-classic` 所在的工作区：
 
@@ -421,7 +434,7 @@ OneCut 智能剪辑创建、恢复或迁移 task 时使用 `OPENCUT_CODEX_WORKSP
 ```
 
 同时 `runtimeWorkspaceRoots` 保留工作区根、`opencut-classic` 仓库和
-`opencut-projects` 工程文件目录，OneCut MCP 的 `cwd` 仍是 `opencut-classic`。
+`opencut-projects` 工程文件目录，Moirai Cut MCP 的 `cwd` 仍是 `opencut-classic`。
 因此 task 在 Codex App 的全局任务历史中可见、可打开和续聊，并同时具备当前编辑器
 工程和 MCP 工具上下文。
 
@@ -431,7 +444,7 @@ OneCut 智能剪辑创建、恢复或迁移 task 时使用 `OPENCUT_CODEX_WORKSP
 剪辑再次续聊时也会被校准为当前工程名。
 
 App Server 的 `thread/start`、`thread/resume`、`thread/fork` 协议只接受执行目录和
-运行时根，不接受 Codex 桌面端项目的 `projectId`。OneCut 不修改
+运行时根，不接受 Codex 桌面端项目的 `projectId`。Moirai Cut 不修改
 `.codex-global-state.json`，也不伪造宿主元数据。桌面 App 依据 task 的真实 `cwd`
 把它归入已保存的 `chatcut` 项目。
 
@@ -460,7 +473,7 @@ Agent 不应缓存旧的 clip ID、track ID 或 revision。分割、替换和用
 ## 9. 何时使用实时标签页工具
 
 默认不要调用 `status`、`get_context`、`open_editor` 或 `reveal_context`。
-OneCut 内置智能剪辑已经随消息携带上下文，Codex App 则通过 Presence API 获取。
+Moirai Cut 内置智能剪辑已经随消息携带上下文，Codex App 则通过 Presence API 获取。
 
 只有以下能力需要实时标签页/CDP：
 
@@ -478,7 +491,7 @@ OneCut 内置智能剪辑已经随消息携带上下文，Codex App 则通过 Pr
 | `fetch is not defined`        | MCP 被旧 Node 启动；改用项目配置中的 `bun`。                                                 |
 | `edit_project` 一直 started   | 检查 app-server 客户端是否响应 `mcpServer/elicitation/request`。                             |
 | 页面刷新后仍显示处理中        | 检查消息是否保存 `runId/runSequence`，再调用重连接口；不要新开 turn。                        |
-| Codex App 续聊缺少 OneCut    | 检查 task 的 `cwd` 所在工作区 `.codex/config.toml` 是否包含 `mcp_servers.opencut`。          |
+| Codex App 续聊缺少 Moirai Cut    | 检查 task 的 `cwd` 所在工作区 `.codex/config.toml` 是否包含 `mcp_servers.opencut`。          |
 | 选区没有作为图片输入          | 确认开启“自动识别选区画面”，且 MCP 暴露 `inspect_timeline_range` 或 `inspect_media_scenes`。 |
 | 完整能力仍缺少某个工具        | 先查看 `~/.codex/config.toml` 是否配置该 MCP；工具档位不会凭空安装服务。                     |
 | `revision_conflict`           | 重新 `read_project`，重新生成操作，不要盲重试。                                              |

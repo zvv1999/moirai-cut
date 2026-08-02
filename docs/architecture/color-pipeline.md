@@ -1,6 +1,6 @@
-# OneCut colour pipeline
+# Moirai Cut colour pipeline
 
-OneCut currently uses an explicit SDR working path:
+Moirai Cut currently uses an explicit SDR working path:
 
 1. SDR browser-decodable media is decoded by WebCodecs/Mediabunny.
 2. The compositor renders authored colours in a linearized sRGB model.

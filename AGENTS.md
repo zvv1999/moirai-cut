@@ -23,7 +23,7 @@ Each app is a frontend that calls into Rust. Logic is never duplicated between a
 
 ## Smart Edit and Codex
 
-Before controlling a OneCut project, read
+Before controlling a Moirai Cut project, read
 [`docs/agent-smart-edit.md`](docs/agent-smart-edit.md). It defines the two Codex
 entry points, `opencut://` context schema, scene/time-sequence inspection,
 multimodal media catalog, revision/idempotency protocol, and the exact tool

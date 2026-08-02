@@ -48,18 +48,18 @@ const ASSET_SECTIONS: AssetSection[] = [
 	{
 		title: "Symbol",
 		description:
-			"Use the symbol on its own when the OneCut name is already present nearby or space is limited.",
+			"Use the symbol on its own when the Moirai Cut name is already present nearby or space is limited.",
 		cols: "2",
 		assets: [
 			{
-				src: "/logos/onecut/symbol.svg",
+				src: "/logos/moirai-cut/symbol.svg",
 				theme: "dark",
 				label: "Symbol",
 				width: 400,
 				height: 400,
 			},
 			{
-				src: "/logos/onecut/symbol-light.svg",
+				src: "/logos/moirai-cut/symbol-light.svg",
 				theme: "light",
 				label: "Symbol",
 				width: 400,
@@ -74,31 +74,31 @@ const ASSET_SECTIONS: AssetSection[] = [
 		cols: "2",
 		assets: [
 			{
-				src: "/logos/onecut/logo.svg",
+				src: "/logos/moirai-cut/logo.svg",
 				theme: "dark",
 				label: "Logo",
-				width: 760,
+				width: 900,
 				height: 160,
 			},
 			{
-				src: "/logos/onecut/logo-light.svg",
+				src: "/logos/moirai-cut/logo-light.svg",
 				theme: "light",
 				label: "Logo",
-				width: 760,
+				width: 900,
 				height: 160,
 			},
 			{
-				src: "/logos/onecut/text.svg",
+				src: "/logos/moirai-cut/text.svg",
 				theme: "dark",
 				label: "Text",
-				width: 580,
+				width: 740,
 				height: 160,
 			},
 			{
-				src: "/logos/onecut/text-light.svg",
+				src: "/logos/moirai-cut/text-light.svg",
 				theme: "light",
 				label: "Text",
-				width: 580,
+				width: 740,
 				height: 160,
 			},
 		],
@@ -112,8 +112,8 @@ export default function BrandPage() {
 			title="Brand"
 			description={
 				<>
-					Download OneCut brand assets for community posts, integrations and
-					project pages.{" "}
+					Download Moirai Cut assets for the shared, visible human-Agent editing
+					loop.{" "}
 					<Link
 						href="#guidelines"
 						className="underline underline-offset-4"
@@ -174,11 +174,11 @@ export default function BrandPage() {
 				<div className="flex flex-col gap-3">
 					<h2 className="font-semibold text-lg">Usage</h2>
 					<p className="text-muted-foreground text-base leading-relaxed">
-						OneCut is open-source software released under the MIT License. These
-						original brand assets may be used to refer to the OneCut project,
-						community integrations and compatible workflows. Keep the mark
-						unaltered, preserve clear space, and do not imply that a third-party
-						product is an official OneCut release.
+						Moirai Cut is open-source software released under the MIT License.
+						These original brand assets may be used to refer to the Moirai Cut
+						project, community integrations and compatible workflows. Keep the
+						mark unaltered, preserve clear space, and do not imply that a
+						third-party product is an official Moirai Cut release.
 					</p>
 				</div>
 
@@ -186,10 +186,10 @@ export default function BrandPage() {
 					<h2 className="font-semibold text-lg">What&apos;s not allowed</h2>
 					<ul className="text-muted-foreground text-base flex flex-col gap-2 leading-relaxed">
 						{[
-							"Implying that OneCut made, sponsors, or endorses an unrelated product.",
+							"Implying that Moirai Cut made, sponsors, or endorses an unrelated product.",
 							"Recreating the mark with scissors, film reels, play buttons, glow, or gradients.",
 							"Changing the symbol geometry, colors, spacing, or wordmark proportions.",
-							"Using the upstream OpenCut name or logo as OneCut branding.",
+							"Using the upstream OpenCut name or logo as Moirai Cut branding.",
 						].map((item) => (
 							<li key={item} className="flex gap-2">
 								<span className="mt-0.5 shrink-0">-</span>

@@ -1,4 +1,4 @@
-# Contributing to OneCut
+# Contributing to Moirai Cut
 
 Thanks for helping build an open, local-first, agent-native video editor.
 
@@ -12,8 +12,8 @@ Thanks for helping build an open, local-first, agent-native video editor.
 ## Local setup
 
 ```bash
-git clone https://github.com/zvv1999/opencut-classic.git onecut
-cd onecut
+git clone https://github.com/zvv1999/opencut-classic.git moirai-cut
+cd moirai-cut
 git switch feat/agent-drivable
 bun install
 bun run setup:local
@@ -35,7 +35,7 @@ Run the checks relevant to your change, and run the full set before requesting r
 
 ```bash
 bun test
-node --test apps/mcp/src/__tests__/*.test.mjs
+bun run test:mcp
 bun run typecheck:web
 bun run lint:web
 bun run build:web
@@ -46,9 +46,9 @@ For timeline, preview or editor interaction changes, include a regression test a
 
 ## Compatibility
 
-The public product name is **OneCut**. Legacy `OPENCUT_*` environment variables, `opencut://` references, `.opencut` project packages, `opencut-wasm` and selected internal type names remain for data and protocol compatibility. Do not rename them without a migration and backwards-compatibility test.
+The public product name is **Moirai Cut**. Legacy `OPENCUT_*` environment variables, `opencut://` references, `.opencut` project packages, `opencut-wasm` and selected internal type names remain for data and protocol compatibility. Do not rename them without a migration and backwards-compatibility test.
 
-OneCut uses original brand assets. Do not reintroduce the upstream OpenCut logo or imply that OneCut is an official OpenCut release.
+Moirai Cut uses original brand assets. Do not reintroduce the upstream OpenCut logo or imply that Moirai Cut is an official OpenCut release.
 
 ## Pull requests
 

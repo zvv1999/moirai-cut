@@ -5,6 +5,9 @@ import { describe, expect, test } from "bun:test";
 const manifest = JSON.parse(
 	readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 );
+const webManifest = JSON.parse(
+	readFileSync(new URL("../apps/web/package.json", import.meta.url), "utf8"),
+);
 
 describe("root package manifest", () => {
 	test("does not install the repository root as its own dependency", () => {
@@ -29,5 +32,16 @@ describe("root package manifest", () => {
 		).filter(([, command]) => command.startsWith("turbo "));
 
 		expect(nodeDispatchedTurboScripts).toEqual([]);
+	});
+
+	test("generates clean-clone content types before TypeScript validation", () => {
+		expect(webManifest.scripts.typecheck).toContain("next typegen");
+		expect(webManifest.scripts.typecheck).toContain("tsc --noEmit");
+	});
+
+	test("uses the Moirai Cut public package identity", () => {
+		expect(manifest.name).toBe("moirai-cut");
+		expect(webManifest.name).toBe("@moirai-cut/web");
+		expect(manifest.description).toContain("visible, editable loop");
 	});
 });

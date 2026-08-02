@@ -14,25 +14,25 @@ import {
 } from "@/changelog/components/release";
 
 export const metadata: Metadata = {
-	title: "Changelog - OneCut",
-	description: "What's new in OneCut",
+	title: "Changelog - Moirai Cut",
+	description: "What's new in Moirai Cut",
 	openGraph: {
-		title: "Changelog - OneCut",
-		description: "Every update, improvement, and fix to OneCut — documented.",
+		title: "Changelog - Moirai Cut",
+		description: "Every update, improvement, and fix to Moirai Cut — documented.",
 		type: "website",
 		images: [
 			{
 				url: "/open-graph/changlog.jpg",
 				width: 1200,
 				height: 630,
-				alt: "OneCut Changelog",
+				alt: "Moirai Cut Changelog",
 			},
 		],
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "Changelog - OneCut",
-		description: "What's new in OneCut",
+		title: "Changelog - Moirai Cut",
+		description: "What's new in Moirai Cut",
 		images: ["/open-graph/changlog.jpg"],
 	},
 };
@@ -41,7 +41,7 @@ export default function ChangelogPage() {
 	const releases = getSortedReleases();
 
 	return (
-		<BasePage title="Changelog" description="See what's new in OneCut">
+		<BasePage title="Changelog" description="See what's new in Moirai Cut">
 			<div className="mx-auto w-full max-w-3xl">
 				<div className="relative">
 					<div

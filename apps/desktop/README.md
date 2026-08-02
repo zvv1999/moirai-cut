@@ -1,4 +1,4 @@
-# Desktop
+# Moirai Cut Desktop
 
 The native desktop app, built with [GPUI](https://gpui.rs).
 
@@ -33,7 +33,7 @@ powershell -ExecutionPolicy Bypass -File .\apps\desktop\script\setup.ps1
 **3. Run:**
 
 ```bash
-cargo run -p opencut-desktop
+cargo run -p moirai-cut-desktop
 ```
 
 ## Platform notes

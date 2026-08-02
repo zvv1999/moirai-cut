@@ -3812,7 +3812,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "opencut-desktop"
+name = "moirai-cut-desktop"
 version = "0.1.0"
 dependencies = [
  "gpui",

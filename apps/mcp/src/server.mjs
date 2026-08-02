@@ -32,7 +32,7 @@ import {
 } from "./media-analysis.mjs";
 
 /**
- * MCP server for a OneCut editor tab. Legacy protocol identifiers remain
+ * MCP server for a Moirai Cut editor tab. Legacy protocol identifiers remain
  * `opencut` for backwards compatibility.
  *
  * The chain is: agent -> MCP (this process) -> CDP -> window.__opencutAgent ->
@@ -130,7 +130,7 @@ async function activeEditorPresence() {
 		});
 	} catch (error) {
 		const wrapped = new Error(
-			`Cannot reach OneCut editor presence at ${base}: ${String(error?.message ?? error)}`,
+			`Cannot reach Moirai Cut editor presence at ${base}: ${String(error?.message ?? error)}`,
 		);
 		wrapped.code = "server_unreachable";
 		throw wrapped;
@@ -238,7 +238,7 @@ export function createOpenCutMcpServer() {
 		"status",
 		{
 			description:
-				"Check that a Chrome debugging port and a OneCut editor tab are reachable. Use this first when anything fails.",
+				"Check that a Chrome debugging port and a Moirai Cut editor tab are reachable. Use this first when anything fails.",
 			inputSchema: { projectId },
 			annotations: readOnly,
 		},
@@ -303,7 +303,7 @@ export function createOpenCutMcpServer() {
 		"get_active_project",
 		{
 			description:
-				"Discover the project currently open in the human's freshest OneCut editor, including its revision, scene, and compact pinned/live opencut:// context. Browser debugging is NOT required; the editor publishes a local heartbeat.",
+				"Discover the project currently open in the human's freshest Moirai Cut editor, including its revision, scene, and compact pinned/live opencut:// context. Browser debugging is NOT required; the editor publishes a local heartbeat.",
 			inputSchema: {},
 			annotations: readOnly,
 		},
@@ -313,8 +313,8 @@ export function createOpenCutMcpServer() {
 				if (presence?.active !== true) {
 					return asError({
 						code: "no_active_editor",
-						message: "No OneCut editor heartbeat is active.",
-						hint: "Open a project in OneCut, wait up to five seconds, then retry. Use list_projects when no editor should be open.",
+						message: "No Moirai Cut editor heartbeat is active.",
+						hint: "Open a project in Moirai Cut, wait up to five seconds, then retry. Use list_projects when no editor should be open.",
 					});
 				}
 				return asText(presence);
@@ -331,7 +331,7 @@ export function createOpenCutMcpServer() {
 		"read_agent_context",
 		{
 			description:
-				"One browser-free entry call for a Codex App conversation. Omit projectId to use the active OneCut editor; returns selected/pinned context, a compact project summary, and an Agent-readable media catalog (generated in memory if no sidecar exists).",
+				"One browser-free entry call for a Codex App conversation. Omit projectId to use the active Moirai Cut editor; returns selected/pinned context, a compact project summary, and an Agent-readable media catalog (generated in memory if no sidecar exists).",
 			inputSchema: {
 				projectId: z
 					.string()
@@ -355,7 +355,7 @@ export function createOpenCutMcpServer() {
 					return asError({
 						code: "no_active_editor",
 						message:
-							"No projectId was supplied and no active OneCut editor was found.",
+							"No projectId was supplied and no active Moirai Cut editor was found.",
 						hint: "Open a project or call list_projects and pass one of its ids.",
 					});
 				}

@@ -5,15 +5,18 @@ import { webEnv } from "@/env/web";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-function getDb() {
+export function getDb() {
 	if (!_db) {
+		if (!webEnv.DATABASE_URL) {
+			throw new Error(
+				"Database-backed features require DATABASE_URL. The local editor does not require a database.",
+			);
+		}
 		const client = postgres(webEnv.DATABASE_URL);
 		_db = drizzle(client, { schema });
 	}
 
 	return _db;
 }
-
-export const db = getDb();
 
 export * from "./schema";

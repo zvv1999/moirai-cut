@@ -40,11 +40,11 @@ export function Footer() {
 						<div className="mb-4 flex items-center justify-start gap-2">
 							<Image
 								src={DEFAULT_LOGO_URL}
-								alt="OneCut"
+								alt="Moirai Cut"
 								width={24}
 								height={24}
 							/>
-							<span className="text-lg font-bold">OneCut</span>
+							<span className="text-lg font-bold">Moirai Cut</span>
 						</div>
 						<p className="text-muted-foreground mb-5 text-sm md:text-left">
 							Edit by intent. Finish with control.
@@ -96,7 +96,7 @@ export function Footer() {
 				<div className="flex flex-col items-start justify-between gap-4 pt-2 md:flex-row">
 					<div className="text-muted-foreground flex items-center gap-4 text-sm">
 						<span>
-							© {new Date().getFullYear()} OneCut contributors · MIT License
+							© {new Date().getFullYear()} Moirai Cut contributors · MIT License
 						</span>
 					</div>
 				</div>

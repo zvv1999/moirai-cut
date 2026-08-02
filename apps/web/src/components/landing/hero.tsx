@@ -14,17 +14,19 @@ export function Hero() {
 				src="/landing-page-dark.png"
 				height={1903.5}
 				width={1269}
-				alt="OneCut agent-native video editor"
+				alt="Moirai Cut shared human-agent timeline"
 			/>
 			<div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center">
 				<div className="inline-block text-4xl font-bold tracking-tighter md:text-[4rem]">
-					<h1>Edit by intent.</h1>
-					<Handlebars>Finish with control.</Handlebars>
+					<h1>FROM BLACK BOX</h1>
+					<Handlebars>TO SHARED TIMELINE</Handlebars>
 				</div>
 
 				<p className="text-muted-foreground mx-auto mt-10 max-w-xl text-base font-light tracking-wide sm:text-xl">
-					OneCut connects a professional timeline to Codex and Claude, while
-					keeping every source file and edit under your control.
+					Prompt. Edit. Preview. Refine. Render locally.
+				</p>
+				<p className="mt-3 text-sm font-medium tracking-[0.14em] uppercase">
+					Agents propose. You direct.
 				</p>
 
 				<div className="mt-8 flex justify-center gap-8">

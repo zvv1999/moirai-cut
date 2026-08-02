@@ -230,7 +230,7 @@ describe("editor surface localization", () => {
 			"工程信息",
 			"画布背景",
 			"删除场景",
-			"欢迎使用 OneCut",
+			"欢迎使用 Moirai Cut",
 		]) {
 			expect(sources).toContain(translatedLabel);
 		}
@@ -242,7 +242,7 @@ describe("editor surface localization", () => {
 			">Project info<",
 			">Background<",
 			">Delete Scenes<",
-			"Welcome to OneCut",
+			"Welcome to Moirai Cut",
 		]) {
 			expect(sources).not.toContain(englishLabel);
 		}

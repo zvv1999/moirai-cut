@@ -1,4 +1,4 @@
-# Getting help with OneCut
+# Getting help with Moirai Cut
 
 - Read the [README](../README.md) and [Agent workflow guide](../docs/agent-smart-edit.md).
 - Use the bug template for reproducible defects.

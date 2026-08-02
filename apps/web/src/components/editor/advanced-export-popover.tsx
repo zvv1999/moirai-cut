@@ -1046,7 +1046,7 @@ export function AdvancedExportPopover({
 			return;
 		}
 		const safeProject =
-			project.metadata.name.replace(/[<>:"/\\|?*]/g, "-").trim() || "opencut";
+			project.metadata.name.replace(/[<>:"/\\|?*]/g, "-").trim() || "moirai-cut";
 		if (item.kind === "still") {
 			const result = await editor.renderer.saveSnapshot();
 			if (!result.success) toast.error(result.error ?? "保存快照失败");

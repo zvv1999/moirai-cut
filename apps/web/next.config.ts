@@ -36,6 +36,19 @@ const nextConfig: NextConfig = {
 	reactStrictMode: true,
 	productionBrowserSourceMaps: true,
 	output: "standalone",
+	// Project media deliberately lives outside the repository and is resolved at
+	// request time. Next 16.2 reports that intentional dynamic filesystem access
+	// as an NFT whole-project warning even though the route has explicit trace
+	// exclusions below. Suppress only that exact warning; all other Turbopack
+	// diagnostics remain visible.
+	turbopack: {
+		ignoreIssue: [
+			{
+				path: "**/next.config.ts",
+				title: "Encountered unexpected file in NFT list",
+			},
+		],
+	},
 	outputFileTracingExcludes: {
 		"/api/media/**": externalProjectRouteExcludes,
 		"/api/media-jobs/**": externalProjectRouteExcludes,

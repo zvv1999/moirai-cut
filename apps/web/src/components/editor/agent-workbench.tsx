@@ -37,6 +37,11 @@ import {
 	type CodexVerificationMode,
 	type CodexVisualMode,
 } from "@/agent/codex-performance";
+import {
+	clearExternalAgentConsent,
+	hasExternalAgentConsent,
+	storeExternalAgentConsent,
+} from "@/agent/external-agent-consent";
 import { CodexSseDecoder } from "@/agent/codex-sse";
 import { toMediaTime, toSeconds } from "@/agent/time";
 import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
@@ -132,6 +137,16 @@ const AGENT_REQUEST_PRESETS = [
 	"收紧这段剪辑",
 	"统一字幕样式",
 	"将所选素材重命名为主角",
+] as const;
+
+const FULL_CREATION_SKILL_NAME = "moirai-cut-create";
+const FULL_CREATION_REQUEST =
+	"使用 $moirai-cut-create 完成当前工程的一版完整可编辑首剪：理解素材与声音、生成时间线、完成预览质检，并导出本地审阅版。保留现有工程的可编辑与可撤销能力。";
+const FULL_CREATION_STAGES = [
+	"理解素材",
+	"生成时间线",
+	"预览质检",
+	"本地导出",
 ] as const;
 
 function nextMessageId(): string {
@@ -341,7 +356,7 @@ function protocolActivityLabel(frame: CodexProtocolFrame): string {
 		return "智能剪辑已连接";
 	}
 	if (
-		frame.title === "OneCut MCP 已就绪" ||
+		frame.title === "Moirai Cut MCP 已就绪" ||
 		frame.title === "OpenCut MCP 已就绪"
 	) {
 		return "工程工具已就绪";
@@ -752,6 +767,11 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 	const [referenceSearch, setReferenceSearch] = useState("");
 	const [rangeStartInput, setRangeStartInput] = useState("");
 	const [rangeEndInput, setRangeEndInput] = useState("");
+	const [agentDataConsent, setAgentDataConsent] = useState(false);
+	const [consentOpen, setConsentOpen] = useState(false);
+	const [pendingConsentRequest, setPendingConsentRequest] = useState<
+		string | null
+	>(null);
 	const followedSelectionKey = useRef("");
 	const reconnectingRunId = useRef<string | null>(null);
 	const conversationRevision = useRef(-1);
@@ -765,6 +785,10 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 		sessionId: string | null;
 		messages: ChatMessage[];
 	}>({ conversationId: null, sessionId: null, messages: [] });
+
+	useEffect(() => {
+		setAgentDataConsent(hasExternalAgentConsent(window.localStorage));
+	}, []);
 
 	useEffect(() => {
 		let active = true;
@@ -1126,6 +1150,10 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 		) ?? null;
 	const selectedCodexModel =
 		codexCapabilities?.models.find((model) => model.id === codexModel) ?? null;
+	const fullCreationSkillReady =
+		codexCapabilities?.skills.some(
+			(skill) => skill.enabled && skill.name === FULL_CREATION_SKILL_NAME,
+		) ?? false;
 	const availableEfforts = selectedCodexModel?.efforts.length
 		? selectedCodexModel.efforts
 		: ["low", "medium", "high", "xhigh", "max", "ultra"];
@@ -1343,9 +1371,18 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 		}
 	};
 
-	const submitToCodex = async (nextRequest = request) => {
+	const submitToCodex = async (
+		nextRequest = request,
+		consentGrantedForThisTurn = false,
+	) => {
 		const normalizedRequest = nextRequest.trim();
+		const isFullCreationRequest = normalizedRequest === FULL_CREATION_REQUEST;
 		if (!normalizedRequest) return;
+		if (!agentDataConsent && !consentGrantedForThisTurn) {
+			setPendingConsentRequest(normalizedRequest);
+			setConsentOpen(true);
+			return;
+		}
 		followConversationTail.current = true;
 		if (!conversationHydrated) {
 			toast("正在同步智能剪辑历史，请稍候");
@@ -1423,10 +1460,12 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 					conversationId: targetConversationId,
 					model: codexModel,
 					effort: codexEffort,
-					mode: codexMode,
-					toolProfile: codexToolProfile,
-					visualMode: codexVisualMode,
-					verificationMode: codexVerificationMode,
+					mode: isFullCreationRequest ? "default" : codexMode,
+					toolProfile: isFullCreationRequest ? "verify" : codexToolProfile,
+					visualMode: isFullCreationRequest ? "auto" : codexVisualMode,
+					verificationMode: isFullCreationRequest
+						? "full"
+						: codexVerificationMode,
 				},
 				...streamHandlersFor(assistantMessageId),
 			});
@@ -1467,6 +1506,36 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 				description: error instanceof Error ? error.message : "请稍后重试。",
 			});
 		}
+	};
+
+	const allowExternalAgentAndContinue = () => {
+		if (!storeExternalAgentConsent({ storage: window.localStorage })) {
+			toast.error("无法保存数据授权", {
+				description: "请允许此站点使用本地存储后重试。",
+			});
+			return;
+		}
+		const pendingRequest = pendingConsentRequest;
+		setAgentDataConsent(true);
+		setPendingConsentRequest(null);
+		setConsentOpen(false);
+		if (pendingRequest) void submitToCodex(pendingRequest, true);
+	};
+
+	const declineExternalAgent = () => {
+		setPendingConsentRequest(null);
+		setConsentOpen(false);
+	};
+
+	const resetExternalAgentConsent = () => {
+		if (!clearExternalAgentConsent(window.localStorage)) {
+			toast.error("无法重置数据授权");
+			return;
+		}
+		setAgentDataConsent(false);
+		toast.success("数据授权已重置", {
+			description: "下次发送智能剪辑请求前会再次确认。",
+		});
 	};
 
 	const compactCodexContext = async () => {
@@ -1711,8 +1780,49 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 	return (
 		<section
 			className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[#111315]"
-			aria-label="智能剪辑工作台"
+			aria-label="智能剪辑协作侧栏"
 		>
+			{consentOpen ? (
+				<div
+					className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+					role="dialog"
+					aria-modal="true"
+					aria-labelledby="external-agent-consent-title"
+				>
+					<div className="w-full max-w-sm rounded-2xl border border-white/12 bg-[#1a1c1f] p-4 shadow-2xl">
+						<h2
+							id="external-agent-consent-title"
+							className="text-sm font-semibold text-slate-100"
+						>
+							发送给外部 Agent 前请确认
+						</h2>
+						<p className="mt-2 text-[10px] leading-relaxed text-slate-400">
+							点击允许后，当前提示词、工程名称以及你引用的素材、时间轴元素和时间段会发送给所选
+							Agent。开启画面识别时，还会发送选区的抽样帧。Agent 可通过 Moirai
+							Cut MCP 读取和修改当前工程。
+						</p>
+						<p className="mt-2 rounded-lg border border-cyan-400/15 bg-cyan-400/[0.04] px-2.5 py-2 text-[9px] leading-relaxed text-cyan-100/80">
+							未引用的原始媒体不会随本条消息直接上传。授权仅保存在当前浏览器，可随时在设置中重置。
+						</p>
+						<div className="mt-4 flex justify-end gap-2">
+							<button
+								type="button"
+								onClick={declineExternalAgent}
+								className="rounded-lg px-3 py-2 text-[10px] text-slate-400 transition hover:bg-white/[0.05] hover:text-slate-100"
+							>
+								暂不发送
+							</button>
+							<button
+								type="button"
+								onClick={allowExternalAgentAndContinue}
+								className="rounded-lg bg-cyan-300 px-3 py-2 text-[10px] font-semibold text-slate-950 transition hover:bg-cyan-200"
+							>
+								允许并继续
+							</button>
+						</div>
+					</div>
+				</div>
+			) : null}
 			<header className="flex h-13 shrink-0 items-center gap-3 border-b border-white/8 px-4">
 				<div className="flex min-w-0 flex-1 items-center gap-2.5">
 					<span className="relative flex size-7 shrink-0 items-center justify-center rounded-lg bg-[#e6e8eb] text-[10px] font-black text-[#111315]">
@@ -2008,6 +2118,17 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 								压缩上下文
 							</button>
 						</div>
+						<div className="mt-2 flex items-center justify-between border-t border-white/7 pt-2 text-[9px] text-slate-500">
+							<span>外部 Agent 数据授权</span>
+							<button
+								type="button"
+								disabled={!agentDataConsent}
+								onClick={resetExternalAgentConsent}
+								className="rounded px-2 py-1 text-slate-400 transition hover:bg-white/[0.05] hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-35"
+							>
+								{agentDataConsent ? "重置数据授权" : "发送前会确认"}
+							</button>
+						</div>
 						<p className="mt-1 text-right text-[8px] text-slate-600">
 							{codexCapabilities?.skills.filter((skill) => skill.enabled)
 								.length ?? 0}{" "}
@@ -2035,27 +2156,92 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 						正在同步工程会话…
 					</div>
 				) : messages.length === 0 ? (
-					<div className="flex h-full min-h-64 flex-col items-center justify-center px-8 text-center">
-						<span className="mb-3 flex size-9 items-center justify-center rounded-xl border border-white/8 bg-white/[0.035] text-slate-300">
-							<Sparkles className="size-4" />
-						</span>
-						<h3 className="text-sm font-medium text-slate-100">想怎么剪？</h3>
-						<p className="mt-1 max-w-72 text-[10px] leading-relaxed text-slate-500">
-							选中时间轴内容后直接描述修改，Codex 会读取当前工程并执行。
-						</p>
-						<p className="mt-1 text-[9px] text-slate-600">{selectedLabel}</p>
-						<div className="mt-4 flex flex-wrap justify-center gap-1.5">
-							{AGENT_REQUEST_PRESETS.map((preset) => (
+					<div className="flex h-full min-h-64 flex-col justify-center px-4 py-5">
+						<div className="text-center">
+							<span className="mx-auto mb-3 flex size-9 items-center justify-center rounded-xl border border-white/8 bg-white/[0.035] text-slate-300">
+								<Sparkles className="size-4" />
+							</span>
+							<h3 className="text-sm font-medium text-slate-100">想怎么剪？</h3>
+							<p className="mt-1 text-[10px] leading-relaxed text-slate-500">
+								从完整首剪开始，或直接修改当前选择。
+							</p>
+						</div>
+
+						<section className="mt-4 overflow-hidden rounded-xl border border-cyan-300/18 bg-[linear-gradient(145deg,rgba(34,211,238,0.075),rgba(255,255,255,0.018)_52%,rgba(255,255,255,0.01))] text-left shadow-[0_16px_48px_rgba(0,0,0,0.16)]">
+							<div className="h-px bg-gradient-to-r from-cyan-300/80 via-cyan-300/20 to-transparent" />
+							<div className="p-3.5">
+								<div className="flex items-center justify-between gap-3">
+									<span className="text-[9px] font-semibold tracking-[0.12em] text-cyan-200 uppercase">
+										完整创作 Skill
+									</span>
+									<span
+										className={`flex items-center gap-1 text-[8px] ${
+											fullCreationSkillReady
+												? "text-emerald-300"
+												: "text-amber-200/75"
+										}`}
+									>
+										<span
+											className={`size-1.5 rounded-full ${
+												fullCreationSkillReady
+													? "bg-emerald-400"
+													: "bg-amber-300"
+											}`}
+										/>
+										{fullCreationSkillReady
+											? "技能已就绪"
+											: "重启 Agent 后可用"}
+									</span>
+								</div>
+								<h4 className="mt-2 text-[12px] font-semibold text-slate-100">
+									从当前素材完成一版可编辑首剪
+								</h4>
+								<p className="mt-1 text-[9px] leading-relaxed text-slate-500">
+									Agent 在当前工程里工作；你可以随时拖动、裁切、撤销并继续对话。
+								</p>
+								<ol className="mt-3 grid grid-cols-2 gap-1.5">
+									{FULL_CREATION_STAGES.map((stage, index) => (
+										<li
+											key={stage}
+											className="flex items-center gap-1.5 rounded-md border border-white/6 bg-black/15 px-2 py-1.5 text-[8px] text-slate-400"
+										>
+											<span className="font-mono text-cyan-300/80">
+												{String(index + 1).padStart(2, "0")}
+											</span>
+											{stage}
+										</li>
+									))}
+								</ol>
 								<button
-									key={preset}
 									type="button"
-									disabled={sending}
-									className="rounded-full border border-white/8 px-2.5 py-1 text-[9px] text-slate-400 transition hover:border-white/15 hover:bg-white/[0.04] hover:text-slate-100 disabled:opacity-40"
-									onClick={() => void submitToCodex(preset)}
+									aria-label="使用完整创作 Skill"
+									disabled={sending || !conversationHydrated}
+									onClick={() => void submitToCodex(FULL_CREATION_REQUEST)}
+									className="mt-3 flex h-8 w-full items-center justify-center gap-2 rounded-lg bg-[#e6e8eb] text-[10px] font-semibold text-[#111315] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-35"
 								>
-									{preset}
+									开始完整创作
+									<ArrowUp className="size-3" />
 								</button>
-							))}
+							</div>
+						</section>
+
+						<div className="mt-4 text-center">
+							<p className="text-[8px] font-medium tracking-[0.12em] text-slate-600 uppercase">
+								快速修改 · {selectedLabel}
+							</p>
+							<div className="mt-2 flex flex-wrap justify-center gap-1.5">
+								{AGENT_REQUEST_PRESETS.map((preset) => (
+									<button
+										key={preset}
+										type="button"
+										disabled={sending}
+										className="rounded-full border border-white/8 px-2.5 py-1 text-[9px] text-slate-400 transition hover:border-white/15 hover:bg-white/[0.04] hover:text-slate-100 disabled:opacity-40"
+										onClick={() => void submitToCodex(preset)}
+									>
+										{preset}
+									</button>
+								))}
+							</div>
 						</div>
 					</div>
 				) : (

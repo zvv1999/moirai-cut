@@ -5,9 +5,9 @@ import { Separator } from "@/components/ui/separator";
 import { SOCIAL_LINKS } from "@/site/social";
 
 export const metadata: Metadata = {
-	title: "Terms - OneCut",
+	title: "Terms - Moirai Cut",
 	description:
-		"Plain-language terms for the OneCut open-source software and project website.",
+		"Plain-language terms for the Moirai Cut open-source software and project website.",
 };
 
 export default function TermsPage() {
@@ -19,7 +19,7 @@ export default function TermsPage() {
 			<section className="flex flex-col gap-3">
 				<h2 className="text-2xl font-semibold">Open-source software</h2>
 				<p>
-					OneCut source code is provided under the repository&apos;s MIT
+					Moirai Cut source code is provided under the repository&apos;s MIT
 					License. You may use, modify and distribute the software subject to
 					that license and its copyright notice. The software is provided
 					&quot;as is&quot;, without warranty of any kind.
@@ -29,7 +29,7 @@ export default function TermsPage() {
 			<section className="flex flex-col gap-3">
 				<h2 className="text-2xl font-semibold">Your content</h2>
 				<p>
-					OneCut does not claim ownership of videos, audio, images, projects or
+					Moirai Cut does not claim ownership of videos, audio, images, projects or
 					exports you create. You are responsible for having the rights needed
 					to use, transform and distribute that content and for complying with
 					applicable law.
@@ -41,7 +41,7 @@ export default function TermsPage() {
 				<p>
 					Agent providers, model APIs, cloud storage, authentication, analytics
 					and other optional integrations are third-party services. Their own
-					terms, pricing and usage policies apply. OneCut does not grant rights
+					terms, pricing and usage policies apply. Moirai Cut does not grant rights
 					to those services or guarantee their availability.
 				</p>
 			</section>
@@ -49,7 +49,7 @@ export default function TermsPage() {
 			<section className="flex flex-col gap-3">
 				<h2 className="text-2xl font-semibold">Safe use</h2>
 				<p>
-					Do not use OneCut to infringe rights, distribute unlawful content,
+					Do not use Moirai Cut to infringe rights, distribute unlawful content,
 					bypass access controls, attack systems or expose data you are not
 					authorized to process. Review Agent plans before applying them and
 					keep backups of important projects.
@@ -61,8 +61,8 @@ export default function TermsPage() {
 					Brand and upstream attribution
 				</h2>
 				<p>
-					OneCut is an independent fork of OpenCut Classic and is not affiliated
-					with or endorsed by the upstream project. The OneCut name and original
+					Moirai Cut is an independent fork of OpenCut Classic and is not affiliated
+					with or endorsed by the upstream project. The Moirai Cut name and original
 					marks identify this project; they are separate from the MIT license
 					for the source code. See the repository notice and brand guide for
 					details.
@@ -77,7 +77,7 @@ export default function TermsPage() {
 					href={`${SOCIAL_LINKS.github}/issues`}
 					className="text-primary hover:underline"
 				>
-					OneCut issue tracker
+					Moirai Cut issue tracker
 				</Link>
 				. Downstream hosted services should publish their own legally reviewed
 				terms.

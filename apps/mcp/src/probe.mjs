@@ -13,7 +13,7 @@ import { callBridge } from "./cdp.mjs";
  * is that an agent on the other side of the protocol can move the editor, and
  * an in-process call would skip the whole layer that could be wrong.
  *
- * Requires a Chrome on the debugging port with a OneCut editor tab open.
+ * Requires a Chrome on the debugging port with a Moirai Cut editor tab open.
  */
 
 const serverPath = fileURLToPath(new URL("./server.mjs", import.meta.url));

@@ -36,7 +36,7 @@ async function listTargets(port) {
 			hint:
 				`Start Chrome with a debugging port, e.g.\n` +
 				`  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --remote-debugging-port=${port} --user-data-dir=/tmp/opencut-agent-profile\n` +
-				`then open the OneCut editor in it.`,
+				`then open the Moirai Cut editor in it.`,
 		});
 	}
 	if (!response.ok)
@@ -77,7 +77,7 @@ export async function findEditorTarget({
 		throw new CdpError(
 			projectId
 				? `No open editor tab for project ${projectId}.`
-				: `No open OneCut editor tab (looking for a URL containing "${DEFAULT_URL_MATCH}").`,
+				: `No open Moirai Cut editor tab (looking for a URL containing "${DEFAULT_URL_MATCH}").`,
 			{ code: "no_editor_tab", hint: `Open tabs:\n  ${open || "(no pages)"}` },
 		);
 	}

@@ -12,11 +12,13 @@ const ENV_FILE = path.join(WEB_DIR, ".env.local");
 const ENV_EXAMPLE = path.join(WEB_DIR, ".env.example");
 const legacyProjectsDir = path.join(homedir(), "OpenCutProjects");
 const projectsDir =
+	process.env.MOIRAI_PROJECTS_DIR?.trim() ||
+	process.env.HOLOCUT_PROJECTS_DIR?.trim() ||
 	process.env.ONECUT_PROJECTS_DIR?.trim() ||
 	process.env.OPENCUT_PROJECTS_DIR?.trim() ||
 	(existsSync(legacyProjectsDir)
 		? legacyProjectsDir
-		: path.join(homedir(), "OneCutProjects"));
+		: path.join(homedir(), "MoiraiCutProjects"));
 
 function ensureEnvironment() {
 	let current = existsSync(ENV_FILE)
@@ -33,7 +35,7 @@ function ensureEnvironment() {
 	};
 	upsert("NEXT_PUBLIC_SITE_URL", "http://127.0.0.1:3000");
 	upsert("NEXT_PUBLIC_OPENCUT_PROJECT_FILES", "1");
-	upsert("ONECUT_PROJECTS_DIR", JSON.stringify(projectsDir));
+	upsert("MOIRAI_PROJECTS_DIR", JSON.stringify(projectsDir));
 	upsert("OPENCUT_PROJECTS_DIR", JSON.stringify(projectsDir));
 	upsert("OPENCUT_CODEX_APP_SERVER_URL", "ws://127.0.0.1:48721");
 	writeFileSync(ENV_FILE, `${current.trimEnd()}\n`, "utf8");

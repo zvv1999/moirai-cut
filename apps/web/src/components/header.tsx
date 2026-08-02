@@ -57,7 +57,7 @@ export function Header() {
 							<Link href="/" className="flex items-center gap-3">
 								<Image
 									src={DEFAULT_LOGO_URL}
-									alt="OneCut Logo"
+									alt="Moirai Cut Logo"
 									width={32}
 									height={32}
 								/>
@@ -78,7 +78,7 @@ export function Header() {
 								onClick={() => {
 									const a = document.createElement("a");
 									a.href = DEFAULT_LOGO_URL;
-									a.download = "onecut-logo.svg";
+									a.download = "moirai-cut-logo.svg";
 									a.click();
 								}}
 							>

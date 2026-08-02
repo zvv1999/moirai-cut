@@ -26,7 +26,7 @@ export function StoragePersistenceDialog() {
 						runs low.
 					</p>
 					<p className="text-base text-muted-foreground">
-						Allow OneCut to protect them?
+						Allow Moirai Cut to protect them?
 					</p>
 				</DialogBody>
 				<DialogFooter>

@@ -1,6 +1,6 @@
 # opencut-wasm
 
-Shared video editor logic compiled to WebAssembly. OneCut keeps the published `opencut-wasm` package name for upstream compatibility.
+Shared video editor logic compiled to WebAssembly. Moirai Cut keeps the published `opencut-wasm` package name for upstream compatibility.
 
 ## Install
 
@@ -17,7 +17,8 @@ const ticks = mediaTimeFromSeconds(1.5);
 const label = formatTimecode({ ticks });
 ```
 
-All exports are documented in the [TypeScript definitions](./opencut_wasm.d.ts).
+`wasm-pack` generates the TypeScript definitions in
+`rust/wasm/pkg/opencut_wasm.d.ts` during `bun run build:wasm`.
 
 ## Source
 

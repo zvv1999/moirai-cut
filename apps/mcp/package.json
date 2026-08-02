@@ -1,10 +1,13 @@
 {
-	"name": "@onecut/mcp",
+	"name": "@moirai-cut/mcp",
 	"version": "0.1.0",
 	"private": true,
+	"description": "Moirai Cut project, media-analysis and live-editor MCP tools.",
+	"license": "MIT",
 	"type": "module",
 	"bin": {
-		"onecut-mcp": "./src/server.mjs",
+		"moirai-cut-mcp": "./src/server.mjs",
+		"holocut-mcp": "./src/server.mjs",
 		"opencut-mcp": "./src/server.mjs"
 	},
 	"scripts": {

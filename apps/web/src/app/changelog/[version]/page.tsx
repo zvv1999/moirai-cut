@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 	const release = getReleaseByVersion({ version });
 	if (!release) return {};
 	return {
-		title: `${release.title} (${release.version}) - OneCut Changelog`,
+		title: `${release.title} (${release.version}) - Moirai Cut Changelog`,
 		description: release.description,
 	};
 }

@@ -38,7 +38,7 @@ async function call(method, target, { body, headers } = {}) {
 		});
 	} catch (cause) {
 		throw new ProjectFileError(
-			`Cannot reach the OneCut server at ${target}. Is \`bun dev\` running?`,
+			`Cannot reach the Moirai Cut server at ${target}. Is \`bun dev\` running?`,
 			"server_unreachable",
 			String(cause?.message ?? cause),
 		);

@@ -30,7 +30,7 @@ services:
       start_period: 10s
 
   serverless-redis-http:
-    image: hiett/serverless-redis-http:latest
+    image: hiett/serverless-redis-http:0.0.10
     ports:
       - "8079:80"
     environment:

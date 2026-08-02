@@ -7,7 +7,7 @@ import {
 describe("Agent setup doctor", () => {
 	test("requires editing runtime, media tools, a provider and MCP for full readiness", () => {
 		const checks: AgentDoctorCheck[] = [
-			{ id: "web", label: "OneCut 服务", status: "pass", detail: "ready" },
+			{ id: "web", label: "Moirai Cut 服务", status: "pass", detail: "ready" },
 			{ id: "projects", label: "工程目录", status: "pass", detail: "writable" },
 			{ id: "runtime", label: "Agent 运行时", status: "pass", detail: "bun" },
 			{ id: "media", label: "媒体工具", status: "pass", detail: "ffmpeg" },
@@ -24,7 +24,7 @@ describe("Agent setup doctor", () => {
 
 	test("returns actionable blockers instead of a generic OK", () => {
 		const checks: AgentDoctorCheck[] = [
-			{ id: "web", label: "OneCut 服务", status: "pass", detail: "ready" },
+			{ id: "web", label: "Moirai Cut 服务", status: "pass", detail: "ready" },
 			{
 				id: "projects",
 				label: "工程目录",

@@ -106,12 +106,12 @@ for (const screenshotRef of screenshotRefs) {
 }
 
 if (failures.length > 0) {
-	console.error("OneCut goal report validation failed:");
+	console.error("HoloCut goal report validation failed:");
 	for (const failure of failures) console.error(`- ${failure}`);
 	process.exitCode = 1;
 } else {
 	console.log(
-		`OneCut goal report valid: ${expectedFeatureIds.length} capabilities, ` +
+		`HoloCut goal report valid: ${expectedFeatureIds.length} capabilities, ` +
 			`${report.summary.automatedTestsPassing} tests, ` +
 			`${screenshotRefs.length} screenshots.`,
 	);

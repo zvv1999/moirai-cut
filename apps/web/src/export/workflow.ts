@@ -491,7 +491,7 @@ export function validateExportDraft({
 		issues.push({
 			code: "container_audio_codec",
 			severity: "error",
-			message: `${draft.format.toUpperCase()} requires ${expectedAudio.toUpperCase()} audio in OneCut.`,
+			message: `${draft.format.toUpperCase()} requires ${expectedAudio.toUpperCase()} audio in Moirai Cut.`,
 		});
 	}
 	if (draft.includeAlpha && draft.format !== "webm") {

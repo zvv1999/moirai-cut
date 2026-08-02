@@ -6,6 +6,12 @@
 node_modules
 .cursorignore
 .turbo
+.next
+dist
+artifacts
+coverage
+playwright-report
+test-results
 
 .env*
 !*.env.example
@@ -20,6 +26,12 @@ bun.lockb
 .cursor/
 
 .open-next
+
+# Local editor projects, previews and Agent state
+.holocut
+.opencut-projects
+media-catalog.json
+*.opencut.autosave
 
 target/
 

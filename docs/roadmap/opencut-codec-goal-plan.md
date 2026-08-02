@@ -1,15 +1,16 @@
-# OneCut Codec Goal Plan
+# Moirai Cut Codec Goal Plan
 
 Status: COMPLETE
 Owner: Codex goal `019fa427-c03a-7dd2-850c-0e25523c914f`
 Branch: `feat/agent-drivable`
 Started: 2026-07-29
-Target report: `docs/reports/opencut-codec-goal/index.html`
+Acceptance evidence is maintained privately because it can contain
+project-derived media and is excluded from public source archives.
 
 ## Objective
 
-Bring OneCut's everyday codec, proxy, preview, and delivery workflow to the
-reliability expected from Jianying/CapCut Desktop while preserving OneCut's
+Bring Moirai Cut's everyday codec, proxy, preview, and delivery workflow to the
+reliability expected from Jianying/CapCut Desktop while preserving Moirai Cut's
 local-first and agent-drivable architecture.
 
 The goal is complete only when every row is `DONE`, `SUPERSEDED`, or an
@@ -213,7 +214,7 @@ After every GREEN checkpoint:
 
 ## Final qualification summary
 
-The target scope is complete. OneCut now has a validated native FFmpeg fallback
+The target scope is complete. Moirai Cut now has a validated native FFmpeg fallback
 for media the browser cannot decode, automatic and manageable proxies, colour
 normalization for SDR preview, explicit delivery presets, real source
 diagnostics, and matching Agent operations. The current project was exercised

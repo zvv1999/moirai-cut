@@ -1,0 +1,20 @@
+# Keep release archives small and free of project-derived acceptance media.
+# Maintainers may retain these reports in private development history, but the
+# public source archive is generated with `git archive` and omits them.
+docs/reports/** export-ignore
+
+# Keep local Codex state private, but ship the project-level OpenCut MCP entry
+# so a clean clone can expose the editor tools without manual reconfiguration.
+.codex/** export-ignore
+.codex/config.toml -export-ignore
+.cursor/** export-ignore
+
+# Normalize source files across supported platforms.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.wasm binary
+*.mp4 binary
+*.mov binary

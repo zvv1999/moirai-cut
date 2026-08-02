@@ -1,7 +1,7 @@
 {
-	"name": "OneCut",
-	"short_name": "OneCut",
-	"description": "The agent-native video editor. Edit by intent, finish with control.",
+	"name": "Moirai Cut",
+	"short_name": "Moirai Cut",
+	"description": "An open-source, local-first video editor where humans and agents create inside the same visible, editable loop.",
 	"theme_color": "#0A0D10",
 	"background_color": "#0A0D10",
 	"display": "standalone",

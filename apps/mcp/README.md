@@ -1,9 +1,9 @@
-# @onecut/mcp
+# @moirai-cut/mcp
 
-An MCP server that lets an agent edit OneCut projects — normally by writing the
+An MCP server that lets an agent edit Moirai Cut projects — normally by writing the
 **project file**, and optionally by driving a **live editor tab**.
 
-For the complete OneCut ↔ Codex Smart Edit orchestration, context schemas,
+For the complete Moirai Cut ↔ Codex Smart Edit orchestration, context schemas,
 scene-aware multimodal workflow, and iterative editing protocol, read
 [`../../docs/agent-smart-edit.md`](../../docs/agent-smart-edit.md).
 
@@ -39,13 +39,13 @@ and compare-and-swap below are for.
 
 ## Setup
 
-For users, start OneCut once and use **智能剪辑 → 设置**:
+For users, start Moirai Cut once and use **智能剪辑 → 设置**:
 
 ```bash
 bun run setup:local
 ```
 
-OneCut detects the existing Codex and Claude login, then installs this MCP with
+Moirai Cut detects the existing Codex and Claude login, then installs this MCP with
 one click. Installation is user-scoped, idempotent, and verified with the
 client's own `mcp get opencut` command.
 
@@ -54,12 +54,12 @@ Developer-only manual equivalents:
 ```bash
 codex mcp add \
   --env OPENCUT_BASE_URL=http://127.0.0.1:3000 \
-  --env OPENCUT_PROJECTS_DIR=/absolute/path/to/OneCutProjects \
+  --env OPENCUT_PROJECTS_DIR=/absolute/path/to/MoiraiCutProjects \
   opencut -- bun /absolute/path/to/opencut-classic/apps/mcp/src/server.mjs
 
 claude mcp add --scope user \
   --env OPENCUT_BASE_URL=http://127.0.0.1:3000 \
-  --env OPENCUT_PROJECTS_DIR=/absolute/path/to/OneCutProjects \
+  --env OPENCUT_PROJECTS_DIR=/absolute/path/to/MoiraiCutProjects \
   opencut -- bun /absolute/path/to/opencut-classic/apps/mcp/src/server.mjs
 ```
 

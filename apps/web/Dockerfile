@@ -1,4 +1,4 @@
-FROM oven/bun:alpine AS base
+FROM oven/bun:1.3.14-alpine AS base
 
 FROM base AS builder
 
@@ -15,7 +15,7 @@ COPY turbo.json turbo.json
 
 COPY apps/web/package.json apps/web/package.json
 COPY apps/mcp/package.json apps/mcp/package.json
-RUN bun install
+RUN bun install --frozen-lockfile
 
 COPY apps/web/ apps/web/
 COPY apps/mcp/ apps/mcp/
@@ -53,8 +53,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/apps/mcp ./apps/mcp
+COPY --from=builder --chown=nextjs:nodejs /app/package.json /app/bun.lock ./
 
-RUN cd apps/mcp && bun install --production
+RUN bun install --production --frozen-lockfile --filter @moirai-cut/mcp
 
 RUN chown nextjs:nodejs apps
 

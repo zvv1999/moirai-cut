@@ -54,7 +54,7 @@ async function openBrowser(url) {
 
 let running = await reachable();
 if (!running) {
-	console.log(`正在启动 OneCut（日志：${DEV_LOG}）…`);
+	console.log(`正在启动 Moirai Cut（日志：${DEV_LOG}）…`);
 	const log = openSync(DEV_LOG, "a");
 	const child = spawn(process.execPath, ["run", "dev:web"], {
 		cwd: REPO,
@@ -73,7 +73,7 @@ if (!running) {
 }
 
 if (!running) {
-	console.error(`OneCut 未能启动，请查看 ${DEV_LOG}`);
+	console.error(`Moirai Cut 未能启动，请查看 ${DEV_LOG}`);
 	process.exit(1);
 }
 
@@ -84,7 +84,7 @@ try {
 	await openBrowser(`${BASE}/projects`);
 } catch (error) {
 	console.error(
-		`OneCut 已启动，但环境检查失败：${
+		`Moirai Cut 已启动，但环境检查失败：${
 			error instanceof Error ? error.message : String(error)
 		}`,
 	);

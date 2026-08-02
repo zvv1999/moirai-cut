@@ -1,0 +1,8 @@
+<svg width="512" height="512" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>Moirai Cut icon</title>
+  <desc>Two paths woven around one shared cyan timeline.</desc>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="#090B10"/>
+  <path d="M12 21H21C28 21 28 43 36 43H52" stroke="#F5F7FA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M12 43H21C28 43 28 21 36 21H52" stroke="#F5F7FA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M12 32H52" stroke="#22D3EE" stroke-width="4.5" stroke-linecap="round"/>
+</svg>
