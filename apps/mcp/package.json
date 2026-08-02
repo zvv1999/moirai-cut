@@ -1,0 +1,26 @@
+{
+	"name": "@moirai-cut/mcp",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Moirai Cut project, media-analysis and live-editor MCP tools.",
+	"license": "MIT",
+	"type": "module",
+	"bin": {
+		"moirai-cut-mcp": "./src/server.mjs",
+		"holocut-mcp": "./src/server.mjs",
+		"opencut-mcp": "./src/server.mjs"
+	},
+	"scripts": {
+		"start": "bun src/server.mjs",
+		"probe": "bun src/probe.mjs",
+		"test": "node --test src/__tests__",
+		"agent:doctor": "bun src/agent-doctor.mjs",
+		"agent:up": "bun src/agent-up.mjs",
+		"setup:local": "bun src/setup-local.mjs"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.30.0",
+		"ws": "^8.21.1",
+		"zod": "^3.25.76"
+	}
+}

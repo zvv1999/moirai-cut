@@ -1,0 +1,11 @@
+[package]
+name = "moirai-cut-desktop"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "moirai-cut"
+path = "src/main.rs"
+
+[dependencies]
+gpui = "0.2.2"

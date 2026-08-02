@@ -1,0 +1,4 @@
+[test]
+# Root-level `bun test` must use the same browser-only WASM substitute as the
+# web package; Bun does not discover nested bunfig.toml files from the repo root.
+preload = ["./apps/web/test-preload.ts"]

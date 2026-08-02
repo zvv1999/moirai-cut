@@ -1,0 +1,817 @@
+import { mediaTimeToSeconds, roundMediaTime } from "@/wasm";
+import { getElementLocalTime } from "@/animation";
+import { resolveEffectParamsAtTime } from "@/animation/effect-param-channel";
+import { resolveMaskParamsAtTime } from "@/animation/mask-param-channel";
+import type { Mask } from "@/masks/types";
+import type { ParamValues } from "@/params";
+import {
+	buildGaussianBlurPasses,
+	intensityToSigma,
+} from "@/effects/definitions/blur";
+import {
+	effectsRegistry,
+	resolveCanvasEffectTreatment,
+	resolveEffectPasses,
+} from "@/effects";
+import type {
+	CanvasEffectTreatment,
+	Effect,
+	EffectPass,
+} from "@/effects/types";
+import { getSourceTimeAtClipTime } from "@/retime";
+import {
+	DEFAULT_GRAPHIC_SOURCE_SIZE,
+	resolveGraphicElementParamsAtTime,
+} from "@/graphics";
+import {
+	buildTextBackgroundFromElement,
+	getTextMeasurementContext,
+	measureTextElement,
+} from "@/text/measure-element";
+import { resolveColorAtTime, resolveOpacityAtTime } from "@/animation/values";
+import { resolveTransformAtTime } from "@/rendering/animation-values";
+import { videoCache } from "@/services/video-cache/service";
+import type { CanvasRenderer } from "./canvas-renderer";
+import type { AnyBaseNode } from "./nodes/base-node";
+import {
+	BlurBackgroundNode,
+	type BackdropSource,
+	type ResolvedBlurBackgroundNodeState,
+} from "./nodes/blur-background-node";
+import {
+	EffectLayerNode,
+	type ResolvedEffectLayerNodeState,
+} from "./nodes/effect-layer-node";
+import {
+	GraphicNode,
+	type ResolvedGraphicNodeState,
+} from "./nodes/graphic-node";
+import { ImageNode, loadImageSource } from "./nodes/image-node";
+import { StickerNode, loadStickerSource } from "./nodes/sticker-node";
+import { TextNode, type ResolvedTextNodeState } from "./nodes/text-node";
+import { VideoNode } from "./nodes/video-node";
+import type {
+	ResolvedVisualNodeState,
+	ResolvedVisualSourceNodeState,
+	VisualNodeParams,
+} from "./nodes/visual-node";
+import { resolveTrackingOffset } from "@/motion-tracking";
+import { resolveStabilizedPosition } from "@/visual/keying";
+import type { Transform } from "@/rendering";
+
+type ResolveContext = {
+	renderer: CanvasRenderer;
+	time: number;
+};
+
+function toAnimatableParamValues({ params }: { params: object }): ParamValues {
+	const values: ParamValues = {};
+	for (const [key, value] of Object.entries(params)) {
+		if (
+			typeof value === "number" ||
+			typeof value === "string" ||
+			typeof value === "boolean"
+		) {
+			values[key] = value;
+		}
+	}
+	return values;
+}
+
+function resolveMaskAtTime({
+	mask,
+	animations,
+	localTime,
+}: {
+	mask: Mask;
+	animations: VisualNodeParams["animations"];
+	localTime: number;
+}): Mask {
+	const resolvedParams = resolveMaskParamsAtTime({
+		maskId: mask.id,
+		params: toAnimatableParamValues({ params: mask.params }),
+		animations,
+		localTime,
+	});
+
+	switch (mask.type) {
+		case "split":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+		case "cinematic-bars":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+		case "rectangle":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+		case "ellipse":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+		case "heart":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+		case "diamond":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+		case "star":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+		case "text":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+		case "freeform":
+			return {
+				...mask,
+				params: { ...mask.params, ...resolvedParams },
+			};
+	}
+}
+
+function applyTrackingOffsetToMask({
+	mask,
+	maskId,
+	offset,
+}: {
+	mask: Mask;
+	maskId: string;
+	offset: { x: number; y: number };
+}): Mask {
+	if (mask.id !== maskId) return mask;
+	switch (mask.type) {
+		case "split":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+		case "cinematic-bars":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+		case "rectangle":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+		case "ellipse":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+		case "heart":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+		case "diamond":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+		case "star":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+		case "text":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+		case "freeform":
+			return {
+				...mask,
+				params: {
+					...mask.params,
+					centerX: mask.params.centerX + offset.x,
+					centerY: mask.params.centerY + offset.y,
+				},
+			};
+	}
+}
+
+function applyMotionToTransform({
+	transform,
+	params,
+	localTime,
+	canvasSize,
+}: {
+	transform: Transform;
+	params: VisualNodeParams;
+	localTime: number;
+	canvasSize: { width: number; height: number };
+}): {
+	transform: Transform;
+	offset: { x: number; y: number; confidence: number } | null;
+} {
+	const tracking = params.motionTracking;
+	if (!tracking) return { transform, offset: null };
+	const offset = resolveTrackingOffset({
+		samples: tracking.samples,
+		time: localTime,
+		confidenceThreshold: tracking.confidenceThreshold,
+	});
+	if (!offset) return { transform, offset: null };
+	let position = transform.position;
+	if (tracking.binding.type === "transform") {
+		position = {
+			x: position.x + offset.x * canvasSize.width,
+			y: position.y + offset.y * canvasSize.height,
+		};
+	}
+	if (params.stabilization?.enabled) {
+		position = resolveStabilizedPosition({
+			position,
+			offset,
+			canvasSize,
+			strength: params.stabilization.strength,
+		});
+	}
+	const cropScale =
+		params.stabilization?.enabled && params.stabilization.autoCrop
+			? 1 +
+				(Math.min(100, Math.max(0, params.stabilization.strength)) / 100) * 0.08
+			: 1;
+	return {
+		transform: {
+			...transform,
+			position,
+			scaleX: transform.scaleX * cropScale,
+			scaleY: transform.scaleY * cropScale,
+		},
+		offset,
+	};
+}
+
+export async function resolveRenderTree({
+	node,
+	renderer,
+	time,
+}: {
+	node: AnyBaseNode;
+	renderer: CanvasRenderer;
+	time: number;
+}): Promise<void> {
+	await resolveNode({
+		node,
+		context: {
+			renderer,
+			time,
+		},
+	});
+}
+
+async function resolveNode({
+	node,
+	context,
+}: {
+	node: AnyBaseNode;
+	context: ResolveContext;
+}): Promise<void> {
+	if (node instanceof VideoNode) {
+		node.resolved = await resolveVideoNode({ node, context });
+	} else if (node instanceof ImageNode) {
+		node.resolved = await resolveImageNode({ node, context });
+	} else if (node instanceof StickerNode) {
+		node.resolved = await resolveStickerNode({ node, context });
+	} else if (node instanceof GraphicNode) {
+		node.resolved = resolveGraphicNode({ node, context });
+	} else if (node instanceof TextNode) {
+		node.resolved = resolveTextNode({ node, context });
+	} else if (node instanceof BlurBackgroundNode) {
+		node.resolved = await resolveBlurBackgroundNode({ node, context });
+	} else if (node instanceof EffectLayerNode) {
+		node.resolved = resolveEffectLayerNode({ node, context });
+	}
+
+	await Promise.all(
+		node.children.map((child) => resolveNode({ node: child, context })),
+	);
+}
+
+function resolveEffectPassGroups({
+	effects,
+	animations,
+	localTime,
+	width,
+	height,
+}: {
+	effects: Effect[] | undefined;
+	animations: VisualNodeParams["animations"];
+	localTime: number;
+	width: number;
+	height: number;
+}): EffectPass[][] {
+	return (effects ?? [])
+		.filter((effect) => effect.enabled)
+		.map((effect) => {
+			const resolvedParams = resolveEffectParamsAtTime({
+				effectId: effect.id,
+				params: effect.params,
+				animations,
+				localTime,
+			});
+			const definition = effectsRegistry.get(effect.type);
+			return resolveEffectPasses({
+				definition,
+				effectParams: resolvedParams,
+				width,
+				height,
+			});
+		})
+		.filter((passes) => passes.length > 0);
+}
+
+function resolveCanvasEffects({
+	effects,
+	animations,
+	localTime,
+}: {
+	effects: Effect[] | undefined;
+	animations: VisualNodeParams["animations"];
+	localTime: number;
+}): CanvasEffectTreatment[] {
+	return (effects ?? []).flatMap((effect) => {
+		if (!effect.enabled) return [];
+		const definition = effectsRegistry.get(effect.type);
+		const resolvedParams = resolveEffectParamsAtTime({
+			effectId: effect.id,
+			params: effect.params,
+			animations,
+			localTime,
+		});
+		const treatment = resolveCanvasEffectTreatment({
+			definition,
+			effectParams: resolvedParams,
+		});
+		return treatment ? [treatment] : [];
+	});
+}
+
+function resolveVisualState({
+	params,
+	context,
+	sourceWidth,
+	sourceHeight,
+}: {
+	params: VisualNodeParams;
+	context: ResolveContext;
+	sourceWidth: number;
+	sourceHeight: number;
+}): ResolvedVisualNodeState | null {
+	const clipTime = context.time - params.timeOffset;
+	if (clipTime < 0 || clipTime >= params.duration) {
+		return null;
+	}
+
+	const localTime = getElementLocalTime({
+		timelineTime: context.time,
+		elementStartTime: params.timeOffset,
+		elementDuration: params.duration,
+	});
+	const authoredTransform = resolveTransformAtTime({
+		baseTransform: params.transform,
+		animations: params.animations,
+		localTime,
+	});
+	const motion = applyMotionToTransform({
+		transform: authoredTransform,
+		params,
+		localTime,
+		canvasSize: {
+			width: context.renderer.width,
+			height: context.renderer.height,
+		},
+	});
+	const transform = motion.transform;
+	const opacity = resolveOpacityAtTime({
+		baseOpacity: params.opacity,
+		animations: params.animations,
+		localTime,
+	});
+	const containScale = Math.min(
+		context.renderer.width / sourceWidth,
+		context.renderer.height / sourceHeight,
+	);
+	const effectWidth = Math.round(
+		Math.abs(sourceWidth * containScale * transform.scaleX),
+	);
+	const effectHeight = Math.round(
+		Math.abs(sourceHeight * containScale * transform.scaleY),
+	);
+
+	let resolvedMasks = (params.masks ?? []).map((mask) =>
+		resolveMaskAtTime({
+			mask,
+			animations: params.animations,
+			localTime,
+		}),
+	);
+	const maskBinding = params.motionTracking?.binding;
+	const trackingOffset = motion.offset;
+	if (trackingOffset && maskBinding?.type === "mask") {
+		resolvedMasks = resolvedMasks.map((mask) =>
+			applyTrackingOffsetToMask({
+				mask,
+				maskId: maskBinding.maskId,
+				offset: trackingOffset,
+			}),
+		);
+	}
+
+	return {
+		localTime,
+		transform,
+		opacity,
+		appearance: params.appearance,
+		// Sampled values are overlaid on the authored params rather than replacing
+		// them: a freeform mask carries a `path` array that is not a ParamValue
+		// and must survive untouched. Only the scalar keys a mask definition
+		// declares can be keyframed, so the overlay never widens the shape.
+		masks: resolvedMasks,
+		effectPasses: resolveEffectPassGroups({
+			effects: params.effects,
+			animations: params.animations,
+			localTime,
+			width: effectWidth,
+			height: effectHeight,
+		}),
+		canvasEffects: resolveCanvasEffects({
+			effects: params.effects,
+			animations: params.animations,
+			localTime,
+		}),
+	};
+}
+
+async function resolveVideoNode({
+	node,
+	context,
+}: {
+	node: VideoNode;
+	context: ResolveContext;
+}): Promise<ResolvedVisualSourceNodeState | null> {
+	const clipTime = context.time - node.params.timeOffset;
+	if (clipTime < 0 || clipTime >= node.params.duration) {
+		return null;
+	}
+
+	const sourceTimeTicks =
+		node.params.trimStart +
+		Math.min(
+			Math.max(
+				0,
+				(node.params.sourceDuration ?? node.params.duration) -
+					node.params.trimStart -
+					node.params.trimEnd -
+					1,
+			),
+			getSourceTimeAtClipTime({
+				clipTime,
+				retime: node.params.retime,
+				sourceSpan: Math.max(
+					0,
+					(node.params.sourceDuration ?? node.params.duration) -
+						node.params.trimStart -
+						node.params.trimEnd,
+				),
+			}),
+		);
+	const frame = await videoCache.getFrameAt({
+		mediaId: node.params.mediaId,
+		file: node.params.file,
+		time: mediaTimeToSeconds({
+			time: roundMediaTime({ time: sourceTimeTicks }),
+		}),
+	});
+	if (!frame) {
+		return null;
+	}
+
+	const visualState = resolveVisualState({
+		params: node.params,
+		context,
+		sourceWidth: frame.canvas.width,
+		sourceHeight: frame.canvas.height,
+	});
+	if (!visualState) {
+		return null;
+	}
+
+	return {
+		...visualState,
+		source: frame.canvas,
+		sourceWidth: frame.canvas.width,
+		sourceHeight: frame.canvas.height,
+	};
+}
+
+async function resolveImageNode({
+	node,
+	context,
+}: {
+	node: ImageNode;
+	context: ResolveContext;
+}): Promise<ResolvedVisualSourceNodeState | null> {
+	const source = await loadImageSource({
+		url: node.params.url,
+		maxSourceSize: node.params.maxSourceSize,
+	});
+	const visualState = resolveVisualState({
+		params: node.params,
+		context,
+		sourceWidth: source.width,
+		sourceHeight: source.height,
+	});
+	if (!visualState) {
+		return null;
+	}
+
+	return {
+		...visualState,
+		source: source.source,
+		sourceWidth: source.width,
+		sourceHeight: source.height,
+	};
+}
+
+async function resolveStickerNode({
+	node,
+	context,
+}: {
+	node: StickerNode;
+	context: ResolveContext;
+}): Promise<ResolvedVisualSourceNodeState | null> {
+	const source = await loadStickerSource({ stickerId: node.params.stickerId });
+	const sourceWidth = node.params.intrinsicWidth ?? source.width;
+	const sourceHeight = node.params.intrinsicHeight ?? source.height;
+	const visualState = resolveVisualState({
+		params: node.params,
+		context,
+		sourceWidth,
+		sourceHeight,
+	});
+	if (!visualState) {
+		return null;
+	}
+
+	return {
+		...visualState,
+		source: source.source,
+		sourceWidth,
+		sourceHeight,
+	};
+}
+
+function resolveGraphicNode({
+	node,
+	context,
+}: {
+	node: GraphicNode;
+	context: ResolveContext;
+}): ResolvedGraphicNodeState | null {
+	const visualState = resolveVisualState({
+		params: node.params,
+		context,
+		sourceWidth: DEFAULT_GRAPHIC_SOURCE_SIZE,
+		sourceHeight: DEFAULT_GRAPHIC_SOURCE_SIZE,
+	});
+	if (!visualState) {
+		return null;
+	}
+
+	return {
+		...visualState,
+		resolvedParams: resolveGraphicElementParamsAtTime({
+			element: node.params,
+			localTime: visualState.localTime,
+		}),
+	};
+}
+
+function resolveTextNode({
+	node,
+	context,
+}: {
+	node: TextNode;
+	context: ResolveContext;
+}): ResolvedTextNodeState | null {
+	if (
+		context.time < node.params.startTime ||
+		context.time >= node.params.startTime + node.params.duration
+	) {
+		return null;
+	}
+
+	const localTime = getElementLocalTime({
+		timelineTime: context.time,
+		elementStartTime: node.params.startTime,
+		elementDuration: node.params.duration,
+	});
+	const background = buildTextBackgroundFromElement({ element: node.params });
+
+	return {
+		transform: resolveTransformAtTime({
+			baseTransform: node.params.transform,
+			animations: node.params.animations,
+			localTime,
+		}),
+		opacity: resolveOpacityAtTime({
+			baseOpacity: node.params.opacity,
+			animations: node.params.animations,
+			localTime,
+		}),
+		textColor: resolveColorAtTime({
+			baseColor:
+				typeof node.params.params.color === "string"
+					? node.params.params.color
+					: "#ffffff",
+			animations: node.params.animations,
+			propertyPath: "color",
+			localTime,
+		}),
+		backgroundColor: resolveColorAtTime({
+			baseColor: background.color,
+			animations: node.params.animations,
+			propertyPath: "background.color",
+			localTime,
+		}),
+		effectPasses: resolveEffectPassGroups({
+			effects: node.params.effects,
+			animations: node.params.animations,
+			localTime,
+			width: context.renderer.width,
+			height: context.renderer.height,
+		}),
+		canvasEffects: resolveCanvasEffects({
+			effects: node.params.effects,
+			animations: node.params.animations,
+			localTime,
+		}),
+		measuredText: measureTextElement({
+			element: node.params,
+			canvasHeight: node.params.canvasHeight,
+			localTime,
+			ctx: getTextMeasurementContext(),
+		}),
+	};
+}
+
+async function resolveBlurBackgroundNode({
+	node,
+	context,
+}: {
+	node: BlurBackgroundNode;
+	context: ResolveContext;
+}): Promise<ResolvedBlurBackgroundNodeState | null> {
+	const clipTime = context.time - node.params.timeOffset;
+	if (clipTime < 0 || clipTime >= node.params.duration) {
+		return null;
+	}
+
+	const backdropSource = await resolveBackdropSource({ node, clipTime });
+	if (!backdropSource) {
+		return null;
+	}
+
+	return {
+		backdropSource,
+		passes: buildGaussianBlurPasses({
+			sigmaX: intensityToSigma({
+				intensity: node.params.blurIntensity,
+				resolution: context.renderer.width,
+				reference: 1920,
+			}),
+			sigmaY: intensityToSigma({
+				intensity: node.params.blurIntensity,
+				resolution: context.renderer.height,
+				reference: 1080,
+			}),
+		}),
+	};
+}
+
+async function resolveBackdropSource({
+	node,
+	clipTime,
+}: {
+	node: BlurBackgroundNode;
+	clipTime: number;
+}): Promise<BackdropSource | null> {
+	if (node.params.mediaType === "video") {
+		const sourceTimeTicks =
+			node.params.trimStart +
+			getSourceTimeAtClipTime({
+				clipTime,
+				retime: node.params.retime,
+			});
+		const frame = await videoCache.getFrameAt({
+			mediaId: node.params.mediaId,
+			file: node.params.file,
+			time: mediaTimeToSeconds({
+				time: roundMediaTime({ time: sourceTimeTicks }),
+			}),
+		});
+		if (!frame) {
+			return null;
+		}
+
+		return {
+			source: frame.canvas,
+			width: frame.canvas.width,
+			height: frame.canvas.height,
+		};
+	}
+
+	const source = await loadImageSource({ url: node.params.url });
+	return {
+		source: source.source,
+		width: source.width,
+		height: source.height,
+	};
+}
+
+function resolveEffectLayerNode({
+	node,
+	context,
+}: {
+	node: EffectLayerNode;
+	context: ResolveContext;
+}): ResolvedEffectLayerNodeState | null {
+	const time = context.time;
+	if (
+		time < node.params.timeOffset - 1e-6 ||
+		time >= node.params.timeOffset + node.params.duration + 1e-6
+	) {
+		return null;
+	}
+
+	const definition = effectsRegistry.get(node.params.effectType);
+	const passes = resolveEffectPasses({
+		definition,
+		effectParams: node.params.effectParams,
+		width: context.renderer.width,
+		height: context.renderer.height,
+	});
+	const canvasTreatment = resolveCanvasEffectTreatment({
+		definition,
+		effectParams: node.params.effectParams,
+	});
+	const canvasEffects = canvasTreatment ? [canvasTreatment] : [];
+	if (passes.length === 0 && canvasEffects.length === 0) {
+		return null;
+	}
+
+	return {
+		passes,
+		canvasEffects,
+	};
+}

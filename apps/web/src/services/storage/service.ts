@@ -1,0 +1,791 @@
+import type { TProject, TProjectMetadata } from "@/project/types";
+import { getProjectDurationFromScenes } from "@/timeline/scenes";
+import type { MediaAsset } from "@/media/types";
+import { IndexedDBAdapter } from "./indexeddb-adapter";
+import { OPFSAdapter } from "./opfs-adapter";
+import { FileAdapter } from "./file-adapter";
+import { DiskMediaFileAdapter, DiskMediaMetadataAdapter } from "./disk-media-adapter";
+import {
+	type StorageCapacityCheckResult,
+	StorageQuotaExceededError,
+	evaluateStorageCapacity,
+	isStorageQuotaExceededError,
+	readStorageQuotaStatus,
+} from "./quota";
+import type {
+	MediaAssetData,
+	StorageAdapter,
+	StorageConfig,
+	SerializedProject,
+	SerializedScene,
+} from "./types";
+import type { SavedSoundsData, SavedSound, SoundEffect } from "@/sounds/types";
+import {
+	migrations,
+	runStorageMigrations,
+} from "@/services/storage/migrations";
+import type { Bookmark, SceneTracks } from "@/timeline";
+import { roundMediaTime } from "@/wasm";
+import { isMediaProxyStorageId } from "@/media/proxy";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizeBookmarks({ raw }: { raw: unknown }): Bookmark[] {
+	if (!Array.isArray(raw)) return [];
+	return raw
+		.map((item): Bookmark | null => {
+			if (typeof item === "number") {
+				const time = roundMediaTime({ time: item });
+				return { id: `legacy-marker-${time}`, time, scope: "timeline" };
+			}
+			if (!isRecord(item) || typeof item.time !== "number") {
+				return null;
+			}
+			const time = roundMediaTime({ time: item.time });
+			const obj = item;
+			return {
+				id:
+					typeof obj.id === "string"
+						? obj.id
+						: `legacy-marker-${time}`,
+				time,
+				...(typeof obj.name === "string" && { name: obj.name }),
+				...(typeof obj.note === "string" && { note: obj.note }),
+				...(typeof obj.color === "string" && { color: obj.color }),
+				...(typeof obj.duration === "number" && {
+					duration: roundMediaTime({ time: obj.duration }),
+				}),
+				...(obj.scope === "timeline" || obj.scope === "clip"
+					? { scope: obj.scope }
+					: { scope: "timeline" as const }),
+				...(typeof obj.trackId === "string" && { trackId: obj.trackId }),
+				...(typeof obj.elementId === "string" && {
+					elementId: obj.elementId,
+				}),
+			};
+		})
+		.filter((b): b is Bookmark => b !== null);
+}
+
+async function mapWithConcurrency<T, R>({
+	items,
+	limit,
+	map,
+}: {
+	items: T[];
+	limit: number;
+	map: (item: T) => Promise<R>;
+}): Promise<R[]> {
+	if (items.length === 0) return [];
+	const results = new Array<R>(items.length);
+	let nextIndex = 0;
+	const worker = async () => {
+		for (;;) {
+			const index = nextIndex;
+			nextIndex += 1;
+			if (index >= items.length) return;
+			results[index] = await map(items[index]!);
+		}
+	};
+	await Promise.all(
+		Array.from({ length: Math.min(Math.max(1, limit), items.length) }, worker),
+	);
+	return results;
+}
+
+/**
+ * Where the project document lives.
+ *
+ * "file" puts it on disk through /api/projects, which is what lets a Node
+ * process — the MCP server, LocalCut's harness, git — read and write the same
+ * document the editor has open. "indexeddb" keeps the upstream behaviour.
+ *
+ * Both implement the same adapter interface, so nothing below this line knows
+ * which one it got.
+ */
+type ProjectStore = Pick<
+	IndexedDBAdapter<SerializedProject>,
+	"get" | "set" | "remove" | "list" | "clear" | "getAll"
+>;
+
+export function projectStoreMode(): "file" | "indexeddb" {
+	return process.env.NEXT_PUBLIC_OPENCUT_PROJECT_FILES === "1" ? "file" : "indexeddb";
+}
+
+class StorageService {
+	private projectsAdapter: ProjectStore;
+	private savedSoundsAdapter: IndexedDBAdapter<SavedSoundsData>;
+	private config: StorageConfig;
+	private migrationsPromise: Promise<void> | null = null;
+
+	constructor() {
+		this.config = {
+			projectsDb: "video-editor-projects",
+			mediaDb: "video-editor-media",
+			savedSoundsDb: "video-editor-saved-sounds",
+			version: 1,
+		};
+
+		this.projectsAdapter =
+			projectStoreMode() === "file"
+				? new FileAdapter<SerializedProject>()
+				: new IndexedDBAdapter<SerializedProject>({
+						dbName: this.config.projectsDb,
+						storeName: "projects",
+						version: this.config.version,
+					});
+
+		this.savedSoundsAdapter = new IndexedDBAdapter<SavedSoundsData>({
+			dbName: this.config.savedSoundsDb,
+			storeName: "saved-sounds",
+			version: this.config.version,
+		});
+	}
+
+	/**
+	 * What the file store believes is on disk for a project, or null when the
+	 * document is not file-backed. Used to tell this editor's own save echoing
+	 * back from a genuine external change.
+	 */
+	getKnownProjectRevision(id: string): number | null {
+		const adapter = this.projectsAdapter as Partial<FileAdapter<SerializedProject>>;
+		return adapter.knownRevision?.(id) ?? null;
+	}
+
+	private async ensureMigrations(): Promise<void> {
+		if (this.migrationsPromise) {
+			await this.migrationsPromise;
+			return;
+		}
+
+		this.migrationsPromise = runStorageMigrations({ migrations }).then(
+			() => undefined,
+		);
+		await this.migrationsPromise;
+	}
+
+	private getProjectMediaAdapters({ projectId }: { projectId: string }) {
+		// Follows the same switch as the project document: with file storage on,
+		// media bytes live next to project.json so a Node process can reach them.
+		if (projectStoreMode() === "file") {
+			return {
+				mediaMetadataAdapter: new DiskMediaMetadataAdapter<MediaAssetData>(projectId),
+				mediaAssetsAdapter: new DiskMediaFileAdapter(projectId),
+			};
+		}
+
+		const mediaMetadataAdapter = new IndexedDBAdapter<MediaAssetData>({
+			dbName: `${this.config.mediaDb}-${projectId}`,
+			storeName: "media-metadata",
+			version: this.config.version,
+		});
+
+		const mediaAssetsAdapter = new OPFSAdapter(`media-files-${projectId}`);
+
+		return { mediaMetadataAdapter, mediaAssetsAdapter };
+	}
+
+	async canStoreFile({
+		size,
+	}: {
+		size: number;
+	}): Promise<StorageCapacityCheckResult> {
+		const quotaStatus = await readStorageQuotaStatus();
+		return evaluateStorageCapacity({
+			requiredBytes: size,
+			quotaStatus,
+		});
+	}
+
+	isQuotaExceededError({ error }: { error: unknown }): boolean {
+		return isStorageQuotaExceededError({ error });
+	}
+
+	private stripAudioBuffers({ tracks }: { tracks: SceneTracks }): SceneTracks {
+		return {
+			...tracks,
+			audio: tracks.audio.map((track) => ({
+				...track,
+				elements: track.elements.map((element) => {
+					const { buffer: _buffer, ...rest } = element;
+					return rest;
+				}),
+			})),
+		};
+	}
+
+	async saveProject({ project }: { project: TProject }): Promise<void> {
+		const duration =
+			project.metadata.duration ??
+			getProjectDurationFromScenes({ scenes: project.scenes });
+		const serializedScenes: SerializedScene[] = project.scenes.map((scene) => ({
+			id: scene.id,
+			name: scene.name,
+			isMain: scene.isMain,
+			tracks: this.stripAudioBuffers({ tracks: scene.tracks }),
+			bookmarks: scene.bookmarks,
+			createdAt: scene.createdAt.toISOString(),
+			updatedAt: scene.updatedAt.toISOString(),
+		}));
+
+		const serializedProject: SerializedProject = {
+			metadata: {
+				id: project.metadata.id,
+				name: project.metadata.name,
+				thumbnail: project.metadata.thumbnail,
+				duration,
+				createdAt: project.metadata.createdAt.toISOString(),
+				updatedAt: project.metadata.updatedAt.toISOString(),
+			},
+			scenes: serializedScenes,
+			currentSceneId: project.currentSceneId,
+			settings: project.settings,
+			version: project.version,
+			timelineViewState: project.timelineViewState,
+			mediaOrganization: project.mediaOrganization,
+		};
+
+		await this.projectsAdapter.set({
+			key: project.metadata.id,
+			value: serializedProject,
+		});
+	}
+
+	async loadProject({
+		id,
+	}: {
+		id: string;
+	}): Promise<{ project: TProject } | null> {
+		await this.ensureMigrations();
+		const serializedProject = await this.projectsAdapter.get(id);
+
+		if (!serializedProject) return null;
+
+		if (
+			typeof serializedProject !== "object" ||
+			serializedProject === null ||
+			typeof serializedProject.metadata !== "object" ||
+			serializedProject.metadata === null
+		) {
+			console.warn(
+				"[storage] Skipping malformed project entry (missing metadata):",
+				{ id, entry: serializedProject },
+			);
+			return null;
+		}
+
+		const scenes =
+			serializedProject.scenes?.map((scene) => ({
+				id: scene.id,
+				name: scene.name,
+				isMain: scene.isMain,
+				tracks: scene.tracks,
+				bookmarks: normalizeBookmarks({ raw: scene.bookmarks }),
+				createdAt: new Date(scene.createdAt),
+				updatedAt: new Date(scene.updatedAt),
+			})) ?? [];
+
+		const project: TProject = {
+			metadata: {
+				id: serializedProject.metadata.id,
+				name: serializedProject.metadata.name,
+				thumbnail: serializedProject.metadata.thumbnail,
+				duration: roundMediaTime({
+					time:
+						serializedProject.metadata.duration ??
+						getProjectDurationFromScenes({ scenes }),
+				}),
+				createdAt: new Date(serializedProject.metadata.createdAt),
+				updatedAt: new Date(serializedProject.metadata.updatedAt),
+			},
+			scenes,
+			currentSceneId: serializedProject.currentSceneId || "",
+			settings: serializedProject.settings,
+			version: serializedProject.version,
+			timelineViewState: serializedProject.timelineViewState,
+			mediaOrganization: serializedProject.mediaOrganization,
+		};
+
+		return { project };
+	}
+
+	async loadAllProjects(): Promise<TProject[]> {
+		const projectIds = await this.projectsAdapter.list();
+		const projects: TProject[] = [];
+
+		for (const id of projectIds) {
+			const result = await this.loadProject({ id });
+			if (result?.project) {
+				projects.push(result.project);
+			}
+		}
+
+		return projects.sort(
+			(a, b) => b.metadata.updatedAt.getTime() - a.metadata.updatedAt.getTime(),
+		);
+	}
+
+	async loadAllProjectsMetadata(): Promise<TProjectMetadata[]> {
+		await this.ensureMigrations();
+		const serializedProjects = await this.projectsAdapter.getAll();
+
+		const metadata: TProjectMetadata[] = [];
+		for (const serializedProject of serializedProjects) {
+			if (
+				typeof serializedProject !== "object" ||
+				serializedProject === null ||
+				typeof serializedProject.metadata !== "object" ||
+				serializedProject.metadata === null
+			) {
+				console.warn(
+					"[storage] Skipping malformed project entry (missing metadata):",
+					serializedProject,
+				);
+				continue;
+			}
+
+			metadata.push({
+				id: serializedProject.metadata.id,
+				name: serializedProject.metadata.name,
+				thumbnail: serializedProject.metadata.thumbnail,
+				duration: roundMediaTime({
+					time:
+						serializedProject.metadata.duration ??
+							getProjectDurationFromScenes({
+								scenes:
+									serializedProject.scenes?.map((scene) => ({
+										...scene,
+										bookmarks: normalizeBookmarks({
+											raw: scene.bookmarks,
+										}),
+										createdAt: new Date(scene.createdAt),
+										updatedAt: new Date(scene.updatedAt),
+									})) ?? [],
+							}),
+				}),
+				createdAt: new Date(serializedProject.metadata.createdAt),
+				updatedAt: new Date(serializedProject.metadata.updatedAt),
+			});
+		}
+
+		return metadata.sort(
+			(a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
+		);
+	}
+
+	async deleteProject({ id }: { id: string }): Promise<void> {
+		await this.projectsAdapter.remove(id);
+	}
+
+	async saveMediaAsset({
+		projectId,
+		mediaAsset,
+	}: {
+		projectId: string;
+		mediaAsset: MediaAsset;
+	}): Promise<void> {
+		const { mediaMetadataAdapter, mediaAssetsAdapter } =
+			this.getProjectMediaAdapters({ projectId });
+		const previousMetadata = await mediaMetadataAdapter.get(mediaAsset.id);
+
+		const metadata: MediaAssetData = {
+			id: mediaAsset.id,
+			name: mediaAsset.name,
+			type: mediaAsset.type,
+			size: mediaAsset.file.size,
+			lastModified: mediaAsset.file.lastModified,
+			width: mediaAsset.width,
+			height: mediaAsset.height,
+			duration: mediaAsset.duration,
+			fps: mediaAsset.fps,
+			hasAudio: mediaAsset.hasAudio,
+			browserCanDecode: mediaAsset.browserCanDecode,
+			thumbnailUrl: mediaAsset.thumbnailUrl,
+			ephemeral: mediaAsset.ephemeral,
+			proxy: mediaAsset.proxy,
+		};
+
+		try {
+			await mediaAssetsAdapter.set({
+				key: mediaAsset.id,
+				value: mediaAsset.file,
+			});
+			if (mediaAsset.proxy && mediaAsset.proxyFile) {
+				await mediaAssetsAdapter.set({
+					key: mediaAsset.proxy.storageId,
+					value: mediaAsset.proxyFile,
+				});
+			}
+			if (
+				previousMetadata?.proxy &&
+				previousMetadata.proxy.storageId !== mediaAsset.proxy?.storageId
+			) {
+				await mediaAssetsAdapter.remove(previousMetadata.proxy.storageId);
+			}
+			await mediaMetadataAdapter.set({
+				key: mediaAsset.id,
+				value: metadata,
+			});
+		} catch (error) {
+			try {
+				await mediaAssetsAdapter.remove(mediaAsset.id);
+				if (mediaAsset.proxy) {
+					await mediaAssetsAdapter.remove(mediaAsset.proxy.storageId);
+				}
+			} catch {
+				// Ignore cleanup failures so the original storage error is preserved.
+			}
+
+			if (this.isQuotaExceededError({ error })) {
+				throw new StorageQuotaExceededError({
+					requiredBytes: mediaAsset.file.size,
+				});
+			}
+
+			throw error;
+		}
+	}
+
+	async saveMediaAssetMetadata({
+		projectId,
+		mediaAsset,
+	}: {
+		projectId: string;
+		mediaAsset: MediaAsset;
+	}): Promise<void> {
+		const { mediaMetadataAdapter } = this.getProjectMediaAdapters({
+			projectId,
+		});
+		await mediaMetadataAdapter.set({
+			key: mediaAsset.id,
+			value: {
+				id: mediaAsset.id,
+				name: mediaAsset.name,
+				type: mediaAsset.type,
+				size: mediaAsset.file.size,
+				lastModified: mediaAsset.file.lastModified,
+				width: mediaAsset.width,
+				height: mediaAsset.height,
+				duration: mediaAsset.duration,
+				fps: mediaAsset.fps,
+				hasAudio: mediaAsset.hasAudio,
+				browserCanDecode: mediaAsset.browserCanDecode,
+				thumbnailUrl: mediaAsset.thumbnailUrl,
+				ephemeral: mediaAsset.ephemeral,
+				proxy: mediaAsset.proxy,
+			},
+		});
+	}
+
+	async saveMediaProxy({
+		projectId,
+		mediaAsset,
+	}: {
+		projectId: string;
+		mediaAsset: MediaAsset;
+	}): Promise<void> {
+		if (!mediaAsset.proxy || !mediaAsset.proxyFile) {
+			throw new Error("Proxy metadata and bytes are required");
+		}
+		const { mediaAssetsAdapter } = this.getProjectMediaAdapters({ projectId });
+		await mediaAssetsAdapter.set({
+			key: mediaAsset.proxy.storageId,
+			value: mediaAsset.proxyFile,
+		});
+		await this.saveMediaAssetMetadata({ projectId, mediaAsset });
+	}
+
+	async deleteMediaProxy({
+		projectId,
+		storageId,
+	}: {
+		projectId: string;
+		storageId: string;
+	}): Promise<void> {
+		const { mediaAssetsAdapter } = this.getProjectMediaAdapters({ projectId });
+		await mediaAssetsAdapter.remove(storageId);
+	}
+
+	async loadMediaAsset({
+		projectId,
+		id,
+	}: {
+		projectId: string;
+		id: string;
+	}): Promise<MediaAsset | null> {
+		const { mediaMetadataAdapter, mediaAssetsAdapter } =
+			this.getProjectMediaAdapters({ projectId });
+
+		const [file, metadata] = await Promise.all([
+			mediaAssetsAdapter.get(id),
+			mediaMetadataAdapter.get(id),
+		]);
+
+		if (!file || !metadata) return null;
+		return this.materializeMediaAsset({
+			file,
+			metadata,
+			mediaAssetsAdapter,
+		});
+	}
+
+	private async materializeMediaAsset({
+		file,
+		metadata,
+		mediaAssetsAdapter,
+	}: {
+		file: File;
+		metadata: MediaAssetData;
+		mediaAssetsAdapter: StorageAdapter<File>;
+	}): Promise<MediaAsset> {
+		let url: string;
+		if (metadata.type === "image" && (!file.type || file.type === "")) {
+			try {
+				const text = await file.text();
+				if (text.trim().startsWith("<svg")) {
+					const svgBlob = new Blob([text], { type: "image/svg+xml" });
+					url = URL.createObjectURL(svgBlob);
+				} else {
+					url = URL.createObjectURL(file);
+				}
+			} catch {
+				url = URL.createObjectURL(file);
+			}
+		} else {
+			url = URL.createObjectURL(file);
+		}
+
+		const proxyFile = metadata.proxy
+			? await mediaAssetsAdapter.get(metadata.proxy.storageId)
+			: null;
+		const proxyUrl = proxyFile ? URL.createObjectURL(proxyFile) : undefined;
+
+		return {
+			id: metadata.id,
+			name: metadata.name,
+			type: metadata.type,
+			file,
+			url,
+			width: metadata.width,
+			height: metadata.height,
+			duration: metadata.duration,
+			fps: metadata.fps,
+			hasAudio: metadata.hasAudio,
+			browserCanDecode: metadata.browserCanDecode,
+			thumbnailUrl: metadata.thumbnailUrl,
+			ephemeral: metadata.ephemeral,
+			proxy: proxyFile ? metadata.proxy : undefined,
+			proxyFile: proxyFile ?? undefined,
+			proxyUrl,
+		};
+	}
+
+	async loadAllMediaAssets({
+		projectId,
+	}: {
+		projectId: string;
+	}): Promise<MediaAsset[]> {
+		const { mediaMetadataAdapter, mediaAssetsAdapter } =
+			this.getProjectMediaAdapters({
+			projectId,
+		});
+
+		const metadata = (await mediaMetadataAdapter.getAll()).filter(
+			(item) =>
+				typeof item.id === "string" &&
+				!isMediaProxyStorageId({ storageId: item.id }) &&
+				(item.type === "video" ||
+					item.type === "audio" ||
+					item.type === "image"),
+		);
+		const mediaItems = await mapWithConcurrency({
+			items: metadata,
+			limit: 4,
+			map: async (item): Promise<MediaAsset | null> => {
+				const file = await mediaAssetsAdapter.get(item.id);
+				return file
+					? this.materializeMediaAsset({
+							file,
+							metadata: item,
+							mediaAssetsAdapter,
+						})
+					: null;
+			},
+		});
+		return mediaItems.filter((item): item is MediaAsset => item !== null);
+	}
+
+	async deleteMediaAsset({
+		projectId,
+		id,
+	}: {
+		projectId: string;
+		id: string;
+	}): Promise<void> {
+		const { mediaMetadataAdapter, mediaAssetsAdapter } =
+			this.getProjectMediaAdapters({ projectId });
+
+		const metadata = await mediaMetadataAdapter.get(id);
+		if (metadata?.proxy) {
+			await mediaAssetsAdapter.remove(metadata.proxy.storageId);
+		}
+		await mediaAssetsAdapter.remove(id);
+		await mediaMetadataAdapter.remove(id);
+	}
+
+	async deleteProjectMedia({
+		projectId,
+	}: {
+		projectId: string;
+	}): Promise<void> {
+		const { mediaMetadataAdapter, mediaAssetsAdapter } =
+			this.getProjectMediaAdapters({ projectId });
+
+		await Promise.all([
+			mediaMetadataAdapter.clear(),
+			mediaAssetsAdapter.clear(),
+		]);
+	}
+
+	async clearAllData(): Promise<void> {
+		await this.projectsAdapter.clear();
+		// project-specific media and timelines cleaned up when projects are deleted
+	}
+
+	async getStorageInfo(): Promise<{
+		projects: number;
+		isOPFSSupported: boolean;
+		isIndexedDBSupported: boolean;
+	}> {
+		const projectIds = await this.projectsAdapter.list();
+
+		return {
+			projects: projectIds.length,
+			isOPFSSupported: this.isOPFSSupported(),
+			isIndexedDBSupported: this.isIndexedDBSupported(),
+		};
+	}
+
+	async getProjectStorageInfo({ projectId }: { projectId: string }): Promise<{
+		mediaItems: number;
+	}> {
+		const { mediaMetadataAdapter } = this.getProjectMediaAdapters({
+			projectId,
+		});
+
+		const mediaIds = await mediaMetadataAdapter.list();
+
+		return {
+			mediaItems: mediaIds.length,
+		};
+	}
+
+	async loadSavedSounds(): Promise<SavedSoundsData> {
+		try {
+			const savedSoundsData = await this.savedSoundsAdapter.get("user-sounds");
+			return (
+				savedSoundsData || {
+					sounds: [],
+					lastModified: new Date().toISOString(),
+				}
+			);
+		} catch (error) {
+			console.error("Failed to load saved sounds:", error);
+			return { sounds: [], lastModified: new Date().toISOString() };
+		}
+	}
+
+	async saveSoundEffect({
+		soundEffect,
+	}: {
+		soundEffect: SoundEffect;
+	}): Promise<void> {
+		try {
+			const currentData = await this.loadSavedSounds();
+
+			if (currentData.sounds.some((sound) => sound.id === soundEffect.id)) {
+				return; // Already saved
+			}
+
+			const savedSound: SavedSound = {
+				id: soundEffect.id,
+				name: soundEffect.name,
+				username: soundEffect.username,
+				previewUrl: soundEffect.previewUrl,
+				downloadUrl: soundEffect.downloadUrl,
+				duration: soundEffect.duration,
+				tags: soundEffect.tags,
+				license: soundEffect.license,
+				savedAt: new Date().toISOString(),
+			};
+
+			const updatedData: SavedSoundsData = {
+				sounds: [...currentData.sounds, savedSound],
+				lastModified: new Date().toISOString(),
+			};
+
+			await this.savedSoundsAdapter.set({
+				key: "user-sounds",
+				value: updatedData,
+			});
+		} catch (error) {
+			console.error("Failed to save sound effect:", error);
+			throw error;
+		}
+	}
+
+	async removeSavedSound({ soundId }: { soundId: number }): Promise<void> {
+		try {
+			const currentData = await this.loadSavedSounds();
+
+			const updatedData: SavedSoundsData = {
+				sounds: currentData.sounds.filter((sound) => sound.id !== soundId),
+				lastModified: new Date().toISOString(),
+			};
+
+			await this.savedSoundsAdapter.set({
+				key: "user-sounds",
+				value: updatedData,
+			});
+		} catch (error) {
+			console.error("Failed to remove saved sound:", error);
+			throw error;
+		}
+	}
+
+	async isSoundSaved({ soundId }: { soundId: number }): Promise<boolean> {
+		try {
+			const currentData = await this.loadSavedSounds();
+			return currentData.sounds.some((sound) => sound.id === soundId);
+		} catch (error) {
+			console.error("Failed to check if sound is saved:", error);
+			return false;
+		}
+	}
+
+	async clearSavedSounds(): Promise<void> {
+		try {
+			await this.savedSoundsAdapter.remove("user-sounds");
+		} catch (error) {
+			console.error("Failed to clear saved sounds:", error);
+			throw error;
+		}
+	}
+
+	isOPFSSupported(): boolean {
+		return OPFSAdapter.isSupported();
+	}
+
+	isIndexedDBSupported(): boolean {
+		return "indexedDB" in window;
+	}
+
+	isFullySupported(): boolean {
+		return this.isIndexedDBSupported() && this.isOPFSSupported();
+	}
+}
+
+export const storageService = new StorageService();
+export { StorageService };

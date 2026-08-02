@@ -1,0 +1,9 @@
+# Temporary bootstrap ownership. Replace or extend this list when the Moirai Cut
+# maintainer team moves to its canonical organization.
+* @zvv1999
+
+/apps/web/src/server/ @zvv1999
+/apps/mcp/ @zvv1999
+/.github/ @zvv1999
+/SECURITY.md @zvv1999
+/TRADEMARKS.md @zvv1999

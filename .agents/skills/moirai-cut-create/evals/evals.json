@@ -1,0 +1,38 @@
+{
+	"skill_name": "moirai-cut-create",
+	"evals": [
+		{
+			"id": "complete-cinematic-first-cut",
+			"prompt": "把当前素材完整剪成一版 45 秒左右、克制但有电影感的首剪，保留现场声，完成后给我本地审阅视频。",
+			"expected_output": "在当前共享工程中生成可编辑首剪，完成结构与代表帧质检，并返回本地 draft 路径。",
+			"assertions": [
+				"读取当前工程和 revision",
+				"建立并使用素材 catalog",
+				"通过 edit_project 原子写入可编辑时间线",
+				"完成 lint、同步、代表帧和 draft 导出"
+			]
+		},
+		{
+			"id": "selected-range-recut",
+			"prompt": "只把我选中的 21 到 29 秒重新剪得更紧，保留对白完整，其他部分不要动，并输出一版可审阅结果。",
+			"expected_output": "只修改所选范围并保持其他时间线内容不变，结果仍可编辑、可撤销并经过试听画面复核。",
+			"assertions": [
+				"读取 read_agent_context 中的选区",
+				"检查选区画面序列和声音事件",
+				"写入时使用 baseRevision 和 idempotencyKey",
+				"验证选区与工程同步后再导出 draft"
+			]
+		},
+		{
+			"id": "dialogue-led-social-cut",
+			"prompt": "从当前工程做一版竖屏社交媒体成片，优先人物和对白，补齐可编辑字幕，节奏自然，不要生成黑盒视频。",
+			"expected_output": "完成素材识别、对白转写、可编辑字幕与时间线编排，并交付可继续修改的工程和审阅视频。",
+			"assertions": [
+				"场景识别覆盖实际使用的视频素材",
+				"字幕来自转写而非臆测",
+				"时间线和字幕元素保持可编辑",
+				"代表帧检查构图、裁切和字幕可读性"
+			]
+		}
+	]
+}

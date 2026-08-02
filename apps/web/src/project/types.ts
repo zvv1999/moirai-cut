@@ -1,0 +1,61 @@
+import type { FrameRate } from "opencut-wasm";
+import type { TScene } from "@/timeline/types";
+import type { MediaTime } from "@/wasm";
+import type { MediaOrganization } from "@/media/organization";
+import type { CaptionStyle } from "@/subtitles/styles";
+import type { EffectPreset } from "@/effects/presets";
+
+export type TBackground =
+	| {
+			type: "color";
+			color: string;
+	  }
+	| {
+			type: "blur";
+			blurIntensity: number;
+	  };
+
+export interface TCanvasSize {
+	width: number;
+	height: number;
+}
+
+export interface TProjectMetadata {
+	id: string;
+	name: string;
+	thumbnail?: string;
+	duration: MediaTime;
+	createdAt: Date;
+	updatedAt: Date;
+}
+
+export interface TProjectSettings {
+	fps: FrameRate;
+	canvasSize: TCanvasSize;
+	canvasSizeMode?: "preset" | "custom";
+	lastCustomCanvasSize?: TCanvasSize | null;
+	originalCanvasSize?: TCanvasSize | null;
+	background: TBackground;
+	captionStyles?: CaptionStyle[];
+	effectPresets?: EffectPreset[];
+}
+
+export interface TTimelineViewState {
+	zoomLevel: number;
+	scrollLeft: number;
+	playheadTime: MediaTime;
+}
+
+export interface TProject {
+	metadata: TProjectMetadata;
+	scenes: TScene[];
+	currentSceneId: string;
+	settings: TProjectSettings;
+	version: number;
+	timelineViewState?: TTimelineViewState;
+	mediaOrganization?: MediaOrganization;
+}
+
+export type TProjectSortKey = "createdAt" | "updatedAt" | "name" | "duration";
+export type TSortOrder = "asc" | "desc";
+export type TProjectSortOption = `${TProjectSortKey}-${TSortOrder}`;

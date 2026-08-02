@@ -1,0 +1,89 @@
+import { useEffect, useReducer, useState } from "react";
+import { useEditor } from "@/editor/use-editor";
+import { useCommittedRef } from "@/hooks/use-committed-ref";
+import { useShiftKey } from "@/hooks/use-shift-key";
+import { useElementSelection } from "@/timeline/hooks/element/use-element-selection";
+import { useTimelineStore } from "@/timeline/timeline-store";
+import { registerCanceller } from "@/editor/cancel-interaction";
+import {
+	ResizeController,
+	type ResizeConfig,
+} from "@/timeline/controllers/resize-controller";
+import type { ResizeSide } from "@/timeline/group-resize";
+import type { SnapPoint } from "@/timeline/snapping";
+import type { TimelineElement } from "@/timeline";
+import { resolveActiveTrimMode } from "@/timeline/precision-trim";
+
+export type { ResizeSide };
+
+interface UseTimelineResizeProps {
+	zoomLevel: number;
+	onSnapPointChange?: (snapPoint: SnapPoint | null) => void;
+}
+
+export function useTimelineResize({
+	zoomLevel,
+	onSnapPointChange,
+}: UseTimelineResizeProps) {
+	const editor = useEditor();
+	const isShiftHeldRef = useShiftKey();
+	const snappingEnabled = useTimelineStore((state) => state.snappingEnabled);
+	const rippleEditingEnabled = useTimelineStore(
+		(state) => state.rippleEditingEnabled,
+	);
+	const precisionTrimMode = useTimelineStore(
+		(state) => state.precisionTrimMode,
+	);
+	const { selectedElements } = useElementSelection();
+
+	const config: ResizeConfig = {
+		zoomLevel,
+		snappingEnabled,
+		isShiftHeld: () => isShiftHeldRef.current,
+		getSceneTracks: () => editor.scenes.getActiveScene().tracks,
+		getCurrentPlayheadTime: () => editor.playback.getCurrentTime(),
+		getActiveProjectFps: () => editor.project.getActive()?.settings.fps ?? null,
+		getTrimMode: () =>
+			resolveActiveTrimMode({
+				precisionMode: precisionTrimMode,
+				rippleEditingEnabled,
+			}),
+		selectedElements,
+		discardPreview: () => editor.timeline.discardPreview(),
+		previewElements: (updates) =>
+			editor.timeline.previewElements({
+				updates: updates.map(({ trackId, elementId, patch }) => ({
+					trackId,
+					elementId,
+					updates: patch as Partial<TimelineElement>,
+				})),
+			}),
+		commitElements: (updates) =>
+			editor.timeline.updateElements({
+				updates: updates.map(({ trackId, elementId, patch }) => ({
+					trackId,
+					elementId,
+					patch: patch as Partial<TimelineElement>,
+				})),
+			}),
+		onSnapPointChange,
+	};
+	const configRef = useCommittedRef(config);
+	const [controller] = useState(() => new ResizeController({ configRef }));
+
+	const [, rerender] = useReducer((n: number) => n + 1, 0);
+	useEffect(() => controller.subscribe(rerender), [controller]);
+
+	useEffect(() => {
+		if (!controller.isResizing) return;
+		return registerCanceller({ fn: () => controller.cancel() });
+	}, [controller.isResizing, controller]);
+
+	useEffect(() => () => controller.destroy(), [controller]);
+
+	return {
+		isResizing: controller.isResizing,
+		resizeView: controller.view,
+		handleResizeStart: controller.onResizeStart,
+	};
+}
