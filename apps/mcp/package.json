@@ -13,7 +13,7 @@
 	"scripts": {
 		"start": "bun src/server.mjs",
 		"probe": "bun src/probe.mjs",
-		"test": "node --test src/__tests__",
+		"test": "node --test",
 		"agent:doctor": "bun src/agent-doctor.mjs",
 		"agent:up": "bun src/agent-up.mjs",
 		"setup:local": "bun src/setup-local.mjs"
