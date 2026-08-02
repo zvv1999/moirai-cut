@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import {
-	chmod,
 	mkdir,
 	mkdtemp,
 	readFile,
@@ -258,24 +257,18 @@ describe("proxy command construction", () => {
 	});
 
 	test("native runner parses FFmpeg progress and reports bounded failures", async () => {
-		const directory = await mkdtemp(
-			path.join(tmpdir(), "opencut-fake-transcoder-"),
-		);
-		const binary = path.join(directory, "ffmpeg");
-		await writeFile(
-			binary,
-			"#!/bin/sh\nprintf 'out_time_us=5000000\\nprogress=continue\\n'\nprintf 'diagnostic' >&2\nexit 0\n",
-		);
-		await chmod(binary, 0o755);
 		const originalBinary = process.env.FFMPEG_BIN;
-		process.env.FFMPEG_BIN = binary;
+		process.env.FFMPEG_BIN = process.execPath;
 		const updates: Array<{
 			progress: number;
 			processedSeconds: number;
 		}> = [];
 		try {
 			await runNativeTranscode({
-				args: [],
+				args: [
+					"-e",
+					"process.stdout.write('out_time_us=5000000\\nprogress=continue\\n'); process.stderr.write('diagnostic');",
+				],
 				inputPath: "/tmp/source.mp4",
 				temporaryOutputPath: "/tmp/output.mp4",
 				signal: new AbortController().signal,
@@ -287,13 +280,12 @@ describe("proxy command construction", () => {
 				processedSeconds: 5,
 			});
 
-			await writeFile(
-				binary,
-				"#!/bin/sh\nprintf 'intentional failure' >&2\nexit 7\n",
-			);
 			await expect(
 				runNativeTranscode({
-					args: [],
+					args: [
+						"-e",
+						"process.stderr.write('intentional failure'); process.exit(7);",
+					],
 					inputPath: "/tmp/source.mp4",
 					temporaryOutputPath: "/tmp/output.mp4",
 					signal: new AbortController().signal,
@@ -311,18 +303,12 @@ describe("proxy command construction", () => {
 	});
 
 	test("native runner terminates and identifies a bounded timeout", async () => {
-		const directory = await mkdtemp(
-			path.join(tmpdir(), "opencut-timeout-transcoder-"),
-		);
-		const binary = path.join(directory, "ffmpeg");
-		await writeFile(binary, "#!/bin/sh\nwhile true; do :; done\n");
-		await chmod(binary, 0o755);
 		const originalBinary = process.env.FFMPEG_BIN;
-		process.env.FFMPEG_BIN = binary;
+		process.env.FFMPEG_BIN = process.execPath;
 		try {
 			await expect(
 				runNativeTranscode({
-					args: [],
+					args: ["-e", "setInterval(() => undefined, 1_000);"],
 					inputPath: "/tmp/source.mp4",
 					temporaryOutputPath: "/tmp/output.mp4",
 					signal: new AbortController().signal,

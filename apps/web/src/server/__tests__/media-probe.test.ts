@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import {
-	chmod,
 	mkdir,
 	mkdtemp,
 	readFile,
@@ -155,22 +154,32 @@ describe("project media probe", () => {
 	});
 
 	test("invokes FFprobe as an argument-array process and parses JSON output", async () => {
-		const directory = await mkdtemp(
-			path.join(tmpdir(), "opencut-fake-ffprobe-"),
-		);
-		const fakeBinary = path.join(directory, "ffprobe");
-		await writeFile(
-			fakeBinary,
-			`#!/bin/sh\nprintf '%s' '${JSON.stringify(rawProbe)}'\n`,
-		);
-		await chmod(fakeBinary, 0o755);
+		const calls: Array<{ binary: string; args: string[] }> = [];
 
 		const result = await runFfprobe({
 			filePath: "/tmp/a file;still-one-argument.mp4",
-			ffprobeBinary: fakeBinary,
+			ffprobeBinary: "ffprobe-test-double",
+			run: async ({ binary, args }) => {
+				calls.push({ binary, args });
+				return JSON.stringify(rawProbe);
+			},
 		});
 
 		expect(result.streams?.[0]?.codec_name).toBe("hevc");
+		expect(calls).toEqual([
+			{
+				binary: "ffprobe-test-double",
+				args: [
+					"-v",
+					"error",
+					"-show_format",
+					"-show_streams",
+					"-of",
+					"json",
+					"/tmp/a file;still-one-argument.mp4",
+				],
+			},
+		]);
 	});
 
 	test("rejects unsafe identifiers before touching the filesystem", async () => {

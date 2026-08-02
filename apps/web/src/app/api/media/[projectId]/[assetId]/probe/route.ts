@@ -1,7 +1,10 @@
 import { execFile } from "node:child_process";
 import { NextResponse } from "next/server";
 import { decidePlaybackStrategy } from "@/media/codec-capabilities";
-import { probeProjectMedia } from "@/server/media-probe";
+import {
+	probeProjectMedia,
+	type ProbeFile,
+} from "@/server/media-probe";
 
 export const runtime = "nodejs";
 
@@ -37,8 +40,22 @@ async function nativeTranscodeAvailable(): Promise<boolean> {
 
 export async function GET(
 	request: Request,
-	{ params }: Context,
+	context: Context,
 ): Promise<NextResponse> {
+	return handleMediaProbeRequest({ request, context });
+}
+
+export async function handleMediaProbeRequest({
+	request,
+	context: { params },
+	probeFile,
+	checkNativeTranscode = nativeTranscodeAvailable,
+}: {
+	request: Request;
+	context: Context;
+	probeFile?: ProbeFile;
+	checkNativeTranscode?: () => Promise<boolean>;
+}): Promise<NextResponse> {
 	try {
 		const { projectId, assetId } = await params;
 		const url = new URL(request.url);
@@ -46,12 +63,13 @@ export async function GET(
 			probeProjectMedia({
 				projectId,
 				assetId,
+				...(probeFile ? { probeFile } : {}),
 				force:
 					queryBoolean({
 						value: url.searchParams.get("force"),
 					}) === true,
 			}),
-			nativeTranscodeAvailable(),
+			checkNativeTranscode(),
 		]);
 		const browserCanDecode = queryBoolean({
 			value: url.searchParams.get("browserCanDecode"),

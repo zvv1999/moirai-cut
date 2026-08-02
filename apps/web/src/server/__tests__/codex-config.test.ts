@@ -26,6 +26,24 @@ describe("Codex CLI configuration", () => {
 		expect(pathOnly).toBe("/usr/local/bin/codex");
 	});
 
+	test("uses the requested platform's PATH syntax instead of the host syntax", () => {
+		const candidates: string[] = [];
+		const binary = resolveCodexBinary({
+			env: {
+				PATH: "C:\\tools;D:\\agent-bin",
+				PATHEXT: ".EXE;.CMD",
+			},
+			platform: "win32",
+			exists: (candidate) => {
+				candidates.push(candidate);
+				return candidate === "D:\\agent-bin\\codex.cmd";
+			},
+		});
+
+		expect(binary).toBe("D:\\agent-bin\\codex.cmd");
+		expect(candidates).toContain("C:\\tools\\codex.exe");
+	});
+
 	test("rejects relative or non-Codex paths before running a process", async () => {
 		let calls = 0;
 		const run: CodexCommandRunner = async () => {
