@@ -11,6 +11,13 @@ const webManifest = JSON.parse(
 const mcpManifest = JSON.parse(
 	readFileSync(new URL("../apps/mcp/package.json", import.meta.url), "utf8"),
 );
+const eslintRuleTestSource = readFileSync(
+	new URL(
+		"../eslint/rules/__tests__/prefer-object-params.test.mjs",
+		import.meta.url,
+	),
+	"utf8",
+);
 
 describe("root package manifest", () => {
 	test("does not install the repository root as its own dependency", () => {
@@ -50,5 +57,11 @@ describe("root package manifest", () => {
 
 	test("lets Node discover MCP tests portably instead of passing a directory", () => {
 		expect(mcpManifest.scripts.test).toBe("node --test");
+	});
+
+	test("does not eagerly read Bun's disabled it.only hook in CI", () => {
+		expect(eslintRuleTestSource).not.toContain(
+			"RuleTester.itOnly = it.only;",
+		);
 	});
 });
