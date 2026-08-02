@@ -8,6 +8,9 @@ const manifest = JSON.parse(
 const webManifest = JSON.parse(
 	readFileSync(new URL("../apps/web/package.json", import.meta.url), "utf8"),
 );
+const mcpManifest = JSON.parse(
+	readFileSync(new URL("../apps/mcp/package.json", import.meta.url), "utf8"),
+);
 
 describe("root package manifest", () => {
 	test("does not install the repository root as its own dependency", () => {
@@ -43,5 +46,9 @@ describe("root package manifest", () => {
 		expect(manifest.name).toBe("moirai-cut");
 		expect(webManifest.name).toBe("@moirai-cut/web");
 		expect(manifest.description).toContain("visible, editable loop");
+	});
+
+	test("lets Node discover MCP tests portably instead of passing a directory", () => {
+		expect(mcpManifest.scripts.test).toBe("node --test");
 	});
 });
