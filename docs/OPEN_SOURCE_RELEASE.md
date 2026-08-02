@@ -1,35 +1,33 @@
 # Moirai Cut open-source release checklist
 
-This checklist separates what is already safe in the public developer-preview
-branch from the external actions maintainers must complete before a default-
-branch or tagged release. A checked item is supported by the current tree; it is
-not a legal, security or platform guarantee.
+This checklist records the evidence for the v0.1.0 public-preview launch. A
+checked item is supported by the current tree or completed repository action;
+it is not a legal, security or platform guarantee.
 
 ## Release blockers
 
 - [ ] Complete professional name, trademark, domain and social-handle clearance
       for **Moirai Cut** in target regions. Unrelated products already use the name;
       repository branding is not legal clearance.
-- [ ] Decide the canonical GitHub organization and rename the repository; update
-      clone URLs, package scopes, deployment URLs and social links in one release.
-- [ ] Move the release branch to the default branch and require CI plus review
-      before merge.
+- [x] Use `zvv1999/moirai-cut` as the canonical public repository and update the
+      documented clone URL for the v0.1.0 release.
+- [x] Publish a fresh-history source snapshot to the default `main` branch;
+      configure required CI checks after the first default-branch run registers them.
 - [ ] Configure a project-owned domain through `NEXT_PUBLIC_SITE_URL`.
 - [ ] Enable GitHub private vulnerability reporting, Discussions and branch
       protection.
-- [ ] Confirm maintainers, security contacts, response expectations, release
-      signing policy and governance ownership.
+- [x] Record the repository owner as the initial maintainer and publish security,
+      support, governance and release-process documents.
 - [x] Run the complete quality gate from a fresh-history macOS snapshot and
       archive the local results; Windows and Linux remain separate release gates.
-- [ ] Scan the full Git history for secrets, private media, generated projects and
-      local Agent session data before merging the release to the default branch.
+- [x] Avoid publishing development history: generate `main` from the audited
+      fresh-history snapshot, excluding reports, local state and `director-agent`.
 - [x] Provide a fresh-history public-snapshot command for repositories whose
       development history contains project-derived media.
 - [x] Exclude the project-derived report archive from generated public source
       releases.
-- [ ] Confirm publishing consent for the real product capture used by campaign
-      assets, or recapture the same real UI with synthetic demo media before the
-      default-branch release.
+- [x] Repository owner authorized publication of the current product capture and
+      campaign assets for the v0.1.0 open-source launch on 2026-08-02.
 
 ## Repository hygiene
 
@@ -44,7 +42,8 @@ not a legal, security or platform guarantee.
 - [x] Provide an explicit brand and trademark-use policy.
 - [x] Keep local `.env*`, build output, media cache and dependency folders ignored.
 - [x] Use placeholders rather than live credentials in CI and `.env.example`.
-- [ ] Verify that all links resolve after the canonical repository is renamed.
+- [x] Update canonical clone links for `zvv1999/moirai-cut`; retain upstream
+      OpenCut links only where they provide attribution.
 
 ## Product and privacy disclosure
 
@@ -63,8 +62,8 @@ not a legal, security or platform guarantee.
 
 - [x] Provide a versioned changelog and compatibility migration notes; publish
       them with the actual release.
-- [ ] Tag the first public release and publish signed source archives plus
-      checksums.
+- [x] Tag v0.1.0 and publish a reproducible source archive with SHA-256 checksum;
+      GitHub also publishes platform-generated source archives for the tag.
 - [x] Provide reproducible source-archive, checksum, CycloneDX SBOM and
       dependency-audit automation; attach its output to the actual release.
 - [ ] Verify clean-clone setup on macOS, Windows and Linux.
@@ -86,7 +85,8 @@ not a legal, security or platform guarantee.
 
 ## Compatibility policy
 
-The public name is Moirai Cut. The following identifiers remain intentionally
+The public project name is Moirai Cut. It is not presented as a registered
+trademark. The following identifiers remain intentionally
 stable until a versioned migration exists:
 
 - `OPENCUT_*` environment variables;

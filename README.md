@@ -8,8 +8,9 @@
 
 ![Moirai Cut shared human-agent timeline](docs/brand/assets/moirai-cut-launch-landscape.png)
 
-> **Developer Preview** — Moirai Cut is usable for local editing and Agent-driven
-> workflows, but its project format and integration surface may still change.
+> **v0.1.0 Public Preview** — Moirai Cut is ready for local editing and
+> Agent-driven workflows. The project format and integration surface may still
+> evolve before 1.0, with migration notes published in the changelog.
 
 ## Moirai Cut 是什么
 
@@ -87,9 +88,8 @@ flowchart LR
 ### 本地启动
 
 ```bash
-git clone https://github.com/zvv1999/opencut-classic.git moirai-cut
+git clone https://github.com/zvv1999/moirai-cut.git
 cd moirai-cut
-git switch feat/agent-drivable
 bun run setup:local
 ```
 
@@ -246,5 +246,5 @@ Issue、文档、测试、性能优化和可复现的 Bug 修复都欢迎。开�
 
 Moirai Cut 延续 OpenCut Classic 的本地优先方向，并在 Agent 协作、时间轴、媒体理解和专业
 编辑体验上持续迭代。代码采用 [MIT License](LICENSE)，原项目归属与第三方声明见
-[NOTICE.md](NOTICE.md)。代码许可证不等同于商标许可；公开发布前仍需完成目标国家/地区
-的名称、商标和域名核查。
+[NOTICE.md](NOTICE.md)。代码许可证不等同于商标许可；Moirai Cut 是当前开源项目名称，
+不主张已取得注册商标，商业发行前仍应完成目标国家/地区的专业名称与商标核查。

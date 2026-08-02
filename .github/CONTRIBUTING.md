@@ -12,9 +12,8 @@ Thanks for helping build an open, local-first, agent-native video editor.
 ## Local setup
 
 ```bash
-git clone https://github.com/zvv1999/opencut-classic.git moirai-cut
+git clone https://github.com/zvv1999/moirai-cut.git
 cd moirai-cut
-git switch feat/agent-drivable
 bun install
 bun run setup:local
 ```
