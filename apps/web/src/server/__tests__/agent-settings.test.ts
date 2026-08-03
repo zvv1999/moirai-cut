@@ -11,17 +11,21 @@ describe("Agent provider settings", () => {
 		);
 		const filePath = path.join(directory, "agent-settings.json");
 		const store = createAgentSettingsStore({ filePath });
+		const claudeBinary = path.resolve(
+			directory,
+			process.platform === "win32" ? "claude.cmd" : "claude",
+		);
 
 		await store.configureProvider({
 			provider: "claude",
-			binary: "/Users/test/.local/bin/claude",
+			binary: claudeBinary,
 		});
 		await store.selectProvider("claude");
 
 		expect(await store.read()).toEqual({
 			schemaVersion: "moirai-cut.agent-settings.v1",
 			activeProvider: "claude",
-			binaries: { claude: "/Users/test/.local/bin/claude" },
+			binaries: { claude: path.normalize(claudeBinary) },
 		});
 		expect(JSON.parse(await readFile(filePath, "utf8"))).toEqual(
 			expect.objectContaining({ activeProvider: "claude" }),
@@ -91,7 +95,10 @@ describe("Agent provider settings", () => {
 		expect(await readFile(credentialsFilePath, "utf8")).toContain(
 			"super-secret-token",
 		);
-		expect((await stat(credentialsFilePath)).mode & 0o777).toBe(0o600);
+		const credentialsStat = await stat(credentialsFilePath);
+		if (process.platform !== "win32") {
+			expect(credentialsStat.mode & 0o777).toBe(0o600);
+		}
 	});
 
 	test("keeps a custom endpoint while switching back to native authentication", async () => {
