@@ -44,6 +44,7 @@ describe("moirai-cut-create project skill", () => {
 		expect(protocol).toContain("idempotencyKey");
 		expect(protocol).toContain("draft");
 		expect(protocol).toContain("可编辑、可撤销");
+		expect(protocol).toContain("moirai-cut-motion-design");
 		expect(protocol).not.toContain("delete_project");
 		expect(protocol).not.toContain("delete_media");
 	});

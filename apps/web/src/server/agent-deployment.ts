@@ -1,12 +1,15 @@
 import { execFile } from "node:child_process";
 import { constants } from "node:fs";
 import { access } from "node:fs/promises";
+import { homedir } from "node:os";
 import path from "node:path";
+import type { AgentSettings } from "@/server/agent-settings";
 
 export type AgentProviderId = "codex" | "claude";
 export type AgentConnectionStatus =
 	"ready" | "login-required" | "unavailable" | "invalid";
-export type AgentRuntimeSource = "environment" | "desktop" | "path";
+export type AgentRuntimeSource =
+	"configured" | "environment" | "desktop" | "path";
 
 export interface AgentRuntimeCandidate {
 	provider: AgentProviderId;
@@ -34,6 +37,7 @@ export interface AgentProviderConnection {
 export interface AgentDiscovery {
 	providers: AgentProviderConnection[];
 	recommendedProvider: AgentProviderId | null;
+	activeProvider: AgentProviderId | null;
 }
 
 export type AgentCommandRunner = (options: {
@@ -106,7 +110,7 @@ function unavailableConnection(
 		version: null,
 		message: `未检测到 ${label}，可安装后重新检测。`,
 		capabilities: {
-			browserChat: provider === "codex",
+			browserChat: true,
 			mcp: true,
 			sharedConversation: provider === "codex",
 		},
@@ -116,9 +120,11 @@ function unavailableConnection(
 async function inspectCandidate({
 	candidate,
 	run,
+	customEndpoint = false,
 }: {
 	candidate: AgentRuntimeCandidate;
 	run: AgentCommandRunner;
+	customEndpoint?: boolean;
 }): Promise<AgentProviderConnection> {
 	const { binary, provider, source } = candidate;
 	const label = providerLabel(provider);
@@ -128,7 +134,7 @@ async function inspectCandidate({
 		source,
 		binary,
 		capabilities: {
-			browserChat: provider === "codex",
+			browserChat: true,
 			mcp: true,
 			sharedConversation: provider === "codex",
 		},
@@ -164,6 +170,17 @@ async function inspectCandidate({
 		};
 	}
 
+	if (customEndpoint) {
+		return {
+			...base,
+			status: "ready",
+			executable: true,
+			authenticated: true,
+			version,
+			message: `${label} 已连接第三方端点，可直接在 Moirai Cut 中使用。`,
+		};
+	}
+
 	try {
 		const result =
 			provider === "codex"
@@ -196,7 +213,7 @@ async function inspectCandidate({
 		message:
 			provider === "codex"
 				? "已复用本机 Codex 登录，可直接在 Moirai Cut 中使用。"
-				: "已复用本机 Claude 登录，可安装 MCP 后在 Claude 中控制工程。",
+				: "已复用本机 Claude Code 登录，可直接在 Moirai Cut 中使用，也可安装 MCP 后从 Claude 控制工程。",
 	};
 }
 
@@ -240,10 +257,16 @@ function deduplicateCandidates(
 	});
 }
 
-export async function defaultAgentRuntimeCandidates(): Promise<
-	AgentRuntimeCandidate[]
-> {
+export async function defaultAgentRuntimeCandidates({
+	settings,
+}: {
+	settings?: AgentSettings;
+} = {}): Promise<AgentRuntimeCandidate[]> {
 	const candidates: AgentRuntimeCandidate[] = [];
+	for (const provider of ["codex", "claude"] as const) {
+		const binary = settings?.binaries[provider];
+		if (binary) candidates.push({ provider, binary, source: "configured" });
+	}
 	const configured = [
 		{ provider: "codex" as const, binary: process.env.CODEX_BIN?.trim() },
 		{ provider: "claude" as const, binary: process.env.CLAUDE_BIN?.trim() },
@@ -268,6 +291,21 @@ export async function defaultAgentRuntimeCandidates(): Promise<
 				provider: "codex",
 				binary: "/Applications/Codex.app/Contents/Resources/codex",
 				source: "desktop",
+			},
+			{
+				provider: "claude",
+				binary: path.join(homedir(), ".local", "bin", "claude"),
+				source: "path",
+			},
+			{
+				provider: "claude",
+				binary: "/opt/homebrew/bin/claude",
+				source: "path",
+			},
+			{
+				provider: "claude",
+				binary: "/usr/local/bin/claude",
+				source: "path",
 			},
 		);
 	}
@@ -299,6 +337,7 @@ const statusRank: Record<AgentConnectionStatus, number> = {
 	invalid: 1,
 };
 const sourceRank: Record<AgentRuntimeSource, number> = {
+	configured: 4,
 	environment: 3,
 	desktop: 2,
 	path: 1,
@@ -321,24 +360,46 @@ function preferredConnection(
 
 export async function discoverAgentProviders({
 	candidates,
+	settings,
+	preferredProvider = settings?.activeProvider ?? null,
+	customEndpointProviders = [],
 	run = runAgentCommand,
 }: {
 	candidates?: AgentRuntimeCandidate[];
+	settings?: AgentSettings;
+	preferredProvider?: AgentProviderId | null;
+	customEndpointProviders?: AgentProviderId[];
 	run?: AgentCommandRunner;
 } = {}): Promise<AgentDiscovery> {
 	const resolvedCandidates =
-		candidates ?? (await defaultAgentRuntimeCandidates());
+		candidates ?? (await defaultAgentRuntimeCandidates({ settings }));
 	const inspected = await Promise.all(
-		resolvedCandidates.map((candidate) => inspectCandidate({ candidate, run })),
+		resolvedCandidates.map((candidate) =>
+			inspectCandidate({
+				candidate,
+				run,
+				customEndpoint: customEndpointProviders.includes(candidate.provider),
+			}),
+		),
 	);
 	const providers = (["codex", "claude"] as const).map((provider) =>
 		preferredConnection(inspected, provider),
 	);
+	const selected = preferredProvider
+		? providers.find(
+				(connection) =>
+					connection.provider === preferredProvider &&
+					connection.status === "ready",
+			)
+		: null;
+	const recommendedProvider =
+		selected?.provider ??
+		providers.find((connection) => connection.status === "ready")?.provider ??
+		null;
 	return {
 		providers,
-		recommendedProvider:
-			providers.find((connection) => connection.status === "ready")?.provider ??
-			null,
+		recommendedProvider,
+		activeProvider: selected?.provider ?? recommendedProvider,
 	};
 }
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "字幕与 MG 设计"
+  short_description: "根据当前画面与声音节奏，生成可编辑字幕层级和 MG 关键帧动效"
+  default_prompt: "使用 $moirai-cut-motion-design 优化当前选区的字幕与 MG 动效，并完成代表帧检查。"

@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import {
-	createCodexChatService,
-	syncCodexThreadToDesktop,
 	type CodexChatInput,
 	type CodexChatService,
 	type CodexCollaborationMode,
@@ -9,6 +7,7 @@ import {
 	type CodexVerificationMode,
 	type CodexVisualMode,
 } from "@/server/codex-chat";
+import { createCodexEndpointRoutingService } from "@/server/codex-endpoint-routing";
 import {
 	createCodexRunManager,
 	type CodexRunManager,
@@ -409,9 +408,7 @@ export function createCodexChatRouteHandlers({
 	};
 }
 
-const service = createCodexChatService({
-	syncThreadToDesktop: (threadId) => syncCodexThreadToDesktop({ threadId }),
-});
+const service = createCodexEndpointRoutingService();
 const handlers = createCodexChatRouteHandlers({ service });
 
 export const POST = handlers.POST;

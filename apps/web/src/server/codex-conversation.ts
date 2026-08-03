@@ -7,8 +7,12 @@ import type {
 	CodexConversationThread,
 	CodexProjectConversation,
 	CodexProtocolFrame,
+	ProviderNativeEvent,
 } from "@/agent/codex-conversation";
-import { isCodexProjectConversation } from "@/agent/codex-conversation";
+import {
+	isCodexProjectConversation,
+	isProviderNativeEvent,
+} from "@/agent/codex-conversation";
 
 const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/;
 const MAX_CONVERSATIONS = 50;
@@ -16,11 +20,14 @@ const MAX_MESSAGES = 500;
 const MAX_MESSAGE_CONTENT = 200_000;
 const MAX_PROTOCOL_FRAMES = 200;
 const MAX_DETAIL_LENGTH = 20_000;
+const MAX_NATIVE_EVENTS = 2_000;
+const MAX_NATIVE_EVENT_BYTES = 10_000_000;
 const MAX_TITLE_LENGTH = 120;
 
 export interface MergeCodexConversationInput {
 	projectId: string;
 	conversationId: string;
+	provider?: "codex" | "claude";
 	title?: string;
 	sessionId?: string | null;
 	messages: unknown[];
@@ -151,6 +158,29 @@ function assertProtocolFrame(
 	}
 }
 
+function assertProviderNativeEvent(
+	event: unknown,
+): asserts event is ProviderNativeEvent {
+	if (!isProviderNativeEvent(event)) {
+		throw new Error("message Provider native event is invalid");
+	}
+	for (const [value, label, maxLength] of [
+		[event.id, "native event id", 300],
+		[event.name, "native event name", 500],
+		[event.provider, "native event provider", 50],
+		[event.transport, "native event transport", 100],
+	] as const) {
+		assertShortString({ value, label, maxLength });
+	}
+	if (event.raw !== undefined && event.raw.length > MAX_NATIVE_EVENT_BYTES) {
+		throw new Error("message Provider native raw event is too large");
+	}
+	const payload = JSON.stringify(event.payload);
+	if (payload.length > MAX_NATIVE_EVENT_BYTES) {
+		throw new Error("message Provider native payload is too large");
+	}
+}
+
 function assertMessage(
 	message: unknown,
 ): asserts message is CodexConversationMessage {
@@ -249,6 +279,19 @@ function assertMessage(
 	for (const frame of protocol ?? []) {
 		assertProtocolFrame(frame);
 	}
+	const nativeEvents =
+		"nativeEvents" in message && message.nativeEvents !== undefined
+			? message.nativeEvents
+			: undefined;
+	if (nativeEvents !== undefined && !Array.isArray(nativeEvents)) {
+		throw new Error("message Provider native events are invalid");
+	}
+	if (nativeEvents && nativeEvents.length > MAX_NATIVE_EVENTS) {
+		throw new Error("message Provider native event history is too large");
+	}
+	for (const event of nativeEvents ?? []) {
+		assertProviderNativeEvent(event);
+	}
 }
 
 function conversationTitle(messages: CodexConversationMessage[]): string {
@@ -310,6 +353,7 @@ function migrateLegacyConversation({
 				{
 					id: "legacy-conversation",
 					title: conversationTitle(messages),
+					provider: "codex",
 					sessionId: value.sessionId,
 					messages,
 					createdAt: messages[0]?.createdAt ?? value.updatedAt,
@@ -497,12 +541,14 @@ export class CodexConversationStore {
 						frames: existing.protocol,
 						failed: incoming.role === "error",
 					});
+			const nativeEvents = incoming.nativeEvents ?? existing.nativeEvents;
 			const changed =
 				existing.content !== incoming.content ||
 				existing.role !== incoming.role ||
 				existing.turnId !== incoming.turnId ||
 				(existing.streaming ?? false) !== streaming ||
-				protocol !== existing.protocol;
+				protocol !== existing.protocol ||
+				nativeEvents !== existing.nativeEvents;
 			return {
 				...existing,
 				...incoming,
@@ -514,6 +560,7 @@ export class CodexConversationStore {
 					? {}
 					: { referenceCount: existing.referenceCount }),
 				...(protocol === undefined ? {} : { protocol }),
+				...(nativeEvents === undefined ? {} : { nativeEvents }),
 				...(existing.runId === undefined ? {} : { runId: existing.runId }),
 				...(existing.runSequence === undefined
 					? {}
@@ -590,6 +637,7 @@ export class CodexConversationStore {
 					input.sessionId === undefined
 						? (existing?.sessionId ?? null)
 						: input.sessionId;
+				const provider = input.provider ?? existing?.provider ?? "codex";
 				const generatedTitle = conversationTitle(messages);
 				const title =
 					requestedTitle && requestedTitle !== "新对话"
@@ -600,6 +648,7 @@ export class CodexConversationStore {
 				if (
 					existing &&
 					existing.title === title &&
+					existing.provider === provider &&
 					existing.sessionId === sessionId &&
 					JSON.stringify(existing.messages) === JSON.stringify(messages)
 				) {
@@ -609,6 +658,7 @@ export class CodexConversationStore {
 				const conversation: CodexConversationThread = {
 					id: input.conversationId,
 					title,
+					provider,
 					sessionId,
 					messages,
 					createdAt: existing?.createdAt ?? updatedAt,

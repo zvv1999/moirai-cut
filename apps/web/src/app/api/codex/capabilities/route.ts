@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import {
-	createCodexChatService,
-	type CodexToolProfile,
-} from "@/server/codex-chat";
+import type { CodexToolProfile } from "@/server/codex-chat";
+import { createCodexEndpointRoutingService } from "@/server/codex-endpoint-routing";
 
 export const runtime = "nodejs";
 
-const service = createCodexChatService();
+const service = createCodexEndpointRoutingService();
 
 function isToolProfile(value: unknown): value is CodexToolProfile {
 	return value === "edit" || value === "verify" || value === "full";

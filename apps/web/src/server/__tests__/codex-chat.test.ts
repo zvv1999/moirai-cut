@@ -447,6 +447,33 @@ describe("Codex direct Smart Edit streaming chat", () => {
 		expect(editArgs).not.toContain("proxy");
 	});
 
+	test("injects a Responses-compatible custom provider without exposing its key in argv", () => {
+		const args = buildCodexSharedHostArgs({
+			runtime: {
+				...runtime,
+				endpoint: {
+					mode: "custom",
+					baseUrl: "https://gateway.example.com",
+					auth: "api-key",
+					credential: "super-secret-token",
+				},
+			},
+		});
+
+		expect(args).toContain('model_provider="moirai_gateway"');
+		expect(args).not.toContain('model="gpt-5.6-terra"');
+		expect(args).toContain(
+			'model_providers.moirai_gateway.base_url="https://gateway.example.com/v1"',
+		);
+		expect(args).toContain(
+			'model_providers.moirai_gateway.env_key="MOIRAI_CODEX_GATEWAY_KEY"',
+		);
+		expect(args).toContain(
+			'model_providers.moirai_gateway.wire_api="responses"',
+		);
+		expect(args.join(" ")).not.toContain("super-secret-token");
+	});
+
 	test("prompts Codex to execute or plan through OpenCut with native verification semantics", () => {
 		const prompt = buildCodexPrompt({
 			projectId: "project-1",
@@ -1377,8 +1404,47 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				status: "started",
 				title: "开始处理",
 			},
+			{
+				type: "native",
+				event: expect.objectContaining({
+					provider: "codex",
+					transport: "app-server-json-rpc",
+					name: "item/agentMessage/delta",
+					payload: {
+						method: "item/agentMessage/delta",
+						params: {
+							threadId: "thread-project-1",
+							turnId: "turn-1",
+							itemId: "message-1",
+							delta: "已",
+						},
+					},
+				}),
+			},
 			{ type: "delta", delta: "已" },
+			{
+				type: "native",
+				event: expect.objectContaining({
+					provider: "codex",
+					transport: "app-server-json-rpc",
+					name: "item/agentMessage/delta",
+					payload: expect.objectContaining({
+						params: expect.objectContaining({ delta: "完成" }),
+					}),
+				}),
+			},
 			{ type: "delta", delta: "完成" },
+			{
+				type: "native",
+				event: expect.objectContaining({
+					provider: "codex",
+					transport: "app-server-json-rpc",
+					name: "turn/completed",
+					payload: expect.objectContaining({
+						method: "turn/completed",
+					}),
+				}),
+			},
 			{
 				type: "protocol",
 				id: "turn:turn-1",
@@ -2320,10 +2386,17 @@ describe("Codex direct Smart Edit streaming chat", () => {
 				setTimeout(() => resolve("blocked"), 50),
 			),
 		]);
+		const delta = await iterator.next();
 		releaseDesktop();
 		await nextEventPromise;
 
-		expect(result).toEqual({ type: "delta", delta: "流式" });
+		expect(result).toMatchObject({
+			type: "native",
+			event: expect.objectContaining({
+				name: "item/agentMessage/delta",
+			}),
+		});
+		expect(delta.value).toEqual({ type: "delta", delta: "流式" });
 	});
 
 	test("keeps direct MCP readiness checks and unchanged thread names lightweight", async () => {

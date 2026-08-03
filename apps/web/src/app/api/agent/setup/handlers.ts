@@ -1,67 +1,73 @@
-import { existsSync } from "node:fs";
-import path from "node:path";
 import { NextResponse } from "next/server";
 import {
 	discoverAgentProviders,
 	installOpenCutMcp,
 	type AgentProviderId,
 	type OpenCutMcpInstallResult,
-	type OpenCutMcpRuntime,
 } from "@/server/agent-deployment";
+import {
+	getAgentSettingsStore,
+	type AgentEndpointAuth,
+	type AgentEndpointMode,
+	type AgentEndpointSnapshot,
+	type AgentSettingsStore,
+	validateAgentBinaryPath,
+} from "@/server/agent-settings";
 import {
 	runAgentDoctor,
 	type AgentDoctorSnapshot,
 } from "@/server/agent-doctor";
+import { resolveOpenCutMcpRuntime } from "@/server/opencut-mcp-runtime";
+
+export type AgentSetupSnapshot = AgentDoctorSnapshot & {
+	endpoints: AgentEndpointSnapshot;
+};
 
 export interface AgentSetupApiService {
-	inspect(): Promise<AgentDoctorSnapshot>;
+	inspect(): Promise<AgentSetupSnapshot>;
 	installMcp(provider: AgentProviderId): Promise<OpenCutMcpInstallResult>;
+	configureProvider(
+		provider: AgentProviderId,
+		binary: string,
+	): Promise<AgentSetupSnapshot>;
+	selectProvider(provider: AgentProviderId): Promise<AgentSetupSnapshot>;
+	configureEndpoint(input: {
+		baseUrl: string;
+		auth: AgentEndpointAuth;
+		credential?: string;
+	}): Promise<AgentSetupSnapshot>;
+	selectEndpoint(mode: AgentEndpointMode): Promise<AgentSetupSnapshot>;
 }
 
-function repoRootFromCurrentWorkingDirectory(): string {
-	const candidates = [
-		process.env.OPENCUT_REPO_ROOT?.trim(),
-		process.cwd(),
-		path.resolve(process.cwd(), "../.."),
-	].filter((candidate): candidate is string => Boolean(candidate));
-	const root = candidates.find((candidate) =>
-		existsSync(path.join(candidate, "apps/mcp/src/server.mjs")),
-	);
-	if (!root) throw new Error("无法定位 Moirai Cut MCP 服务。");
-	return root;
-}
-
-async function resolveMcpRuntime(): Promise<OpenCutMcpRuntime> {
-	const repoRoot = repoRootFromCurrentWorkingDirectory();
-	const bunCandidate =
-		process.env.BUN_BIN?.trim() ||
-		("bun" in process.versions ? process.execPath : "bun");
-	return {
-		command: bunCandidate,
-		serverPath:
-			process.env.OPENCUT_MCP_SERVER?.trim() ||
-			path.join(repoRoot, "apps/mcp/src/server.mjs"),
-		baseUrl:
-			process.env.OPENCUT_BASE_URL?.trim() ||
-			process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-			"http://127.0.0.1:3000",
-		projectFilesDir:
-			process.env.OPENCUT_PROJECTS_DIR?.trim() ||
-			path.resolve(repoRoot, "../opencut-projects"),
+function createAgentSetupService({
+	settingsStore = getAgentSettingsStore(),
+}: {
+	settingsStore?: AgentSettingsStore;
+} = {}): AgentSetupApiService {
+	const inspect = async () => {
+		const [runtime, settings, endpoints] = await Promise.all([
+			resolveOpenCutMcpRuntime(),
+			settingsStore.read(),
+			settingsStore.endpointSnapshot(),
+		]);
+		const discovery = await discoverAgentProviders({
+			settings,
+			customEndpointProviders: (["codex", "claude"] as const).filter(
+				(provider) =>
+					endpoints[provider].mode === "custom" &&
+					Boolean(endpoints[provider].custom?.hasCredential),
+			),
+		});
+		return { ...(await runAgentDoctor({ runtime, discovery })), endpoints };
 	};
-}
-
-function createAgentSetupService(): AgentSetupApiService {
 	return {
-		async inspect() {
-			const runtime = await resolveMcpRuntime();
-			return runAgentDoctor({ runtime });
-		},
+		inspect,
 		async installMcp(provider) {
-			const [runtime, discovery] = await Promise.all([
-				resolveMcpRuntime(),
-				discoverAgentProviders(),
+			const [runtime, settings] = await Promise.all([
+				resolveOpenCutMcpRuntime(),
+				settingsStore.read(),
 			]);
+			const discovery = await discoverAgentProviders({ settings });
 			const connection = discovery.providers.find(
 				(candidate) =>
 					candidate.provider === provider && candidate.status === "ready",
@@ -77,6 +83,48 @@ function createAgentSetupService(): AgentSetupApiService {
 				runtime,
 			});
 		},
+		async configureProvider(provider, binary) {
+			const normalized = validateAgentBinaryPath({ provider, binary });
+			const discovery = await discoverAgentProviders({
+				candidates: [{ provider, binary: normalized, source: "configured" }],
+				preferredProvider: provider,
+			});
+			const connection = discovery.providers.find(
+				(candidate) => candidate.provider === provider,
+			);
+			if (
+				!connection ||
+				connection.status === "invalid" ||
+				!connection.executable
+			) {
+				throw new Error(
+					`${provider === "codex" ? "Codex" : "Claude"} 路径无法执行。`,
+				);
+			}
+			await settingsStore.configureProvider({ provider, binary: normalized });
+			return inspect();
+		},
+		async selectProvider(provider) {
+			const current = await inspect();
+			const connection = current.providers.find(
+				(candidate) => candidate.provider === provider,
+			);
+			if (connection?.status !== "ready") {
+				throw new Error(
+					`${provider === "codex" ? "Codex" : "Claude"} 尚未登录，不能设为当前对话 Agent。`,
+				);
+			}
+			await settingsStore.selectProvider(provider);
+			return inspect();
+		},
+		async configureEndpoint(input) {
+			await settingsStore.configureEndpoint(input);
+			return inspect();
+		},
+		async selectEndpoint(mode) {
+			await settingsStore.selectEndpointMode({ mode });
+			return inspect();
+		},
 	};
 }
 
@@ -91,12 +139,16 @@ function isLoopbackHostname(hostname: string): boolean {
 
 function isAllowedMutationRequest(request: Request): boolean {
 	const target = new URL(request.url);
-	if (!isLoopbackHostname(target.hostname)) return false;
 	const origin = request.headers.get("origin");
-	if (!origin) return true;
+	if (!origin) return isLoopbackHostname(target.hostname);
 	try {
 		const source = new URL(origin);
+		const targetIsLocalBinding =
+			isLoopbackHostname(target.hostname) ||
+			target.hostname === "0.0.0.0" ||
+			target.hostname === "[::]";
 		return (
+			targetIsLocalBinding &&
 			isLoopbackHostname(source.hostname) &&
 			source.protocol === target.protocol &&
 			source.port === target.port
@@ -106,25 +158,97 @@ function isAllowedMutationRequest(request: Request): boolean {
 	}
 }
 
-function parseInstallRequest(
-	value: unknown,
-): { action: "install-mcp"; provider: AgentProviderId } | null {
+type AgentSetupMutation =
+	| { action: "install-mcp"; provider: AgentProviderId }
+	| { action: "select-provider"; provider: AgentProviderId }
+	| {
+			action: "configure-provider";
+			provider: AgentProviderId;
+			binary: string;
+	  }
+	| {
+			action: "configure-endpoint";
+			baseUrl: string;
+			auth: AgentEndpointAuth;
+			credential?: string;
+	  }
+	| {
+			action: "select-endpoint";
+			mode: AgentEndpointMode;
+	  };
+
+function parseSetupRequest(value: unknown): AgentSetupMutation | null {
 	if (!value || typeof value !== "object" || Array.isArray(value)) return null;
 	const record = value as Record<string, unknown>;
-	if (
-		record.action !== "install-mcp" ||
-		(record.provider !== "codex" && record.provider !== "claude")
-	) {
-		return null;
+	if (record.action === "install-mcp" || record.action === "select-provider") {
+		if (record.provider !== "codex" && record.provider !== "claude") {
+			return null;
+		}
+		if (
+			Object.keys(record).some((key) => key !== "action" && key !== "provider")
+		) {
+			return null;
+		}
+		return { action: record.action, provider: record.provider };
+	}
+	if (record.action === "select-endpoint") {
+		if (
+			(record.mode !== "native" && record.mode !== "custom") ||
+			Object.keys(record).some(
+				(key) => key !== "action" && key !== "mode" && key !== "provider",
+			)
+		) {
+			return null;
+		}
+		return {
+			action: "select-endpoint",
+			mode: record.mode,
+		};
+	}
+	if (record.action === "configure-endpoint") {
+		const auth = record.auth;
+		const credential = record.credential;
+		if (
+			typeof record.baseUrl !== "string" ||
+			record.baseUrl.length > 2_048 ||
+			(auth !== "api-key" && auth !== "bearer") ||
+			(credential !== undefined &&
+				(typeof credential !== "string" || credential.length > 8_192)) ||
+			Object.keys(record).some(
+				(key) =>
+					!new Set([
+						"action",
+						"provider",
+						"baseUrl",
+						"model",
+						"auth",
+						"credential",
+					]).has(key),
+			)
+		) {
+			return null;
+		}
+		return {
+			action: "configure-endpoint",
+			baseUrl: record.baseUrl,
+			auth,
+			...(typeof credential === "string" ? { credential } : {}),
+		};
 	}
 	if (
-		Object.keys(record).some((key) => key !== "action" && key !== "provider")
+		record.action !== "configure-provider" ||
+		(record.provider !== "codex" && record.provider !== "claude") ||
+		typeof record.binary !== "string" ||
+		Object.keys(record).some(
+			(key) => key !== "action" && key !== "provider" && key !== "binary",
+		)
 	) {
 		return null;
 	}
 	return {
-		action: "install-mcp",
+		action: "configure-provider",
 		provider: record.provider,
+		binary: record.binary,
 	};
 }
 
@@ -168,21 +292,38 @@ export function createAgentSetupRouteHandlers({
 					{ status: 400 },
 				);
 			}
-			const input = parseInstallRequest(body);
+			const input = parseSetupRequest(body);
 			if (!input) {
 				return NextResponse.json(
-					{ error: "只支持为 Codex 或 Claude 安装 Moirai Cut MCP。" },
+					{ error: "Agent 配置请求无效。" },
 					{ status: 400 },
 				);
 			}
 			try {
-				const result = await service.installMcp(input.provider);
+				const result =
+					input.action === "install-mcp"
+						? await service.installMcp(input.provider)
+						: input.action === "select-provider"
+							? await service.selectProvider(input.provider)
+							: input.action === "configure-provider"
+								? await service.configureProvider(input.provider, input.binary)
+								: input.action === "configure-endpoint"
+									? await service.configureEndpoint({
+											baseUrl: input.baseUrl,
+											auth: input.auth,
+											...(input.credential
+												? { credential: input.credential }
+												: {}),
+										})
+									: await service.selectEndpoint(input.mode);
 				return NextResponse.json(result);
 			} catch (error) {
 				return NextResponse.json(
 					{
 						error:
-							error instanceof Error ? error.message : "Moirai Cut MCP 安装失败。",
+							error instanceof Error
+								? error.message
+								: "Moirai Cut MCP 安装失败。",
 					},
 					{ status: 500 },
 				);

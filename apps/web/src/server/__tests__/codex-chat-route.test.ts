@@ -21,6 +21,28 @@ describe("Codex Smart Edit SSE API", () => {
 				yield { type: "session", sessionId: "thread-1" };
 				await barrier;
 				yield {
+					type: "native",
+					event: {
+						id: "native-tool-1",
+						provider: "codex",
+						transport: "app-server-json-rpc",
+						name: "item/started",
+						payload: {
+							method: "item/started",
+							params: {
+								threadId: "thread-1",
+								turnId: "turn-1",
+								item: {
+									id: "tool-1",
+									type: "mcpToolCall",
+									arguments: { projectId: "project-1" },
+								},
+							},
+						},
+						raw: '{"method":"item/started"}',
+					},
+				};
+				yield {
 					type: "protocol",
 					id: "tool-1",
 					method: "item/started",
@@ -79,6 +101,8 @@ describe("Codex Smart Edit SSE API", () => {
 			body += new TextDecoder().decode(next.value);
 		}
 		expect(body).toContain('event: session\ndata: {"sessionId":"thread-1"}');
+		expect(body).toContain("event: native");
+		expect(body).toContain('"arguments":{"projectId":"project-1"}');
 		expect(body).toContain(
 			'event: protocol\ndata: {"id":"tool-1","method":"item/started","threadId":"thread-1","turnId":"turn-1","itemId":"tool-1","itemType":"mcpToolCall","status":"started","title":"Moirai Cut · read_project","detail":"{\\n  \\"projectId\\": \\"project-1\\"\\n}"}',
 		);

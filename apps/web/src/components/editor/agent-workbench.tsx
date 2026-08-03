@@ -1,13 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
+	BrainCircuit,
+	Check,
 	ArrowUp,
+	ChevronDown,
 	CircleStop,
+	FilePenLine,
+	ListChecks,
 	PanelLeftClose,
 	Plus,
+	SearchCheck,
 	Settings2,
 	Sparkles,
+	TerminalSquare,
+	Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -19,14 +27,20 @@ import {
 } from "@/agent/context-references";
 import { useAgentContextStore } from "@/agent/context-store";
 import {
+	buildAgentProcessSteps,
+	type AgentProcessStep,
+	visibleAgentProcessSteps,
+} from "@/agent/agent-process-feed";
+import {
 	fetchCodexConversation,
+	isProviderNativeEvent,
 	mergeCodexConversationMessages,
 	persistCodexConversation,
 	synchronizeCodexConversationMessages,
 	type CodexConversationMessage as ChatMessage,
 	type CodexConversationThread,
 	type CodexProtocolFrame,
-	type CodexProtocolStatus,
+	type ProviderNativeEvent,
 } from "@/agent/codex-conversation";
 import {
 	CODEX_PERFORMANCE_PRESETS,
@@ -46,7 +60,14 @@ import { CodexSseDecoder } from "@/agent/codex-sse";
 import { toMediaTime, toSeconds } from "@/agent/time";
 import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
 import { useEditor } from "@/editor/use-editor";
-import { AgentSetupPanel } from "./agent-setup-panel";
+import { shouldSubmitAgentComposer } from "./agent-composer-keyboard";
+import {
+	AgentSetupPanel,
+	isAgentSetupSnapshot,
+	type AgentSetupSnapshot,
+} from "./agent-setup-panel";
+
+type AgentProviderId = "codex" | "claude";
 
 interface CodexConnection {
 	provider: "path";
@@ -93,6 +114,17 @@ interface CodexCapabilities {
 	}>;
 }
 
+interface AgentModelOption {
+	id: string;
+	label: string;
+}
+
+interface AgentModelCatalogResponse {
+	source: "gateway" | "native";
+	models: AgentModelOption[];
+	fetchedAt: string;
+}
+
 interface CodexRunSnapshot {
 	runId: string;
 	status: "running" | "completed" | "failed" | "interrupted";
@@ -111,6 +143,13 @@ interface CodexTurnOptions {
 	verificationMode: CodexVerificationMode;
 }
 
+interface ClaudeTurnOptions {
+	conversationId: string;
+	model: string;
+	effort: "low" | "medium" | "high" | "max";
+	mode: "edit" | "plan";
+}
+
 interface CodexStreamHandlers {
 	onRun(run: CodexRunSnapshot): void;
 	onSession(sessionId: string): void;
@@ -118,6 +157,7 @@ interface CodexStreamHandlers {
 	onSequence(sequence: number): void;
 	onDelta(delta: string): void;
 	onProtocol(frame: CodexProtocolFrame): void;
+	onNative(event: ProviderNativeEvent): void;
 }
 
 const DEFAULT_PERFORMANCE_PRESET = getCodexPerformancePreset(
@@ -133,11 +173,28 @@ const DEFAULT_CODEX_OPTIONS = {
 	verificationMode: DEFAULT_PERFORMANCE_PRESET.verificationMode,
 } as const;
 
-const AGENT_REQUEST_PRESETS = [
-	"收紧这段剪辑",
-	"统一字幕样式",
-	"将所选素材重命名为主角",
-] as const;
+const NATIVE_CLAUDE_MODELS: AgentModelOption[] = [
+	{ id: "sonnet", label: "Sonnet" },
+	{ id: "opus", label: "Opus" },
+	{ id: "haiku", label: "Haiku" },
+];
+
+function preferredAgentModel(
+	models: AgentModelOption[],
+	current: string,
+): AgentModelOption | null {
+	const normalizedCurrent = current.trim().toLocaleLowerCase();
+	return (
+		models.find((model) => model.id === current) ??
+		(normalizedCurrent
+			? models.find((model) =>
+					model.id.toLocaleLowerCase().includes(normalizedCurrent),
+				)
+			: undefined) ??
+		models[0] ??
+		null
+	);
+}
 
 const FULL_CREATION_SKILL_NAME = "moirai-cut-create";
 const FULL_CREATION_REQUEST =
@@ -147,6 +204,15 @@ const FULL_CREATION_STAGES = [
 	"生成时间线",
 	"预览质检",
 	"本地导出",
+] as const;
+
+const MOTION_DESIGN_SKILL_NAME = "moirai-cut-motion-design";
+const MOTION_DESIGN_REQUEST =
+	"使用 $moirai-cut-motion-design，根据当前工程或选区的画面、声音和文字层级，升级字幕与 MG 动效；直接写入可编辑关键帧并完成代表帧质检。若当前 Provider 未自动发现 Skill，请读取 .agents/skills/moirai-cut-motion-design/SKILL.md 后执行。";
+const AGENT_REQUEST_PRESETS = [
+	{ label: "收紧这段剪辑", request: "收紧这段剪辑" },
+	{ label: "升级字幕与 MG 动效", request: MOTION_DESIGN_REQUEST },
+	{ label: "将所选素材重命名为主角", request: "将所选素材重命名为主角" },
 ] as const;
 
 function nextMessageId(): string {
@@ -209,6 +275,18 @@ async function fetchCodexConnection(): Promise<CodexConnection> {
 	return value;
 }
 
+async function fetchAgentSetup(): Promise<AgentSetupSnapshot> {
+	const response = await fetch("/api/agent/setup", { cache: "no-store" });
+	if (!response.ok) {
+		throw new Error(`Agent setup check failed: ${response.status}`);
+	}
+	const value: unknown = await response.json();
+	if (!isAgentSetupSnapshot(value)) {
+		throw new Error("Agent setup response is invalid");
+	}
+	return value;
+}
+
 function isCodexCapabilities(value: unknown): value is CodexCapabilities {
 	return (
 		typeof value === "object" &&
@@ -244,6 +322,51 @@ async function fetchCodexCapabilities(): Promise<CodexCapabilities> {
 		throw new Error("Codex capabilities response is invalid");
 	}
 	return value;
+}
+
+function isAgentModelCatalogResponse(
+	value: unknown,
+): value is AgentModelCatalogResponse {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		"source" in value &&
+		(value.source === "gateway" || value.source === "native") &&
+		"models" in value &&
+		Array.isArray(value.models) &&
+		value.models.every(
+			(model) =>
+				typeof model === "object" &&
+				model !== null &&
+				"id" in model &&
+				typeof model.id === "string" &&
+				"label" in model &&
+				typeof model.label === "string",
+		) &&
+		"fetchedAt" in value &&
+		typeof value.fetchedAt === "string"
+	);
+}
+
+async function fetchAgentModels(refresh = false): Promise<AgentModelOption[]> {
+	const response = refresh
+		? await fetch("/api/agent/models?refresh=1", { cache: "no-store" })
+		: await fetch("/api/agent/models", { cache: "no-store" });
+	const value: unknown = await response.json();
+	if (!response.ok) {
+		throw new Error(
+			typeof value === "object" &&
+				value !== null &&
+				"error" in value &&
+				typeof value.error === "string"
+				? value.error
+				: "无法读取网关模型目录",
+		);
+	}
+	if (!isAgentModelCatalogResponse(value)) {
+		throw new Error("网关模型目录响应无效");
+	}
+	return value.models;
 }
 
 function apiErrorMessage(value: unknown): string | null {
@@ -314,142 +437,183 @@ function upsertProtocolFrame({
 	return next;
 }
 
-function protocolStatusClass(status: CodexProtocolStatus): string {
-	if (status === "failed") return "bg-red-400";
-	if (status === "completed") return "bg-emerald-400";
-	if (status === "info") return "bg-slate-500";
-	return "bg-cyan-300";
-}
-
-function protocolActivityLabel(frame: CodexProtocolFrame): string {
-	const active = frame.status === "started" || frame.status === "streaming";
-	if (frame.status === "failed") return "处理遇到问题";
-	if (frame.itemType === "reasoning" || frame.method.includes("reasoning")) {
-		return active ? "正在理解剪辑需求" : "已理解剪辑需求";
-	}
-	if (frame.itemType === "plan" || frame.method.includes("plan")) {
-		return active ? "正在规划剪辑步骤" : "已规划剪辑步骤";
-	}
-	if (frame.itemType === "mcpToolCall" || frame.method.includes("mcpServer")) {
-		return active ? "正在处理当前工程" : "已处理当前工程";
-	}
-	if (frame.itemType === "commandExecution") {
-		return active ? "正在执行剪辑操作" : "已执行剪辑操作";
-	}
-	if (frame.itemType === "fileChange") {
-		return active ? "正在应用工程修改" : "已应用工程修改";
-	}
-	if (frame.itemType === "verification") {
-		return active ? "正在验证编辑结果" : "验证证据已生成";
-	}
-	if (frame.itemType === "approval") {
-		return active ? "正在确认操作权限" : "操作权限已确认";
-	}
-	if (frame.itemType === "agentMessage") {
-		return active ? "正在生成回复" : "回复已生成";
-	}
-	if (frame.itemType === "userMessage") return "已接收剪辑需求";
-	if (
-		frame.title === "Codex 会话已恢复" ||
-		frame.title === "Codex 会话已连接"
-	) {
-		return "智能剪辑已连接";
-	}
-	if (
-		frame.title === "Moirai Cut MCP 已就绪" ||
-		frame.title === "OpenCut MCP 已就绪"
-	) {
-		return "工程工具已就绪";
-	}
-	return frame.title.replaceAll("Codex", "智能剪辑");
-}
-
-function VerificationEvidence({
-	frame,
+function upsertProviderNativeEvent({
+	events,
+	incoming,
 }: {
-	frame: CodexProtocolFrame | undefined;
-}) {
-	if (!frame?.detail) return null;
-	const evidence = frame.detail;
-	return (
-		<details className="mt-2 rounded-lg border border-emerald-400/15 bg-emerald-400/[0.035] px-2.5 py-2">
-			<summary className="cursor-pointer text-[9px] font-medium text-emerald-300">
-				验证证据
-			</summary>
-			<p className="mt-1 whitespace-pre-wrap text-[9px] leading-relaxed text-slate-500">
-				{evidence}
-			</p>
-		</details>
+	events: ProviderNativeEvent[] | undefined;
+	incoming: ProviderNativeEvent;
+}): ProviderNativeEvent[] {
+	const current = events ?? [];
+	const index = current.findIndex((event) => event.id === incoming.id);
+	if (index < 0) return [...current, incoming];
+	const next = current.slice();
+	next[index] = incoming;
+	return next;
+}
+
+function ProcessStepGlyph({ step }: { step: AgentProcessStep }) {
+	const iconClass = "size-3";
+	if (step.kind === "thinking") return <BrainCircuit className={iconClass} />;
+	if (step.kind === "plan") return <ListChecks className={iconClass} />;
+	if (step.kind === "tool") return <Wrench className={iconClass} />;
+	if (step.kind === "command") return <TerminalSquare className={iconClass} />;
+	if (step.kind === "change") return <FilePenLine className={iconClass} />;
+	if (step.kind === "verification")
+		return <SearchCheck className={iconClass} />;
+	return step.status === "completed" ? (
+		<Check className={iconClass} />
+	) : (
+		<Sparkles className={iconClass} />
 	);
 }
 
-function CodexActivityLine({ frames }: { frames: CodexProtocolFrame[] }) {
-	const latestFrame = frames.at(-1);
-	if (!latestFrame) return null;
-	const previousFrames = frames.slice(-6, -1);
-	const verificationFrame = [...frames]
-		.reverse()
-		.find((frame) => frame.itemType === "verification");
-	const active =
-		latestFrame.status === "started" || latestFrame.status === "streaming";
-	const line = (
-		<div
-			key={`${latestFrame.id}:${latestFrame.status}:${latestFrame.title}`}
-			className="flex min-w-0 items-center gap-2 py-1.5 text-[10px] text-slate-400 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-200"
-			aria-live="polite"
-		>
-			<span className="relative flex size-3 shrink-0 items-center justify-center">
-				{active ? (
-					<span className="size-3 animate-spin rounded-full border border-white/15 border-t-cyan-300" />
-				) : (
-					<>
-						<span
-							className={`absolute size-2 rounded-full opacity-20 ${protocolStatusClass(latestFrame.status)}`}
-						/>
-						<span
-							className={`relative size-1.5 rounded-full ${protocolStatusClass(latestFrame.status)}`}
-						/>
-					</>
-				)}
-			</span>
-			<span className="min-w-0 flex-1 truncate">
-				{protocolActivityLabel(latestFrame)}
-			</span>
-		</div>
-	);
+function processStepDetailLabel(step: AgentProcessStep): string {
+	if (step.kind === "thinking") return "思考摘要";
+	if (step.kind === "plan") return "执行计划";
+	if (step.kind === "tool") return "调用详情";
+	if (step.kind === "command") return "执行输出";
+	if (step.kind === "change") return "变更内容";
+	if (step.kind === "verification") return "验证证据";
+	return "过程信息";
+}
+
+function AgentProcessFeed({
+	frames,
+	events,
+	streaming,
+	provider,
+}: {
+	frames: CodexProtocolFrame[];
+	events: ProviderNativeEvent[];
+	streaming: boolean;
+	provider: AgentProviderId;
+}) {
+	const steps = buildAgentProcessSteps({
+		protocol: frames,
+		nativeEvents: events,
+	});
+	const visibleSteps = visibleAgentProcessSteps({
+		steps,
+		streaming,
+		provider,
+	});
+	const processFeedRef = useRef<HTMLDivElement>(null);
+	const latestStep = visibleSteps.at(-1);
+	const active = streaming;
+
+	useEffect(() => {
+		const frame = requestAnimationFrame(() => {
+			processFeedRef.current?.scrollTo({
+				top: processFeedRef.current.scrollHeight,
+				behavior: streaming ? "smooth" : "auto",
+			});
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [latestStep?.detail, latestStep?.status, visibleSteps.length, streaming]);
+
+	if (visibleSteps.length === 0) return null;
 
 	return (
-		<section aria-label="智能剪辑处理过程" className="mb-2">
-			{previousFrames.length === 0 ? (
-				line
-			) : (
-				<details className="group">
-					<summary
-						aria-label="查看之前的处理步骤"
-						className="flex cursor-pointer list-none items-center gap-1 rounded-md outline-none transition hover:bg-white/[0.025] focus-visible:ring-1 focus-visible:ring-cyan-400/35 [&::-webkit-details-marker]:hidden"
-					>
-						<div className="min-w-0 flex-1">{line}</div>
-						<span className="mr-1 text-[8px] text-slate-600 transition group-open:rotate-180">
-							⌄
-						</span>
-					</summary>
-					<ol className="ml-1.5 border-l border-white/7 py-1 pl-3">
-						{previousFrames.map((frame) => (
+		<details
+			aria-label="智能剪辑工作过程"
+			className="group/process mb-3"
+			onToggle={(event) => {
+				if (!event.currentTarget.open) return;
+				requestAnimationFrame(() => {
+					processFeedRef.current?.scrollTo({
+						top: processFeedRef.current.scrollHeight,
+						behavior: "auto",
+					});
+				});
+			}}
+		>
+			<summary
+				aria-label="查看完整工作过程"
+				aria-live="polite"
+				className="flex cursor-pointer list-none items-center gap-2 py-1.5 text-[10px] outline-none transition hover:text-slate-300 focus-visible:ring-1 focus-visible:ring-cyan-400/25 [&::-webkit-details-marker]:hidden"
+			>
+				<span
+					aria-hidden="true"
+					className={`w-3 shrink-0 text-center font-mono text-[11px] ${
+						active
+							? "motion-safe:animate-pulse text-cyan-300"
+							: "text-emerald-400/70"
+					}`}
+				>
+					{active ? "✳" : "✓"}
+				</span>
+				<span
+					className={`min-w-0 flex-1 truncate ${
+						active
+							? "motion-safe:animate-pulse text-slate-400"
+							: "text-slate-500"
+					}`}
+				>
+					{latestStep?.title}
+				</span>
+				<ChevronDown className="size-3 shrink-0 text-slate-700 transition-transform group-open/process:rotate-180" />
+			</summary>
+			<div
+				ref={processFeedRef}
+				role="log"
+				aria-label="实时工作步骤"
+				className="mt-1 max-h-52 overflow-y-auto overscroll-contain border-l border-white/7 pl-2 [scrollbar-color:rgba(148,163,184,0.18)_transparent] [scrollbar-width:thin]"
+			>
+				<ol>
+					{visibleSteps.map((step, index) => {
+						const latest = index === visibleSteps.length - 1;
+						const breathing = latest && active && step.status === "active";
+						return (
 							<li
-								key={frame.id}
-								className="flex min-w-0 items-center gap-2 py-1 text-[9px] text-slate-600"
+								key={step.id}
+								aria-current={latest ? "step" : undefined}
+								className={`relative grid grid-cols-[1.5rem_minmax(0,1fr)] gap-2 py-2 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300 ${
+									latest ? "text-slate-200" : "text-slate-500"
+								}`}
 							>
+								{index < visibleSteps.length - 1 ? (
+									<span className="absolute top-7 bottom-[-0.5rem] left-[0.72rem] w-px bg-gradient-to-b from-white/10 to-transparent" />
+								) : null}
 								<span
-									className={`size-1 shrink-0 rounded-full ${protocolStatusClass(frame.status)}`}
-								/>
-								<span className="truncate">{protocolActivityLabel(frame)}</span>
+									className={`relative flex size-6 items-center justify-center rounded-full border ${
+										step.status === "failed"
+											? "border-red-400/25 bg-red-400/8 text-red-300"
+											: breathing
+												? "border-cyan-300/30 bg-cyan-300/8 text-cyan-200 shadow-[0_0_18px_rgba(103,232,249,0.12)]"
+												: step.status === "completed"
+													? "border-emerald-400/18 bg-emerald-400/6 text-emerald-300"
+													: "border-white/8 bg-white/[0.025] text-slate-500"
+									}`}
+								>
+									{breathing ? (
+										<span className="absolute inset-0 motion-safe:animate-ping rounded-full border border-cyan-300/20" />
+									) : null}
+									<ProcessStepGlyph step={step} />
+								</span>
+								<div className="min-w-0 pt-0.5">
+									<p
+										className={`text-[10px] leading-4 ${latest ? "font-medium text-slate-200" : "text-slate-500"}`}
+									>
+										{step.title}
+									</p>
+									{step.detail ? (
+										<div className="mt-1">
+											<p className="mb-0.5 text-[7px] tracking-[0.1em] text-slate-700 uppercase">
+												{processStepDetailLabel(step)}
+											</p>
+											<p className="whitespace-pre-wrap break-words text-[9px] leading-[1.55] text-slate-500">
+												{step.detail}
+											</p>
+										</div>
+									) : null}
+								</div>
 							</li>
-						))}
-					</ol>
-				</details>
-			)}
-			<VerificationEvidence frame={verificationFrame} />
-		</section>
+						);
+					})}
+				</ol>
+			</div>
+		</details>
 	);
 }
 
@@ -466,6 +630,7 @@ async function sendCodexTurn({
 	onSequence,
 	onDelta,
 	onProtocol,
+	onNative,
 }: {
 	projectId: string;
 	message: string;
@@ -479,6 +644,7 @@ async function sendCodexTurn({
 	onSequence(sequence: number): void;
 	onDelta(delta: string): void;
 	onProtocol(frame: CodexProtocolFrame): void;
+	onNative(event: ProviderNativeEvent): void;
 }): Promise<CodexChatResult> {
 	const response = await fetch("/api/codex/chat", {
 		method: "POST",
@@ -506,6 +672,67 @@ async function sendCodexTurn({
 		onSequence,
 		onDelta,
 		onProtocol,
+		onNative,
+	});
+}
+
+async function sendClaudeTurn({
+	projectId,
+	message,
+	messageId,
+	context,
+	sessionId,
+	options,
+	onRun,
+	onSession,
+	onTurn,
+	onSequence,
+	onDelta,
+	onProtocol,
+	onNative,
+	signal,
+}: {
+	projectId: string;
+	message: string;
+	messageId: string;
+	context: string;
+	sessionId: string | null;
+	options: ClaudeTurnOptions;
+	onRun(run: CodexRunSnapshot): void;
+	onSession(sessionId: string): void;
+	onTurn(turnId: string): void;
+	onSequence(sequence: number): void;
+	onDelta(delta: string): void;
+	onProtocol(frame: CodexProtocolFrame): void;
+	onNative(event: ProviderNativeEvent): void;
+	signal?: AbortSignal;
+}): Promise<CodexChatResult> {
+	const response = await fetch("/api/claude/chat", {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({
+			projectId,
+			message,
+			messageId,
+			context,
+			conversationId: options.conversationId,
+			model: options.model,
+			effort: options.effort,
+			mode: options.mode,
+			...(sessionId ? { sessionId } : {}),
+		}),
+		...(signal ? { signal } : {}),
+	});
+	return consumeCodexStream({
+		response,
+		onRun,
+		onSession,
+		onTurn,
+		onSequence,
+		onDelta,
+		onProtocol,
+		onNative,
+		providerLabel: "Claude Code",
 	});
 }
 
@@ -517,6 +744,8 @@ async function consumeCodexStream({
 	onSequence,
 	onDelta,
 	onProtocol,
+	onNative,
+	providerLabel = "Codex",
 }: {
 	response: Response;
 	onRun(run: CodexRunSnapshot): void;
@@ -525,13 +754,17 @@ async function consumeCodexStream({
 	onSequence(sequence: number): void;
 	onDelta(delta: string): void;
 	onProtocol(frame: CodexProtocolFrame): void;
+	onNative(event: ProviderNativeEvent): void;
+	providerLabel?: string;
 }): Promise<CodexChatResult> {
 	if (!response.ok) {
 		const value: unknown = await response.json();
-		throw new Error(apiErrorMessage(value) ?? "Codex 会话请求失败。");
+		throw new Error(
+			apiErrorMessage(value) ?? `${providerLabel} 会话请求失败。`,
+		);
 	}
 	if (!response.body) {
-		throw new Error("浏览器没有返回 Codex 流式响应。");
+		throw new Error(`浏览器没有返回 ${providerLabel} 流式响应。`);
 	}
 	const reader = response.body.getReader();
 	const textDecoder = new TextDecoder();
@@ -622,6 +855,14 @@ async function consumeCodexStream({
 				continue;
 			}
 			if (
+				event.event === "native" &&
+				"event" in value &&
+				isProviderNativeEvent(value.event)
+			) {
+				onNative(value.event);
+				continue;
+			}
+			if (
 				event.event === "done" &&
 				"sessionId" in value &&
 				typeof value.sessionId === "string" &&
@@ -645,7 +886,7 @@ async function consumeCodexStream({
 		}
 	}
 	if (!completed) {
-		throw new Error("Codex 流式响应在完成前中断。");
+		throw new Error(`${providerLabel} 流式响应在完成前中断。`);
 	}
 	return completed;
 }
@@ -733,7 +974,10 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 		hydratedConversationProjectId === semanticState.projectId;
 	const [codexConnection, setCodexConnection] =
 		useState<CodexConnection | null>(null);
+	const [agentSetup, setAgentSetup] = useState<AgentSetupSnapshot | null>(null);
+	const [agentProvider, setAgentProvider] = useState<AgentProviderId>("codex");
 	const [codexSettingsOpen, setCodexSettingsOpen] = useState(false);
+	const [quickConfigOpen, setQuickConfigOpen] = useState(false);
 	const [codexChecking, setCodexChecking] = useState(true);
 	const [codexCapabilities, setCodexCapabilities] =
 		useState<CodexCapabilities | null>(null);
@@ -756,6 +1000,16 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 	);
 	const [codexVerificationMode, setCodexVerificationMode] =
 		useState<CodexVerificationMode>(DEFAULT_CODEX_OPTIONS.verificationMode);
+	const [claudeModel, setClaudeModel] = useState("sonnet");
+	const [gatewayModels, setGatewayModels] = useState<AgentModelOption[]>([]);
+	const [gatewayModelsLoading, setGatewayModelsLoading] = useState(false);
+	const [gatewayModelsError, setGatewayModelsError] = useState<string | null>(
+		null,
+	);
+	const [claudeEffort, setClaudeEffort] = useState<
+		"low" | "medium" | "high" | "max"
+	>("high");
+	const [claudeMode, setClaudeMode] = useState<"edit" | "plan">("edit");
 	const [activeRunId, setActiveRunId] = useState<string | null>(null);
 	const [activeTurnId, setActiveTurnId] = useState<string | null>(null);
 	const [activeRunSequence, setActiveRunSequence] = useState(0);
@@ -774,28 +1028,100 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 	>(null);
 	const followedSelectionKey = useRef("");
 	const reconnectingRunId = useRef<string | null>(null);
+	const claudeAbortController = useRef<AbortController | null>(null);
 	const conversationRevision = useRef(-1);
 	const conversationChannel = useRef<BroadcastChannel | null>(null);
 	const conversationLogRef = useRef<HTMLDivElement | null>(null);
+	const quickConfigRef = useRef<HTMLDivElement | null>(null);
 	const followConversationTail = useRef(true);
 	const conversationHydratedRef = useRef(false);
 	const activeConversationIdRef = useRef<string | null>(null);
 	const latestConversation = useRef<{
 		conversationId: string | null;
+		provider: AgentProviderId;
 		sessionId: string | null;
 		messages: ChatMessage[];
-	}>({ conversationId: null, sessionId: null, messages: [] });
+	}>({
+		conversationId: null,
+		provider: "codex",
+		sessionId: null,
+		messages: [],
+	});
 
 	useEffect(() => {
 		setAgentDataConsent(hasExternalAgentConsent(window.localStorage));
 	}, []);
 
 	useEffect(() => {
+		const endpoint = agentSetup?.endpoints[agentProvider];
+		if (endpoint?.mode !== "custom" || !endpoint.custom?.hasCredential) {
+			setGatewayModels([]);
+			setGatewayModelsError(null);
+			return;
+		}
+		let active = true;
+		setGatewayModelsLoading(true);
+		setGatewayModelsError(null);
+		void fetchAgentModels()
+			.then((models) => {
+				if (!active) return;
+				setGatewayModels(models);
+				if (agentProvider === "claude") {
+					setClaudeModel(
+						(current) => preferredAgentModel(models, current)?.id ?? current,
+					);
+				} else {
+					setCodexModel(
+						(current) => preferredAgentModel(models, current)?.id ?? current,
+					);
+				}
+			})
+			.catch((nextError) => {
+				if (!active) return;
+				setGatewayModels([]);
+				setGatewayModelsError(
+					nextError instanceof Error
+						? nextError.message
+						: "无法读取网关模型目录",
+				);
+			})
+			.finally(() => {
+				if (active) setGatewayModelsLoading(false);
+			});
+		return () => {
+			active = false;
+		};
+	}, [agentProvider, agentSetup]);
+
+	useEffect(() => {
+		if (!quickConfigOpen) return;
+		// 点击外部关闭快捷配置；Escape 提供等价的键盘退出路径。
+		const closeFromOutside = (event: PointerEvent) => {
+			if (
+				event.target instanceof Node &&
+				!quickConfigRef.current?.contains(event.target)
+			) {
+				setQuickConfigOpen(false);
+			}
+		};
+		const closeFromKeyboard = (event: KeyboardEvent) => {
+			if (event.key === "Escape") setQuickConfigOpen(false);
+		};
+		document.addEventListener("pointerdown", closeFromOutside);
+		document.addEventListener("keydown", closeFromKeyboard);
+		return () => {
+			document.removeEventListener("pointerdown", closeFromOutside);
+			document.removeEventListener("keydown", closeFromKeyboard);
+		};
+	}, [quickConfigOpen]);
+
+	useEffect(() => {
 		let active = true;
 		void Promise.allSettled([
 			fetchCodexConnection(),
 			fetchCodexCapabilities(),
-		]).then(([connectionResult, capabilitiesResult]) => {
+			fetchAgentSetup(),
+		]).then(([connectionResult, capabilitiesResult, setupResult]) => {
 			if (!active) return;
 			if (connectionResult.status === "fulfilled") {
 				setCodexConnection(connectionResult.value);
@@ -822,6 +1148,12 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 					);
 				}
 			}
+			if (setupResult.status === "fulfilled") {
+				setAgentSetup(setupResult.value);
+				if (setupResult.value.activeProvider) {
+					setAgentProvider(setupResult.value.activeProvider);
+				}
+			}
 			setCodexChecking(false);
 		});
 		return () => {
@@ -832,11 +1164,12 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 	useEffect(() => {
 		latestConversation.current = {
 			conversationId: activeConversationId,
+			provider: agentProvider,
 			sessionId,
 			messages,
 		};
 		activeConversationIdRef.current = activeConversationId;
-	}, [activeConversationId, messages, sessionId]);
+	}, [activeConversationId, agentProvider, messages, sessionId]);
 	useEffect(() => {
 		conversationHydratedRef.current = conversationHydrated;
 	}, [conversationHydrated]);
@@ -877,8 +1210,10 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 			}
 			const local = latestConversation.current;
 			const switching = local.conversationId !== target.id;
+			const targetProvider = target.provider ?? "codex";
 			activeConversationIdRef.current = target.id;
 			setActiveConversationId(target.id);
+			setAgentProvider(targetProvider);
 			setMessages((current) =>
 				initialConversation || switching
 					? target.messages
@@ -980,6 +1315,7 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 					void persistCodexConversation({
 						projectId,
 						conversationId: latest.conversationId,
+						provider: latest.provider,
 						sessionId: latest.sessionId,
 						messages: latest.messages,
 					}).catch(() => {});
@@ -1005,6 +1341,7 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 			void persistCodexConversation({
 				projectId,
 				conversationId: activeConversationId,
+				provider: agentProvider,
 				sessionId,
 				messages,
 				signal: controller.signal,
@@ -1046,6 +1383,7 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 		};
 	}, [
 		activeConversationId,
+		agentProvider,
 		conversationHydrated,
 		messages,
 		projectId,
@@ -1129,17 +1467,22 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 			: selectedElements.length === 0
 				? "未选择素材"
 				: `已选 ${selectedElements.length} 个素材`;
+	const activeProviderConnection = agentSetup?.providers.find(
+		(provider) => provider.provider === agentProvider,
+	);
+	const activeProviderLabel =
+		agentProvider === "claude" ? "Claude Code" : "Codex";
 	const codexStatusLabel = codexChecking
 		? "检测中"
-		: codexConnection?.status === "ready"
-			? "Codex 已连接"
-			: codexConnection?.status === "login-required"
+		: activeProviderConnection?.status === "ready"
+			? `${activeProviderLabel} 已连接`
+			: activeProviderConnection?.status === "login-required"
 				? "需要登录"
 				: "连接异常";
 	const codexStatusClass =
-		codexConnection?.status === "ready"
+		activeProviderConnection?.status === "ready"
 			? "bg-emerald-400"
-			: codexConnection?.status === "login-required"
+			: activeProviderConnection?.status === "login-required"
 				? "bg-amber-400"
 				: codexChecking
 					? "bg-slate-500"
@@ -1148,12 +1491,33 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 		conversations.find(
 			(conversation) => conversation.id === activeConversationId,
 		) ?? null;
+	const usingCustomEndpoint =
+		agentSetup?.endpoints[agentProvider]?.mode === "custom";
+	const activeModelOptions: AgentModelOption[] = usingCustomEndpoint
+		? gatewayModels
+		: agentProvider === "claude"
+			? NATIVE_CLAUDE_MODELS
+			: (codexCapabilities?.models.map((model) => ({
+					id: model.id,
+					label: model.label || model.id,
+				})) ?? []);
+	const currentModel = agentProvider === "claude" ? claudeModel : codexModel;
+	const selectedActiveModel =
+		activeModelOptions.find((model) => model.id === currentModel) ?? null;
 	const selectedCodexModel =
 		codexCapabilities?.models.find((model) => model.id === codexModel) ?? null;
 	const fullCreationSkillReady =
-		codexCapabilities?.skills.some(
+		agentProvider === "codex" &&
+		(codexCapabilities?.skills.some(
 			(skill) => skill.enabled && skill.name === FULL_CREATION_SKILL_NAME,
-		) ?? false;
+		) ??
+			false);
+	const motionDesignSkillReady =
+		agentProvider === "claude" ||
+		(codexCapabilities?.skills.some(
+			(skill) => skill.enabled && skill.name === MOTION_DESIGN_SKILL_NAME,
+		) ??
+			false);
 	const availableEfforts = selectedCodexModel?.efforts.length
 		? selectedCodexModel.efforts
 		: ["low", "medium", "high", "xhigh", "max", "ultra"];
@@ -1171,6 +1535,17 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 		setCodexVisualMode(preset.visualMode);
 		setCodexVerificationMode(preset.verificationMode);
 	};
+	const chooseCodexModel = (nextModel: string) => {
+		setCodexModel(nextModel);
+		const capability = codexCapabilities?.models.find(
+			(model) => model.id === nextModel,
+		);
+		if (capability && !capability.efforts.includes(codexEffort)) {
+			setCodexEffort(
+				capability.defaultEffort ?? capability.efforts[0] ?? "high",
+			);
+		}
+	};
 
 	const persistCurrentConversation = () => {
 		const latest = latestConversation.current;
@@ -1178,6 +1553,7 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 		void persistCodexConversation({
 			projectId,
 			conversationId: latest.conversationId,
+			provider: latest.provider,
 			sessionId: latest.sessionId,
 			messages: latest.messages,
 		}).catch(() => {});
@@ -1190,10 +1566,12 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 		activeConversationIdRef.current = conversation.id;
 		latestConversation.current = {
 			conversationId: conversation.id,
+			provider: conversation.provider ?? "codex",
 			sessionId: conversation.sessionId,
 			messages: conversation.messages,
 		};
 		setActiveConversationId(conversation.id);
+		setAgentProvider(conversation.provider ?? "codex");
 		setSessionId(conversation.sessionId);
 		setMessages(conversation.messages);
 		setActiveRunId(null);
@@ -1202,7 +1580,9 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 		setRequest("");
 	};
 
-	const createConversation = (): string | null => {
+	const createConversation = (
+		provider: AgentProviderId = agentProvider,
+	): string | null => {
 		if (!conversationHydrated || sending) return null;
 		persistCurrentConversation();
 		followConversationTail.current = true;
@@ -1211,6 +1591,7 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 		const conversation: CodexConversationThread = {
 			id: conversationId,
 			title: "新对话",
+			provider,
 			sessionId: null,
 			messages: [],
 			createdAt: now,
@@ -1219,11 +1600,13 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 		activeConversationIdRef.current = conversationId;
 		latestConversation.current = {
 			conversationId,
+			provider,
 			sessionId: null,
 			messages: [],
 		};
 		setConversations((current) => [conversation, ...current].slice(0, 50));
 		setActiveConversationId(conversationId);
+		setAgentProvider(provider);
 		setSessionId(null);
 		setMessages([]);
 		setActiveRunId(null);
@@ -1231,6 +1614,66 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 		setActiveRunSequence(0);
 		setRequest("");
 		return conversationId;
+	};
+
+	const switchAgentProvider = (provider: AgentProviderId) => {
+		if (provider === agentProvider) return;
+		setAgentSetup((current) =>
+			current ? { ...current, activeProvider: provider } : current,
+		);
+		if (messages.length > 0 || sessionId) {
+			createConversation(provider);
+			return;
+		}
+		setAgentProvider(provider);
+		setSessionId(null);
+		if (activeConversationId) {
+			setConversations((current) =>
+				current.map((conversation) =>
+					conversation.id === activeConversationId
+						? { ...conversation, provider, sessionId: null }
+						: conversation,
+				),
+			);
+			latestConversation.current = {
+				...latestConversation.current,
+				provider,
+				sessionId: null,
+			};
+		}
+	};
+
+	const switchAgentEndpoint = (provider: AgentProviderId) => {
+		if (provider !== agentProvider) {
+			switchAgentProvider(provider);
+			return;
+		}
+		if (messages.length > 0 || sessionId) {
+			createConversation(provider);
+		} else {
+			setSessionId(null);
+		}
+		void fetchAgentSetup()
+			.then(setAgentSetup)
+			.catch(() => {});
+		if (provider === "claude") return;
+		setCodexChecking(true);
+		void fetchCodexCapabilities()
+			.then((capabilities) => {
+				setCodexCapabilities(capabilities);
+				const preferred =
+					capabilities.models.find((model) => model.isDefault) ??
+					capabilities.models[0];
+				if (!preferred) return;
+				setCodexModel(preferred.id);
+				setCodexEffort(
+					preferred.defaultEffort ??
+						preferred.efforts[0] ??
+						DEFAULT_CODEX_OPTIONS.effort,
+				);
+			})
+			.catch(() => {})
+			.finally(() => setCodexChecking(false));
 	};
 
 	const streamHandlersFor = (assistantMessageId: string) => ({
@@ -1313,6 +1756,22 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 				),
 			);
 		},
+		onNative: (event: ProviderNativeEvent) => {
+			setMessages((current) =>
+				current.map((message) =>
+					message.id === assistantMessageId
+						? {
+								...message,
+								nativeEvents: upsertProviderNativeEvent({
+									events: message.nativeEvents,
+									incoming: event,
+								}),
+								updatedAt: Math.max(timestampNow(), message.updatedAt + 1),
+							}
+						: message,
+				),
+			);
+		},
 	});
 
 	const completeAssistantMessage = ({
@@ -1340,36 +1799,43 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 		setActiveTurnId(null);
 	};
 
-	const failAssistantMessage = ({
-		assistantMessageId,
-		error,
-		notify = true,
-	}: {
-		assistantMessageId: string;
-		error: unknown;
-		notify?: boolean;
-	}) => {
-		const failure =
-			error instanceof Error ? error.message : "Codex 会话请求失败。";
-		setMessages((current) =>
-			current.map((item) =>
-				item.id === assistantMessageId
-					? {
-							...item,
-							role: "error",
-							content: failure,
-							streaming: false,
-							updatedAt: Math.max(timestampNow(), item.updatedAt + 1),
-						}
-					: item,
-			),
-		);
-		setActiveRunId(null);
-		setActiveTurnId(null);
-		if (notify) {
-			toast.error("Codex 会话失败", { description: failure });
-		}
-	};
+	const failAssistantMessage = useCallback(
+		({
+			assistantMessageId,
+			error,
+			notify = true,
+		}: {
+			assistantMessageId: string;
+			error: unknown;
+			notify?: boolean;
+		}) => {
+			const failure =
+				error instanceof Error
+					? error.message
+					: `${activeProviderLabel} 会话请求失败。`;
+			setMessages((current) =>
+				current.map((item) =>
+					item.id === assistantMessageId
+						? {
+								...item,
+								role: "error",
+								content: failure,
+								streaming: false,
+								updatedAt: Math.max(timestampNow(), item.updatedAt + 1),
+							}
+						: item,
+				),
+			);
+			setActiveRunId(null);
+			setActiveTurnId(null);
+			if (notify) {
+				toast.error(`${activeProviderLabel} 会话失败`, {
+					description: failure,
+				});
+			}
+		},
+		[activeProviderLabel],
+	);
 
 	const submitToCodex = async (
 		nextRequest = request,
@@ -1389,10 +1855,20 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 			return;
 		}
 		if (!semanticState.projectId) {
-			toast.error("当前没有可交给 Codex 的工程");
+			toast.error(`当前没有可交给 ${activeProviderLabel} 的工程`);
+			return;
+		}
+		if (activeProviderConnection?.status !== "ready") {
+			toast.error(`${activeProviderLabel} 尚未就绪`, {
+				description: "请先在智能剪辑设置中配置路径并完成登录。",
+			});
 			return;
 		}
 		if (sending) {
+			if (agentProvider === "claude") {
+				toast("Claude Code 正在处理，请等待完成或先停止当前任务");
+				return;
+			}
 			if (!activeRunId) return;
 			const createdAt = timestampNow();
 			setMessages((current) => [
@@ -1450,34 +1926,75 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 		setRequest("");
 		setSending(true);
 		try {
-			const result = await sendCodexTurn({
+			const shared = {
 				projectId: semanticState.projectId,
 				message: normalizedRequest,
 				messageId: userMessageId,
 				context: contextSnapshot.promptContext,
 				sessionId,
-				options: {
-					conversationId: targetConversationId,
-					model: codexModel,
-					effort: codexEffort,
-					mode: isFullCreationRequest ? "default" : codexMode,
-					toolProfile: isFullCreationRequest ? "verify" : codexToolProfile,
-					visualMode: isFullCreationRequest ? "auto" : codexVisualMode,
-					verificationMode: isFullCreationRequest
-						? "full"
-						: codexVerificationMode,
-				},
 				...streamHandlersFor(assistantMessageId),
-			});
+			};
+			const result =
+				agentProvider === "claude"
+					? await (() => {
+							const controller = new AbortController();
+							claudeAbortController.current = controller;
+							return sendClaudeTurn({
+								...shared,
+								options: {
+									conversationId: targetConversationId,
+									model: claudeModel,
+									effort: claudeEffort,
+									mode: claudeMode,
+								},
+								signal: controller.signal,
+							});
+						})()
+					: await sendCodexTurn({
+							...shared,
+							options: {
+								conversationId: targetConversationId,
+								model: codexModel,
+								effort: codexEffort,
+								mode: isFullCreationRequest ? "default" : codexMode,
+								toolProfile: isFullCreationRequest
+									? "verify"
+									: codexToolProfile,
+								visualMode: isFullCreationRequest ? "auto" : codexVisualMode,
+								verificationMode: isFullCreationRequest
+									? "full"
+									: codexVerificationMode,
+							},
+						});
 			completeAssistantMessage({ assistantMessageId, result });
 		} catch (error) {
-			failAssistantMessage({ assistantMessageId, error });
+			if (!(error instanceof DOMException && error.name === "AbortError")) {
+				failAssistantMessage({ assistantMessageId, error });
+			}
 		} finally {
+			claudeAbortController.current = null;
 			setSending(false);
 		}
 	};
 
 	const stopCodexRun = async () => {
+		if (agentProvider === "claude") {
+			claudeAbortController.current?.abort();
+			setMessages((current) =>
+				current.map((message) =>
+					message.streaming
+						? {
+								...message,
+								content: message.content || "已停止 Claude Code 当前处理。",
+								streaming: false,
+								updatedAt: Math.max(timestampNow(), message.updatedAt + 1),
+							}
+						: message,
+				),
+			);
+			setSending(false);
+			return;
+		}
 		if (!activeRunId) return;
 		try {
 			await runCodexAction({
@@ -1598,7 +2115,7 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 				reconnectingRunId.current = null;
 				setSending(false);
 			});
-	}, [conversationHydrated, messages, sending]);
+	}, [conversationHydrated, failAssistantMessage, messages, sending]);
 
 	const toggleTimelineElementReference = ({
 		trackId,
@@ -1750,11 +2267,11 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 			editor.playback.seek({
 				time: toMediaTime("context seek", target.seekSeconds),
 			});
-			toast.success("已定位 Codex 引用");
+			toast.success("已定位 Agent 引用");
 		} catch (error) {
 			toast.error("无法定位此引用", {
 				description:
-					error instanceof Error ? error.message : "Codex 运行环境已失效。",
+					error instanceof Error ? error.message : "Agent 运行环境已失效。",
 			});
 		}
 	};
@@ -1762,7 +2279,7 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 	const copyContext = async () => {
 		try {
 			await navigator.clipboard.writeText(contextSnapshot.promptContext);
-			toast.success("Codex 上下文已复制");
+			toast.success("Agent 上下文已复制");
 		} catch {
 			toast.error("复制失败，请检查浏览器剪贴板权限");
 		}
@@ -1853,6 +2370,9 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 							) : null}
 							{conversations.map((conversation) => (
 								<option key={conversation.id} value={conversation.id}>
+									{conversation.provider === "claude"
+										? "Claude · "
+										: "Codex · "}
 									{conversation.title}
 								</option>
 							))}
@@ -1874,7 +2394,10 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 						type="button"
 						aria-label="打开智能剪辑设置"
 						aria-expanded={codexSettingsOpen}
-						onClick={() => setCodexSettingsOpen((open) => !open)}
+						onClick={() => {
+							setQuickConfigOpen(false);
+							setCodexSettingsOpen((open) => !open);
+						}}
 						className={`flex size-7 items-center justify-center rounded-lg transition ${
 							codexSettingsOpen
 								? "bg-white/[0.08] text-slate-100"
@@ -1903,130 +2426,234 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 					aria-label="智能剪辑设置"
 					className="absolute right-3 top-13 z-20 max-h-[calc(100%-4rem)] w-[min(320px,calc(100%-1.5rem))] overflow-y-auto rounded-xl border border-white/10 bg-[#1a1c1f] p-3 shadow-2xl"
 				>
-					<AgentSetupPanel compact />
-					<label className="mt-3 block">
-						<span className="mb-1 block text-[9px] text-slate-500">
-							响应模式
-						</span>
-						<select
-							aria-label="响应模式"
-							value={codexPerformanceMode}
-							disabled={sending}
-							onChange={(event) => {
-								const mode = event.target.value;
-								if (
-									mode === "fast" ||
-									mode === "balanced" ||
-									mode === "director"
-								) {
-									applyPerformanceMode(mode);
-								}
-							}}
-							className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
-						>
-							{CODEX_PERFORMANCE_PRESETS.map((preset) => (
-								<option key={preset.id} value={preset.id}>
-									{preset.label} · {preset.description}
-								</option>
-							))}
-						</select>
-					</label>
-					<div className="mt-3 grid grid-cols-2 gap-2">
-						<label className="block">
-							<span className="mb-1 block text-[9px] text-slate-500">模型</span>
-							<select
-								aria-label="Codex 模型"
-								value={codexModel}
-								disabled={sending}
-								onChange={(event) => {
-									const nextModel = event.target.value;
-									setCodexModel(nextModel);
-									const capability = codexCapabilities?.models.find(
-										(model) => model.id === nextModel,
-									);
-									if (capability && !capability.efforts.includes(codexEffort)) {
-										setCodexEffort(
-											capability.defaultEffort ??
-												capability.efforts[0] ??
-												"high",
-										);
-									}
+					<AgentSetupPanel
+						compact
+						onProviderChange={switchAgentProvider}
+						onEndpointChange={switchAgentEndpoint}
+					/>
+					{usingCustomEndpoint ? (
+						<div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-white/8 bg-black/15 px-2.5 py-2">
+							<span className="min-w-0 truncate text-[8px] text-slate-500">
+								{gatewayModelsLoading
+									? "正在读取网关模型目录…"
+									: gatewayModelsError
+										? gatewayModelsError
+										: `已发现 ${gatewayModels.length} 个模型 · Codex / Claude 共用`}
+							</span>
+							<button
+								type="button"
+								disabled={gatewayModelsLoading}
+								onClick={() => {
+									setGatewayModelsLoading(true);
+									setGatewayModelsError(null);
+									void fetchAgentModels(true)
+										.then(setGatewayModels)
+										.catch((nextError) =>
+											setGatewayModelsError(
+												nextError instanceof Error
+													? nextError.message
+													: "无法读取网关模型目录",
+											),
+										)
+										.finally(() => setGatewayModelsLoading(false));
 								}}
-								className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+								className="shrink-0 rounded px-1.5 py-1 text-[8px] text-cyan-300 hover:bg-cyan-400/8 disabled:opacity-40"
 							>
-								{codexCapabilities?.models.length ? (
-									codexCapabilities.models.map((model) => (
-										<option key={model.id} value={model.id}>
-											{model.label || model.id}
-										</option>
-									))
-								) : (
-									<option value={codexModel}>{codexModel}</option>
-								)}
-							</select>
-						</label>
-						<label className="block">
-							<span className="mb-1 block text-[9px] text-slate-500">模式</span>
-							<select
-								aria-label="Codex 协作模式"
-								value={codexMode}
-								disabled={sending}
-								onChange={(event) => {
-									if (isCodexMode(event.target.value)) {
-										setCodexMode(event.target.value);
-									}
-								}}
-								className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
-							>
-								<option value="default">执行模式</option>
-								<option value="plan">规划模式</option>
-							</select>
-						</label>
-					</div>
-					<details className="group mt-3 border-t border-white/7 pt-2">
-						<summary className="cursor-pointer list-none py-1 text-[10px] text-slate-400 outline-none transition hover:text-slate-100 [&::-webkit-details-marker]:hidden">
-							高级设置
-						</summary>
-						<div className="mt-2 grid grid-cols-2 gap-2">
-							<label className="block">
+								刷新
+							</button>
+						</div>
+					) : null}
+					{agentProvider === "codex" ? (
+						<>
+							<label className="mt-3 block">
 								<span className="mb-1 block text-[9px] text-slate-500">
-									推理强度
+									响应模式
 								</span>
 								<select
-									aria-label="Codex 推理强度"
-									value={codexEffort}
-									disabled={sending}
-									onChange={(event) => setCodexEffort(event.target.value)}
-									className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
-								>
-									{availableEfforts.map((effort) => (
-										<option key={effort} value={effort}>
-											{effort}
-										</option>
-									))}
-								</select>
-							</label>
-							<label className="block">
-								<span className="mb-1 block text-[9px] text-slate-500">
-									工具档位
-								</span>
-								<select
-									aria-label="Codex 工具档位"
-									value={codexToolProfile}
+									aria-label="响应模式"
+									value={codexPerformanceMode}
 									disabled={sending}
 									onChange={(event) => {
-										if (isCodexToolProfile(event.target.value)) {
-											setCodexToolProfile(event.target.value);
+										const mode = event.target.value;
+										if (
+											mode === "fast" ||
+											mode === "balanced" ||
+											mode === "director"
+										) {
+											applyPerformanceMode(mode);
 										}
 									}}
 									className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
 								>
-									<option value="edit">专注剪辑</option>
-									<option value="verify">剪辑与验收</option>
-									<option value="full">完整能力</option>
+									{CODEX_PERFORMANCE_PRESETS.map((preset) => (
+										<option key={preset.id} value={preset.id}>
+											{preset.label} · {preset.description}
+										</option>
+									))}
+								</select>
+							</label>
+							<div className="mt-3 grid grid-cols-2 gap-2">
+								<label className="block">
+									<span className="mb-1 block text-[9px] text-slate-500">
+										模型
+									</span>
+									<select
+										aria-label="Codex 模型"
+										value={codexModel}
+										disabled={sending}
+										onChange={(event) => chooseCodexModel(event.target.value)}
+										className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+									>
+										{activeModelOptions.length ? (
+											activeModelOptions.map((model) => (
+												<option key={model.id} value={model.id}>
+													{model.label}
+												</option>
+											))
+										) : (
+											<option value={codexModel}>{codexModel}</option>
+										)}
+									</select>
+								</label>
+								<label className="block">
+									<span className="mb-1 block text-[9px] text-slate-500">
+										模式
+									</span>
+									<select
+										aria-label="Codex 协作模式"
+										value={codexMode}
+										disabled={sending}
+										onChange={(event) => {
+											if (isCodexMode(event.target.value)) {
+												setCodexMode(event.target.value);
+											}
+										}}
+										className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+									>
+										<option value="default">执行模式</option>
+										<option value="plan">规划模式</option>
+									</select>
+								</label>
+							</div>
+						</>
+					) : (
+						<div className="mt-3 grid grid-cols-2 gap-2">
+							<label className="block">
+								<span className="mb-1 block text-[9px] text-slate-500">
+									模型
+								</span>
+								<select
+									aria-label="Claude 模型"
+									value={claudeModel}
+									disabled={sending}
+									onChange={(event) => setClaudeModel(event.target.value)}
+									className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+								>
+									{activeModelOptions.length ? (
+										activeModelOptions.map((model) => (
+											<option key={model.id} value={model.id}>
+												{model.label}
+											</option>
+										))
+									) : (
+										<option value={claudeModel}>{claudeModel}</option>
+									)}
+								</select>
+							</label>
+							<label className="block">
+								<span className="mb-1 block text-[9px] text-slate-500">
+									模式
+								</span>
+								<select
+									aria-label="Claude 协作模式"
+									value={claudeMode}
+									disabled={sending}
+									onChange={(event) =>
+										setClaudeMode(
+											event.target.value === "plan" ? "plan" : "edit",
+										)
+									}
+									className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+								>
+									<option value="edit">执行模式</option>
+									<option value="plan">规划模式</option>
+								</select>
+							</label>
+							<label className="col-span-2 block">
+								<span className="mb-1 block text-[9px] text-slate-500">
+									推理强度
+								</span>
+								<select
+									aria-label="Claude 推理强度"
+									value={claudeEffort}
+									disabled={sending}
+									onChange={(event) => {
+										const effort = event.target.value;
+										if (
+											effort === "low" ||
+											effort === "medium" ||
+											effort === "high" ||
+											effort === "max"
+										) {
+											setClaudeEffort(effort);
+										}
+									}}
+									className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+								>
+									<option value="low">低</option>
+									<option value="medium">中</option>
+									<option value="high">高</option>
+									<option value="max">最高</option>
 								</select>
 							</label>
 						</div>
+					)}
+					<details className="group mt-3 border-t border-white/7 pt-2">
+						<summary className="cursor-pointer list-none py-1 text-[10px] text-slate-400 outline-none transition hover:text-slate-100 [&::-webkit-details-marker]:hidden">
+							高级设置
+						</summary>
+						{agentProvider === "codex" ? (
+							<div className="mt-2 grid grid-cols-2 gap-2">
+								<label className="block">
+									<span className="mb-1 block text-[9px] text-slate-500">
+										推理强度
+									</span>
+									<select
+										aria-label="Codex 推理强度"
+										value={codexEffort}
+										disabled={sending}
+										onChange={(event) => setCodexEffort(event.target.value)}
+										className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+									>
+										{availableEfforts.map((effort) => (
+											<option key={effort} value={effort}>
+												{effort}
+											</option>
+										))}
+									</select>
+								</label>
+								<label className="block">
+									<span className="mb-1 block text-[9px] text-slate-500">
+										工具档位
+									</span>
+									<select
+										aria-label="Codex 工具档位"
+										value={codexToolProfile}
+										disabled={sending}
+										onChange={(event) => {
+											if (isCodexToolProfile(event.target.value)) {
+												setCodexToolProfile(event.target.value);
+											}
+										}}
+										className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+									>
+										<option value="edit">专注剪辑</option>
+										<option value="verify">剪辑与验收</option>
+										<option value="full">完整能力</option>
+									</select>
+								</label>
+							</div>
+						) : null}
 						<div className="mt-2 space-y-1">
 							<button
 								type="button"
@@ -2109,14 +2736,16 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 									</button>
 								</>
 							) : null}
-							<button
-								type="button"
-								disabled={!sessionId}
-								onClick={() => void compactCodexContext()}
-								className="ml-auto rounded px-2 py-1 text-[9px] text-slate-500 hover:bg-white/[0.05] hover:text-slate-200 disabled:opacity-30"
-							>
-								压缩上下文
-							</button>
+							{agentProvider === "codex" ? (
+								<button
+									type="button"
+									disabled={!sessionId}
+									onClick={() => void compactCodexContext()}
+									className="ml-auto rounded px-2 py-1 text-[9px] text-slate-500 hover:bg-white/[0.05] hover:text-slate-200 disabled:opacity-30"
+								>
+									压缩上下文
+								</button>
+							) : null}
 						</div>
 						<div className="mt-2 flex items-center justify-between border-t border-white/7 pt-2 text-[9px] text-slate-500">
 							<span>外部 Agent 数据授权</span>
@@ -2130,9 +2759,9 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 							</button>
 						</div>
 						<p className="mt-1 text-right text-[8px] text-slate-600">
-							{codexCapabilities?.skills.filter((skill) => skill.enabled)
-								.length ?? 0}{" "}
-							个可用技能 · {codexConnection?.version ?? "版本未知"}
+							{agentProvider === "codex"
+								? `${codexCapabilities?.skills.filter((skill) => skill.enabled).length ?? 0} 个可用技能 · ${codexConnection?.version ?? "版本未知"}`
+								: `Claude Code · ${activeProviderConnection?.version ?? "版本未知"}`}
 						</p>
 					</details>
 				</section>
@@ -2232,13 +2861,20 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 							<div className="mt-2 flex flex-wrap justify-center gap-1.5">
 								{AGENT_REQUEST_PRESETS.map((preset) => (
 									<button
-										key={preset}
+										key={preset.label}
 										type="button"
 										disabled={sending}
 										className="rounded-full border border-white/8 px-2.5 py-1 text-[9px] text-slate-400 transition hover:border-white/15 hover:bg-white/[0.04] hover:text-slate-100 disabled:opacity-40"
-										onClick={() => void submitToCodex(preset)}
+										title={
+											preset.request === MOTION_DESIGN_REQUEST
+												? motionDesignSkillReady
+													? "按当前画面与节奏直接生成可编辑动效"
+													: "重启 Agent 后自动发现；当前会显式读取项目 Skill"
+												: undefined
+										}
+										onClick={() => void submitToCodex(preset.request)}
 									>
-										{preset}
+										{preset.label}
 									</button>
 								))}
 							</div>
@@ -2279,21 +2915,19 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 											: "text-slate-200"
 									}`}
 								>
-									{message.protocol && message.protocol.length > 0 ? (
-										<CodexActivityLine frames={message.protocol} />
-									) : message.streaming ? (
-										<div className="mb-2 flex items-center gap-2 text-[9px] text-slate-500">
-											<span className="size-1.5 animate-pulse rounded-full bg-cyan-300" />
-											正在准备工程上下文…
-										</div>
-									) : null}
+									<AgentProcessFeed
+										frames={message.protocol ?? []}
+										events={message.nativeEvents ?? []}
+										streaming={message.streaming === true}
+										provider={agentProvider}
+									/>
 									{message.content ? (
 										<p className="whitespace-pre-wrap">
 											{message.content}
 											{message.streaming ? (
 												<span
 													className="ml-0.5 inline-block h-3 w-0.5 animate-pulse bg-cyan-300 align-middle"
-													aria-label="Codex 正在流式回复"
+													aria-label={`${activeProviderLabel} 正在流式回复`}
 												/>
 											) : null}
 										</p>
@@ -2575,7 +3209,14 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 						disabled={!conversationHydrated}
 						onChange={(event) => setRequest(event.target.value)}
 						onKeyDown={(event) => {
-							if (event.key === "Enter" && !event.shiftKey) {
+							if (
+								shouldSubmitAgentComposer({
+									key: event.key,
+									shiftKey: event.shiftKey,
+									isComposing: event.nativeEvent.isComposing,
+									keyCode: event.nativeEvent.keyCode,
+								})
+							) {
 								event.preventDefault();
 								void submitToCodex();
 							}
@@ -2584,7 +3225,9 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 							!conversationHydrated
 								? "正在同步工程会话…"
 								: sending
-									? "继续补充当前任务…"
+									? agentProvider === "claude"
+										? "Claude Code 正在处理…"
+										: "继续补充当前任务…"
 									: "描述你想要的剪辑效果…"
 						}
 					/>
@@ -2599,21 +3242,190 @@ export function AgentWorkbench({ onClose }: AgentWorkbenchProps) {
 										? "bg-white/12 text-slate-100"
 										: "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
 								}`}
-								onClick={() => setReferencePickerOpen((open) => !open)}
+								onClick={() => {
+									setQuickConfigOpen(false);
+									setReferencePickerOpen((open) => !open);
+								}}
 							>
 								<Plus className="size-3.5" />
 							</button>
-							<span
-								className="min-w-0 truncate px-1 text-[9px] text-slate-500"
-								title={
-									activeTurnId
-										? `任务 ${activeTurnId} · 已接收 ${activeRunSequence} 个事件`
-										: undefined
-								}
-							>
-								{selectedCodexModel?.label ?? codexModel} ·{" "}
-								{codexMode === "plan" ? "规划" : "执行"}
-							</span>
+							<div ref={quickConfigRef} className="relative min-w-0">
+								{quickConfigOpen ? (
+									<section
+										aria-label="快捷模式配置"
+										className="absolute bottom-[calc(100%+0.65rem)] left-0 z-30 w-72 max-w-[calc(100vw-3rem)] rounded-xl border border-white/10 bg-[#1a1d20] p-3 shadow-[0_18px_55px_rgba(0,0,0,0.5)]"
+									>
+										<div className="flex items-start justify-between gap-3">
+											<div>
+												<p className="text-[11px] font-semibold text-slate-100">
+													模型与模式
+												</p>
+												<p className="mt-0.5 text-[8px] text-slate-500">
+													用于下一条智能剪辑消息
+												</p>
+											</div>
+											<span className="rounded-full border border-white/8 bg-white/[0.04] px-2 py-0.5 text-[8px] text-slate-400">
+												{activeProviderLabel}
+											</span>
+										</div>
+										<div className="mt-3 grid grid-cols-2 gap-2">
+											<label className="col-span-2 block">
+												<span className="mb-1 block text-[8px] text-slate-500">
+													模型
+												</span>
+												<select
+													aria-label="快捷模型"
+													value={
+														agentProvider === "claude"
+															? claudeModel
+															: codexModel
+													}
+													disabled={sending}
+													onChange={(event) => {
+														if (agentProvider === "claude") {
+															setClaudeModel(event.target.value);
+														} else {
+															chooseCodexModel(event.target.value);
+														}
+													}}
+													className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+												>
+													{activeModelOptions.length ? (
+														activeModelOptions.map((model) => (
+															<option key={model.id} value={model.id}>
+																{model.label}
+															</option>
+														))
+													) : (
+														<option value={currentModel}>{currentModel}</option>
+													)}
+												</select>
+											</label>
+											<label className="block">
+												<span className="mb-1 block text-[8px] text-slate-500">
+													模式
+												</span>
+												<select
+													aria-label="快捷协作模式"
+													value={
+														agentProvider === "claude" ? claudeMode : codexMode
+													}
+													disabled={sending}
+													onChange={(event) => {
+														if (agentProvider === "claude") {
+															setClaudeMode(
+																event.target.value === "plan" ? "plan" : "edit",
+															);
+														} else if (isCodexMode(event.target.value)) {
+															setCodexMode(event.target.value);
+														}
+													}}
+													className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+												>
+													<option
+														value={
+															agentProvider === "claude" ? "edit" : "default"
+														}
+													>
+														执行
+													</option>
+													<option value="plan">规划</option>
+												</select>
+											</label>
+											<label className="block">
+												<span className="mb-1 block text-[8px] text-slate-500">
+													推理强度
+												</span>
+												<select
+													aria-label="快捷推理强度"
+													value={
+														agentProvider === "claude"
+															? claudeEffort
+															: codexEffort
+													}
+													disabled={sending}
+													onChange={(event) => {
+														if (agentProvider === "claude") {
+															const effort = event.target.value;
+															if (
+																effort === "low" ||
+																effort === "medium" ||
+																effort === "high" ||
+																effort === "max"
+															) {
+																setClaudeEffort(effort);
+															}
+														} else {
+															setCodexEffort(event.target.value);
+														}
+													}}
+													className="h-8 w-full rounded-md border border-white/8 bg-black/25 px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/40 disabled:opacity-50"
+												>
+													{agentProvider === "claude" ? (
+														<>
+															<option value="low">低</option>
+															<option value="medium">中</option>
+															<option value="high">高</option>
+															<option value="max">最高</option>
+														</>
+													) : (
+														availableEfforts.map((effort) => (
+															<option key={effort} value={effort}>
+																{effort}
+															</option>
+														))
+													)}
+												</select>
+											</label>
+										</div>
+										<div className="mt-3 flex items-center justify-between border-t border-white/7 pt-2">
+											<span className="text-[8px] text-slate-600">
+												设置自动应用 · 点击外部关闭快捷配置
+											</span>
+											<button
+												type="button"
+												onClick={() => {
+													setQuickConfigOpen(false);
+													setCodexSettingsOpen(true);
+												}}
+												className="rounded-md px-2 py-1 text-[8px] text-cyan-300 transition hover:bg-cyan-400/8"
+											>
+												更多设置
+											</button>
+										</div>
+									</section>
+								) : null}
+								<button
+									type="button"
+									aria-label="切换模型与模式"
+									aria-expanded={quickConfigOpen}
+									disabled={sending}
+									onClick={() => {
+										setReferencePickerOpen(false);
+										setCodexSettingsOpen(false);
+										setQuickConfigOpen((open) => !open);
+									}}
+									className={`flex min-w-0 max-w-52 items-center gap-1 rounded-md px-1.5 py-1 text-[9px] transition disabled:cursor-not-allowed disabled:opacity-40 ${
+										quickConfigOpen
+											? "bg-white/[0.08] text-slate-200"
+											: "text-slate-500 hover:bg-white/[0.05] hover:text-slate-300"
+									}`}
+									title={
+										activeTurnId
+											? `任务 ${activeTurnId} · 已接收 ${activeRunSequence} 个事件`
+											: "切换模型与模式"
+									}
+								>
+									<span className="min-w-0 truncate">
+										{agentProvider === "claude"
+											? `Claude · ${selectedActiveModel?.label ?? claudeModel} · ${claudeMode === "plan" ? "规划" : "执行"}`
+											: `${selectedActiveModel?.label ?? selectedCodexModel?.label ?? codexModel} · ${codexMode === "plan" ? "规划" : "执行"}`}
+									</span>
+									<ChevronDown
+										className={`size-2.5 shrink-0 transition-transform ${quickConfigOpen ? "rotate-180" : ""}`}
+									/>
+								</button>
+							</div>
 						</div>
 						<div className="flex items-center gap-1.5">
 							{sending ? (

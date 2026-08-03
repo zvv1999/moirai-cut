@@ -5,16 +5,16 @@ without an account, while optional integrations may contact services selected
 by the user or deployment operator. This table documents the current repository
 defaults.
 
-| Surface | Default destination | When data is sent | Typical data | Default |
-| --- | --- | --- | --- | --- |
-| Project editing | Local browser storage and configured project directory | Import, edit, save, proxy and export | Media, project JSON, caches and exports | Local only |
-| Moirai Cut MCP | Local stdio process and loopback editor presence API | Agent App reads or edits a project | Project summary, selected context, tool arguments and results | Opt-in install |
-| Shared Codex host | `ws://127.0.0.1:48721` | Browser and Codex App share a task | Conversation events, project references and tool events | Loopback only |
-| Codex / Claude | Provider selected by the user | User sends an Agent message | Prompt, selected project context and, in multimodal modes, sampled frames | User initiated |
-| Marble CMS | `NEXT_PUBLIC_MARBLE_API_URL` | Only after an operator explicitly configures `MARBLE_WORKSPACE_KEY` | Public content queries | Disabled |
-| Freesound | Freesound API | User searches or imports external audio | Search query and provider credentials | User initiated |
-| Databuddy | `https://cdn.databuddy.cc` and the configured project | Operator sets `NEXT_PUBLIC_DATABUDDY_CLIENT_ID` | Error events under the options in `app/layout.tsx`; no session replay or attribute capture | Disabled |
-| Database / Redis | Operator-configured services | Accounts or hosted features are enabled | Authentication and application state | Optional self-hosted |
+| Surface           | Default destination                                    | When data is sent                                                   | Typical data                                                                               | Default              |
+| ----------------- | ------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------- |
+| Project editing   | Local browser storage and configured project directory | Import, edit, save, proxy and export                                | Media, project JSON, caches and exports                                                    | Local only           |
+| Moirai Cut MCP    | Local stdio process and loopback editor presence API   | Agent App reads or edits a project                                  | Project summary, selected context, tool arguments and results                              | Opt-in install       |
+| Shared Codex host | `ws://127.0.0.1:48721`                                 | Browser and Codex App share a task                                  | Conversation events, project references and tool events                                    | Loopback only        |
+| Codex / Claude    | Provider or third-party endpoint selected by the user  | User sends an Agent message                                         | Prompt, selected project context and, in multimodal modes, sampled frames                  | User initiated       |
+| Marble CMS        | `NEXT_PUBLIC_MARBLE_API_URL`                           | Only after an operator explicitly configures `MARBLE_WORKSPACE_KEY` | Public content queries                                                                     | Disabled             |
+| Freesound         | Freesound API                                          | User searches or imports external audio                             | Search query and provider credentials                                                      | User initiated       |
+| Databuddy         | `https://cdn.databuddy.cc` and the configured project  | Operator sets `NEXT_PUBLIC_DATABUDDY_CLIENT_ID`                     | Error events under the options in `app/layout.tsx`; no session replay or attribute capture | Disabled             |
+| Database / Redis  | Operator-configured services                           | Accounts or hosted features are enabled                             | Authentication and application state                                                       | Optional self-hosted |
 
 ## Local guarantees
 
@@ -23,6 +23,9 @@ defaults.
 - Final export reads original media even when preview proxies are enabled.
 - Installing the MCP grants the selected Agent access to local project tools;
   it should not be exposed to an untrusted network without authentication.
+- Third-party endpoint credentials are stored outside the repository in
+  `~/.moirai-cut/agent-credentials.json` with user-only permissions. The setup
+  API returns only whether a credential exists, never its value.
 - The repository contains no inherited Marble workspace key; clean builds do
   not fetch upstream blog content.
 - Without Redis, rate limiting is process-local and suitable only for local

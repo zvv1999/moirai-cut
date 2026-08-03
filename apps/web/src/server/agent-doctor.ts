@@ -26,6 +26,7 @@ export interface AgentDoctorSnapshot {
 	ready: boolean;
 	blocking: string[];
 	recommendedProvider: AgentDiscovery["recommendedProvider"];
+	activeProvider: AgentDiscovery["activeProvider"];
 	providers: Array<AgentProviderConnection & { mcpInstalled: boolean }>;
 	checks: AgentDoctorCheck[];
 }
@@ -235,6 +236,7 @@ export async function runAgentDoctor({
 		checkedAt: new Date().toISOString(),
 		...scoreAgentReadiness(checks),
 		recommendedProvider: resolvedDiscovery.recommendedProvider,
+		activeProvider: resolvedDiscovery.activeProvider,
 		providers,
 		checks,
 	};

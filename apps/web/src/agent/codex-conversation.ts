@@ -1,9 +1,5 @@
 export type CodexProtocolStatus =
-	| "started"
-	| "streaming"
-	| "completed"
-	| "failed"
-	| "info";
+	"started" | "streaming" | "completed" | "failed" | "info";
 
 export interface CodexProtocolFrame {
 	id: string;
@@ -18,6 +14,23 @@ export interface CodexProtocolFrame {
 	append?: boolean;
 }
 
+export type ProviderNativePayload =
+	| null
+	| boolean
+	| number
+	| string
+	| ProviderNativePayload[]
+	| { [key: string]: ProviderNativePayload };
+
+export interface ProviderNativeEvent {
+	id: string;
+	provider: string;
+	transport: string;
+	name: string;
+	payload: ProviderNativePayload;
+	raw?: string;
+}
+
 export interface CodexConversationMessage {
 	id: string;
 	role: "user" | "assistant" | "error";
@@ -25,6 +38,7 @@ export interface CodexConversationMessage {
 	referenceCount?: number;
 	streaming?: boolean;
 	protocol?: CodexProtocolFrame[];
+	nativeEvents?: ProviderNativeEvent[];
 	runId?: string;
 	turnId?: string;
 	runSequence?: number;
@@ -35,6 +49,7 @@ export interface CodexConversationMessage {
 export interface CodexConversationThread {
 	id: string;
 	title: string;
+	provider?: "codex" | "claude";
 	sessionId: string | null;
 	messages: CodexConversationMessage[];
 	createdAt: number;
@@ -95,6 +110,46 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isProviderNativePayload(
+	value: unknown,
+	seen = new WeakSet<object>(),
+): value is ProviderNativePayload {
+	if (
+		value === null ||
+		typeof value === "boolean" ||
+		typeof value === "string"
+	) {
+		return true;
+	}
+	if (typeof value === "number") return Number.isFinite(value);
+	if (typeof value !== "object") return false;
+	if (seen.has(value)) return false;
+	seen.add(value);
+	if (Array.isArray(value)) {
+		return value.every((item) => isProviderNativePayload(item, seen));
+	}
+	return Object.values(value).every((item) =>
+		isProviderNativePayload(item, seen),
+	);
+}
+
+export function isProviderNativeEvent(
+	value: unknown,
+): value is ProviderNativeEvent {
+	if (!isRecord(value)) return false;
+	return (
+		typeof value.id === "string" &&
+		typeof value.provider === "string" &&
+		value.provider.length > 0 &&
+		typeof value.transport === "string" &&
+		value.transport.length > 0 &&
+		typeof value.name === "string" &&
+		"payload" in value &&
+		isProviderNativePayload(value.payload) &&
+		(value.raw === undefined || typeof value.raw === "string")
+	);
+}
+
 function isProtocolFrame(value: unknown): value is CodexProtocolFrame {
 	if (!isRecord(value)) return false;
 	return (
@@ -132,6 +187,9 @@ function isConversationMessage(
 		(value.protocol === undefined ||
 			(Array.isArray(value.protocol) &&
 				value.protocol.every(isProtocolFrame))) &&
+		(value.nativeEvents === undefined ||
+			(Array.isArray(value.nativeEvents) &&
+				value.nativeEvents.every(isProviderNativeEvent))) &&
 		(value.runId === undefined || typeof value.runId === "string") &&
 		(value.turnId === undefined || typeof value.turnId === "string") &&
 		(value.runSequence === undefined ||
@@ -153,6 +211,9 @@ function isConversationThread(
 		typeof value.id === "string" &&
 		typeof value.title === "string" &&
 		(value.sessionId === null || typeof value.sessionId === "string") &&
+		(value.provider === undefined ||
+			value.provider === "codex" ||
+			value.provider === "claude") &&
 		Array.isArray(value.messages) &&
 		value.messages.every(isConversationMessage) &&
 		typeof value.createdAt === "number" &&
@@ -249,6 +310,7 @@ export async function fetchCodexConversation({
 export async function persistCodexConversation({
 	projectId,
 	conversationId,
+	provider,
 	title,
 	sessionId,
 	messages,
@@ -256,6 +318,7 @@ export async function persistCodexConversation({
 }: {
 	projectId: string;
 	conversationId: string;
+	provider?: "codex" | "claude";
 	title?: string;
 	sessionId: string | null;
 	messages: CodexConversationMessage[];
@@ -266,6 +329,7 @@ export async function persistCodexConversation({
 		headers: { "content-type": "application/json" },
 		body: JSON.stringify({
 			conversationId,
+			...(provider ? { provider } : {}),
 			...(title ? { title } : {}),
 			sessionId,
 			messages,

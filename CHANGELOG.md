@@ -4,6 +4,40 @@ All notable Moirai Cut changes are documented here. The repository is in develop
 preview and follows semantic versioning for public release artifacts; project
 schema and Agent surfaces may still change with migration notes.
 
+## 0.1.2 — 2026-08-03
+
+Agent interoperability and motion-design update for the developer preview.
+
+### Added
+
+- Configurable Codex and Claude providers with local-account reuse, custom
+  compatible endpoints and dynamically discovered model choices.
+- A readable, continuously updating Agent process feed that preserves native
+  Provider reasoning, tool activity, retries and completion states.
+- The built-in `moirai-cut-motion-design` Skill for editable cinematic captions,
+  chapter cards and MG keyframe animation with representative-frame quality checks.
+
+### Changed
+
+- Provider conversations now remain continuous after initialization instead of
+  starting a new runtime session for every message.
+- Agent setup, model switching and endpoint configuration use one shared local
+  settings flow across Codex and Claude.
+- System and privacy documentation now explains custom endpoints, local credential
+  storage and the project context sent to an Agent.
+
+### Fixed
+
+- Prevented unfinished IME composition from being submitted when Enter is pressed.
+- Improved cancellation, retry visibility and cleanup for Claude browser streams.
+- Refreshed custom Codex hosts after configuration changes and reduced repeated MCP
+  startup work on the interactive path.
+
+### Compatibility and migration
+
+- Existing local Codex and Claude logins continue to work without re-authentication.
+- Existing projects require no schema migration for this release.
+
 ## 0.1.1 — 2026-08-03
 
 Public-source hygiene patch for the developer preview.

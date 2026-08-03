@@ -92,6 +92,27 @@ describe("Agent provider discovery", () => {
 			}),
 		);
 	});
+
+	test("honors a ready configured Claude provider as the active recommendation", async () => {
+		const run: AgentCommandRunner = async ({ args }) => {
+			if (args[0] === "--version") {
+				return { stdout: "2.1.91 (Claude Code)", stderr: "" };
+			}
+			return {
+				stdout: JSON.stringify({ loggedIn: true, authMethod: "oauth_token" }),
+				stderr: "",
+			};
+		};
+
+		const discovery = await discoverAgentProviders({
+			candidates: [candidates[2]],
+			preferredProvider: "claude",
+			run,
+		});
+
+		expect(discovery.recommendedProvider).toBe("claude");
+		expect(discovery.activeProvider).toBe("claude");
+	});
 });
 
 describe("OpenCut MCP installer", () => {

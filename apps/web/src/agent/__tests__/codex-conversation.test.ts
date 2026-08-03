@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import {
 	type CodexConversationMessage,
 	fetchCodexConversation,
+	isCodexProjectConversation,
 	mergeCodexConversationMessages,
 	persistCodexConversation,
 	synchronizeCodexConversationMessages,
@@ -32,6 +33,71 @@ const nativeMessages: CodexConversationMessage[] = [
 ];
 
 describe("Codex conversation client synchronization", () => {
+	test("validates complete Provider-native event history without accepting non-JSON payloads", () => {
+		const projectConversation = {
+			schemaVersion: "opencut.codex-conversations.v2",
+			projectId: "project-1",
+			revision: 1,
+			updatedAt: 101,
+			conversations: [
+				{
+					id: "conversation-1",
+					title: "原生事件",
+					provider: "claude",
+					sessionId: "claude-session",
+					createdAt: 100,
+					updatedAt: 101,
+					messages: [
+						{
+							id: "assistant-1",
+							role: "assistant",
+							content: "完成",
+							createdAt: 100,
+							updatedAt: 101,
+							nativeEvents: [
+								{
+									id: "native-1",
+									provider: "claude",
+									transport: "stream-json",
+									name: "assistant/tool_use",
+									payload: {
+										type: "assistant",
+										message: { content: [{ type: "tool_use" }] },
+									},
+									raw: '{"type":"assistant"}',
+								},
+							],
+						},
+					],
+				},
+			],
+		};
+
+		expect(isCodexProjectConversation(projectConversation)).toBe(true);
+		expect(
+			isCodexProjectConversation({
+				...projectConversation,
+				conversations: [
+					{
+						...projectConversation.conversations[0],
+						messages: [
+							{
+								...projectConversation.conversations[0]!.messages[0],
+								nativeEvents: [
+									{
+										...projectConversation.conversations[0]!.messages[0]!
+											.nativeEvents[0],
+										payload: { invalid: () => true },
+									},
+								],
+							},
+						],
+					},
+				],
+			}),
+		).toBe(false);
+	});
+
 	test("replaces stale browser history with the authoritative App thread while idle", () => {
 		const stale: CodexConversationMessage = {
 			id: "stale-browser-only",

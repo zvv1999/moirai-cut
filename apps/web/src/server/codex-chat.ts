@@ -4,8 +4,13 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline";
 import { PassThrough } from "node:stream";
+import type {
+	ProviderNativeEvent,
+	ProviderNativePayload,
+} from "@/agent/codex-conversation";
 import { configuredCodexBinary } from "@/server/codex-config";
 import { ensureOpenCutWorkspaceConfig } from "@/server/codex-workspace-config";
+import type { AgentEndpointRuntime } from "@/server/agent-settings";
 
 const REQUEST_TIMEOUT_MS = 30_000;
 const MCP_REQUEST_TIMEOUT_MS = 120_000;
@@ -42,6 +47,7 @@ export interface CodexRuntimeConfig {
 	baseUrl: string;
 	sharedAppServerUrl: string;
 	disabledMcpServers?: string[];
+	endpoint?: AgentEndpointRuntime;
 }
 
 export type CodexDesktopThreadSync = (threadId: string) => Promise<void> | void;
@@ -82,6 +88,7 @@ export type CodexChatEvent =
 	| { type: "turn"; sessionId: string; turnId: string }
 	| { type: "delta"; delta: string }
 	| ({ type: "protocol" } & CodexProtocolFrame)
+	| { type: "native"; event: ProviderNativeEvent }
 	| { type: "error"; message: string }
 	| { type: "done"; sessionId: string; message: string };
 
@@ -202,6 +209,11 @@ function tomlString(value: string): string {
 	return JSON.stringify(value);
 }
 
+export function codexGatewayBaseUrl(baseUrl: string): string {
+	const normalized = baseUrl.replace(/\/+$/, "");
+	return normalized.endsWith("/v1") ? normalized : `${normalized}/v1`;
+}
+
 function mcpServerAllowed({
 	serverName,
 	toolProfile,
@@ -231,11 +243,27 @@ function commonCodexConfigArgs({
 				!mcpServerAllowed({ serverName, toolProfile }),
 		)
 		.flatMap((serverName) => ["-c", `mcp_servers.${serverName}.enabled=false`]);
+	const endpointArgs =
+		runtime.endpoint?.mode === "custom"
+			? [
+					"-c",
+					'model_provider="moirai_gateway"',
+					"-c",
+					'model_providers.moirai_gateway.name="Moirai Cut Gateway"',
+					"-c",
+					`model_providers.moirai_gateway.base_url=${tomlString(codexGatewayBaseUrl(runtime.endpoint.baseUrl))}`,
+					"-c",
+					'model_providers.moirai_gateway.env_key="MOIRAI_CODEX_GATEWAY_KEY"',
+					"-c",
+					'model_providers.moirai_gateway.wire_api="responses"',
+				]
+			: [];
 	return [
 		"-c",
 		'approval_policy="never"',
 		"-c",
 		'sandbox_mode="read-only"',
+		...endpointArgs,
 		...disabledMcpArgs,
 		"-c",
 		"mcp_servers.opencut.enabled=true",
@@ -381,6 +409,9 @@ function passthroughEnvironment(
 	for (const key of keys) {
 		const value = process.env[key];
 		if (value !== undefined) env[key] = value;
+	}
+	if (runtime.endpoint?.mode === "custom") {
+		env.MOIRAI_CODEX_GATEWAY_KEY = runtime.endpoint.credential;
 	}
 	return env;
 }
@@ -1730,7 +1761,11 @@ async function nextWithTurnReconciliation({
 	threadId: string;
 	turnId: string;
 	reconcileIntervalMs: number;
-}): Promise<IteratorResult<unknown>> {
+}): Promise<{
+	done: boolean;
+	value?: unknown;
+	providerNative: boolean;
+}> {
 	const pendingNotification = iterator.next();
 	const deadline = Date.now() + TURN_IDLE_TIMEOUT_MS;
 	for (;;) {
@@ -1749,7 +1784,13 @@ async function nextWithTurnReconciliation({
 			}),
 		]);
 		if (timer) clearTimeout(timer);
-		if (result.kind === "notification") return result.value;
+		if (result.kind === "notification") {
+			return {
+				done: result.value.done === true,
+				value: result.value.value,
+				providerNative: true,
+			};
+		}
 
 		try {
 			const response = await connection.request({
@@ -1760,6 +1801,7 @@ async function nextWithTurnReconciliation({
 			if (turn) {
 				return {
 					done: false,
+					providerNative: false,
 					value: {
 						method: "turn/completed",
 						params: { threadId, turn },
@@ -1787,7 +1829,9 @@ interface OpenCutSessionBinding {
 
 function projectSnapshotFromToolResponse(response: unknown): string {
 	if (!isRecord(response)) {
-		throw new CodexChatError("当前工程上下文读取失败：Moirai Cut 返回格式无效。");
+		throw new CodexChatError(
+			"当前工程上下文读取失败：Moirai Cut 返回格式无效。",
+		);
 	}
 	const content = Array.isArray(response.content) ? response.content : [];
 	const text = content
@@ -1806,7 +1850,9 @@ function projectSnapshotFromToolResponse(response: unknown): string {
 		);
 	}
 	if (!snapshot) {
-		throw new CodexChatError("当前工程上下文读取失败：Moirai Cut 未返回工程摘要。");
+		throw new CodexChatError(
+			"当前工程上下文读取失败：Moirai Cut 未返回工程摘要。",
+		);
 	}
 	if (snapshot.length <= MAX_PROJECT_SNAPSHOT_CHARS) return snapshot;
 	return `${snapshot.slice(0, MAX_PROJECT_SNAPSHOT_CHARS)}\n…工程摘要已截断`;
@@ -2743,6 +2789,7 @@ export function createCodexChatService({
 					syncThreadToDesktop,
 				});
 				let streamedMessage = "";
+				let nativeEventSequence = 0;
 
 				for (;;) {
 					if (signal?.aborted) {
@@ -2759,8 +2806,23 @@ export function createCodexChatService({
 						throw new CodexChatError("Codex 事件流提前结束。");
 					}
 					if (!isRecord(next.value)) continue;
-					if (notificationTurnId(next.value) !== turnId) continue;
 					const notification = next.value;
+					if (next.providerNative) {
+						nativeEventSequence += 1;
+						const event: ProviderNativeEvent = {
+							id: `${turnId}:native:${nativeEventSequence}`,
+							provider: "codex",
+							transport: "app-server-json-rpc",
+							name:
+								typeof notification.method === "string"
+									? notification.method
+									: "notification",
+							payload: notification as ProviderNativePayload,
+							raw: JSON.stringify(notification),
+						};
+						yield { type: "native", event };
+					}
+					if (notificationTurnId(notification) !== turnId) continue;
 
 					if (
 						notification.method === "item/agentMessage/delta" &&

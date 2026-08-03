@@ -113,6 +113,19 @@ describe("project-scoped Codex conversation storage", () => {
 							title: "agentMessage",
 						},
 					],
+					nativeEvents: [
+						{
+							id: "native-tool-browser",
+							provider: "codex",
+							transport: "app-server-json-rpc",
+							name: "item/started",
+							payload: {
+								method: "item/started",
+								params: { item: { id: "tool-browser" } },
+							},
+							raw: '{"method":"item/started"}',
+						},
+					],
 					createdAt: 101,
 					updatedAt: 101,
 				},
@@ -179,6 +192,12 @@ describe("project-scoped Codex conversation storage", () => {
 					expect.objectContaining({
 						id: "assistant-native",
 						status: "completed",
+					}),
+				],
+				nativeEvents: [
+					expect.objectContaining({
+						id: "native-tool-browser",
+						name: "item/started",
 					}),
 				],
 			}),

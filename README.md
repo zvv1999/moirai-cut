@@ -8,7 +8,7 @@
 
 ![Moirai Cut shared human-agent timeline](docs/brand/assets/moirai-cut-launch-landscape.png)
 
-> **v0.1.1 Public Preview** — Moirai Cut is ready for local editing and
+> **v0.1.2 Public Preview** — Moirai Cut is ready for local editing and
 > Agent-driven workflows. The project format and integration surface may still
 > evolve before 1.0, with migration notes published in the changelog.
 
@@ -110,6 +110,22 @@ bun run agent:doctor
 2. **在 Agent App 中控制 Moirai Cut**：在设置页为 Codex 或 Claude 安装 Moirai Cut MCP，
    然后从 App 读取、分析和修改当前工程。
 
+### CLI 与第三方端点
+
+“智能剪辑 → 设置”可以分别配置 Codex CLI 和 Claude Code CLI，并在两类运行端点间切换：
+
+- **本机账号**：复用 CLI 或桌面 App 已有登录，不需要在 Moirai Cut 中重新认证。
+- **第三方端点**：填写 Base URL、模型 ID 和 API Key；Claude 还支持 Bearer Token。
+
+Codex 第三方端点必须兼容 OpenAI Responses API；Claude 第三方端点必须兼容 Anthropic
+Messages API。Moirai Cut 不修改用户的 `~/.codex/config.toml` 或 Claude 全局配置，而是为
+浏览器会话按需注入独立运行配置。第三方 Codex 端点使用隔离的本地 app-server，因此不会
+冒充或覆盖 Codex App 的官方账号会话；切回“本机账号”后继续使用原共享宿主。
+
+端点元数据保存在 `~/.moirai-cut/agent-endpoints.json`；密钥单独保存在权限为 `0600` 的
+`~/.moirai-cut/agent-credentials.json`。密钥不会返回浏览器、写入项目文件或出现在 CLI
+命令行参数中。
+
 ### 一次调用完成可编辑首剪
 
 打开左侧“智能剪辑”后，点击 **开始完整创作**。界面会调用项目内置的
@@ -124,6 +140,20 @@ bun run agent:doctor
 ```
 
 Skill 源码与评测位于 [`.agents/skills/moirai-cut-create`](.agents/skills/moirai-cut-create/)。
+
+### 一键升级字幕与 MG 动效
+
+当字幕或章节动画“不带感”时，不需要手动组合字体、背景和关键帧参数。在智能剪辑的新对话页点击
+**升级字幕与 MG 动效**，或直接说：
+
+```text
+使用 $moirai-cut-motion-design，根据当前画面和声音节奏重新设计字幕与 MG，并完成代表帧质检。
+```
+
+该 Skill 会读取当前选区、画面序列和声音事件，先建立文字层级，再把静态样式、入场、稳定态和
+退场动作写回可编辑时间线。它默认根据工程选择克制电影、编辑网格或节奏动势，不批量套固定模板。
+源码与评测位于
+[`.agents/skills/moirai-cut-motion-design`](.agents/skills/moirai-cut-motion-design/)。
 
 需要数据库、Redis 和服务端 Provider 时再运行：
 

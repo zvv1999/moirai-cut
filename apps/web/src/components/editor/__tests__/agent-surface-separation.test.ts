@@ -125,7 +125,8 @@ describe("智能剪辑与工程历史分面", () => {
 	test("侧栏自动发现 Agent 并把路径细节收进部署服务", () => {
 		expect(workbenchSource).toContain('fetch("/api/codex/config")');
 		expect(workbenchSource).toContain('aria-label="打开智能剪辑设置"');
-		expect(workbenchSource).toContain("<AgentSetupPanel compact");
+		expect(workbenchSource).toContain("<AgentSetupPanel");
+		expect(workbenchSource).toContain("onEndpointChange");
 		expect(workbenchSource).not.toContain('aria-label="Codex Path"');
 		expect(envExampleSource).toContain("# CODEX_BIN=/absolute/path/to/codex");
 		expect(envExampleSource).toContain("# CLAUDE_BIN=/absolute/path/to/claude");
@@ -142,30 +143,37 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).not.toContain("运行质检");
 	});
 
-	test("处理过程默认只展示最新一行，展开后也只保留用户可读步骤", () => {
-		expect(workbenchSource).toContain('aria-label="智能剪辑处理过程"');
+	test("处理过程以滚动工作流展示思考、工具调用和结果", () => {
+		expect(workbenchSource).toContain('aria-label="智能剪辑工作过程"');
 		expect(workbenchSource).toContain("CodexProtocolFrame");
 		expect(conversationSource).toContain("protocol?:");
-		expect(workbenchSource).toContain("function CodexActivityLine");
-		expect(workbenchSource).toContain("const latestFrame = frames.at(-1)");
-		expect(workbenchSource).toContain("frames.slice(-6, -1)");
-		expect(workbenchSource).toContain('aria-label="查看之前的处理步骤"');
-		expect(workbenchSource).toContain('frame.itemType === "agentMessage"');
-		expect(workbenchSource).toContain('"回复已生成"');
-		expect(workbenchSource).toContain('frame.itemType === "userMessage"');
-		expect(workbenchSource).toContain('"已接收剪辑需求"');
-		expect(workbenchSource).toContain("正在准备工程上下文…");
-		expect(workbenchSource).not.toContain("查看执行详情");
-		expect(workbenchSource).not.toContain("{frame.method}");
-		expect(workbenchSource).not.toContain("{frame.detail}");
-		expect(workbenchSource).not.toContain("个步骤");
-		expect(workbenchSource).not.toContain("protocolKindLabel");
-		expect(workbenchSource).not.toContain("protocolStatusLabel");
-		expect(workbenchSource).not.toContain("Codex 调用流程");
-		expect(workbenchSource).not.toContain("原生协议");
-		expect(workbenchSource).not.toContain("查看协议详情");
-		expect(workbenchSource).not.toContain("app-server · 等待协议事件");
-		expect(workbenchSource).not.toContain("Codex 正在处理");
+		expect(workbenchSource).toContain("function AgentProcessFeed");
+		expect(workbenchSource).toContain("buildAgentProcessSteps");
+		expect(workbenchSource).toContain("processFeedRef");
+		expect(workbenchSource).toContain("processFeedRef.current?.scrollTo");
+		expect(workbenchSource).toContain('role="log"');
+		expect(workbenchSource).toContain('aria-live="polite"');
+		expect(workbenchSource).toContain("step.detail");
+		expect(workbenchSource).toContain('aria-label="查看完整工作过程"');
+		expect(workbenchSource).toContain("motion-safe:animate-pulse");
+		expect(workbenchSource).not.toContain("协作进行中");
+		expect(workbenchSource).not.toContain("正在准备工程上下文…");
+		expect(workbenchSource).toContain("visibleAgentProcessSteps");
+		expect(workbenchSource).not.toContain("agentStartupStep");
+	});
+
+	test("保留 Provider 事件作为数据源，但不使用原生事件调试样式", () => {
+		expect(conversationSource).toContain("ProviderNativeEvent");
+		expect(conversationSource).toContain(
+			"nativeEvents?: ProviderNativeEvent[]",
+		);
+		expect(workbenchSource).toContain('event.event === "native"');
+		expect(workbenchSource).toContain("onNative");
+		expect(workbenchSource).not.toContain("function ProviderNativeEventTrace");
+		expect(workbenchSource).not.toContain('aria-label="Provider 原生事件详情"');
+		expect(workbenchSource).not.toContain("Provider 原生事件");
+		expect(workbenchSource).not.toContain("完整事件 JSON");
+		expect(workbenchSource).not.toContain("nativeEvents.slice(");
 	});
 
 	test("同一工程在关闭重开、刷新和不同页面中恢复同一份会话", () => {
@@ -222,6 +230,16 @@ describe("智能剪辑与工程历史分面", () => {
 		expect(workbenchSource).toContain("专注剪辑");
 		expect(workbenchSource).toContain("剪辑与验收");
 		expect(workbenchSource).toContain("完整能力");
+	});
+
+	test("输入框状态摘要可直接打开快捷模型与模式配置", () => {
+		expect(workbenchSource).toContain('aria-label="切换模型与模式"');
+		expect(workbenchSource).toContain("aria-expanded={quickConfigOpen}");
+		expect(workbenchSource).toContain('aria-label="快捷模式配置"');
+		expect(workbenchSource).toContain('aria-label="快捷模型"');
+		expect(workbenchSource).toContain('aria-label="快捷协作模式"');
+		expect(workbenchSource).toContain('aria-label="快捷推理强度"');
+		expect(workbenchSource).toContain("点击外部关闭快捷配置");
 	});
 
 	test("处理中可以追加指令、停止、重连和压缩上下文", () => {

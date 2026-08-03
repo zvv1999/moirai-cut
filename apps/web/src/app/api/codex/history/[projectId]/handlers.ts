@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-	createCodexChatService,
-	type CodexChatService,
-} from "@/server/codex-chat";
+import type { CodexChatService } from "@/server/codex-chat";
+import { createCodexEndpointRoutingService } from "@/server/codex-endpoint-routing";
 import {
 	type CodexConversationStore,
 	getCodexConversationStore,
@@ -52,7 +50,7 @@ export async function readSharedProjectConversation({
 	conversationId,
 	synchronizeNative = true,
 	store = getCodexConversationStore(),
-	codex = createCodexChatService(),
+	codex = createCodexEndpointRoutingService(),
 }: {
 	projectId: string;
 	conversationId: string;
@@ -65,6 +63,7 @@ export async function readSharedProjectConversation({
 	const conversation = stored.conversations.find(
 		(candidate) => candidate.id === conversationId,
 	);
+	if (conversation?.provider === "claude") return stored;
 	if (!conversation?.sessionId) return stored;
 	try {
 		const thread = await codex.readThread({
@@ -96,12 +95,12 @@ export async function GET(request: Request, { params }: RouteContext) {
 		const conversationId = url.searchParams.get("conversationId")?.trim();
 		const synchronizeNative = url.searchParams.get("syncNative") !== "0";
 		const value = conversationId
-				? await readSharedProjectConversation({
-						projectId,
-						conversationId,
-						synchronizeNative,
-					})
-				: await getCodexConversationStore().read(projectId);
+			? await readSharedProjectConversation({
+					projectId,
+					conversationId,
+					synchronizeNative,
+				})
+			: await getCodexConversationStore().read(projectId);
 		const etag = conversationEtag(value.revision);
 		if (request.headers.get("if-none-match") === etag) {
 			return new NextResponse(null, {
@@ -157,13 +156,21 @@ export async function POST(request: Request, { params }: RouteContext) {
 			}
 			title = body.title;
 		}
+		let provider: "codex" | "claude" | undefined;
+		if ("provider" in body) {
+			if (body.provider !== "codex" && body.provider !== "claude") {
+				throw new Error("conversation provider is invalid");
+			}
+			provider = body.provider;
+		}
 		const value = await getCodexConversationStore().merge({
-				projectId,
-				conversationId: body.conversationId,
-				...(title !== undefined ? { title } : {}),
-				...(sessionId !== undefined ? { sessionId } : {}),
-				messages: body.messages,
-			});
+			projectId,
+			conversationId: body.conversationId,
+			...(provider ? { provider } : {}),
+			...(title !== undefined ? { title } : {}),
+			...(sessionId !== undefined ? { sessionId } : {}),
+			messages: body.messages,
+		});
 		return json({
 			value,
 			headers: { etag: conversationEtag(value.revision) },
