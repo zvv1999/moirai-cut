@@ -3369,6 +3369,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "moirai-cut-desktop"
+version = "0.1.2"
+dependencies = [
+ "gpui",
+]
+
+[[package]]
 name = "moxcms"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3809,13 +3816,6 @@ dependencies = [
  "is-wsl",
  "libc",
  "pathdiff",
-]
-
-[[package]]
-name = "moirai-cut-desktop"
-version = "0.1.2"
-dependencies = [
- "gpui",
 ]
 
 [[package]]
@@ -4754,9 +4754,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.103.10"
+version = "0.103.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df33b2b81ac578cabaf06b89b0631153a3f416b0a886e8a7a1707fb51abbd1ef"
+checksum = "61c429a8649f110dddef65e2a5ad240f747e85f7758a6bccc7e5777bd33f756e"
 dependencies = [
  "ring",
  "rustls-pki-types",
