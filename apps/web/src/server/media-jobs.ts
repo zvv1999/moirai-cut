@@ -463,6 +463,7 @@ export class NativeMediaJobService {
 		string,
 		Promise<Map<string, NativeMediaJob>>
 	>();
+	private readonly persistingProjects = new Map<string, Promise<void>>();
 	private readonly controllers = new Map<string, AbortController>();
 	private readonly pendingExecutions: QueuedProxyExecution[] = [];
 	private activeExecutions = 0;
@@ -587,14 +588,25 @@ export class NativeMediaJobService {
 	}
 
 	private async persist({ projectId }: { projectId: string }): Promise<void> {
-		const projectJobs = this.jobs.get(projectId) ?? new Map();
-		await writeJsonAtomic({
-			filePath: jobsPath({
-				projectsRoot: this.projectsRoot,
-				projectId,
-			}),
-			value: [...projectJobs.values()],
+		const previous = this.persistingProjects.get(projectId) ?? Promise.resolve();
+		const current = previous.catch(() => undefined).then(async () => {
+			const projectJobs = this.jobs.get(projectId) ?? new Map();
+			await writeJsonAtomic({
+				filePath: jobsPath({
+					projectsRoot: this.projectsRoot,
+					projectId,
+				}),
+				value: [...projectJobs.values()],
+			});
 		});
+		this.persistingProjects.set(projectId, current);
+		try {
+			await current;
+		} finally {
+			if (this.persistingProjects.get(projectId) === current) {
+				this.persistingProjects.delete(projectId);
+			}
+		}
 	}
 
 	private updateJob({

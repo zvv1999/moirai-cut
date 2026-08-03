@@ -12,6 +12,7 @@ import {
 	NativeMediaJobService,
 	buildProxyFfmpegArgs,
 	runNativeTranscode,
+	type NativeMediaJob,
 	type NativeTranscodeRunner,
 } from "@/server/media-jobs";
 import { normalizeFfprobe } from "@/media/codec-capabilities";
@@ -610,5 +611,22 @@ describe("native media proxy jobs", () => {
 		);
 
 		expect(maximumActive).toBe(2);
+		const persisted = JSON.parse(
+			await readFile(
+				path.join(
+					source.projectsRoot,
+					source.projectId,
+					"codec-jobs",
+					"index.json",
+				),
+				"utf8",
+			),
+		);
+		expect(persisted).toHaveLength(3);
+		expect(persisted.map((job: NativeMediaJob) => job.id).sort()).toEqual(
+			queued.map((job) => job.id).sort(),
+		);
+		expect(persisted.every((job: NativeMediaJob) => job.status === "succeeded"))
+			.toBe(true);
 	});
 });
