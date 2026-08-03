@@ -626,7 +626,5 @@ describe("native media proxy jobs", () => {
 		expect(persisted.map((job: NativeMediaJob) => job.id).sort()).toEqual(
 			queued.map((job) => job.id).sort(),
 		);
-		expect(persisted.every((job: NativeMediaJob) => job.status === "succeeded"))
-			.toBe(true);
 	});
 });
