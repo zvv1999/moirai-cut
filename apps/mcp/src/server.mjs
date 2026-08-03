@@ -220,7 +220,7 @@ async function bridge({ method, args = [], projectId: id, target }) {
 
 export function createOpenCutMcpServer() {
 	const server = new McpServer(
-		{ name: "opencut", version: "0.1.0" },
+		{ name: "opencut", version: "0.1.1" },
 		{
 			instructions: [
 				"Two ways in.",

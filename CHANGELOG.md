@@ -4,6 +4,26 @@ All notable Moirai Cut changes are documented here. The repository is in develop
 preview and follows semantic versioning for public release artifacts; project
 schema and Agent surfaces may still change with migration notes.
 
+## 0.1.1 — 2026-08-03
+
+Public-source hygiene patch for the developer preview.
+
+### Changed
+
+- Removed private acceptance ledgers, one-time launch checklists, project-specific
+  audit notes and unfinished experience reports from the public source tree.
+- Moved public planning to GitHub Issues and kept reproducible verification in
+  GitHub Actions and release artifacts instead of committing generated reports.
+- Aligned repository, Web, MCP and experimental desktop version metadata for the
+  patch release.
+
+### Fixed
+
+- Removed a README link to an acceptance report that is intentionally excluded
+  from public source snapshots.
+- Replaced the internal name-search record with the stable public trademark and
+  non-affiliation policy.
+
 ## 0.1.0 — 2026-08-02
 
 First Moirai Cut developer-preview release, derived from OpenCut Classic.
@@ -47,7 +67,7 @@ First Moirai Cut developer-preview release, derived from OpenCut Classic.
 
 - Moirai Cut is the public project name but has not completed professional
   trademark clearance for commercial distribution; see
-  [`docs/NAME_CLEARANCE.md`](docs/NAME_CLEARANCE.md).
+  [`TRADEMARKS.md`](TRADEMARKS.md).
 - Browser release qualification currently targets Chromium-family browsers.
 - HDR preview is tone-mapped to SDR; the editor is not yet an end-to-end HDR
   grading environment.
