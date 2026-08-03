@@ -8,7 +8,7 @@
 
 ![Moirai Cut shared human-agent timeline](docs/brand/assets/moirai-cut-launch-landscape.png)
 
-> **v0.1.0 Public Preview** — Moirai Cut is ready for local editing and
+> **v0.1.1 Public Preview** — Moirai Cut is ready for local editing and
 > Agent-driven workflows. The project format and integration surface may still
 > evolve before 1.0, with migration notes published in the changelog.
 
@@ -202,23 +202,21 @@ apps/mcp/       Moirai Cut MCP：工程文件、媒体分析和实时编辑器�
 apps/desktop/   GPUI 原生桌面壳（开发中）
 rust/           GPU 合成、效果、遮罩和 WASM 核心
 docs/brand/     Logo、视觉规范与宣传物料
-docs/           架构、路线图、验收报告与 Agent 工作规范
+docs/           使用、架构、隐私与 Agent 工作规范
 ```
 
 进一步阅读：
 
 - [智能剪辑双向工作流与 Agent 操作规范](docs/agent-smart-edit.md)
-- [真实用户创作链路与体验缺口](docs/USER_CREATION_JOURNEY.md)
-- [真实界面体验报告](docs/reports/moirai-cut-user-journey/index.html)
 - [品牌资产与使用规范](docs/brand/README.md)
-- [开源发布清单](docs/OPEN_SOURCE_RELEASE.md)
 - [隐私与网络出站说明](docs/PRIVACY_AND_NETWORK.md)
 - [系统要求、编解码与硬件限制](docs/SYSTEM_REQUIREMENTS.md)
-- [名称核查状态](docs/NAME_CLEARANCE.md)
 - [治理规则](GOVERNANCE.md) 与 [发布手册](RELEASING.md)
 - [版本变更与兼容迁移](CHANGELOG.md)
-- [编辑器目标计划](docs/roadmap/opencut-editor-goal-plan.md)
-- [编解码与画质目标计划](docs/roadmap/opencut-codec-goal-plan.md)
+
+公开路线图和待办通过 [GitHub Issues](https://github.com/zvv1999/moirai-cut/issues)
+维护。一次性验收报告、真实工程截图、SBOM 和依赖审计结果不进入源码树；可复现检查保留
+在 GitHub Actions，发布证据随对应的 GitHub Release 提供。
 
 ## 开发与验证
 

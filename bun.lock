@@ -28,7 +28,7 @@
     },
     "apps/mcp": {
       "name": "@moirai-cut/mcp",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "bin": {
         "moirai-cut-mcp": "./src/server.mjs",
         "opencut-mcp": "./src/server.mjs",
@@ -41,7 +41,7 @@
     },
     "apps/web": {
       "name": "@moirai-cut/web",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@hello-pangea/dnd": "^18.0.1",
         "@hugeicons/core-free-icons": "^3.3.0",
