@@ -64,4 +64,13 @@ describe("root package manifest", () => {
 			"RuleTester.itOnly = it.only;",
 		);
 	});
+
+	test("pins transitive dependencies at their audited security floors", () => {
+		expect(manifest.overrides).toMatchObject({
+			"brace-expansion": "2.1.4",
+			"fast-uri": "3.1.5",
+			hono: "4.13.0",
+			undici: "7.29.0",
+		});
+	});
 });
