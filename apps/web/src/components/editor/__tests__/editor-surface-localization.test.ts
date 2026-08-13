@@ -227,6 +227,7 @@ describe("editor surface localization", () => {
 			"平台预设",
 			"编码设置",
 			"导出预检",
+			"工程互通",
 			"工程信息",
 			"画布背景",
 			"删除场景",

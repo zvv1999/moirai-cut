@@ -1,5 +1,17 @@
 FROM oven/bun:1.3.14-alpine AS base
 
+FROM rust:1.93.1-alpine AS interchange-builder
+
+WORKDIR /app
+
+# Cargo resolves the complete workspace even when building one package. Keep
+# every workspace member manifest/source available while compiling the small
+# interchange CLI as an independent production artifact.
+COPY Cargo.toml Cargo.lock ./
+COPY rust/ rust/
+COPY apps/desktop/ apps/desktop/
+RUN cargo build --locked --release -p interchange --bin moirai-interchange
+
 FROM base AS builder
 
 WORKDIR /app
@@ -49,6 +61,7 @@ RUN apk add --no-cache curl ffmpeg
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+COPY --from=interchange-builder --chown=nextjs:nodejs /app/target/release/moirai-interchange /usr/local/bin/moirai-interchange
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
@@ -65,5 +78,6 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV MOIRAI_INTERCHANGE_BIN="/usr/local/bin/moirai-interchange"
 
 CMD ["bun", "apps/web/server.js"]

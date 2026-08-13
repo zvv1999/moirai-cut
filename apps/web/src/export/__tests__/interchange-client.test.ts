@@ -5,7 +5,7 @@ describe("FCPXML export client", () => {
 	test("flushes dirty state before reading and sending the file revision", async () => {
 		const events: string[] = [];
 		let revision = 6;
-		let received: Record<string, unknown> | null = null;
+		let received: Record<string, unknown> = {};
 		const result = await requestProjectFcpxml({
 			projectId: "project",
 			projectName: "Demo",
@@ -22,7 +22,11 @@ describe("FCPXML export client", () => {
 				events.push("fetch");
 				received = JSON.parse(String(init?.body));
 				return Response.json({
-					data: { name: "Demo-r7.fcpxml", stable: true, report: { issues: [] } },
+					data: {
+						name: "Demo-r7.fcpxml",
+						stable: true,
+						report: { issues: [] },
+					},
 				});
 			},
 		});

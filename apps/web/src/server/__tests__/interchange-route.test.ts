@@ -6,12 +6,13 @@ import {
 
 describe("FCPXML interchange API", () => {
 	test("passes a revision-bound Jianying desktop export to the executor", async () => {
-		let received: Parameters<FcpxmlRouteExecutor>[0] | null = null;
+		let received: Parameters<FcpxmlRouteExecutor>[0] | undefined;
 		const execute: FcpxmlRouteExecutor = async (request) => {
 			received = request;
 			return {
 				projectId: request.projectId,
 				revision: request.baseRevision,
+				currentRevision: request.baseRevision,
 				stable: true,
 				name: "demo-r7.fcpxml",
 				path: "/tmp/demo-r7.fcpxml",
@@ -90,5 +91,33 @@ describe("FCPXML interchange API", () => {
 				revision: 8,
 			},
 		});
+	});
+
+	test("rejects unsafe revisions and empty or oversized optional fields", async () => {
+		let invoked = false;
+		const { POST } = createFcpxmlRouteHandlers({
+			execute: async () => {
+				invoked = true;
+				throw new Error("must not run");
+			},
+		});
+		const context = { params: Promise.resolve({ projectId: "project" }) };
+		for (const body of [
+			{ baseRevision: Number.MAX_SAFE_INTEGER + 1 },
+			{ baseRevision: 7, name: "" },
+			{ baseRevision: 7, name: "x".repeat(111) },
+			{ baseRevision: 7, sceneId: "" },
+		]) {
+			const response = await POST(
+				new Request("http://localhost", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify(body),
+				}),
+				context,
+			);
+			expect(response.status).toBe(400);
+		}
+		expect(invoked).toBe(false);
 	});
 });

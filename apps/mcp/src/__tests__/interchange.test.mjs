@@ -12,7 +12,9 @@ test("exportFcpxml sends the project revision to the unified web API", async () 
 		name: "handoff",
 		fetchImpl: async (url, init) => {
 			request = { url, init };
-			return Response.json({ data: { name: "handoff-r7.fcpxml", stable: true } });
+			return Response.json({
+				data: { name: "handoff-r7.fcpxml", stable: true },
+			});
 		},
 	});
 

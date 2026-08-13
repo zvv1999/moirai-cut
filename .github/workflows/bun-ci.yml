@@ -57,6 +57,15 @@ jobs:
       - name: Build WASM
         run: wasm-pack build rust/wasm --target bundler --out-dir pkg
 
+      - name: Check Rust formatting
+        run: cargo fmt --all --check
+
+      - name: Test Rust interchange
+        run: cargo test -p interchange --all-targets
+
+      - name: Lint Rust interchange
+        run: cargo clippy -p interchange --all-targets -- -D warnings
+
       - name: Install Bun
         uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
         with:
@@ -99,3 +108,7 @@ jobs:
         env:
           NODE_ENV: production
         run: bun run build:web
+
+      - name: Smoke-test production FCPXML handoff image
+        if: runner.os == 'Linux'
+        run: sh scripts/ci/interchange-docker-http-smoke.sh

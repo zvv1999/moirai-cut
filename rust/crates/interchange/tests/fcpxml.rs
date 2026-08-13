@@ -1,6 +1,7 @@
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -11,6 +12,7 @@ use quick_xml::Reader;
 use serde_json::{Value, json};
 
 const SECOND: i64 = 120_000;
+static FIXTURE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 struct Fixture {
     root: PathBuf,
@@ -30,8 +32,11 @@ fn temp_fixture() -> Fixture {
         .duration_since(UNIX_EPOCH)
         .expect("clock")
         .as_nanos();
-    let root =
-        std::env::temp_dir().join(format!("moirai-interchange-{}-{nonce}", std::process::id()));
+    let sequence = FIXTURE_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+    let root = std::env::temp_dir().join(format!(
+        "moirai-interchange-{}-{nonce}-{sequence}",
+        std::process::id()
+    ));
     let media_root = root.join("media");
     fs::create_dir_all(&media_root).expect("media directory");
     for file in ["main.mp4", "overlay.mov", "voice.wav", "hidden.mp4"] {
@@ -219,6 +224,16 @@ fn options(expected_revision: u64) -> FcpxmlExportOptions {
     }
 }
 
+fn exported(fixture: &Fixture, options: FcpxmlExportOptions) -> interchange::InterchangeExport {
+    export_fcpxml(
+        &fixture.project,
+        &fixture.media_index,
+        &fixture.media_root,
+        options,
+    )
+    .expect("export succeeds")
+}
+
 #[test]
 fn exports_revision_bound_fcpxml_with_connected_tracks_and_loss_report() {
     let fixture = temp_fixture();
@@ -370,6 +385,201 @@ fn uses_a_gap_storyline_when_the_project_has_only_overlay_video() {
             .document
             .contains("name=\"叠加.mov\" ref=\"r2\" lane=\"1\" offset=\"1s\"")
     );
+}
+
+#[test]
+fn rejects_an_explicit_scene_id_that_does_not_exist() {
+    let fixture = temp_fixture();
+    let mut selected = options(7);
+    selected.scene_id = Some("missing-scene".to_owned());
+
+    let error = export_fcpxml(
+        &fixture.project,
+        &fixture.media_index,
+        &fixture.media_root,
+        selected,
+    )
+    .expect_err("an explicit scene selection must never silently fall back");
+
+    assert_eq!(error.code, ErrorCode::InvalidOptions);
+    assert!(error.to_string().contains("missing-scene"));
+}
+
+#[test]
+fn selected_scene_duration_does_not_inherit_the_main_scene_metadata_duration() {
+    let mut fixture = temp_fixture();
+    fixture.project["metadata"]["duration"] = json!(8 * SECOND);
+    fixture.project["scenes"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({
+            "id": "scene-short",
+            "name": "短场景",
+            "isMain": false,
+            "bookmarks": [],
+            "tracks": {
+                "main": {
+                    "id": "short-main",
+                    "name": "短主轨",
+                    "type": "video",
+                    "muted": false,
+                    "hidden": false,
+                    "elements": [{
+                        "id": "short-clip",
+                        "name": "短片段",
+                        "type": "video",
+                        "mediaId": "main",
+                        "startTime": 0,
+                        "duration": SECOND,
+                        "trimStart": 0,
+                        "trimEnd": 0,
+                        "sourceDuration": 20 * SECOND,
+                        "params": {}
+                    }]
+                },
+                "overlay": [],
+                "audio": []
+            }
+        }));
+    let mut selected = options(7);
+    selected.scene_id = Some("scene-short".to_owned());
+
+    let export = exported(&fixture, selected);
+
+    assert!(
+        export
+            .document
+            .contains("<sequence format=\"r1\" duration=\"1s\"")
+    );
+    assert!(!export.document.contains("duration=\"8s\""));
+}
+
+#[test]
+fn preserves_source_audio_separation_and_video_track_mute() {
+    let mut separated = temp_fixture();
+    separated.project["scenes"][0]["tracks"]["main"]["elements"][0]["isSourceAudioEnabled"] =
+        json!(false);
+    let separated_export = exported(&separated, options(7));
+    assert!(separated_export.document.contains("name=\"主素材 &amp; one.mp4\" ref=\"r2\" offset=\"0s\" start=\"1s\" duration=\"4s\" srcEnable=\"video\""));
+
+    let mut muted = temp_fixture();
+    muted.project["scenes"][0]["tracks"]["main"]["muted"] = json!(true);
+    let muted_export = exported(&muted, options(7));
+    assert!(muted_export.document.contains("srcEnable=\"video\""));
+    assert!(muted_export.report.issues.iter().any(|issue| {
+        issue.code == "muted_track_audio_omitted" && issue.track_id.as_deref() == Some("main-track")
+    }));
+}
+
+#[test]
+fn audio_elements_reusing_video_media_select_only_the_audio_component() {
+    let mut fixture = temp_fixture();
+    fixture.project["scenes"][0]["tracks"]["audio"][0]["elements"][0]["mediaId"] = json!("main");
+
+    let export = exported(&fixture, options(7));
+
+    assert!(export.document.contains("lane=\"-1\""));
+    assert!(export.document.contains("srcEnable=\"audio\""));
+}
+
+#[test]
+fn omits_non_solo_audio_capable_tracks_when_any_track_is_soloed() {
+    let mut fixture = temp_fixture();
+    fixture.project["scenes"][0]["tracks"]["main"]["solo"] = json!(true);
+
+    let export = exported(&fixture, options(7));
+
+    assert!(!export.document.contains("旁白.wav"));
+    assert!(export.report.issues.iter().any(|issue| {
+        issue.code == "unsoloed_track_audio_omitted"
+            && issue.track_id.as_deref() == Some("voice-track")
+    }));
+}
+
+#[test]
+fn asset_formats_do_not_claim_the_sequence_dimensions_for_source_media() {
+    let fixture = temp_fixture();
+    let export = exported(&fixture, options(7));
+
+    assert!(
+        export
+            .document
+            .contains("<asset id=\"r3\" name=\"叠加.mov\"")
+    );
+    assert!(!export.document.contains("<asset id=\"r3\" name=\"叠加.mov\" start=\"0s\" duration=\"3s\" hasVideo=\"1\" hasAudio=\"0\" format=\"r1\""));
+    assert!(!export.document.contains("name=\"叠加.mov\" ref=\"r3\" lane=\"2\" offset=\"11s\" start=\"1s\" duration=\"1s\" format=\"r1\""));
+}
+
+#[test]
+fn never_emits_src_enable_for_a_pure_video_source() {
+    let mut fixture = temp_fixture();
+    fixture.media_index["main"]["hasAudio"] = json!(false);
+    fixture.project["scenes"][0]["tracks"]["main"]["muted"] = json!(true);
+
+    let export = exported(&fixture, options(7));
+
+    assert!(!export.document.contains("srcEnable="));
+}
+
+#[test]
+fn rejects_source_range_overflow_instead_of_serializing_saturated_time() {
+    let mut fixture = temp_fixture();
+    fixture.project["scenes"][0]["tracks"]["main"]["elements"][0]["trimStart"] = json!(i64::MAX);
+
+    let error = export_fcpxml(
+        &fixture.project,
+        &fixture.media_index,
+        &fixture.media_root,
+        options(7),
+    )
+    .expect_err("overflowed source ranges must be rejected");
+
+    assert_eq!(error.code, ErrorCode::InvalidProject);
+    assert!(error.to_string().contains("overflows"));
+}
+
+#[test]
+fn rejects_indexed_media_duration_overflow_instead_of_saturating() {
+    let mut fixture = temp_fixture();
+    fixture.media_index["main"]["duration"] = json!(1e308);
+
+    let error = export_fcpxml(
+        &fixture.project,
+        &fixture.media_index,
+        &fixture.media_root,
+        options(7),
+    )
+    .expect_err("overflowed indexed durations must be rejected");
+
+    assert_eq!(error.code, ErrorCode::InvalidProject);
+    assert!(error.to_string().contains("overflows"));
+}
+
+#[test]
+fn rejects_xml_1_0_forbidden_characters_from_the_shared_serializer() {
+    for field in ["project", "asset", "bookmark"] {
+        let mut fixture = temp_fixture();
+        match field {
+            "project" => fixture.project["metadata"]["name"] = json!("bad\u{b}project"),
+            "asset" => fixture.media_index["main"]["name"] = json!("bad\u{b}asset.mp4"),
+            "bookmark" => {
+                fixture.project["scenes"][0]["bookmarks"][0]["note"] = json!("bad\u{fffe}bookmark")
+            }
+            _ => unreachable!(),
+        }
+
+        let error = export_fcpxml(
+            &fixture.project,
+            &fixture.media_index,
+            &fixture.media_root,
+            options(7),
+        )
+        .expect_err("XML 1.0 forbidden code points must fail the whole export");
+
+        assert_eq!(error.code, ErrorCode::SerializationFailed, "{field}");
+        assert!(error.to_string().contains("XML 1.0"), "{field}: {error}");
+        assert!(error.to_string().contains("U+"), "{field}: {error}");
+    }
 }
 
 #[allow(dead_code)]

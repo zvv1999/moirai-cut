@@ -1,0 +1,34 @@
+{
+	"metadata": {
+		"id": "ci-interchange",
+		"name": "CI Jianying handoff",
+		"duration": 120000
+	},
+	"revision": 7,
+	"version": 31,
+	"currentSceneId": "scene-main",
+	"settings": {
+		"fps": { "numerator": 25, "denominator": 1 },
+		"canvasSize": { "width": 1920, "height": 1080 }
+	},
+	"scenes": [
+		{
+			"id": "scene-main",
+			"name": "Main",
+			"isMain": true,
+			"bookmarks": [],
+			"tracks": {
+				"main": {
+					"id": "main",
+					"name": "Main",
+					"type": "video",
+					"hidden": false,
+					"muted": false,
+					"elements": []
+				},
+				"overlay": [],
+				"audio": []
+			}
+		}
+	]
+}

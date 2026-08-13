@@ -125,7 +125,7 @@ pub struct InterchangeReport {
     pub relink: RelinkReport,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct InterchangeExport {
     pub document: String,
     pub report: InterchangeReport,

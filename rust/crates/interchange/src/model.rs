@@ -73,6 +73,8 @@ pub(crate) struct Track {
     #[serde(default)]
     pub muted: bool,
     #[serde(default)]
+    pub solo: bool,
+    #[serde(default)]
     pub elements: Vec<TimelineElement>,
 }
 
@@ -97,6 +99,8 @@ pub(crate) struct TimelineElement {
     pub trim_end: i64,
     #[serde(default)]
     pub source_duration: Option<i64>,
+    #[serde(default)]
+    pub is_source_audio_enabled: Option<bool>,
     #[serde(default)]
     pub hidden: bool,
     #[serde(default)]
@@ -151,10 +155,6 @@ pub(crate) struct MediaAsset {
     #[serde(default)]
     pub duration: Option<f64>,
     #[serde(default)]
-    pub width: Option<u32>,
-    #[serde(default)]
-    pub height: Option<u32>,
-    #[serde(default)]
     pub has_audio: bool,
 }
 
@@ -170,5 +170,13 @@ impl TimelineElement {
             Some(Value::Object(values)) => !values.is_empty(),
             Some(_) => true,
         }
+    }
+
+    pub(crate) fn source_audio_enabled(&self) -> bool {
+        self.is_source_audio_enabled != Some(false)
+    }
+
+    pub(crate) fn audio_muted(&self) -> bool {
+        self.params.get("muted").and_then(Value::as_bool) == Some(true)
     }
 }

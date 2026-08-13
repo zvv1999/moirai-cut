@@ -30,6 +30,7 @@ export class SaveManager {
 	private debounceMs: number;
 	private isPaused = false;
 	private isSaving = false;
+	private activeSave: Promise<void> | null = null;
 	private hasPendingSave = false;
 	private saveTimer: ReturnType<typeof setTimeout> | null = null;
 	private unsubscribeHandlers: Array<() => void> = [];
@@ -107,7 +108,10 @@ export class SaveManager {
 			pendingChanges: true,
 			error: null,
 		});
-		await this.saveNow();
+		while (this.hasPendingSave || this.activeSave) {
+			const progressed = await this.saveNow();
+			if (!progressed || this.state.status === "error") return;
+		}
 	}
 
 	async retry(): Promise<void> {
@@ -169,15 +173,31 @@ export class SaveManager {
 		}, this.debounceMs);
 	}
 
-	private async saveNow(): Promise<void> {
-		if (this.isSaving) return;
-		if (!this.hasPendingSave) return;
+	private async saveNow(): Promise<boolean> {
+		if (this.activeSave) {
+			await this.activeSave;
+			return true;
+		}
+		if (!this.hasPendingSave) return false;
 
 		const activeProject = this.editor.project.getActive();
-		if (!activeProject) return;
-		if (this.editor.project.getIsLoading()) return;
-		if (this.editor.project.getMigrationState().isMigrating) return;
+		if (!activeProject) return false;
+		if (this.editor.project.getIsLoading()) return false;
+		if (this.editor.project.getMigrationState().isMigrating) return false;
 
+		const operation = this.performSave();
+		this.activeSave = operation;
+		try {
+			await operation;
+		} finally {
+			if (this.activeSave === operation) {
+				this.activeSave = null;
+			}
+		}
+		return true;
+	}
+
+	private async performSave(): Promise<void> {
 		this.isSaving = true;
 		this.hasPendingSave = false;
 		this.clearTimer();
@@ -197,9 +217,10 @@ export class SaveManager {
 					`Project changed on disk at revision ${conflict.revision}. Review the disk version before retrying.`,
 				);
 			}
+			const pendingChanges = this.hasPendingSave;
 			this.publish({
-				status: "saved",
-				pendingChanges: false,
+				status: pendingChanges ? "dirty" : "saved",
+				pendingChanges,
 				savedAt: Date.now(),
 				revision: this.knownRevision(),
 				conflictRevision: null,

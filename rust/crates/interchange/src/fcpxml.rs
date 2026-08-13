@@ -142,6 +142,7 @@ pub fn export_fcpxml(
     }
 
     let scene = select_scene(&project, options.scene_id.as_deref())?;
+    validate_scene_timing(scene)?;
     let mut issues = collect_loss_issues(scene);
     let referenced = referenced_media(scene, &mut issues)?;
     let assets = resolve_assets(media_index, media_root, &referenced)?;
@@ -153,7 +154,7 @@ pub fn export_fcpxml(
     let duration = timeline_duration(&project, scene)?;
     let mut story = build_storyline(scene, duration)?;
     attach_connected_clips(scene, &asset_by_id, &mut story, &mut issues)?;
-    attach_markers(scene, &mut story, &mut issues);
+    attach_markers(scene, &mut story, &mut issues)?;
 
     let root = build_document(
         &project,
@@ -166,7 +167,7 @@ pub fn export_fcpxml(
     )?;
     let document = format!(
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE fcpxml>\n{}\n",
-        serialize_xml(&root, 0)
+        serialize_xml(&root, 0)?
     );
 
     Ok(InterchangeExport {
@@ -230,25 +231,40 @@ fn select_scene<'a>(
     project: &'a ProjectDocument,
     requested: Option<&str>,
 ) -> Result<&'a Scene, InterchangeError> {
-    let selected = requested
-        .and_then(|id| project.scenes.iter().find(|scene| scene.id == id))
-        .or_else(|| {
-            project
-                .scenes
-                .iter()
-                .find(|scene| scene.id == project.current_scene_id)
+    if let Some(id) = requested {
+        return project
+            .scenes
+            .iter()
+            .find(|scene| scene.id == id)
+            .ok_or_else(|| {
+                InterchangeError::new(
+                    ErrorCode::InvalidOptions,
+                    format!("No scene {id} exists in the project."),
+                )
+            });
+    }
+
+    project
+        .scenes
+        .iter()
+        .find(|scene| scene.id == project.current_scene_id)
+        .or_else(|| project.scenes.iter().find(|scene| scene.is_main))
+        .ok_or_else(|| {
+            InterchangeError::new(
+                ErrorCode::InvalidOptions,
+                "The project has no exportable scene.",
+            )
         })
-        .or_else(|| project.scenes.iter().find(|scene| scene.is_main));
-    selected.ok_or_else(|| {
-        let detail = requested
-            .map(|id| format!("No scene {id} exists in the project."))
-            .unwrap_or_else(|| "The project has no exportable scene.".to_owned());
-        InterchangeError::new(ErrorCode::InvalidOptions, detail)
-    })
 }
 
 fn timeline_duration(project: &ProjectDocument, scene: &Scene) -> Result<i64, InterchangeError> {
-    let mut duration = project.metadata.duration.max(0);
+    // Project metadata tracks the main scene only. Other scenes must derive
+    // their duration exclusively from their own timeline content.
+    let mut duration = if scene.is_main {
+        project.metadata.duration.max(0)
+    } else {
+        0
+    };
     for track in std::iter::once(&scene.tracks.main)
         .chain(scene.tracks.overlay.iter())
         .chain(scene.tracks.audio.iter())
@@ -275,22 +291,86 @@ fn timeline_duration(project: &ProjectDocument, scene: &Scene) -> Result<i64, In
     Ok(duration)
 }
 
+fn validate_scene_timing(scene: &Scene) -> Result<(), InterchangeError> {
+    for track in std::iter::once(&scene.tracks.main)
+        .chain(scene.tracks.overlay.iter())
+        .chain(scene.tracks.audio.iter())
+    {
+        for element in &track.elements {
+            if element.duration <= 0 || element.start_time < 0 || element.trim_start < 0 {
+                return Err(InterchangeError::new(
+                    ErrorCode::InvalidProject,
+                    format!(
+                        "Element {} has invalid negative or zero timing.",
+                        element.id
+                    ),
+                ));
+            }
+            element.end().ok_or_else(|| {
+                InterchangeError::new(
+                    ErrorCode::InvalidProject,
+                    format!(
+                        "Element {} timeline range overflows the supported range.",
+                        element.id
+                    ),
+                )
+            })?;
+            source_end(element)?;
+        }
+    }
+    Ok(())
+}
+
+fn source_end(element: &TimelineElement) -> Result<i64, InterchangeError> {
+    element
+        .trim_start
+        .checked_add(element.duration)
+        .ok_or_else(|| {
+            InterchangeError::new(
+                ErrorCode::InvalidProject,
+                format!(
+                    "Element {} source range overflows the supported range.",
+                    element.id
+                ),
+            )
+        })
+}
+
+fn audio_capable(track: &Track) -> bool {
+    matches!(track.kind.as_str(), "video" | "audio")
+}
+
+fn scene_has_solo_track(scene: &Scene) -> bool {
+    std::iter::once(&scene.tracks.main)
+        .chain(scene.tracks.overlay.iter())
+        .chain(scene.tracks.audio.iter())
+        .any(|track| audio_capable(track) && track.solo)
+}
+
+fn track_is_audible(track: &Track, has_solo_track: bool) -> bool {
+    audio_capable(track) && !track.muted && (!has_solo_track || track.solo)
+}
+
+fn source_audio_is_enabled(
+    track: &Track,
+    element: &TimelineElement,
+    asset: &ResolvedAsset,
+    has_solo_track: bool,
+) -> bool {
+    asset.metadata.has_audio
+        && track_is_audible(track, has_solo_track)
+        && element.source_audio_enabled()
+        && !element.audio_muted()
+}
+
 fn referenced_media(
     scene: &Scene,
     issues: &mut Vec<InterchangeIssue>,
 ) -> Result<Vec<(String, i64)>, InterchangeError> {
     let mut ordered = Vec::new();
     let mut seen = HashSet::new();
+    let has_solo_track = scene_has_solo_track(scene);
     let mut visit = |track: &Track, element: &TimelineElement| -> Result<(), InterchangeError> {
-        if element.duration <= 0 || element.start_time < 0 || element.trim_start < 0 {
-            return Err(InterchangeError::new(
-                ErrorCode::InvalidProject,
-                format!(
-                    "Element {} has invalid negative or zero timing.",
-                    element.id
-                ),
-            ));
-        }
         if !matches!(element.kind.as_str(), "video" | "image" | "audio") {
             return Ok(());
         }
@@ -315,14 +395,11 @@ fn referenced_media(
                 format!("Element {} has no media id to relink.", element.id),
             )
         })?;
+        let required_duration = source_end(element)?;
         if seen.insert(media_id.clone()) {
-            let required_duration = element
-                .trim_start
-                .checked_add(element.duration)
-                .unwrap_or(i64::MAX);
             ordered.push((media_id.clone(), required_duration));
         } else if let Some((_, current)) = ordered.iter_mut().find(|(id, _)| id == media_id) {
-            *current = (*current).max(element.trim_start.saturating_add(element.duration));
+            *current = (*current).max(required_duration);
         }
         Ok(())
     };
@@ -345,11 +422,13 @@ fn referenced_media(
         }
     }
     for track in &scene.tracks.audio {
-        if track.muted {
+        if !track_is_audible(track, has_solo_track) {
             continue;
         }
         for element in &track.elements {
-            visit(track, element)?;
+            if !element.audio_muted() {
+                visit(track, element)?;
+            }
         }
     }
     Ok(ordered)
@@ -411,14 +490,22 @@ fn resolve_assets(
                 format!("Cannot encode media path as a file URL: {}", path.display()),
             )
         })?;
-        let indexed_duration = metadata
+        let indexed_duration = match metadata
             .duration
             .filter(|duration| duration.is_finite() && *duration > 0.0)
-            .and_then(|duration| {
+        {
+            Some(duration) => {
                 let ticks = (duration * TICKS_PER_SECOND as f64).round();
-                (ticks <= i64::MAX as f64).then_some(ticks as i64)
-            })
-            .unwrap_or(0_i64);
+                if !ticks.is_finite() || ticks >= i64::MAX as f64 {
+                    return Err(InterchangeError::new(
+                        ErrorCode::InvalidProject,
+                        format!("Media {id} duration overflows the supported range."),
+                    ));
+                }
+                ticks as i64
+            }
+            None => 0,
+        };
         assets.push(ResolvedAsset {
             id: id.clone(),
             metadata,
@@ -522,6 +609,7 @@ fn attach_connected_clips(
     story: &mut [StorySegment<'_>],
     issues: &mut Vec<InterchangeIssue>,
 ) -> Result<(), InterchangeError> {
+    let has_solo_track = scene_has_solo_track(scene);
     for (track_index, track) in scene.tracks.overlay.iter().enumerate() {
         if track.hidden {
             continue;
@@ -534,11 +622,18 @@ fn attach_connected_clips(
                 continue;
             }
             let asset = asset_for(element, asset_by_id)?;
+            let lane = i32::try_from(track_index + 1).map_err(|_| {
+                InterchangeError::new(
+                    ErrorCode::UnsupportedTimeline,
+                    "The overlay track count exceeds the FCPXML lane range.",
+                )
+            })?;
             let connection = media_clip_node(
                 element,
                 asset,
-                i32::try_from(track_index + 1).unwrap_or(i32::MAX),
+                lane,
                 false,
+                source_audio_is_enabled(track, element, asset, has_solo_track),
             );
             connect(
                 story,
@@ -547,22 +642,31 @@ fn attach_connected_clips(
                 issues,
                 track,
                 element,
-            );
+            )?;
         }
     }
     for (track_index, track) in scene.tracks.audio.iter().enumerate() {
-        if track.muted {
+        if !track_is_audible(track, has_solo_track) {
             continue;
         }
         for element in &track.elements {
             if element.kind != "audio"
                 || (element.source_type.as_deref() == Some("library") && element.media_id.is_none())
+                || element.audio_muted()
             {
                 continue;
             }
             let asset = asset_for(element, asset_by_id)?;
-            let lane = -i32::try_from(track_index + 1).unwrap_or(i32::MAX);
-            let connection = media_clip_node(element, asset, lane, true);
+            let lane = i32::try_from(track_index + 1)
+                .ok()
+                .and_then(i32::checked_neg)
+                .ok_or_else(|| {
+                    InterchangeError::new(
+                        ErrorCode::UnsupportedTimeline,
+                        "The audio track count exceeds the FCPXML lane range.",
+                    )
+                })?;
+            let connection = media_clip_node(element, asset, lane, true, true);
             connect(
                 story,
                 element.start_time,
@@ -570,7 +674,7 @@ fn attach_connected_clips(
                 issues,
                 track,
                 element,
-            );
+            )?;
         }
     }
     for segment in story {
@@ -604,6 +708,7 @@ fn media_clip_node(
     asset: &ResolvedAsset,
     lane: i32,
     audio_only: bool,
+    source_audio_enabled: bool,
 ) -> XmlNode {
     let mut node = XmlNode::new("asset-clip")
         .attr("name", asset.metadata.name.clone())
@@ -614,9 +719,16 @@ fn media_clip_node(
         .attr("start", rational_ticks(element.trim_start))
         .attr("duration", rational_ticks(element.duration));
     if audio_only {
+        if asset.metadata.kind != "audio" {
+            node = node.attr("srcEnable", "audio");
+        }
         node = node.attr("audioRole", "dialogue");
-    } else {
-        node = node.attr("format", "r1");
+    } else if element.kind == "video" && asset.metadata.has_audio {
+        node = if source_audio_enabled {
+            node.attr("audioRole", "dialogue")
+        } else {
+            node.attr("srcEnable", "video")
+        };
     }
     node
 }
@@ -628,12 +740,24 @@ fn connect(
     issues: &mut Vec<InterchangeIssue>,
     track: &Track,
     element: &TimelineElement,
-) {
-    let parent = story.iter_mut().find(|segment| {
-        timeline_start >= segment.timeline_start
-            && timeline_start < segment.timeline_start.saturating_add(segment.duration)
-    });
-    let Some(parent) = parent else {
+) -> Result<(), InterchangeError> {
+    let mut parent_index = None;
+    for (index, segment) in story.iter().enumerate() {
+        let segment_end = segment
+            .timeline_start
+            .checked_add(segment.duration)
+            .ok_or_else(|| {
+                InterchangeError::new(
+                    ErrorCode::InvalidProject,
+                    "A storyline segment range overflows the supported range.",
+                )
+            })?;
+        if timeline_start >= segment.timeline_start && timeline_start < segment_end {
+            parent_index = Some(index);
+            break;
+        }
+    }
+    let Some(parent_index) = parent_index else {
         issues.push(
             InterchangeIssue::new(
                 "connection_outside_sequence",
@@ -646,11 +770,26 @@ fn connect(
             .on_track(&track.id)
             .on_element(&element.id),
         );
-        return;
+        return Ok(());
     };
+    let parent = &mut story[parent_index];
+    let relative_start = timeline_start
+        .checked_sub(parent.timeline_start)
+        .ok_or_else(|| {
+            InterchangeError::new(
+                ErrorCode::InvalidProject,
+                format!("Element {} connection time overflows.", element.id),
+            )
+        })?;
     let local_offset = parent
         .source_start
-        .saturating_add(timeline_start.saturating_sub(parent.timeline_start));
+        .checked_add(relative_start)
+        .ok_or_else(|| {
+            InterchangeError::new(
+                ErrorCode::InvalidProject,
+                format!("Element {} connection time overflows.", element.id),
+            )
+        })?;
     if let Some((_, offset)) = node
         .attributes
         .iter_mut()
@@ -669,31 +808,53 @@ fn connect(
         lane,
         node,
     });
+    Ok(())
 }
 
 fn attach_markers(
     scene: &Scene,
     story: &mut [StorySegment<'_>],
     issues: &mut Vec<InterchangeIssue>,
-) {
+) -> Result<(), InterchangeError> {
     for bookmark in &scene.bookmarks {
-        if bookmark.scope.as_deref() == Some("clip") {
-            issues.push(
-                InterchangeIssue::new(
-                    "clip_bookmark_flattened",
-                    IssueSeverity::Degraded,
-                    format!(
-                        "Clip bookmark {} was exported as a timeline marker.",
-                        bookmark.id
-                    ),
-                )
-                .on_element(bookmark.element_id.as_deref().unwrap_or(&bookmark.id)),
-            );
+        if bookmark.time < 0 || bookmark.duration.is_some_and(|duration| duration <= 0) {
+            return Err(InterchangeError::new(
+                ErrorCode::InvalidProject,
+                format!("Bookmark {} has invalid timing.", bookmark.id),
+            ));
         }
-        let Some(parent) = story.iter_mut().find(|segment| {
-            bookmark.time >= segment.timeline_start
-                && bookmark.time < segment.timeline_start.saturating_add(segment.duration)
-        }) else {
+        if bookmark.scope.as_deref() == Some("clip") {
+            let issue = InterchangeIssue::new(
+                "clip_bookmark_flattened",
+                IssueSeverity::Degraded,
+                format!(
+                    "Clip bookmark {} was exported as a timeline marker.",
+                    bookmark.id
+                ),
+            )
+            .on_element(bookmark.element_id.as_deref().unwrap_or(&bookmark.id));
+            issues.push(match bookmark.track_id.as_deref() {
+                Some(track_id) => issue.on_track(track_id),
+                None => issue,
+            });
+        }
+        let mut parent_index = None;
+        for (index, segment) in story.iter().enumerate() {
+            let segment_end = segment
+                .timeline_start
+                .checked_add(segment.duration)
+                .ok_or_else(|| {
+                    InterchangeError::new(
+                        ErrorCode::InvalidProject,
+                        "A storyline segment range overflows the supported range.",
+                    )
+                })?;
+            if bookmark.time >= segment.timeline_start && bookmark.time < segment_end {
+                parent_index = Some(index);
+                break;
+            }
+        }
+        let Some(parent_index) = parent_index else {
             issues.push(InterchangeIssue::new(
                 "bookmark_outside_sequence",
                 IssueSeverity::Omitted,
@@ -704,9 +865,25 @@ fn attach_markers(
             ));
             continue;
         };
+        let parent = &mut story[parent_index];
+        let relative_start = bookmark
+            .time
+            .checked_sub(parent.timeline_start)
+            .ok_or_else(|| {
+                InterchangeError::new(
+                    ErrorCode::InvalidProject,
+                    format!("Bookmark {} timing overflows.", bookmark.id),
+                )
+            })?;
         let local_start = parent
             .source_start
-            .saturating_add(bookmark.time.saturating_sub(parent.timeline_start));
+            .checked_add(relative_start)
+            .ok_or_else(|| {
+                InterchangeError::new(
+                    ErrorCode::InvalidProject,
+                    format!("Bookmark {} timing overflows.", bookmark.id),
+                )
+            })?;
         let marker = XmlNode::new("marker")
             .attr("start", rational_ticks(local_start))
             .optional_attr("duration", bookmark.duration.map(rational_ticks))
@@ -721,6 +898,7 @@ fn attach_markers(
             node: marker,
         });
     }
+    Ok(())
 }
 
 fn build_document(
@@ -748,7 +926,7 @@ fn build_document(
     ];
     resources.extend(assets.iter().map(|asset| {
         let audio_only = asset.metadata.kind == "audio";
-        let mut node = XmlNode::new("asset")
+        let node = XmlNode::new("asset")
             .attr("id", asset.resource_id.clone())
             .attr("name", asset.metadata.name.clone())
             .attr("start", "0s")
@@ -762,14 +940,13 @@ fn build_document(
                     "0"
                 },
             );
-        if audio_only {
-            node = node
-                .attr("audioSources", "1")
+        let node = if audio_only {
+            node.attr("audioSources", "1")
                 .attr("audioChannels", "2")
-                .attr("audioRate", "48000");
+                .attr("audioRate", "48000")
         } else {
-            node = node.attr("format", "r1");
-        }
+            node
+        };
         node.child(
             XmlNode::new("media-rep")
                 .attr("kind", "original-media")
@@ -777,43 +954,52 @@ fn build_document(
         )
     }));
 
-    let spine = XmlNode::new("spine").children(story.iter().map(|segment| {
-        match &segment.kind {
-            StoryKind::Gap => XmlNode::new("gap")
-                .attr("name", "Gap")
-                .attr("offset", rational_ticks(segment.timeline_start))
-                .attr("duration", rational_ticks(segment.duration))
-                .children(
-                    segment
-                        .connected
-                        .iter()
-                        .map(|connected| connected.node.clone()),
-                ),
-            StoryKind::Clip(element) => {
-                let asset = element
-                    .media_id
-                    .as_deref()
-                    .and_then(|id| asset_by_id.get(id).copied())
-                    .expect("main media was validated before serialization");
-                let mut node = XmlNode::new("asset-clip")
-                    .attr("name", asset.metadata.name.clone())
-                    .attr("ref", asset.resource_id.clone())
+    let has_solo_track = scene_has_solo_track(scene);
+    let spine_children = story
+        .iter()
+        .map(|segment| -> Result<XmlNode, InterchangeError> {
+            Ok(match &segment.kind {
+                StoryKind::Gap => XmlNode::new("gap")
+                    .attr("name", "Gap")
                     .attr("offset", rational_ticks(segment.timeline_start))
-                    .attr("start", rational_ticks(element.trim_start))
                     .attr("duration", rational_ticks(segment.duration))
-                    .attr("format", "r1");
-                if asset.metadata.has_audio && !scene.tracks.main.muted {
-                    node = node.attr("audioRole", "dialogue");
+                    .children(
+                        segment
+                            .connected
+                            .iter()
+                            .map(|connected| connected.node.clone()),
+                    ),
+                StoryKind::Clip(element) => {
+                    let asset = asset_for(element, asset_by_id)?;
+                    let mut node = XmlNode::new("asset-clip")
+                        .attr("name", asset.metadata.name.clone())
+                        .attr("ref", asset.resource_id.clone())
+                        .attr("offset", rational_ticks(segment.timeline_start))
+                        .attr("start", rational_ticks(element.trim_start))
+                        .attr("duration", rational_ticks(segment.duration));
+                    if element.kind == "video" && asset.metadata.has_audio {
+                        node = if source_audio_is_enabled(
+                            &scene.tracks.main,
+                            element,
+                            asset,
+                            has_solo_track,
+                        ) {
+                            node.attr("audioRole", "dialogue")
+                        } else {
+                            node.attr("srcEnable", "video")
+                        };
+                    }
+                    node.children(
+                        segment
+                            .connected
+                            .iter()
+                            .map(|connected| connected.node.clone()),
+                    )
                 }
-                node.children(
-                    segment
-                        .connected
-                        .iter()
-                        .map(|connected| connected.node.clone()),
-                )
-            }
-        }
-    }));
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let spine = XmlNode::new("spine").children(spine_children);
 
     let drop_frame = matches!(
         (fps.numerator, fps.denominator),
@@ -842,6 +1028,7 @@ fn build_document(
 
 fn collect_loss_issues(scene: &Scene) -> Vec<InterchangeIssue> {
     let mut issues = Vec::new();
+    let has_solo_track = scene_has_solo_track(scene);
     let tracks = std::iter::once(&scene.tracks.main)
         .chain(scene.tracks.overlay.iter())
         .chain(scene.tracks.audio.iter());
@@ -857,16 +1044,46 @@ fn collect_loss_issues(scene: &Scene) -> Vec<InterchangeIssue> {
             );
             continue;
         }
-        if track.muted && track.kind == "audio" && !track.elements.is_empty() {
+        if track.muted && audio_capable(track) && !track.elements.is_empty() {
+            let (code, message) = if track.kind == "audio" {
+                (
+                    "muted_track_omitted",
+                    format!("Muted audio track '{}' was omitted.", track.name),
+                )
+            } else {
+                (
+                    "muted_track_audio_omitted",
+                    format!(
+                        "Source audio on muted video track '{}' was omitted.",
+                        track.name
+                    ),
+                )
+            };
+            issues.push(
+                InterchangeIssue::new(code, IssueSeverity::Omitted, message).on_track(&track.id),
+            );
+            if track.kind == "audio" {
+                continue;
+            }
+        } else if has_solo_track
+            && audio_capable(track)
+            && !track.solo
+            && !track.elements.is_empty()
+        {
             issues.push(
                 InterchangeIssue::new(
-                    "muted_track_omitted",
+                    "unsoloed_track_audio_omitted",
                     IssueSeverity::Omitted,
-                    format!("Muted audio track '{}' was omitted.", track.name),
+                    format!(
+                        "Audio on non-solo track '{}' was omitted while another track is soloed.",
+                        track.name
+                    ),
                 )
                 .on_track(&track.id),
             );
-            continue;
+            if track.kind == "audio" {
+                continue;
+            }
         }
         for element in &track.elements {
             if element.hidden {
@@ -995,7 +1212,7 @@ fn collect_loss_issues(scene: &Scene) -> Vec<InterchangeIssue> {
                 );
             }
             if let Some(source_duration) = element.source_duration
-                && element.trim_start.saturating_add(element.duration) > source_duration
+                && source_end(element).is_ok_and(|source_end| source_end > source_duration)
             {
                 issues.push(
                     InterchangeIssue::new(
@@ -1084,25 +1301,40 @@ fn gcd(left: i64, right: i64) -> i64 {
     i64::try_from(left.max(1)).unwrap_or(1)
 }
 
-fn serialize_xml(node: &XmlNode, depth: usize) -> String {
+fn serialize_xml(node: &XmlNode, depth: usize) -> Result<String, InterchangeError> {
     let indentation = "  ".repeat(depth);
-    let attributes = node
-        .attributes
-        .iter()
-        .map(|(name, value)| format!(" {name}=\"{}\"", escape_xml(value)))
-        .collect::<String>();
+    let mut attributes = String::new();
+    for (name, value) in &node.attributes {
+        if let Some(character) = value.chars().find(|character| !is_xml_1_0_char(*character)) {
+            return Err(InterchangeError::new(
+                ErrorCode::SerializationFailed,
+                format!(
+                    "Cannot serialize XML 1.0: <{}> attribute '{}' contains forbidden code point U+{:04X}.",
+                    node.name, name, character as u32
+                ),
+            ));
+        }
+        attributes.push_str(&format!(" {name}=\"{}\"", escape_xml(value)));
+    }
     if node.children.is_empty() {
-        return format!("{indentation}<{}{attributes}/>", node.name);
+        return Ok(format!("{indentation}<{}{attributes}/>", node.name));
     }
     let children = node
         .children
         .iter()
         .map(|child| serialize_xml(child, depth + 1))
-        .collect::<Vec<_>>()
+        .collect::<Result<Vec<_>, _>>()?
         .join("\n");
-    format!(
+    Ok(format!(
         "{indentation}<{}{attributes}>\n{children}\n{indentation}</{}>",
         node.name, node.name
+    ))
+}
+
+fn is_xml_1_0_char(character: char) -> bool {
+    matches!(
+        character as u32,
+        0x9 | 0xA | 0xD | 0x20..=0xD7FF | 0xE000..=0xFFFD | 0x10000..=0x10FFFF
     )
 }
 

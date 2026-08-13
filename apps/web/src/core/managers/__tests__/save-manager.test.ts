@@ -88,6 +88,40 @@ describe("SaveManager status model", () => {
 		});
 	});
 
+	test("flush waits for a follow-up save when another save is in flight", async () => {
+		const firstSave = deferred();
+		const secondSave = deferred();
+		let attempts = 0;
+		const manager = new SaveManager({
+			editor: makeEditor({
+				saveCurrentProject: () => {
+					attempts += 1;
+					return attempts === 1 ? firstSave.promise : secondSave.promise;
+				},
+			}),
+		});
+
+		manager.markDirty();
+		const autosave = manager.flush();
+		let exportFlushSettled = false;
+		const exportFlush = manager.flush().then(() => {
+			exportFlushSettled = true;
+		});
+
+		await Promise.resolve();
+		expect(attempts).toBe(1);
+		expect(exportFlushSettled).toBe(false);
+
+		firstSave.resolve();
+		await new Promise<void>((resolve) => setTimeout(resolve, 0));
+		expect(attempts).toBe(2);
+		expect(exportFlushSettled).toBe(false);
+
+		secondSave.resolve();
+		await Promise.all([autosave, exportFlush]);
+		expect(exportFlushSettled).toBe(true);
+	});
+
 	test("blocks blind retry when the project changed on disk", async () => {
 		let attempts = 0;
 		const manager = new SaveManager({

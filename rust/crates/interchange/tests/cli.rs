@@ -52,14 +52,20 @@ fn cli_exports_one_json_envelope_without_mixing_xml_into_stdout() {
     });
 
     let output = run(&input.to_string());
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert!(output.stderr.is_empty());
     let envelope: Value = serde_json::from_slice(&output.stdout).expect("one JSON stdout envelope");
     assert_eq!(envelope["ok"], true);
-    assert!(envelope["data"]["document"]
-        .as_str()
-        .expect("document")
-        .contains("<fcpxml version=\"1.10\">"));
+    assert!(
+        envelope["data"]["document"]
+            .as_str()
+            .expect("document")
+            .contains("<fcpxml version=\"1.10\">")
+    );
     assert_eq!(envelope["data"]["report"]["source"]["revision"], 4);
 }
 
