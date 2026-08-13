@@ -5,8 +5,7 @@ use std::{
 };
 
 use interchange::{
-    ErrorCode, FcpxmlExportOptions, FcpxmlVersion, InterchangeTarget, IssueSeverity,
-    export_fcpxml,
+    ErrorCode, FcpxmlExportOptions, FcpxmlVersion, InterchangeTarget, IssueSeverity, export_fcpxml,
 };
 use quick_xml::Reader;
 use serde_json::{Value, json};
@@ -31,10 +30,8 @@ fn temp_fixture() -> Fixture {
         .duration_since(UNIX_EPOCH)
         .expect("clock")
         .as_nanos();
-    let root = std::env::temp_dir().join(format!(
-        "moirai-interchange-{}-{nonce}",
-        std::process::id()
-    ));
+    let root =
+        std::env::temp_dir().join(format!("moirai-interchange-{}-{nonce}", std::process::id()));
     let media_root = root.join("media");
     fs::create_dir_all(&media_root).expect("media directory");
     for file in ["main.mp4", "overlay.mov", "voice.wav", "hidden.mp4"] {
@@ -109,15 +106,7 @@ fn temp_fixture() -> Fixture {
         2 * SECOND,
         SECOND / 2,
     );
-    let caption = element(
-        "caption-1",
-        "字幕",
-        "text",
-        None,
-        2 * SECOND,
-        SECOND,
-        0,
-    );
+    let caption = element("caption-1", "字幕", "text", None, 2 * SECOND, SECOND, 0);
     let hidden = element(
         "hidden-1",
         "隐藏素材",
@@ -246,9 +235,16 @@ fn exports_revision_bound_fcpxml_with_connected_tracks_and_loss_report() {
     assert_eq!(exported.report.source.scene_id, "scene-main");
     assert_eq!(exported.report.adapter.format, "fcpxml");
     assert_eq!(exported.report.adapter.version, "1.10");
-    assert_eq!(exported.report.adapter.target, InterchangeTarget::JianyingDesktop);
+    assert_eq!(
+        exported.report.adapter.target,
+        InterchangeTarget::JianyingDesktop
+    );
 
-    assert!(exported.document.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
+    assert!(
+        exported
+            .document
+            .starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+    );
     assert!(exported.document.contains("<!DOCTYPE fcpxml>"));
     assert!(exported.document.contains("<fcpxml version=\"1.10\">"));
     assert!(exported.document.contains("frameDuration=\"1001/30000s\""));
@@ -258,14 +254,30 @@ fn exports_revision_bound_fcpxml_with_connected_tracks_and_loss_report() {
     assert!(exported.document.contains("main.mp4"));
 
     // The one-second hole between main clips must survive as an editable gap.
-    assert!(exported.document.contains("<gap name=\"Gap\" offset=\"4s\" duration=\"1s\""));
+    assert!(
+        exported
+            .document
+            .contains("<gap name=\"Gap\" offset=\"4s\" duration=\"1s\"")
+    );
     // The overlay starts at timeline 6s inside a main clip whose timeline/source
     // starts are 5s/10s, so its parent-local FCPXML offset is 11s.
-    assert!(exported.document.contains("name=\"叠加.mov\" ref=\"r3\" lane=\"2\" offset=\"11s\""));
+    assert!(
+        exported
+            .document
+            .contains("name=\"叠加.mov\" ref=\"r3\" lane=\"2\" offset=\"11s\"")
+    );
     // Audio at timeline 1s is connected to the first clip, which starts at source
     // 1s. Its parent-local offset is therefore 2s, not the absolute 1s.
-    assert!(exported.document.contains("name=\"旁白.wav\" ref=\"r4\" lane=\"-1\" offset=\"2s\""));
-    assert!(exported.document.contains("<marker start=\"11s\" value=\"检查点\""));
+    assert!(
+        exported
+            .document
+            .contains("name=\"旁白.wav\" ref=\"r4\" lane=\"-1\" offset=\"2s\"")
+    );
+    assert!(
+        exported
+            .document
+            .contains("<marker start=\"11s\" value=\"检查点\"")
+    );
 
     let mut reader = Reader::from_str(&exported.document);
     loop {
@@ -280,14 +292,20 @@ fn exports_revision_bound_fcpxml_with_connected_tracks_and_loss_report() {
         issue.code == "unsupported_text" && issue.element_id.as_deref() == Some("caption-1")
     }));
     assert!(exported.report.issues.iter().any(|issue| {
-        issue.code == "hidden_track_omitted"
-            && issue.track_id.as_deref() == Some("hidden-track")
+        issue.code == "hidden_track_omitted" && issue.track_id.as_deref() == Some("hidden-track")
     }));
     assert!(exported.report.issues.iter().any(|issue| {
         issue.code == "transition_flattened" && issue.severity == IssueSeverity::Degraded
     }));
     assert_eq!(exported.report.relink.assets.len(), 3);
-    assert!(exported.report.relink.assets.iter().all(|asset| asset.exists));
+    assert!(
+        exported
+            .report
+            .relink
+            .assets
+            .iter()
+            .all(|asset| asset.exists)
+    );
 }
 
 #[test]
@@ -340,8 +358,18 @@ fn uses_a_gap_storyline_when_the_project_has_only_overlay_video() {
     )
     .expect("overlay-only timeline exports");
 
-    assert!(exported.document.contains("<gap name=\"Gap\" offset=\"0s\" duration=\"3s\""));
-    assert!(exported.document.contains("name=\"叠加.mov\" ref=\"r2\" lane=\"1\" offset=\"1s\""));
+    assert!(
+        exported
+            .document
+            .contains("<gap name=\"Gap\" offset=\"0s\" duration=\"3s\""),
+        "{}",
+        exported.document
+    );
+    assert!(
+        exported
+            .document
+            .contains("name=\"叠加.mov\" ref=\"r2\" lane=\"1\" offset=\"1s\"")
+    );
 }
 
 #[allow(dead_code)]
