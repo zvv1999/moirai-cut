@@ -1,0 +1,16 @@
+[package]
+name = "interchange"
+version = "0.1.0"
+edition = "2024"
+description = "Loss-aware timeline interchange for Moirai Cut"
+license = "MIT"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+quick-xml = "0.38"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+url = "2"
