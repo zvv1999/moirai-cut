@@ -59,7 +59,7 @@ test("the server exposes the agent tool surface", async () => {
   for (const name of [
     "status", "get_state", "get_context", "reveal_context",
     "list_operations", "apply_operation", "render_frames", "undo", "redo",
-    "list_projects", "read_project", "edit_project",
+    "list_projects", "read_project", "edit_project", "export_fcpxml",
     "get_active_project", "read_agent_context",
     "list_media", "import_media", "delete_media", "analyze_audio",
     "inspect_media", "inspect_media_scenes", "inspect_timeline_range",
