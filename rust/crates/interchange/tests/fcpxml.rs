@@ -497,6 +497,184 @@ fn omits_non_solo_audio_capable_tracks_when_any_track_is_soloed() {
 }
 
 #[test]
+fn default_built_in_media_params_do_not_create_false_loss_issues() {
+    let mut fixture = temp_fixture();
+    fixture.project["scenes"][0]["tracks"]["main"]["elements"][0]["params"] = json!({
+        "transform.positionX": 0,
+        "transform.positionY": 0,
+        "transform.scaleX": 1,
+        "transform.scaleY": 1,
+        "transform.rotate": 0,
+        "opacity": 1,
+        "blendMode": "normal",
+        "geometry.mirrorX": false,
+        "geometry.mirrorY": false,
+        "crop.left": 0,
+        "crop.right": 0,
+        "crop.top": 0,
+        "crop.bottom": 0,
+        "geometry.cornerRadius": 0,
+        "geometry.shadow.enabled": false,
+        "geometry.shadow.color": "#00000080",
+        "geometry.shadow.blur": 0,
+        "geometry.shadow.offsetX": 0,
+        "geometry.shadow.offsetY": 8,
+        "geometry.stroke.width": 0,
+        "geometry.stroke.color": "#ffffff",
+        "volume": 0,
+        "audioFadeIn": 0,
+        "audioFadeOut": 0,
+        "muted": false
+    });
+
+    let export = exported(&fixture, options(7));
+
+    assert!(!export.report.issues.iter().any(|issue| {
+        issue.code == "static_params_omitted"
+            && issue.element_id.as_deref() == Some("main-a")
+    }));
+
+    fixture.project["scenes"][0]["tracks"]["main"]["elements"][0]["params"]
+        ["transform.scaleX"] = json!(1.25);
+    let changed = exported(&fixture, options(7));
+    assert!(changed.report.issues.iter().any(|issue| {
+        issue.code == "static_params_omitted"
+            && issue.element_id.as_deref() == Some("main-a")
+    }));
+}
+
+#[test]
+fn reports_group_and_link_relationships_that_fcpxml_does_not_preserve() {
+    let mut fixture = temp_fixture();
+    let element = &mut fixture.project["scenes"][0]["tracks"]["main"]["elements"][0];
+    element["groupId"] = json!("edit-group-1");
+    element["linkGroupId"] = json!("linked-source-1");
+
+    let export = exported(&fixture, options(7));
+
+    assert!(export.report.issues.iter().any(|issue| {
+        issue.code == "group_relation_omitted"
+            && issue.severity == IssueSeverity::Degraded
+            && issue.element_id.as_deref() == Some("main-a")
+    }));
+    assert!(export.report.issues.iter().any(|issue| {
+        issue.code == "linked_media_relation_omitted"
+            && issue.severity == IssueSeverity::Degraded
+            && issue.element_id.as_deref() == Some("main-a")
+    }));
+}
+
+#[test]
+fn preserves_overlay_z_order_when_mapping_tracks_to_fcpxml_lanes() {
+    let mut fixture = temp_fixture();
+    fs::write(fixture.media_root.join("background.mov"), b"fixture")
+        .expect("background media");
+    fixture.media_index["background"] = json!({
+        "id": "background",
+        "name": "背景.mov",
+        "type": "video",
+        "ext": "mov",
+        "duration": 3,
+        "width": 1280,
+        "height": 720,
+        "hasAudio": false
+    });
+    fixture.project["scenes"][0]["tracks"]["overlay"]
+        .as_array_mut()
+        .expect("overlay tracks")
+        .push(json!({
+            "id": "background-track",
+            "name": "背景轨",
+            "type": "video",
+            "muted": false,
+            "hidden": false,
+            "elements": [{
+                "id": "background-1",
+                "name": "背景",
+                "type": "video",
+                "mediaId": "background",
+                "startTime": 6 * SECOND,
+                "duration": SECOND,
+                "trimStart": 0,
+                "trimEnd": 0,
+                "sourceDuration": 3 * SECOND,
+                "params": {}
+            }]
+        }));
+
+    let export = exported(&fixture, options(7));
+
+    assert!(export.document.contains(
+        "name=\"叠加.mov\" ref=\"r3\" lane=\"2\""
+    ));
+    assert!(export.document.contains(
+        "name=\"背景.mov\" ref=\"r5\" lane=\"1\""
+    ));
+}
+
+#[test]
+fn reports_muted_audio_elements_as_omitted() {
+    let mut fixture = temp_fixture();
+    fixture.project["scenes"][0]["tracks"]["audio"][0]["elements"][0]["params"] =
+        json!({ "muted": true });
+
+    let export = exported(&fixture, options(7));
+
+    assert!(!export.document.contains("旁白.wav"));
+    assert!(export.report.issues.iter().any(|issue| {
+        issue.code == "muted_element_audio_omitted"
+            && issue.severity == IssueSeverity::Omitted
+            && issue.element_id.as_deref() == Some("voice-1")
+    }));
+}
+
+#[test]
+fn does_not_invent_audio_stream_metadata_absent_from_the_media_index() {
+    let fixture = temp_fixture();
+    let export = exported(&fixture, options(7));
+
+    assert!(!export.document.contains("audioChannels=\"2\""));
+    assert!(!export.document.contains("audioRate=\"48000\""));
+}
+
+#[test]
+fn reports_compound_children_as_omitted_instead_of_claiming_they_were_flattened() {
+    let mut fixture = temp_fixture();
+    fixture.project["scenes"][0]["tracks"]["main"]["elements"][0]["compound"] = json!({
+        "id": "compound-1",
+        "children": [{
+            "originalTrackId": "main-track",
+            "relativeStartTime": 0,
+            "element": {
+                "id": "child-1",
+                "name": "child",
+                "type": "video",
+                "mediaId": "main",
+                "startTime": 0,
+                "duration": SECOND,
+                "trimStart": 0,
+                "trimEnd": 0,
+                "sourceDuration": 20 * SECOND,
+                "params": {}
+            }
+        }]
+    });
+
+    let export = exported(&fixture, options(7));
+
+    assert!(!export
+        .report
+        .issues
+        .iter()
+        .any(|issue| issue.code == "compound_flattened"));
+    assert!(export.report.issues.iter().any(|issue| {
+        issue.code == "compound_children_omitted"
+            && issue.severity == IssueSeverity::Omitted
+            && issue.element_id.as_deref() == Some("main-a")
+    }));
+}
+
+#[test]
 fn asset_formats_do_not_claim_the_sequence_dimensions_for_source_media() {
     let fixture = temp_fixture();
     let export = exported(&fixture, options(7));

@@ -54,4 +54,22 @@ describe("FCPXML export client", () => {
 			}),
 		).rejects.toThrow("尚未保存");
 	});
+
+	test("refuses export when flush returns while the project is still dirty", async () => {
+		let fetched = false;
+		await expect(
+			requestProjectFcpxml({
+				projectId: "project",
+				projectName: "Demo",
+				isDirty: () => true,
+				flush: async () => {},
+				getRevision: () => 7,
+				fetcher: async () => {
+					fetched = true;
+					throw new Error("must not fetch");
+				},
+			}),
+		).rejects.toThrow("仍有未保存");
+		expect(fetched).toBe(false);
+	});
 });

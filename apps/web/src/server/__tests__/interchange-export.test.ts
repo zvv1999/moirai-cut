@@ -163,6 +163,61 @@ describe("project FCPXML export service", () => {
 		);
 	});
 
+	test("keeps explicit scene exports distinct at the same project revision", async () => {
+		const state = await fixture();
+		const run: InterchangeProcessRunner = async (request) => ({
+			document: '<?xml version="1.0"?><fcpxml version="1.10"/>',
+			report: {
+				schema: "moirai-cut.interchange-report.v1",
+				source: { sceneId: request.options.sceneId },
+				issues: [],
+			},
+		});
+
+		const first = await exportProjectFcpxml({
+			projectId: state.projectId,
+			baseRevision: 7,
+			name: "handoff",
+			sceneId: "scene-a",
+			target: "jianying-desktop",
+			projectsRoot: state.projectsRoot,
+			run,
+		});
+		const second = await exportProjectFcpxml({
+			projectId: state.projectId,
+			baseRevision: 7,
+			name: "handoff",
+			sceneId: "scene-b",
+			target: "jianying-desktop",
+			projectsRoot: state.projectsRoot,
+			run,
+		});
+
+		expect(first.name).not.toBe(second.name);
+		expect(await readFile(first.path, "utf8")).toContain("<fcpxml");
+		expect(await readFile(second.path, "utf8")).toContain("<fcpxml");
+	});
+
+	test("rejects malformed reports from an incompatible Rust runtime", async () => {
+		const state = await fixture();
+		const run = (async () => ({
+			document: '<?xml version="1.0"?><fcpxml version="1.10"/>',
+			report: {
+				schema: "moirai-cut.interchange-report.v1",
+			},
+		})) as unknown as InterchangeProcessRunner;
+
+		await expect(
+			exportProjectFcpxml({
+				projectId: state.projectId,
+				baseRevision: 7,
+				target: "jianying-desktop",
+				projectsRoot: state.projectsRoot,
+				run,
+			}),
+		).rejects.toMatchObject({ code: "interchange_process_failed" });
+	});
+
 	test("publishes XML and report as one rollback-safe artifact pair", async () => {
 		const state = await fixture();
 		const exportsDirectory = path.join(state.projectDir, "exports");
