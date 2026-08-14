@@ -456,6 +456,7 @@ export class NativeMediaJobService {
 	private readonly projectsRoot: string;
 	private readonly probeFile?: ProbeFile;
 	private readonly transcode: NativeTranscodeRunner;
+	private readonly removeTemporaryOutput: (outputPath: string) => Promise<void>;
 	private readonly maxConcurrent: number;
 	private readonly jobs = new Map<string, Map<string, NativeMediaJob>>();
 	private readonly loadedProjects = new Set<string>();
@@ -472,16 +473,19 @@ export class NativeMediaJobService {
 		projectsRoot = defaultProjectsRoot(),
 		probeFile,
 		transcode = runNativeTranscode,
+		removeTemporaryOutput = (outputPath) => rm(outputPath, { force: true }),
 		maxConcurrent = 2,
 	}: {
 		projectsRoot?: string;
 		probeFile?: ProbeFile;
 		transcode?: NativeTranscodeRunner;
+		removeTemporaryOutput?: (outputPath: string) => Promise<void>;
 		maxConcurrent?: number;
 	} = {}) {
 		this.projectsRoot = projectsRoot;
 		this.probeFile = probeFile;
 		this.transcode = transcode;
+		this.removeTemporaryOutput = removeTemporaryOutput;
 		this.maxConcurrent = Math.max(1, Math.min(8, Math.trunc(maxConcurrent)));
 	}
 
@@ -848,7 +852,9 @@ export class NativeMediaJobService {
 				error,
 			};
 		} finally {
-			await rm(temporaryOutputPath, { force: true }).catch(() => undefined);
+			await this.removeTemporaryOutput(temporaryOutputPath).catch(
+				() => undefined,
+			);
 			if (terminalFailure) {
 				const { cancelled, error } = terminalFailure;
 				this.updateJob({

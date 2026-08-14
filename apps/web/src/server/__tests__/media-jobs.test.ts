@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync } from "node:fs";
 import {
 	mkdir,
 	mkdtemp,
 	readFile,
+	rm,
 	stat,
 	writeFile,
 } from "node:fs/promises";
@@ -487,7 +487,14 @@ describe("native media proxy jobs", () => {
 	test("keeps failed jobs non-terminal until partial output cleanup finishes", async () => {
 		const source = await fixture();
 		let temporaryOutputPath = "";
-		let partialOutputExistedWhenTerminal = false;
+		let signalCleanupStarted!: () => void;
+		const cleanupStarted = new Promise<void>((resolve) => {
+			signalCleanupStarted = resolve;
+		});
+		let allowCleanup!: () => void;
+		const cleanupAllowed = new Promise<void>((resolve) => {
+			allowCleanup = resolve;
+		});
 		const service = new NativeMediaJobService({
 			projectsRoot: source.projectsRoot,
 			probeFile,
@@ -496,27 +503,27 @@ describe("native media proxy jobs", () => {
 				await writeFile(outputPath, "partial");
 				throw new Error("No space left on device");
 			},
+			removeTemporaryOutput: async (outputPath) => {
+				signalCleanupStarted();
+				await cleanupAllowed;
+				await rm(outputPath, { force: true });
+			},
 		});
-		type UpdateJobArguments = {
-			projectId: string;
-			jobId: string;
-			update: (job: NativeMediaJob) => void;
-		};
-		const internals = service as unknown as {
-			updateJob: (args: UpdateJobArguments) => NativeMediaJob;
-		};
-		const updateJob = internals.updateJob.bind(service);
-		internals.updateJob = (args) => {
-			const job = updateJob(args);
-			if (job.status === "failed") {
-				partialOutputExistedWhenTerminal = existsSync(temporaryOutputPath);
-			}
-			return job;
-		};
 		const queued = await service.ensureProxy({
 			projectId: source.projectId,
 			assetId: source.assetId,
 		});
+		await cleanupStarted;
+		try {
+			expect(
+				await service.get({
+					projectId: source.projectId,
+					jobId: queued.id,
+				}),
+			).toMatchObject({ status: "running" });
+		} finally {
+			allowCleanup();
+		}
 		const terminal = await service.waitForTerminal({
 			projectId: source.projectId,
 			jobId: queued.id,
@@ -525,7 +532,6 @@ describe("native media proxy jobs", () => {
 			status: "failed",
 			error: { message: "No space left on device" },
 		});
-		expect(partialOutputExistedWhenTerminal).toBe(false);
 		await expect(stat(temporaryOutputPath)).rejects.toMatchObject({
 			code: "ENOENT",
 		});
