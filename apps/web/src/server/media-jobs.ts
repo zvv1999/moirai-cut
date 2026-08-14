@@ -465,6 +465,7 @@ export class NativeMediaJobService {
 		Promise<Map<string, NativeMediaJob>>
 	>();
 	private readonly persistingProjects = new Map<string, Promise<void>>();
+	private readonly mutatingMediaIndexes = new Map<string, Promise<void>>();
 	private readonly controllers = new Map<string, AbortController>();
 	private readonly pendingExecutions: QueuedProxyExecution[] = [];
 	private activeExecutions = 0;
@@ -609,6 +610,37 @@ export class NativeMediaJobService {
 		} finally {
 			if (this.persistingProjects.get(projectId) === current) {
 				this.persistingProjects.delete(projectId);
+			}
+		}
+	}
+
+	private async mutateMediaIndex({
+		projectId,
+		update,
+	}: {
+		projectId: string;
+		update: (mediaIndex: MediaIndex) => void;
+	}): Promise<void> {
+		const previous =
+			this.mutatingMediaIndexes.get(projectId) ?? Promise.resolve();
+		const current = previous.catch(() => undefined).then(async () => {
+			const directory = mediaDirectory({
+				projectsRoot: this.projectsRoot,
+				projectId,
+			});
+			const mediaIndex = await readMediaIndex({ directory });
+			update(mediaIndex);
+			await writeJsonAtomic({
+				filePath: path.join(directory, "index.json"),
+				value: mediaIndex,
+			});
+		});
+		this.mutatingMediaIndexes.set(projectId, current);
+		try {
+			await current;
+		} finally {
+			if (this.mutatingMediaIndexes.get(projectId) === current) {
+				this.mutatingMediaIndexes.delete(projectId);
 			}
 		}
 	}
@@ -791,11 +823,6 @@ export class NativeMediaJobService {
 				rotationDegrees: video?.rotationDegrees ?? 0,
 				maxLongEdge: PROXY_PROFILES[profile].maxLongEdge,
 			});
-			const mediaIndex = await readMediaIndex({ directory });
-			const original = mediaIndex[assetId];
-			if (!original) {
-				throw new Error(`No asset ${assetId}`);
-			}
 			const storageId = `${assetId}-proxy`;
 			const proxy: NativeProxyMetadata = {
 				storageId,
@@ -811,27 +838,32 @@ export class NativeMediaJobService {
 				profile,
 				sourceSha256: probe.source.sha256,
 			};
-			mediaIndex[assetId] = { ...original, proxy };
-			mediaIndex[storageId] = {
-				id: storageId,
-				ext: "mp4",
-				mimeType: "video/mp4",
-				name: proxy.name,
-				type: "video",
-				size: proxy.size,
-				lastModified: outputStat.mtimeMs,
-				width: proxy.width,
-				height: proxy.height,
-				duration: probe.probe.container.durationSeconds ?? undefined,
-				fps: Math.min(
-					video?.averageFrameRate ?? PROXY_PROFILES[profile].maxFps,
-					PROXY_PROFILES[profile].maxFps,
-				),
-				hasAudio: probe.probe.audioStreams.length > 0,
-			};
-			await writeJsonAtomic({
-				filePath: path.join(directory, "index.json"),
-				value: mediaIndex,
+			await this.mutateMediaIndex({
+				projectId,
+				update: (mediaIndex) => {
+					const original = mediaIndex[assetId];
+					if (!original) {
+						throw new Error(`No asset ${assetId}`);
+					}
+					mediaIndex[assetId] = { ...original, proxy };
+					mediaIndex[storageId] = {
+						id: storageId,
+						ext: "mp4",
+						mimeType: "video/mp4",
+						name: proxy.name,
+						type: "video",
+						size: proxy.size,
+						lastModified: outputStat.mtimeMs,
+						width: proxy.width,
+						height: proxy.height,
+						duration: probe.probe.container.durationSeconds ?? undefined,
+						fps: Math.min(
+							video?.averageFrameRate ?? PROXY_PROFILES[profile].maxFps,
+							PROXY_PROFILES[profile].maxFps,
+						),
+						hasAudio: probe.probe.audioStreams.length > 0,
+					};
+				},
 			});
 			this.updateJob({
 				projectId,
