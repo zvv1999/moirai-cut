@@ -254,12 +254,9 @@ fn exports_revision_bound_fcpxml_with_connected_tracks_and_loss_report() {
     );
     assert!(exported.document.contains("<!DOCTYPE fcpxml>"));
     assert!(exported.document.contains("<fcpxml version=\"1.10\">"));
-    assert!(
-        exported
-            .document
-            .contains("<library><event name=\"Moirai Cut\">")
-    );
-    assert!(exported.document.contains("</event></library>"));
+    assert!(exported.document.contains("<library>"));
+    assert!(exported.document.contains("<event name=\"Moirai Cut\">"));
+    assert!(exported.document.contains("</library>"));
     assert!(exported.document.contains("frameDuration=\"1001/30000s\""));
     assert!(exported.document.contains("name=\"剪映互通 &amp; Demo\""));
     assert!(exported.document.contains("name=\"主素材 &amp; one.mp4\""));

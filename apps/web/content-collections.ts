@@ -3,7 +3,7 @@ import { z } from "zod";
 
 const changelog = defineCollection({
 	name: "changelog",
-	directory: "src/lib/changelog/entries",
+	directory: "src/changelog/entries",
 	include: "*.md",
 	schema: z.object({
 		content: z.string(),

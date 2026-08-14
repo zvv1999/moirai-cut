@@ -269,7 +269,13 @@ fn timeline_duration(project: &ProjectDocument, scene: &Scene) -> Result<i64, In
         .chain(scene.tracks.overlay.iter())
         .chain(scene.tracks.audio.iter())
     {
+        if track.hidden {
+            continue;
+        }
         for element in &track.elements {
+            if element.hidden {
+                continue;
+            }
             let end = element.end().ok_or_else(|| {
                 InterchangeError::new(
                     ErrorCode::InvalidProject,
@@ -296,7 +302,13 @@ fn validate_scene_timing(scene: &Scene) -> Result<(), InterchangeError> {
         .chain(scene.tracks.overlay.iter())
         .chain(scene.tracks.audio.iter())
     {
+        if track.hidden {
+            continue;
+        }
         for element in &track.elements {
+            if element.hidden {
+                continue;
+            }
             if element.transition_in.is_some() {
                 return Err(InterchangeError::new(
                     ErrorCode::UnsupportedTimeline,
@@ -1028,7 +1040,7 @@ fn build_document(
     Ok(XmlNode::new("fcpxml")
         .attr("version", version.as_str())
         .child(XmlNode::new("resources").children(resources))
-        .child(
+        .child(XmlNode::new("library").child(
             XmlNode::new("event").attr("name", "Moirai Cut").child(
                 XmlNode::new("project")
                     .attr("name", project.metadata.name.clone())
@@ -1043,7 +1055,7 @@ fn build_document(
                             .child(spine),
                     ),
             ),
-        ))
+        )))
 }
 
 fn collect_loss_issues(scene: &Scene) -> Vec<InterchangeIssue> {
