@@ -37,7 +37,11 @@ fn cli_exports_one_json_envelope_without_mixing_xml_into_stdout() {
             "scenes": [{
                 "id": "scene", "name": "Main", "isMain": true, "bookmarks": [],
                 "tracks": {
-                    "main": { "id": "main", "name": "Main", "type": "video", "hidden": false, "muted": false, "elements": [] },
+                    "main": { "id": "main", "name": "Main", "type": "video", "hidden": false, "muted": false, "elements": [{
+                        "id": "title", "name": "Title", "type": "text",
+                        "startTime": 0, "duration": 120_000,
+                        "trimStart": 0, "trimEnd": 0, "params": {}
+                    }] },
                     "overlay": [], "audio": []
                 }
             }]

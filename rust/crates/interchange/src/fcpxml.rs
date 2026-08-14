@@ -151,7 +151,7 @@ pub fn export_fcpxml(
         .map(|asset| (asset.id.as_str(), asset))
         .collect();
 
-    let duration = timeline_duration(&project, scene)?;
+    let duration = timeline_duration(scene)?;
     let mut story = build_storyline(scene, duration)?;
     attach_connected_clips(scene, &asset_by_id, &mut story, &mut issues)?;
     attach_markers(scene, &mut story, &mut issues)?;
@@ -257,14 +257,10 @@ fn select_scene<'a>(
         })
 }
 
-fn timeline_duration(project: &ProjectDocument, scene: &Scene) -> Result<i64, InterchangeError> {
-    // Project metadata tracks the main scene only. Other scenes must derive
-    // their duration exclusively from their own timeline content.
-    let mut duration = if scene.is_main {
-        project.metadata.duration.max(0)
-    } else {
-        0
-    };
+fn timeline_duration(scene: &Scene) -> Result<i64, InterchangeError> {
+    // The cached project duration can include hidden content. Derive every
+    // sequence end from the selected scene's visible elements instead.
+    let mut duration = 0;
     for track in std::iter::once(&scene.tracks.main)
         .chain(scene.tracks.overlay.iter())
         .chain(scene.tracks.audio.iter())
@@ -374,11 +370,11 @@ fn scene_has_solo_track(scene: &Scene) -> bool {
     std::iter::once(&scene.tracks.main)
         .chain(scene.tracks.overlay.iter())
         .chain(scene.tracks.audio.iter())
-        .any(|track| audio_capable(track) && track.solo)
+        .any(|track| !track.hidden && audio_capable(track) && track.solo)
 }
 
 fn track_is_audible(track: &Track, has_solo_track: bool) -> bool {
-    audio_capable(track) && !track.muted && (!has_solo_track || track.solo)
+    !track.hidden && audio_capable(track) && !track.muted && (!has_solo_track || track.solo)
 }
 
 fn source_audio_is_enabled(
@@ -456,7 +452,7 @@ fn referenced_media(
             continue;
         }
         for element in &track.elements {
-            if !element.audio_muted() {
+            if !element.hidden && !element.audio_muted() {
                 visit(track, element)?;
             }
         }
@@ -689,7 +685,8 @@ fn attach_connected_clips(
             continue;
         }
         for element in &track.elements {
-            if element.kind != "audio"
+            if element.hidden
+                || element.kind != "audio"
                 || (element.source_type.as_deref() == Some("library") && element.media_id.is_none())
                 || element.audio_muted()
             {
@@ -1040,22 +1037,24 @@ fn build_document(
     Ok(XmlNode::new("fcpxml")
         .attr("version", version.as_str())
         .child(XmlNode::new("resources").children(resources))
-        .child(XmlNode::new("library").child(
-            XmlNode::new("event").attr("name", "Moirai Cut").child(
-                XmlNode::new("project")
-                    .attr("name", project.metadata.name.clone())
-                    .child(
-                        XmlNode::new("sequence")
-                            .attr("format", "r1")
-                            .attr("duration", rational_ticks(duration))
-                            .attr("tcStart", "0s")
-                            .attr("tcFormat", if drop_frame { "DF" } else { "NDF" })
-                            .attr("audioLayout", "stereo")
-                            .attr("audioRate", "48k")
-                            .child(spine),
-                    ),
+        .child(
+            XmlNode::new("library").child(
+                XmlNode::new("event").attr("name", "Moirai Cut").child(
+                    XmlNode::new("project")
+                        .attr("name", project.metadata.name.clone())
+                        .child(
+                            XmlNode::new("sequence")
+                                .attr("format", "r1")
+                                .attr("duration", rational_ticks(duration))
+                                .attr("tcStart", "0s")
+                                .attr("tcFormat", if drop_frame { "DF" } else { "NDF" })
+                                .attr("audioLayout", "stereo")
+                                .attr("audioRate", "48k")
+                                .child(spine),
+                        ),
+                ),
             ),
-        )))
+        ))
 }
 
 fn collect_loss_issues(scene: &Scene) -> Vec<InterchangeIssue> {

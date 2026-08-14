@@ -727,6 +727,10 @@ fn hidden_content_cannot_block_or_extend_the_exported_timeline() {
         "id": "hidden-compound",
         "children": []
     });
+    // The Web project metadata currently reflects every element, including
+    // hidden ones. The exporter must derive its sequence end from visible
+    // scene content instead of trusting this cached value.
+    fixture.project["metadata"]["duration"] = json!(101 * SECOND);
 
     let export = exported(&fixture, options(7));
 
@@ -737,9 +741,67 @@ fn hidden_content_cannot_block_or_extend_the_exported_timeline() {
     );
     assert!(!export.document.contains("duration=\"101s\""));
     assert!(export.report.issues.iter().any(|issue| {
-        issue.code == "hidden_track_omitted"
-            && issue.track_id.as_deref() == Some("hidden-track")
+        issue.code == "hidden_track_omitted" && issue.track_id.as_deref() == Some("hidden-track")
     }));
+}
+
+#[test]
+fn hidden_solo_audio_tracks_cannot_mute_or_block_visible_audio() {
+    let mut fixture = temp_fixture();
+    fixture.project["scenes"][0]["tracks"]["audio"]
+        .as_array_mut()
+        .expect("audio tracks")
+        .push(json!({
+            "id": "hidden-solo-audio",
+            "name": "隐藏独奏音轨",
+            "type": "audio",
+            "muted": false,
+            "solo": true,
+            "hidden": true,
+            "elements": [{
+                "id": "hidden-audio",
+                "name": "不可解析的隐藏音频",
+                "type": "audio",
+                "startTime": 0,
+                "duration": SECOND,
+                "trimStart": 0,
+                "trimEnd": 0,
+                "sourceDuration": SECOND,
+                "params": {}
+            }]
+        }));
+
+    let export = exported(&fixture, options(7));
+
+    assert!(export.document.contains("旁白.wav"));
+    assert!(!export.document.contains("不可解析的隐藏音频"));
+    assert!(export.report.issues.iter().any(|issue| {
+        issue.code == "hidden_track_omitted"
+            && issue.track_id.as_deref() == Some("hidden-solo-audio")
+    }));
+}
+
+#[test]
+fn hidden_audio_elements_are_not_relinked_or_written() {
+    let mut fixture = temp_fixture();
+    let hidden = &mut fixture.project["scenes"][0]["tracks"]["audio"][0]["elements"][0];
+    hidden["hidden"] = json!(true);
+    hidden["mediaId"] = json!("missing-hidden-audio");
+
+    let export = exported(&fixture, options(7));
+
+    assert!(!export.document.contains("旁白.wav"));
+    assert!(export.report.issues.iter().any(|issue| {
+        issue.code == "hidden_element_omitted" && issue.element_id.as_deref() == Some("voice-1")
+    }));
+    assert!(
+        export
+            .report
+            .relink
+            .assets
+            .iter()
+            .all(|asset| asset.id != "missing-hidden-audio")
+    );
 }
 
 #[test]

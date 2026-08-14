@@ -18,8 +18,6 @@ pub(crate) struct ProjectDocument {
 pub(crate) struct ProjectMetadata {
     pub id: String,
     pub name: String,
-    #[serde(default)]
-    pub duration: i64,
 }
 
 #[derive(Debug, Deserialize)]
