@@ -1087,6 +1087,22 @@ describe("native media proxy jobs", () => {
 			),
 		);
 
+		const persistedJobs = JSON.parse(
+			await readFile(
+				path.join(
+					source.projectsRoot,
+					source.projectId,
+					"codec-jobs",
+					"index.json",
+				),
+				"utf8",
+			),
+		) as NativeMediaJob[];
+		expect(persistedJobs).toHaveLength(2);
+		expect(persistedJobs.map((job) => job.id).sort()).toEqual(
+			queued.map((job) => job?.id ?? "").sort(),
+		);
+
 		const mediaIndex = JSON.parse(await readFile(indexPath, "utf8"));
 		expect(mediaIndex[source.assetId].proxy).toBeDefined();
 		expect(mediaIndex[secondAssetId].proxy).toBeDefined();
