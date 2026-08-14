@@ -583,7 +583,7 @@ describe("native media proxy jobs", () => {
 		});
 	});
 
-	test("bounds concurrent transcodes so batch proxy work keeps editing responsive", async () => {
+	test("bounds concurrent transcodes and preserves every proxy metadata update", async () => {
 		const source = await fixture();
 		const indexPath = path.join(source.mediaDirectory, "index.json");
 		const index = JSON.parse(await readFile(indexPath, "utf8"));
@@ -602,13 +602,22 @@ describe("native media proxy jobs", () => {
 
 		let active = 0;
 		let maximumActive = 0;
+		let started = 0;
+		let releaseFirstWave!: () => void;
+		const firstWaveStarted = new Promise<void>((resolve) => {
+			releaseFirstWave = resolve;
+		});
 		const transcode: NativeTranscodeRunner = async ({
 			temporaryOutputPath,
 		}) => {
 			active += 1;
 			maximumActive = Math.max(maximumActive, active);
-			await Bun.sleep(20);
 			await writeFile(temporaryOutputPath, "proxy");
+			started += 1;
+			if (started === 2) {
+				releaseFirstWave();
+			}
+			await firstWaveStarted;
 			active -= 1;
 		};
 		const service = new NativeMediaJobService({
@@ -650,5 +659,14 @@ describe("native media proxy jobs", () => {
 		expect(persisted.map((job: NativeMediaJob) => job.id).sort()).toEqual(
 			queued.map((job) => job.id).sort(),
 		);
+		const mediaIndex = JSON.parse(await readFile(indexPath, "utf8"));
+		for (const assetId of [source.assetId, "asset-jobs-2", "asset-jobs-3"]) {
+			expect(mediaIndex[assetId].proxy).toMatchObject({
+				storageId: `${assetId}-proxy`,
+			});
+			expect(mediaIndex[`${assetId}-proxy`]).toMatchObject({
+				id: `${assetId}-proxy`,
+			});
+		}
 	});
 });
