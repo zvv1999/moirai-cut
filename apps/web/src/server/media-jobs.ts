@@ -690,6 +690,19 @@ export class NativeMediaJobService {
 			throw new Error(`Asset ${assetId} has no video stream`);
 		}
 		const cacheKey = `${probe.source.sha256}:${profile}`;
+		const findActive = () =>
+			[...projectJobs.values()]
+				.reverse()
+				.find(
+					(job) =>
+						job.assetId === assetId &&
+						job.cacheKey === cacheKey &&
+						(job.status === "queued" || job.status === "running"),
+				);
+		const active = findActive();
+		if (active) {
+			return { ...cloneJob(active), cacheHit: true };
+		}
 		if (!force) {
 			const reusable = [...projectJobs.values()]
 				.reverse()
@@ -697,19 +710,20 @@ export class NativeMediaJobService {
 					(job) =>
 						job.assetId === assetId &&
 						job.cacheKey === cacheKey &&
-						(job.status === "queued" ||
-							job.status === "running" ||
-							job.status === "succeeded"),
+						job.status === "succeeded",
 				);
 			if (reusable) {
 				if (
-					reusable.status !== "succeeded" ||
-					(reusable.result &&
-						(await stat(reusable.result.outputPath)
-							.then(() => true)
-							.catch(() => false)))
+					reusable.result &&
+					(await stat(reusable.result.outputPath)
+						.then(() => true)
+						.catch(() => false))
 				) {
 					return { ...cloneJob(reusable), cacheHit: true };
+				}
+				const replacement = findActive();
+				if (replacement) {
+					return { ...cloneJob(replacement), cacheHit: true };
 				}
 			}
 		}
@@ -762,9 +776,7 @@ export class NativeMediaJobService {
 			directory,
 			`.${assetId}-proxy.${jobId}.tmp.mp4`,
 		);
-		let terminalFailure:
-			| { cancelled: boolean; error: unknown }
-			| undefined;
+		let terminalUpdate: ((job: NativeMediaJob) => void) | undefined;
 		try {
 			if (controller.signal.aborted) {
 				throw new DOMException("Transcode cancelled", "AbortError");
@@ -865,48 +877,43 @@ export class NativeMediaJobService {
 					};
 				},
 			});
-			this.updateJob({
-				projectId,
-				jobId,
-				update: (job) => {
-					job.status = "succeeded";
-					job.progress = 1;
-					job.processedSeconds =
-						probe.probe.container.durationSeconds ?? job.processedSeconds;
-					job.finishedAt = new Date().toISOString();
-					job.result = { proxy, outputPath };
-					delete job.error;
-				},
-			});
+			terminalUpdate = (job) => {
+				job.status = "succeeded";
+				job.progress = 1;
+				job.processedSeconds =
+					probe.probe.container.durationSeconds ?? job.processedSeconds;
+				job.finishedAt = new Date().toISOString();
+				job.result = { proxy, outputPath };
+				delete job.error;
+			};
 		} catch (error) {
-			terminalFailure = {
-				cancelled: controller.signal.aborted || isAbortError(error),
-				error,
+			const cancelled = controller.signal.aborted || isAbortError(error);
+			terminalUpdate = (job) => {
+				job.status = cancelled ? "cancelled" : "failed";
+				job.finishedAt = new Date().toISOString();
+				if (!cancelled) {
+					job.error = {
+						code: "transcode_failed",
+						message: error instanceof Error ? error.message : String(error),
+					};
+				}
 			};
 		} finally {
 			await this.removeTemporaryOutput(temporaryOutputPath).catch(
 				() => undefined,
 			);
-			if (terminalFailure) {
-				const { cancelled, error } = terminalFailure;
+			if (terminalUpdate) {
 				this.updateJob({
 					projectId,
 					jobId,
-					update: (job) => {
-						job.status = cancelled ? "cancelled" : "failed";
-						job.finishedAt = new Date().toISOString();
-						if (!cancelled) {
-							job.error = {
-								code: "transcode_failed",
-								message:
-									error instanceof Error ? error.message : String(error),
-							};
-						}
-					},
+					update: terminalUpdate,
 				});
 			}
-			this.controllers.delete(this.controllerKey({ projectId, jobId }));
-			await this.persist({ projectId });
+			try {
+				await this.persist({ projectId });
+			} finally {
+				this.controllers.delete(this.controllerKey({ projectId, jobId }));
+			}
 		}
 	}
 
@@ -1040,7 +1047,10 @@ export class NativeMediaJobService {
 			if (!job) {
 				throw new Error(`No media job ${jobId}`);
 			}
-			if (TERMINAL_STATUSES.has(job.status)) {
+			if (
+				TERMINAL_STATUSES.has(job.status) &&
+				!this.controllers.has(this.controllerKey({ projectId, jobId }))
+			) {
 				return job;
 			}
 			await new Promise((resolve) => setTimeout(resolve, 5));
