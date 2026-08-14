@@ -67,7 +67,7 @@ fn temp_fixture() -> Fixture {
         value
     };
 
-    let mut first = element(
+    let first = element(
         "main-a",
         "第一段 & A",
         "video",
@@ -76,14 +76,6 @@ fn temp_fixture() -> Fixture {
         4 * SECOND,
         SECOND,
     );
-    first["transitionIn"] = json!({
-        "id": "transition-1",
-        "type": "cross-dissolve",
-        "duration": SECOND / 2,
-        "from": { "trackId": "main-track", "elementId": "before" },
-        "originalTrackId": "main-track",
-        "originalStartTime": 0
-    });
     let second = element(
         "main-b",
         "第二段",
@@ -308,9 +300,6 @@ fn exports_revision_bound_fcpxml_with_connected_tracks_and_loss_report() {
     }));
     assert!(exported.report.issues.iter().any(|issue| {
         issue.code == "hidden_track_omitted" && issue.track_id.as_deref() == Some("hidden-track")
-    }));
-    assert!(exported.report.issues.iter().any(|issue| {
-        issue.code == "transition_flattened" && issue.severity == IssueSeverity::Degraded
     }));
     assert_eq!(exported.report.relink.assets.len(), 3);
     assert!(
@@ -672,6 +661,53 @@ fn rejects_compound_clips_instead_of_exporting_the_first_child_as_the_container(
     assert_eq!(error.code, ErrorCode::UnsupportedTimeline);
     assert!(error.to_string().contains("compound"));
     assert!(error.to_string().contains("main-a"));
+}
+
+#[test]
+fn rejects_transitions_instead_of_exporting_the_incoming_clip_at_the_overlap_start() {
+    let mut fixture = temp_fixture();
+    let incoming = fixture.project["scenes"][0]["tracks"]["main"]["elements"][1].clone();
+    fixture.project["scenes"][0]["tracks"]["main"]["elements"]
+        .as_array_mut()
+        .expect("main elements")
+        .remove(1);
+    let mut transitioned = incoming;
+    transitioned["startTime"] = json!(4 * SECOND + SECOND / 2);
+    transitioned["transitionIn"] = json!({
+        "id": "transition-1",
+        "type": "cross-dissolve",
+        "duration": SECOND / 2,
+        "from": { "trackId": "main-track", "elementId": "main-a" },
+        "originalTrackId": "main-track",
+        "originalStartTime": 5 * SECOND,
+        "createdOverlayTrack": true
+    });
+    fixture.project["scenes"][0]["tracks"]["overlay"]
+        .as_array_mut()
+        .expect("overlay tracks")
+        .insert(
+            0,
+            json!({
+                "id": "transition-track",
+                "name": "Transition",
+                "type": "video",
+                "muted": false,
+                "hidden": false,
+                "elements": [transitioned]
+            }),
+        );
+
+    let error = export_fcpxml(
+        &fixture.project,
+        &fixture.media_index,
+        &fixture.media_root,
+        options(7),
+    )
+    .expect_err("transition timing must fail closed until it can be restored exactly");
+
+    assert_eq!(error.code, ErrorCode::UnsupportedTimeline);
+    assert!(error.to_string().contains("transition"));
+    assert!(error.to_string().contains("main-b"));
 }
 
 #[test]
