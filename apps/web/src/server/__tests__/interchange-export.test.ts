@@ -125,8 +125,10 @@ describe("project FCPXML export service", () => {
 		});
 
 		expect(result.stable).toBe(true);
-		expect(result.name).toBe("剪映-交接-r7.fcpxml");
-		expect(result.reportName).toBe("剪映-交接-r7.interchange-report.json");
+		expect(result.name).toMatch(/^剪映-交接-r7-[0-9a-f]{12}\.fcpxml$/);
+		expect(result.reportName).toBe(
+			result.name.replace(/\.fcpxml$/, ".interchange-report.json"),
+		);
 		expect(await readFile(result.path, "utf8")).toContain("<fcpxml");
 		expect(JSON.parse(await readFile(result.reportPath, "utf8"))).toEqual(
 			result.report,
@@ -157,9 +159,11 @@ describe("project FCPXML export service", () => {
 			run,
 		});
 
-		expect(result.name).toBe("蝉镜-Demo-handoff-r7.fcpxml");
+		expect(result.name).toMatch(
+			/^蝉镜-Demo-handoff-r7-[0-9a-f]{12}\.fcpxml$/,
+		);
 		expect(result.downloadUrl).toEndWith(
-			encodeURIComponent("蝉镜-Demo-handoff-r7.fcpxml"),
+			encodeURIComponent(result.name),
 		);
 	});
 
@@ -302,8 +306,6 @@ describe("project FCPXML export service", () => {
 	test("publishes XML and report as one rollback-safe artifact pair", async () => {
 		const state = await fixture();
 		const exportsDirectory = path.join(state.projectDir, "exports");
-		const reportName = "pair-r7.interchange-report.json";
-		await mkdir(path.join(exportsDirectory, reportName), { recursive: true });
 		const run: InterchangeProcessRunner = async () => ({
 			document: '<?xml version="1.0"?><fcpxml version="1.10"/>',
 			report: {
@@ -311,19 +313,25 @@ describe("project FCPXML export service", () => {
 				issues: [],
 			},
 		});
+		const request = {
+			projectId: state.projectId,
+			baseRevision: 7,
+			name: "pair",
+			target: "jianying-desktop" as const,
+			projectsRoot: state.projectsRoot,
+			run,
+		};
+		const initial = await exportProjectFcpxml(request);
+		await Promise.all([rm(initial.path), rm(initial.reportPath)]);
+		await mkdir(initial.reportPath, { recursive: true });
 
 		await expect(
-			exportProjectFcpxml({
-				projectId: state.projectId,
-				baseRevision: 7,
-				name: "pair",
-				target: "jianying-desktop",
-				projectsRoot: state.projectsRoot,
-				run,
-			}),
+			exportProjectFcpxml(request),
 		).rejects.toMatchObject({ code: "artifact_conflict", status: 409 });
 
-		expect((await readdir(exportsDirectory)).sort()).toEqual([reportName]);
+		expect((await readdir(exportsDirectory)).sort()).toEqual([
+			initial.reportName,
+		]);
 	});
 
 	test("distinguishes malformed project JSON from a missing project", async () => {

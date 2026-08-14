@@ -52,8 +52,10 @@ describe("production image FCPXML HTTP smoke", () => {
 		expect(smokeScript).toContain("/api/interchange/ci-interchange/fcpxml");
 		expect(smokeScript).toContain("downloadUrl");
 		expect(smokeScript).toContain("reportDownloadUrl");
-		expect(smokeScript).toContain("ci-handoff-r7.fcpxml");
-		expect(smokeScript).toContain("ci-handoff-r7.interchange-report.json");
+		expect(smokeScript).toContain("value.data?.name");
+		expect(smokeScript).toContain("value.data?.reportName");
+		expect(smokeScript).toContain('exports/$xml_name');
+		expect(smokeScript).toContain('exports/$report_name');
 		expect(smokeScript).toContain('chmod -R a+rwX "$project_root"');
 	});
 

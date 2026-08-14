@@ -161,12 +161,14 @@ function artifactStem({
 	name,
 	revision,
 	sceneId,
+	fingerprint,
 }: {
 	name: string;
 	revision: number;
 	sceneId?: string;
+	fingerprint: string;
 }): string {
-	const revisionSuffix = `-r${revision}`;
+	const identitySuffix = `-r${revision}-${fingerprint}`;
 	const sceneSuffix = sceneId
 		? `-${truncateUtf16(safeExportStem(sceneId), 24)}-${createHash("sha256")
 				.update(sceneId)
@@ -175,10 +177,10 @@ function artifactStem({
 		: "";
 	const baseLength = Math.max(
 		1,
-		110 - revisionSuffix.length - sceneSuffix.length,
+		110 - identitySuffix.length - sceneSuffix.length,
 	);
 	const base = truncateUtf16(safeExportStem(name), baseLength) || FALLBACK_NAME;
-	return `${base}${sceneSuffix}${revisionSuffix}`;
+	return `${base}${sceneSuffix}${identitySuffix}`;
 }
 
 function validInterchangeReport(value: unknown): value is InterchangeReport {
@@ -201,22 +203,32 @@ async function readJsonFile(
 	file: string,
 	{ missing = null }: { missing?: Record<string, unknown> | null } = {},
 ): Promise<Record<string, unknown>> {
+	let source: string;
 	try {
-		const parsed: unknown = JSON.parse(await readFile(file, "utf8"));
-		if (!isRecord(parsed)) {
-			throw new InterchangeServiceError(`${file} must contain a JSON object`, {
-				code: "invalid_project",
-			});
-		}
-		return parsed;
+		source = await readFile(file, "utf8");
 	} catch (error) {
 		if (missing !== null && isRecord(error) && error.code === "ENOENT") {
 			return missing;
 		}
-		if (error instanceof InterchangeServiceError) throw error;
+		if (isRecord(error) && error.code === "ENOENT") {
+			throw new InterchangeServiceError(`Project file is missing: ${file}`, {
+				code: "project_not_found",
+				status: 404,
+			});
+		}
 		throw new InterchangeServiceError(
 			`Cannot read ${file}: ${error instanceof Error ? error.message : String(error)}`,
-			{ code: "project_not_found", status: 404 },
+			{ code: "project_read_failed", status: 500 },
+		);
+	}
+	try {
+		const parsed: unknown = JSON.parse(source);
+		if (!isRecord(parsed)) throw new Error("expected a JSON object");
+		return parsed;
+	} catch (error) {
+		throw new InterchangeServiceError(
+			`Invalid JSON in ${file}: ${error instanceof Error ? error.message : String(error)}`,
+			{ code: "invalid_project", status: 422 },
 		);
 	}
 }
@@ -249,6 +261,23 @@ async function publishArtifactPair({
 	reportPath: string;
 	report: string;
 }): Promise<void> {
+	const [existingXml, existingReport] = await Promise.all([
+		readPublishedArtifact(xmlPath),
+		readPublishedArtifact(reportPath),
+	]);
+	if (existingXml.exists || existingReport.exists) {
+		if (
+			existingXml.content === xml &&
+			existingReport.content === report
+		) {
+			return;
+		}
+		throw new InterchangeServiceError(
+			"An immutable interchange artifact already occupies this content identity.",
+			{ code: "artifact_conflict", status: 409 },
+		);
+	}
+
 	const xmlTemporary = path.join(path.dirname(xmlPath), `.${randomUUID()}.tmp`);
 	const reportTemporary = path.join(
 		path.dirname(reportPath),
@@ -261,10 +290,13 @@ async function publishArtifactPair({
 			writeFile(xmlTemporary, xml, "utf8"),
 			writeFile(reportTemporary, report, "utf8"),
 		]);
-		await rename(xmlTemporary, xmlPath);
-		xmlPublished = true;
 		await rename(reportTemporary, reportPath);
 		reportPublished = true;
+		// The XML is the completion marker: a crash before this final rename can
+		// leave only an orphan report, never a downloadable XML paired with stale
+		// report data.
+		await rename(xmlTemporary, xmlPath);
+		xmlPublished = true;
 	} catch (error) {
 		await Promise.allSettled([
 			xmlPublished ? rm(xmlPath, { force: true }) : Promise.resolve(),
@@ -276,6 +308,21 @@ async function publishArtifactPair({
 			rm(xmlTemporary, { force: true }),
 			rm(reportTemporary, { force: true }),
 		]);
+	}
+}
+
+async function readPublishedArtifact(
+	file: string,
+): Promise<{ exists: boolean; content: string | null }> {
+	try {
+		return { exists: true, content: await readFile(file, "utf8") };
+	} catch (error) {
+		if (isRecord(error) && error.code === "ENOENT") {
+			return { exists: false, content: null };
+		}
+		// Directories, symlinks to non-files and unreadable paths are occupied,
+		// but can never be treated as an idempotent artifact.
+		return { exists: true, content: null };
 	}
 }
 
@@ -496,7 +543,7 @@ async function exportProjectFcpxmlLocked({
 	}
 	validateMediaIndex(mediaIndex);
 
-	const generated = await run({
+	const rawGenerated: unknown = await run({
 		command: "export-fcpxml",
 		project,
 		mediaIndex,
@@ -509,14 +556,20 @@ async function exportProjectFcpxmlLocked({
 		},
 	});
 	if (
-		!generated.document.startsWith("<?xml") ||
-		!validInterchangeReport(generated.report)
+		!isRecord(rawGenerated) ||
+		typeof rawGenerated.document !== "string" ||
+		!rawGenerated.document.startsWith("<?xml") ||
+		!validInterchangeReport(rawGenerated.report)
 	) {
 		throw new InterchangeServiceError(
 			"Rust interchange returned an invalid export envelope",
-			{ code: "interchange_process_failed" },
+			{ code: "interchange_process_failed", status: 502 },
 		);
 	}
+	const generated: InterchangeProcessResult = {
+		document: rawGenerated.document,
+		report: rawGenerated.report,
+	};
 
 	// Export is a derived artifact of one exact saved revision. The Rust process
 	// can take long enough for an autosave or agent edit to land after the first
@@ -537,10 +590,18 @@ async function exportProjectFcpxmlLocked({
 
 	const exportsDirectory = path.join(directory, "exports");
 	await mkdir(exportsDirectory, { recursive: true });
+	const serializedReport = `${JSON.stringify(generated.report, null, 2)}\n`;
+	const fingerprint = createHash("sha256")
+		.update(generated.document)
+		.update("\0")
+		.update(serializedReport)
+		.digest("hex")
+		.slice(0, 12);
 	const stem = artifactStem({
 		name: name?.trim() || titleOf(project),
 		revision,
 		sceneId,
+		fingerprint,
 	});
 	const xmlName = `${stem}.fcpxml`;
 	const reportName = `${stem}.interchange-report.json`;
@@ -550,7 +611,7 @@ async function exportProjectFcpxmlLocked({
 		xmlPath,
 		xml: generated.document,
 		reportPath,
-		report: `${JSON.stringify(generated.report, null, 2)}\n`,
+		report: serializedReport,
 	});
 
 	return {

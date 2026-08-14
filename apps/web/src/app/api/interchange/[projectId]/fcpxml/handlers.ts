@@ -72,7 +72,7 @@ export function createFcpxmlRouteHandlers({
 					? error
 					: null;
 			const status =
-				typed && typeof typed.status === "number" ? typed.status : 400;
+				typed && typeof typed.status === "number" ? typed.status : 500;
 			return NextResponse.json(
 				{
 					error: {

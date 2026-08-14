@@ -56,6 +56,8 @@ curl --fail --silent --show-error \
 
 xml_url="$(bun -e 'const value = await Bun.file(process.argv[1]).json(); if (!value.data?.downloadUrl) process.exit(1); process.stdout.write(value.data.downloadUrl)' "$response")"
 report_url="$(bun -e 'const value = await Bun.file(process.argv[1]).json(); if (!value.data?.reportDownloadUrl) process.exit(1); process.stdout.write(value.data.reportDownloadUrl)' "$response")"
+xml_name="$(bun -e 'const value = await Bun.file(process.argv[1]).json(); if (!value.data?.name) process.exit(1); process.stdout.write(value.data.name)' "$response")"
+report_name="$(bun -e 'const value = await Bun.file(process.argv[1]).json(); if (!value.data?.reportName) process.exit(1); process.stdout.write(value.data.reportName)' "$response")"
 
 curl --fail --silent --show-error "http://127.0.0.1:$port$xml_url" --output "$xml"
 curl --fail --silent --show-error "http://127.0.0.1:$port$report_url" --output "$report"
@@ -70,5 +72,5 @@ bun -e '
 	if (report.source?.revision !== 7) process.exit(1);
 ' "$response" "$xml" "$report"
 
-test -f "$project_root/ci-interchange/exports/ci-handoff-r7.fcpxml"
-test -f "$project_root/ci-interchange/exports/ci-handoff-r7.interchange-report.json"
+test -f "$project_root/ci-interchange/exports/$xml_name"
+test -f "$project_root/ci-interchange/exports/$report_name"
