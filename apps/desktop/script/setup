@@ -95,11 +95,11 @@ fi
 
 # macOS
 if [[ "$(uname)" == "Darwin" ]]; then
-  if ! xcode-select -p &> /dev/null; then
-    echo "Installing Xcode Command Line Tools..."
-    xcode-select --install
-    echo "Re-run this script after the Xcode install completes."
-    exit 0
+  if ! xcode-select -p &> /dev/null || ! xcrun --find metal &> /dev/null; then
+    echo "Moirai Cut Desktop requires the full Xcode application and its Metal compiler."
+    echo "Install Xcode, launch it once to finish setup, then select its developer directory:"
+    echo "  sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer"
+    exit 1
   fi
 
   echo "Desktop native dependencies installed."

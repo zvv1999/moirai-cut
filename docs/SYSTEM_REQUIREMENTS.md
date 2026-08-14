@@ -18,7 +18,9 @@ not mean every codec profile is available on every device.
 
 Safari and Firefox may edit parts of a project, but they are not release-
 qualified preview/export targets yet. The GPUI desktop shell is experimental;
-the browser editor is the supported product surface.
+the browser editor is the supported product surface. Building the experimental
+desktop shell on macOS requires the full Xcode application and Metal compiler;
+Command Line Tools alone are insufficient.
 
 ## Import, preview and proxy behavior
 
