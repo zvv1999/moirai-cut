@@ -266,7 +266,7 @@ describe("project FCPXML export service", () => {
 		);
 	});
 
-	test("never overwrites an immutable artifact pair with different bytes", async () => {
+	test("gives changed content a new identity without overwriting the old pair", async () => {
 		const state = await fixture();
 		const exportWithDocument = (document: string) =>
 			exportProjectFcpxml({
@@ -289,13 +289,14 @@ describe("project FCPXML export service", () => {
 		const originalXml = await readFile(first.path, "utf8");
 		const originalReport = await readFile(first.reportPath, "utf8");
 
-		await expect(
-			exportWithDocument(
-				'<?xml version="1.0"?><fcpxml version="1.10"><library/></fcpxml>',
-			),
-		).rejects.toMatchObject({ code: "artifact_conflict", status: 409 });
+		const second = await exportWithDocument(
+			'<?xml version="1.0"?><fcpxml version="1.10"><library/></fcpxml>',
+		);
+
+		expect(second.path).not.toBe(first.path);
 		expect(await readFile(first.path, "utf8")).toBe(originalXml);
 		expect(await readFile(first.reportPath, "utf8")).toBe(originalReport);
+		expect(await readFile(second.path, "utf8")).toContain("<library/>");
 	});
 
 	test("publishes XML and report as one rollback-safe artifact pair", async () => {
