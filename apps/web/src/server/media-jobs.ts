@@ -726,6 +726,9 @@ export class NativeMediaJobService {
 			directory,
 			`.${assetId}-proxy.${jobId}.tmp.mp4`,
 		);
+		let terminalFailure:
+			| { cancelled: boolean; error: unknown }
+			| undefined;
 		try {
 			if (controller.signal.aborted) {
 				throw new DOMException("Transcode cancelled", "AbortError");
@@ -840,23 +843,30 @@ export class NativeMediaJobService {
 				},
 			});
 		} catch (error) {
-			const cancelled = controller.signal.aborted || isAbortError(error);
-			this.updateJob({
-				projectId,
-				jobId,
-				update: (job) => {
-					job.status = cancelled ? "cancelled" : "failed";
-					job.finishedAt = new Date().toISOString();
-					if (!cancelled) {
-						job.error = {
-							code: "transcode_failed",
-							message: error instanceof Error ? error.message : String(error),
-						};
-					}
-				},
-			});
+			terminalFailure = {
+				cancelled: controller.signal.aborted || isAbortError(error),
+				error,
+			};
 		} finally {
 			await rm(temporaryOutputPath, { force: true }).catch(() => undefined);
+			if (terminalFailure) {
+				const { cancelled, error } = terminalFailure;
+				this.updateJob({
+					projectId,
+					jobId,
+					update: (job) => {
+						job.status = cancelled ? "cancelled" : "failed";
+						job.finishedAt = new Date().toISOString();
+						if (!cancelled) {
+							job.error = {
+								code: "transcode_failed",
+								message:
+									error instanceof Error ? error.message : String(error),
+							};
+						}
+					},
+				});
+			}
 			this.controllers.delete(this.controllerKey({ projectId, jobId }));
 			await this.persist({ projectId });
 		}
