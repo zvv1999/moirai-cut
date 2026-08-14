@@ -1,5 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { describe, expect, test } from "bun:test";
 
@@ -103,7 +105,17 @@ describe("production image FCPXML HTTP smoke", () => {
 	});
 
 	test("keeps the smoke script POSIX-shell parseable without running Docker", () => {
-		const result = spawnSync("sh", ["-n", smokeScriptUrl.pathname], {
+		const shell =
+			process.platform === "win32"
+				? join(
+						process.env.ProgramFiles ?? "C:\\Program Files",
+						"Git",
+						"bin",
+						"sh.exe",
+					)
+				: "sh";
+		if (process.platform === "win32") expect(existsSync(shell)).toBe(true);
+		const result = spawnSync(shell, ["-n", fileURLToPath(smokeScriptUrl)], {
 			encoding: "utf8",
 		});
 		expect(result.status).toBe(0);
