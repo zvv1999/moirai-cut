@@ -17,6 +17,6 @@ pub use effects::*;
 pub use gpu::*;
 #[cfg(target_arch = "wasm32")]
 pub use masks::*;
+pub use moirai_time::*;
 #[cfg(target_arch = "wasm32")]
 pub use perf::*;
-pub use time::*;

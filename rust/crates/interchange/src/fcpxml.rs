@@ -3,9 +3,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use moirai_time::TICKS_PER_SECOND;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use time::TICKS_PER_SECOND;
 use url::Url;
 
 use crate::{

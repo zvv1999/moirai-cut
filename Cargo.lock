@@ -2903,11 +2903,11 @@ dependencies = [
 name = "interchange"
 version = "0.1.0"
 dependencies = [
+ "moirai-time",
  "quick-xml 0.38.4",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
- "time",
  "url",
 ]
 
@@ -3409,6 +3409,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "moirai-time"
+version = "0.1.0"
+dependencies = [
+ "bridge",
+ "num-traits",
+ "serde",
+ "tsify-next",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "moxcms"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3862,10 +3873,10 @@ dependencies = [
  "gpu",
  "js-sys",
  "masks",
+ "moirai-time",
  "num-traits",
  "serde",
  "serde-wasm-bindgen",
- "time",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -5692,17 +5703,6 @@ dependencies = [
  "quick-error",
  "weezl",
  "zune-jpeg",
-]
-
-[[package]]
-name = "time"
-version = "0.1.0"
-dependencies = [
- "bridge",
- "num-traits",
- "serde",
- "tsify-next",
- "wasm-bindgen",
 ]
 
 [[package]]

@@ -22,6 +22,18 @@ const desktopManifestSource = readFileSync(
 	new URL("../apps/desktop/Cargo.toml", import.meta.url),
 	"utf8",
 );
+const interchangeManifestSource = readFileSync(
+	new URL("../rust/crates/interchange/Cargo.toml", import.meta.url),
+	"utf8",
+);
+const mediaTimeManifestSource = readFileSync(
+	new URL("../rust/crates/time/Cargo.toml", import.meta.url),
+	"utf8",
+);
+const wasmManifestSource = readFileSync(
+	new URL("../rust/wasm/Cargo.toml", import.meta.url),
+	"utf8",
+);
 const cargoLockSource = readFileSync(
 	new URL("../Cargo.lock", import.meta.url),
 	"utf8",
@@ -97,6 +109,12 @@ describe("root package manifest", () => {
 			hono: "4.13.0",
 			undici: "7.29.0",
 		});
+	});
+
+	test("gives the local media-time crate an unambiguous package identity", () => {
+		expect(mediaTimeManifestSource).toContain('name = "moirai-time"');
+		expect(interchangeManifestSource).toContain("moirai-time = {");
+		expect(wasmManifestSource).toContain("moirai-time = {");
 	});
 
 	test("keeps every public release surface on one version", () => {
