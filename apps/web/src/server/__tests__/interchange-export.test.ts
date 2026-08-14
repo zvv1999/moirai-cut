@@ -218,6 +218,86 @@ describe("project FCPXML export service", () => {
 		).rejects.toMatchObject({ code: "interchange_process_failed" });
 	});
 
+	test("rejects a malformed process result without leaking a TypeError", async () => {
+		const state = await fixture();
+		const run = (async () => ({
+			document: null,
+			report: null,
+		})) as unknown as InterchangeProcessRunner;
+
+		await expect(
+			exportProjectFcpxml({
+				projectId: state.projectId,
+				baseRevision: 7,
+				target: "jianying-desktop",
+				projectsRoot: state.projectsRoot,
+				run,
+			}),
+		).rejects.toMatchObject({
+			code: "interchange_process_failed",
+			status: 502,
+		});
+	});
+
+	test("treats a byte-identical retry as idempotent", async () => {
+		const state = await fixture();
+		const run: InterchangeProcessRunner = async () => ({
+			document: '<?xml version="1.0"?><fcpxml version="1.10"/>',
+			report: {
+				schema: "moirai-cut.interchange-report.v1",
+				issues: [],
+			},
+		});
+		const request = {
+			projectId: state.projectId,
+			baseRevision: 7,
+			name: "idempotent",
+			target: "jianying-desktop" as const,
+			projectsRoot: state.projectsRoot,
+			run,
+		};
+
+		const first = await exportProjectFcpxml(request);
+		const second = await exportProjectFcpxml(request);
+
+		expect(second.path).toBe(first.path);
+		expect(await readFile(second.path, "utf8")).toBe(
+			await readFile(first.path, "utf8"),
+		);
+	});
+
+	test("never overwrites an immutable artifact pair with different bytes", async () => {
+		const state = await fixture();
+		const exportWithDocument = (document: string) =>
+			exportProjectFcpxml({
+				projectId: state.projectId,
+				baseRevision: 7,
+				name: "immutable",
+				target: "jianying-desktop",
+				projectsRoot: state.projectsRoot,
+				run: async () => ({
+					document,
+					report: {
+						schema: "moirai-cut.interchange-report.v1",
+						issues: [],
+					},
+				}),
+			});
+		const first = await exportWithDocument(
+			'<?xml version="1.0"?><fcpxml version="1.10"><event/></fcpxml>',
+		);
+		const originalXml = await readFile(first.path, "utf8");
+		const originalReport = await readFile(first.reportPath, "utf8");
+
+		await expect(
+			exportWithDocument(
+				'<?xml version="1.0"?><fcpxml version="1.10"><library/></fcpxml>',
+			),
+		).rejects.toMatchObject({ code: "artifact_conflict", status: 409 });
+		expect(await readFile(first.path, "utf8")).toBe(originalXml);
+		expect(await readFile(first.reportPath, "utf8")).toBe(originalReport);
+	});
+
 	test("publishes XML and report as one rollback-safe artifact pair", async () => {
 		const state = await fixture();
 		const exportsDirectory = path.join(state.projectDir, "exports");
@@ -240,9 +320,26 @@ describe("project FCPXML export service", () => {
 				projectsRoot: state.projectsRoot,
 				run,
 			}),
-		).rejects.toBeInstanceOf(Error);
+		).rejects.toMatchObject({ code: "artifact_conflict", status: 409 });
 
 		expect((await readdir(exportsDirectory)).sort()).toEqual([reportName]);
+	});
+
+	test("distinguishes malformed project JSON from a missing project", async () => {
+		const state = await fixture();
+		await writeFile(path.join(state.projectDir, "project.json"), "{broken", "utf8");
+
+		await expect(
+			exportProjectFcpxml({
+				projectId: state.projectId,
+				baseRevision: 7,
+				target: "jianying-desktop",
+				projectsRoot: state.projectsRoot,
+				run: async () => {
+					throw new Error("must not run");
+				},
+			}),
+		).rejects.toMatchObject({ code: "invalid_project", status: 422 });
 	});
 
 	test("waits for the shared project writer lock before publishing", async () => {

@@ -120,4 +120,23 @@ describe("FCPXML interchange API", () => {
 		}
 		expect(invoked).toBe(false);
 	});
+
+	test("returns 500 for an unexpected server failure", async () => {
+		const { POST } = createFcpxmlRouteHandlers({
+			execute: async () => {
+				throw new Error("disk controller failed");
+			},
+		});
+		const response = await POST(
+			new Request("http://localhost", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ baseRevision: 7 }),
+			}),
+			{ params: Promise.resolve({ projectId: "project" }) },
+		);
+
+		expect(response.status).toBe(500);
+		expect((await response.json()).error.code).toBe("interchange_failed");
+	});
 });
