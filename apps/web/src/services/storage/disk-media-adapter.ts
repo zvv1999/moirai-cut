@@ -77,7 +77,10 @@ export class DiskMediaFileAdapter implements StorageAdapter<File> {
   }
 
   async remove(key: string): Promise<void> {
-    await fetch(this.url(key), { method: "DELETE" });
+    const response = await fetch(this.url(key), { method: "DELETE" });
+    if (!response.ok) {
+      throw new Error(`Media delete failed: ${response.statusText}`);
+    }
   }
 
   async list(): Promise<string[]> {
@@ -85,7 +88,10 @@ export class DiskMediaFileAdapter implements StorageAdapter<File> {
   }
 
   async clear(): Promise<void> {
-    await fetch(this.url(), { method: "DELETE" });
+    const response = await fetch(this.url(), { method: "DELETE" });
+    if (!response.ok) {
+      throw new Error(`Media clear failed: ${response.statusText}`);
+    }
   }
 
   private async index(): Promise<Record<string, Record<string, unknown>>> {
@@ -125,23 +131,52 @@ export class DiskMediaMetadataAdapter<T> implements StorageAdapter<T> {
     if (!response.ok) throw new Error(`Media index write failed: ${response.statusText}`);
   }
 
+  private async mutate({
+    key,
+    mutation,
+  }: {
+    key: string;
+    mutation:
+      | {
+          action: "merge";
+          value: Record<string, unknown>;
+          removeKeys: string[];
+        }
+      | { action: "remove" };
+  }): Promise<void> {
+    const response = await fetch(`${this.base}/${encodeURIComponent(key)}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(mutation),
+    });
+    if (!response.ok) throw new Error(`Media metadata write failed: ${response.statusText}`);
+  }
+
   async get(key: string): Promise<T | null> {
     const entry = (await this.index())[key];
     return entry ? (entry as T) : null;
   }
 
   async set({ key, value }: { key: string; value: T }): Promise<void> {
-    const index = await this.index();
-    // Merged, not replaced: the byte adapter owns `ext`/`mimeType` in the same
-    // record, and overwriting the entry wholesale would lose them.
-    index[key] = { ...(index[key] ?? {}), ...(value as Record<string, unknown>) };
-    await this.writeIndex(index);
+    const record = value as Record<string, unknown>;
+    await this.mutate({
+      key,
+      mutation: {
+        action: "merge",
+        value: Object.fromEntries(
+          Object.entries(record).filter(
+            ([, candidate]) => candidate !== undefined,
+          ),
+        ),
+        removeKeys: Object.keys(record).filter(
+          (field) => field !== "proxy" && record[field] === undefined,
+        ),
+      },
+    });
   }
 
   async remove(key: string): Promise<void> {
-    const index = await this.index();
-    delete index[key];
-    await this.writeIndex(index);
+    await this.mutate({ key, mutation: { action: "remove" } });
   }
 
   async list(): Promise<string[]> {

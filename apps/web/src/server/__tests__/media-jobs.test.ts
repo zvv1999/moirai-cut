@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import {
 	mkdir,
 	mkdtemp,
 	readFile,
+	rm,
 	stat,
 	writeFile,
 } from "node:fs/promises";
@@ -16,10 +18,7 @@ import {
 	type NativeTranscodeRunner,
 } from "@/server/media-jobs";
 import { normalizeFfprobe } from "@/media/codec-capabilities";
-import type {
-	ProbeFile,
-	ProjectMediaProbeResult,
-} from "@/server/media-probe";
+import type { ProbeFile, ProjectMediaProbeResult } from "@/server/media-probe";
 
 async function fixture() {
 	const projectsRoot = await mkdtemp(path.join(tmpdir(), "opencut-jobs-"));
@@ -252,9 +251,7 @@ describe("proxy command construction", () => {
 			probe,
 		});
 
-		expect(args.join(" ")).toContain(
-			"zscale=p=bt709:t=bt709:m=bt709:r=tv",
-		);
+		expect(args.join(" ")).toContain("zscale=p=bt709:t=bt709:m=bt709:r=tv");
 	});
 
 	test("native runner parses FFmpeg progress and reports bounded failures", async () => {
@@ -360,7 +357,7 @@ describe("native media proxy jobs", () => {
 		expect(completed.status).toBe("succeeded");
 		expect(completed.progress).toBe(1);
 		expect(completed.result?.proxy).toMatchObject({
-			storageId: `${source.assetId}-proxy`,
+			storageId: `${completed.id}-proxy`,
 			mimeType: "video/mp4",
 			width: 960,
 			height: 540,
@@ -370,16 +367,9 @@ describe("native media proxy jobs", () => {
 		const index = JSON.parse(
 			await readFile(path.join(source.mediaDirectory, "index.json"), "utf8"),
 		);
-		expect(index[source.assetId].proxy.storageId).toBe(
-			`${source.assetId}-proxy`,
-		);
+		expect(index[source.assetId].proxy.storageId).toBe(`${completed.id}-proxy`);
 		await expect(
-			stat(
-				path.join(
-					source.mediaDirectory,
-					`${source.assetId}-proxy.mp4`,
-				),
-			),
+			stat(path.join(source.mediaDirectory, `${completed.id}-proxy.mp4`)),
 		).resolves.toBeDefined();
 
 		const reused = await service.ensureProxy({
@@ -390,6 +380,281 @@ describe("native media proxy jobs", () => {
 		expect(reused.id).toBe(completed.id);
 		expect(reused.cacheHit).toBe(true);
 		expect(transcodes).toBe(1);
+	});
+
+	test("regenerates legacy fixed-slot proxies instead of trusting mixed metadata and bytes", async () => {
+		const source = await fixture();
+		const sourceSha256 = createHash("sha256")
+			.update("source-bytes")
+			.digest("hex");
+		const legacyStorageId = `${source.assetId}-proxy`;
+		const legacyOutputPath = path.join(
+			source.mediaDirectory,
+			`${legacyStorageId}.mp4`,
+		);
+		await writeFile(legacyOutputPath, "new-bytes-under-old-metadata");
+		const mediaIndexPath = path.join(source.mediaDirectory, "index.json");
+		const mediaIndex = JSON.parse(await readFile(mediaIndexPath, "utf8"));
+		const legacyProxy = {
+			storageId: legacyStorageId,
+			name: "Source.proxy.mp4",
+			mimeType: "video/mp4",
+			size: 12,
+			width: 960,
+			height: 540,
+			generatedAt: new Date().toISOString(),
+			sourceSize: 12,
+			sourceLastModified: 100,
+			enabled: true,
+			profile: "standard" as const,
+			sourceSha256,
+		};
+		mediaIndex[source.assetId].proxy = legacyProxy;
+		mediaIndex[legacyStorageId] = {
+			id: legacyStorageId,
+			ext: "mp4",
+			mimeType: "video/mp4",
+		};
+		await writeFile(mediaIndexPath, JSON.stringify(mediaIndex));
+		const jobsDirectory = path.join(
+			source.projectsRoot,
+			source.projectId,
+			"codec-jobs",
+		);
+		await mkdir(jobsDirectory, { recursive: true });
+		const legacyJobId = "legacy-fixed-slot-job";
+		const now = new Date().toISOString();
+		await writeFile(
+			path.join(jobsDirectory, "index.json"),
+			JSON.stringify([
+				{
+					id: legacyJobId,
+					kind: "proxy",
+					projectId: source.projectId,
+					assetId: source.assetId,
+					profile: "standard",
+					cacheKey: `${sourceSha256}:standard`,
+					status: "succeeded",
+					progress: 1,
+					processedSeconds: 10,
+					createdAt: now,
+					updatedAt: now,
+					finishedAt: now,
+					result: { proxy: legacyProxy, outputPath: legacyOutputPath },
+				},
+			]),
+		);
+
+		let transcodes = 0;
+		const service = new NativeMediaJobService({
+			projectsRoot: source.projectsRoot,
+			probeFile,
+			transcode: async ({ temporaryOutputPath }) => {
+				transcodes += 1;
+				await writeFile(temporaryOutputPath, "known-good-proxy");
+			},
+		});
+		const queued = await service.ensureProxy({
+			projectId: source.projectId,
+			assetId: source.assetId,
+		});
+
+		expect(queued.id).not.toBe(legacyJobId);
+		const completed = await service.waitForTerminal({
+			projectId: source.projectId,
+			jobId: queued.id,
+		});
+		expect(completed.result?.proxy.storageId).toBe(`${completed.id}-proxy`);
+		expect(transcodes).toBe(1);
+	});
+
+	test("does not reuse a shared proxy slot after another profile replaces it", async () => {
+		const source = await fixture();
+		let transcodes = 0;
+		const service = new NativeMediaJobService({
+			projectsRoot: source.projectsRoot,
+			probeFile,
+			transcode: async ({ temporaryOutputPath }) => {
+				transcodes += 1;
+				await writeFile(temporaryOutputPath, `proxy-${transcodes}`);
+			},
+		});
+		const profiles = ["draft", "high", "draft"] as const;
+		const completed: NativeMediaJob[] = [];
+		for (const profile of profiles) {
+			const queued = await service.ensureProxy({
+				projectId: source.projectId,
+				assetId: source.assetId,
+				profile,
+			});
+			completed.push(
+				await service.waitForTerminal({
+					projectId: source.projectId,
+					jobId: queued.id,
+				}),
+			);
+		}
+
+		expect(transcodes).toBe(3);
+		expect(completed[2]?.id).not.toBe(completed[0]?.id);
+		expect(completed[0]?.result?.outputPath).not.toBe(
+			completed[1]?.result?.outputPath,
+		);
+		expect(completed[0]?.result?.proxy.storageId).not.toBe(
+			completed[1]?.result?.proxy.storageId,
+		);
+		await expect(
+			stat(completed[0]?.result?.outputPath ?? ""),
+		).rejects.toThrow();
+		await expect(
+			stat(completed[1]?.result?.outputPath ?? ""),
+		).rejects.toThrow();
+		await expect(
+			stat(completed[2]?.result?.outputPath ?? ""),
+		).resolves.toBeDefined();
+		const mediaIndex = JSON.parse(
+			await readFile(path.join(source.mediaDirectory, "index.json"), "utf8"),
+		);
+		expect(mediaIndex[source.assetId].proxy).toMatchObject({
+			profile: "draft",
+			sourceSha256: completed[2]?.result?.proxy.sourceSha256,
+		});
+	});
+
+	test("does not reuse a shared proxy slot after the source cycles back", async () => {
+		const source = await fixture();
+		const sourcePath = path.join(
+			source.mediaDirectory,
+			`${source.assetId}.mp4`,
+		);
+		let transcodes = 0;
+		const service = new NativeMediaJobService({
+			projectsRoot: source.projectsRoot,
+			probeFile,
+			transcode: async ({ temporaryOutputPath }) => {
+				transcodes += 1;
+				await writeFile(temporaryOutputPath, `proxy-${transcodes}`);
+			},
+		});
+		const completed: NativeMediaJob[] = [];
+		for (const contents of [
+			"source-bytes",
+			"replacement-source",
+			"source-bytes",
+		]) {
+			await writeFile(sourcePath, contents);
+			const queued = await service.ensureProxy({
+				projectId: source.projectId,
+				assetId: source.assetId,
+			});
+			completed.push(
+				await service.waitForTerminal({
+					projectId: source.projectId,
+					jobId: queued.id,
+				}),
+			);
+		}
+
+		expect(transcodes).toBe(3);
+		expect(completed[2]?.id).not.toBe(completed[0]?.id);
+		expect(completed[2]?.result?.proxy.sourceSha256).toBe(
+			completed[0]?.result?.proxy.sourceSha256,
+		);
+	});
+
+	test("rejects a proxy when its source changes during transcode", async () => {
+		const source = await fixture();
+		const sourcePath = path.join(
+			source.mediaDirectory,
+			`${source.assetId}.mp4`,
+		);
+		const service = new NativeMediaJobService({
+			projectsRoot: source.projectsRoot,
+			probeFile,
+			transcode: async ({ temporaryOutputPath }) => {
+				await writeFile(temporaryOutputPath, "stale-proxy");
+				await writeFile(sourcePath, "replacement-source");
+			},
+		});
+		const queued = await service.ensureProxy({
+			projectId: source.projectId,
+			assetId: source.assetId,
+		});
+		const completed = await service.waitForTerminal({
+			projectId: source.projectId,
+			jobId: queued.id,
+		});
+
+		expect(completed).toMatchObject({
+			status: "failed",
+			error: { code: "transcode_failed" },
+		});
+		expect(completed.error?.message).toContain("changed during transcode");
+		await expect(
+			stat(path.join(source.mediaDirectory, `${queued.id}-proxy.mp4`)),
+		).rejects.toThrow();
+		const mediaIndex = JSON.parse(
+			await readFile(path.join(source.mediaDirectory, "index.json"), "utf8"),
+		);
+		expect(mediaIndex[source.assetId].proxy).toBeUndefined();
+	});
+
+	test("serializes different proxy profiles that share one asset slot", async () => {
+		const source = await fixture();
+		let active = 0;
+		let maximumActive = 0;
+		let runs = 0;
+		let signalFirstStarted!: () => void;
+		const firstStarted = new Promise<void>((resolve) => {
+			signalFirstStarted = resolve;
+		});
+		let allowFirst!: () => void;
+		const firstAllowed = new Promise<void>((resolve) => {
+			allowFirst = resolve;
+		});
+		const service = new NativeMediaJobService({
+			projectsRoot: source.projectsRoot,
+			probeFile,
+			maxConcurrent: 2,
+			transcode: async ({ temporaryOutputPath }) => {
+				active += 1;
+				maximumActive = Math.max(maximumActive, active);
+				runs += 1;
+				if (runs === 1) {
+					signalFirstStarted();
+					await firstAllowed;
+				}
+				await writeFile(temporaryOutputPath, `proxy-${runs}`);
+				active -= 1;
+			},
+		});
+		const draft = await service.ensureProxy({
+			projectId: source.projectId,
+			assetId: source.assetId,
+			profile: "draft",
+		});
+		await firstStarted;
+		const high = await service.ensureProxy({
+			projectId: source.projectId,
+			assetId: source.assetId,
+			profile: "high",
+		});
+		await Bun.sleep(10);
+		allowFirst();
+		await Promise.all(
+			[draft, high].map((job) =>
+				service.waitForTerminal({
+					projectId: source.projectId,
+					jobId: job.id,
+				}),
+			),
+		);
+
+		expect(maximumActive).toBe(1);
+		const mediaIndex = JSON.parse(
+			await readFile(path.join(source.mediaDirectory, "index.json"), "utf8"),
+		);
+		expect(mediaIndex[source.assetId].proxy).toMatchObject({ profile: "high" });
 	});
 
 	test("reports encoded display dimensions for rotated phone footage", async () => {
@@ -483,9 +748,17 @@ describe("native media proxy jobs", () => {
 		});
 	});
 
-	test("removes partial output when the disk write path fails", async () => {
+	test("keeps failed jobs non-terminal until partial output cleanup finishes", async () => {
 		const source = await fixture();
 		let temporaryOutputPath = "";
+		let signalCleanupStarted!: () => void;
+		const cleanupStarted = new Promise<void>((resolve) => {
+			signalCleanupStarted = resolve;
+		});
+		let allowCleanup!: () => void;
+		const cleanupAllowed = new Promise<void>((resolve) => {
+			allowCleanup = resolve;
+		});
 		const service = new NativeMediaJobService({
 			projectsRoot: source.projectsRoot,
 			probeFile,
@@ -494,16 +767,31 @@ describe("native media proxy jobs", () => {
 				await writeFile(outputPath, "partial");
 				throw new Error("No space left on device");
 			},
+			removeTemporaryOutput: async (outputPath) => {
+				signalCleanupStarted();
+				await cleanupAllowed;
+				await rm(outputPath, { force: true });
+			},
 		});
 		const queued = await service.ensureProxy({
 			projectId: source.projectId,
 			assetId: source.assetId,
 		});
+		await cleanupStarted;
+		try {
+			expect(
+				await service.get({
+					projectId: source.projectId,
+					jobId: queued.id,
+				}),
+			).toMatchObject({ status: "running" });
+		} finally {
+			allowCleanup();
+		}
 		const terminal = await service.waitForTerminal({
 			projectId: source.projectId,
 			jobId: queued.id,
 		});
-
 		expect(terminal).toMatchObject({
 			status: "failed",
 			error: { message: "No space left on device" },
@@ -511,6 +799,94 @@ describe("native media proxy jobs", () => {
 		await expect(stat(temporaryOutputPath)).rejects.toMatchObject({
 			code: "ENOENT",
 		});
+	});
+
+	test("keeps successful jobs non-terminal until worker cleanup finishes", async () => {
+		const source = await fixture();
+		let signalCleanupStarted!: () => void;
+		const cleanupStarted = new Promise<void>((resolve) => {
+			signalCleanupStarted = resolve;
+		});
+		let allowCleanup!: () => void;
+		const cleanupAllowed = new Promise<void>((resolve) => {
+			allowCleanup = resolve;
+		});
+		const service = new NativeMediaJobService({
+			projectsRoot: source.projectsRoot,
+			probeFile,
+			transcode: async ({ temporaryOutputPath }) => {
+				await writeFile(temporaryOutputPath, "proxy");
+			},
+			removeTemporaryOutput: async (outputPath) => {
+				signalCleanupStarted();
+				await cleanupAllowed;
+				await rm(outputPath, { force: true });
+			},
+		});
+		const queued = await service.ensureProxy({
+			projectId: source.projectId,
+			assetId: source.assetId,
+		});
+		await cleanupStarted;
+		const cancel = service.cancel({
+			projectId: source.projectId,
+			jobId: queued.id,
+		});
+		await Bun.sleep(10);
+		const duringFinalization = await service.get({
+			projectId: source.projectId,
+			jobId: queued.id,
+		});
+		allowCleanup();
+		const cancelResult = await cancel;
+		expect(duringFinalization).toMatchObject({ status: "running" });
+		expect(cancelResult).toMatchObject({ status: "succeeded" });
+		expect(
+			await service.waitForTerminal({
+				projectId: source.projectId,
+				jobId: queued.id,
+			}),
+		).toMatchObject({ status: "succeeded" });
+	});
+
+	test("coalesces concurrent retries for the same proxy", async () => {
+		const source = await fixture();
+		let transcodes = 0;
+		const service = new NativeMediaJobService({
+			projectsRoot: source.projectsRoot,
+			probeFile,
+			transcode: async ({ temporaryOutputPath }) => {
+				transcodes += 1;
+				if (transcodes === 1) {
+					throw new Error("initial failure");
+				}
+				await Bun.sleep(20);
+				await writeFile(temporaryOutputPath, "proxy");
+			},
+		});
+		const initial = await service.ensureProxy({
+			projectId: source.projectId,
+			assetId: source.assetId,
+		});
+		await service.waitForTerminal({
+			projectId: source.projectId,
+			jobId: initial.id,
+		});
+		const retries = await Promise.all([
+			service.retry({ projectId: source.projectId, jobId: initial.id }),
+			service.retry({ projectId: source.projectId, jobId: initial.id }),
+		]);
+		await Promise.all(
+			[...new Set(retries.map((job) => job.id))].map((jobId) =>
+				service.waitForTerminal({
+					projectId: source.projectId,
+					jobId,
+				}),
+			),
+		);
+
+		expect(retries[0]?.id).toBe(retries[1]?.id);
+		expect(transcodes).toBe(2);
 	});
 
 	test("recovers interrupted jobs and persists their terminal status", async () => {
@@ -559,7 +935,7 @@ describe("native media proxy jobs", () => {
 		});
 	});
 
-	test("bounds concurrent transcodes so batch proxy work keeps editing responsive", async () => {
+	test("bounds concurrent transcodes and preserves every proxy metadata update", async () => {
 		const source = await fixture();
 		const indexPath = path.join(source.mediaDirectory, "index.json");
 		const index = JSON.parse(await readFile(indexPath, "utf8"));
@@ -578,13 +954,22 @@ describe("native media proxy jobs", () => {
 
 		let active = 0;
 		let maximumActive = 0;
+		let started = 0;
+		let releaseFirstWave!: () => void;
+		const firstWaveStarted = new Promise<void>((resolve) => {
+			releaseFirstWave = resolve;
+		});
 		const transcode: NativeTranscodeRunner = async ({
 			temporaryOutputPath,
 		}) => {
 			active += 1;
 			maximumActive = Math.max(maximumActive, active);
-			await Bun.sleep(20);
 			await writeFile(temporaryOutputPath, "proxy");
+			started += 1;
+			if (started === 2) {
+				releaseFirstWave();
+			}
+			await firstWaveStarted;
 			active -= 1;
 		};
 		const service = new NativeMediaJobService({
@@ -626,5 +1011,103 @@ describe("native media proxy jobs", () => {
 		expect(persisted.map((job: NativeMediaJob) => job.id).sort()).toEqual(
 			queued.map((job) => job.id).sort(),
 		);
+		const mediaIndex = JSON.parse(await readFile(indexPath, "utf8"));
+		for (const [index, assetId] of [
+			source.assetId,
+			"asset-jobs-2",
+			"asset-jobs-3",
+		].entries()) {
+			const storageId = `${queued[index]?.id}-proxy`;
+			expect(mediaIndex[assetId].proxy).toMatchObject({
+				storageId,
+			});
+			expect(mediaIndex[storageId]).toMatchObject({
+				id: storageId,
+			});
+		}
+	});
+
+	test("preserves media index updates across service instances", async () => {
+		const source = await fixture();
+		const secondAssetId = "asset-jobs-2";
+		const indexPath = path.join(source.mediaDirectory, "index.json");
+		const initialIndex = JSON.parse(await readFile(indexPath, "utf8"));
+		initialIndex[secondAssetId] = {
+			...initialIndex[source.assetId],
+			id: secondAssetId,
+			name: `${secondAssetId}.mp4`,
+		};
+		await writeFile(indexPath, JSON.stringify(initialIndex));
+		await writeFile(
+			path.join(source.mediaDirectory, `${secondAssetId}.mp4`),
+			"second-source",
+		);
+
+		let started = 0;
+		let releaseBoth!: () => void;
+		const bothStarted = new Promise<void>((resolve) => {
+			releaseBoth = resolve;
+		});
+		const transcode: NativeTranscodeRunner = async ({
+			temporaryOutputPath,
+		}) => {
+			await writeFile(temporaryOutputPath, "proxy");
+			started += 1;
+			if (started === 2) releaseBoth();
+			await bothStarted;
+		};
+		const services = [
+			new NativeMediaJobService({
+				projectsRoot: source.projectsRoot,
+				probeFile,
+				transcode,
+			}),
+			new NativeMediaJobService({
+				projectsRoot: source.projectsRoot,
+				probeFile,
+				transcode,
+			}),
+		];
+		const queued = await Promise.all([
+			services[0]?.ensureProxy({
+				projectId: source.projectId,
+				assetId: source.assetId,
+			}),
+			services[1]?.ensureProxy({
+				projectId: source.projectId,
+				assetId: secondAssetId,
+			}),
+		]);
+		await Promise.all(
+			queued.map((job, index) =>
+				services[index]?.waitForTerminal({
+					projectId: source.projectId,
+					jobId: job?.id ?? "",
+				}),
+			),
+		);
+
+		const persistedJobs = JSON.parse(
+			await readFile(
+				path.join(
+					source.projectsRoot,
+					source.projectId,
+					"codec-jobs",
+					"index.json",
+				),
+				"utf8",
+			),
+		) as NativeMediaJob[];
+		expect(persistedJobs).toHaveLength(2);
+		expect(persistedJobs.map((job) => job.id).sort()).toEqual(
+			queued.map((job) => job?.id ?? "").sort(),
+		);
+		expect(persistedJobs.every((job) => job.status === "succeeded")).toBe(
+			true,
+		);
+
+		const mediaIndex = JSON.parse(await readFile(indexPath, "utf8"));
+		expect(mediaIndex[source.assetId].proxy).toBeDefined();
+		expect(mediaIndex[secondAssetId].proxy).toBeDefined();
 	});
 });
