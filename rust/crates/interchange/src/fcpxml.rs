@@ -297,6 +297,15 @@ fn validate_scene_timing(scene: &Scene) -> Result<(), InterchangeError> {
         .chain(scene.tracks.audio.iter())
     {
         for element in &track.elements {
+            if element.transition_in.is_some() {
+                return Err(InterchangeError::new(
+                    ErrorCode::UnsupportedTimeline,
+                    format!(
+                        "Element {} has a transition. Remove it before FCPXML export so the incoming clip is not moved to the overlap start as a hard cut.",
+                        element.id
+                    ),
+                ));
+            }
             if TimelineElement::has_nonempty_value(&element.compound) {
                 return Err(InterchangeError::new(
                     ErrorCode::UnsupportedTimeline,
@@ -1131,20 +1140,6 @@ fn collect_loss_issues(scene: &Scene) -> Vec<InterchangeIssue> {
                         format!(
                             "{} element '{}' is not represented by the FCPXML v1 adapter.",
                             element.kind, element.name
-                        ),
-                    )
-                    .on_track(&track.id)
-                    .on_element(&element.id),
-                );
-            }
-            if element.transition_in.is_some() {
-                issues.push(
-                    InterchangeIssue::new(
-                        "transition_flattened",
-                        IssueSeverity::Degraded,
-                        format!(
-                            "Transition on '{}' was exported as a hard cut.",
-                            element.name
                         ),
                     )
                     .on_track(&track.id)
