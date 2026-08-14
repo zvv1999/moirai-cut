@@ -125,6 +125,14 @@ test("the server exposes the agent tool surface", async () => {
 	}
 });
 
+test("the MCP handshake version follows its package manifest", () => {
+	const manifest = JSON.parse(
+		readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+	);
+	const server = createOpenCutMcpServer();
+	assert.equal(server.server._serverInfo.version, manifest.version);
+});
+
 test("reversible project edits are not advertised as destructive", () => {
 	const server = createOpenCutMcpServer();
 	const editProject = server._registeredTools?.edit_project;

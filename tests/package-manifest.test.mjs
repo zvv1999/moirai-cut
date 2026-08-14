@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import { describe, expect, test } from "bun:test";
 
@@ -16,6 +16,30 @@ const eslintRuleTestSource = readFileSync(
 		"../eslint/rules/__tests__/prefer-object-params.test.mjs",
 		import.meta.url,
 	),
+	"utf8",
+);
+const desktopManifestSource = readFileSync(
+	new URL("../apps/desktop/Cargo.toml", import.meta.url),
+	"utf8",
+);
+const cargoLockSource = readFileSync(
+	new URL("../Cargo.lock", import.meta.url),
+	"utf8",
+);
+const bunLockSource = readFileSync(
+	new URL("../bun.lock", import.meta.url),
+	"utf8",
+);
+const readmeSource = readFileSync(
+	new URL("../README.md", import.meta.url),
+	"utf8",
+);
+const changelogSource = readFileSync(
+	new URL("../CHANGELOG.md", import.meta.url),
+	"utf8",
+);
+const releaseWorkflowSource = readFileSync(
+	new URL("../.github/workflows/release-readiness.yml", import.meta.url),
 	"utf8",
 );
 
@@ -72,5 +96,43 @@ describe("root package manifest", () => {
 			hono: "4.13.0",
 			undici: "7.29.0",
 		});
+	});
+
+	test("keeps every public release surface on one version", () => {
+		const version = manifest.version;
+		const escapedVersion = version.replaceAll(".", "\\.");
+		const webEntry = new URL(
+			`../apps/web/src/changelog/entries/${version}.md`,
+			import.meta.url,
+		);
+
+		expect(webManifest.version).toBe(version);
+		expect(mcpManifest.version).toBe(version);
+		expect(desktopManifestSource).toMatch(
+			new RegExp(`name = "moirai-cut-desktop"[\\s\\S]*?version = "${escapedVersion}"`),
+		);
+		expect(cargoLockSource).toMatch(
+			new RegExp(`name = "moirai-cut-desktop"\\nversion = "${escapedVersion}"`),
+		);
+		expect(bunLockSource).toMatch(
+			new RegExp(`"name": "@moirai-cut/mcp",\\n\\s+"version": "${escapedVersion}"`),
+		);
+		expect(bunLockSource).toMatch(
+			new RegExp(`"name": "@moirai-cut/web",\\n\\s+"version": "${escapedVersion}"`),
+		);
+		expect(readmeSource).toContain(`v${version} Public Preview`);
+		expect(changelogSource).toContain(`## ${version} —`);
+		expect(existsSync(webEntry)).toBe(true);
+		if (existsSync(webEntry)) {
+			const entry = readFileSync(webEntry, "utf8");
+			expect(entry).toContain(`version: "${version}"`);
+			expect(entry).toContain("published: true");
+		}
+	});
+
+	test("rejects a release tag that disagrees with package metadata", () => {
+		expect(releaseWorkflowSource).toContain("Verify release version");
+		expect(releaseWorkflowSource).toContain("GITHUB_REF_NAME");
+		expect(releaseWorkflowSource).toContain("package.json");
 	});
 });
