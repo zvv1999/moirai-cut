@@ -9,8 +9,10 @@ import {
 	type ProbeFile,
 	type ProjectMediaProbeResult,
 } from "@/server/media-probe";
+import { mutateMediaIndex, readMediaIndex } from "@/server/media-index";
 
 const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/;
+const SAFE_EXT = /^[A-Za-z0-9]{1,8}$/;
 const TERMINAL_STATUSES = new Set<NativeMediaJobStatus>([
 	"succeeded",
 	"failed",
@@ -104,12 +106,6 @@ const PROXY_PROFILES: Record<ProxyProfileName, ProxyProfile> = {
 	},
 };
 
-interface MediaIndexEntry extends Record<string, unknown> {
-	ext: string;
-}
-
-type MediaIndex = Record<string, MediaIndexEntry>;
-
 function validateId({ value, label }: { value: string; label: string }): void {
 	if (!SAFE_ID.test(value)) {
 		throw new Error(`Unsafe ${label}: ${JSON.stringify(value)}`);
@@ -169,26 +165,6 @@ function isNativeMediaJob(value: unknown): value is NativeMediaJob {
 		typeof value.createdAt === "string" &&
 		typeof value.updatedAt === "string"
 	);
-}
-
-async function readMediaIndex({
-	directory,
-}: {
-	directory: string;
-}): Promise<MediaIndex> {
-	const parsed: unknown = JSON.parse(
-		await readFile(path.join(directory, "index.json"), "utf8"),
-	);
-	if (!isRecord(parsed)) {
-		throw new Error("Invalid media index");
-	}
-	const index: MediaIndex = {};
-	for (const [id, entry] of Object.entries(parsed)) {
-		if (isRecord(entry) && typeof entry.ext === "string") {
-			index[id] = { ...entry, ext: entry.ext };
-		}
-	}
-	return index;
 }
 
 async function writeJsonAtomic({
@@ -467,7 +443,6 @@ export class NativeMediaJobService {
 		Promise<Map<string, NativeMediaJob>>
 	>();
 	private readonly persistingProjects = new Map<string, Promise<void>>();
-	private readonly mutatingMediaIndexes = new Map<string, Promise<void>>();
 	private readonly controllers = new Map<string, AbortController>();
 	private readonly pendingExecutions: QueuedProxyExecution[] = [];
 	private readonly activeAssetExecutions = new Set<string>();
@@ -618,54 +593,26 @@ export class NativeMediaJobService {
 	}
 
 	private async persist({ projectId }: { projectId: string }): Promise<void> {
-		const previous = this.persistingProjects.get(projectId) ?? Promise.resolve();
-		const current = previous.catch(() => undefined).then(async () => {
-			const projectJobs = this.jobs.get(projectId) ?? new Map();
-			await writeJsonAtomic({
-				filePath: jobsPath({
-					projectsRoot: this.projectsRoot,
-					projectId,
-				}),
-				value: [...projectJobs.values()],
+		const previous =
+			this.persistingProjects.get(projectId) ?? Promise.resolve();
+		const current = previous
+			.catch(() => undefined)
+			.then(async () => {
+				const projectJobs = this.jobs.get(projectId) ?? new Map();
+				await writeJsonAtomic({
+					filePath: jobsPath({
+						projectsRoot: this.projectsRoot,
+						projectId,
+					}),
+					value: [...projectJobs.values()],
+				});
 			});
-		});
 		this.persistingProjects.set(projectId, current);
 		try {
 			await current;
 		} finally {
 			if (this.persistingProjects.get(projectId) === current) {
 				this.persistingProjects.delete(projectId);
-			}
-		}
-	}
-
-	private async mutateMediaIndex({
-		projectId,
-		update,
-	}: {
-		projectId: string;
-		update: (mediaIndex: MediaIndex) => void;
-	}): Promise<void> {
-		const previous =
-			this.mutatingMediaIndexes.get(projectId) ?? Promise.resolve();
-		const current = previous.catch(() => undefined).then(async () => {
-			const directory = mediaDirectory({
-				projectsRoot: this.projectsRoot,
-				projectId,
-			});
-			const mediaIndex = await readMediaIndex({ directory });
-			update(mediaIndex);
-			await writeJsonAtomic({
-				filePath: path.join(directory, "index.json"),
-				value: mediaIndex,
-			});
-		});
-		this.mutatingMediaIndexes.set(projectId, current);
-		try {
-			await current;
-		} finally {
-			if (this.mutatingMediaIndexes.get(projectId) === current) {
-				this.mutatingMediaIndexes.delete(projectId);
 			}
 		}
 	}
@@ -697,26 +644,35 @@ export class NativeMediaJobService {
 		assetId: string;
 		job: NativeMediaJob;
 	}): Promise<boolean> {
-		if (!job.result) {
-			return false;
-		}
-		const outputExists = await stat(job.result.outputPath)
-			.then(() => true)
-			.catch(() => false);
-		if (!outputExists) {
+		if (!job.result || !SAFE_ID.test(job.id)) {
 			return false;
 		}
 		const directory = mediaDirectory({
 			projectsRoot: this.projectsRoot,
 			projectId,
 		});
+		const storageId = `${job.id}-proxy`;
+		const outputPath = path.join(directory, `${storageId}.mp4`);
+		if (
+			job.result.proxy.storageId !== storageId ||
+			path.resolve(job.result.outputPath) !== outputPath
+		) {
+			return false;
+		}
+		const outputStat = await stat(outputPath).catch(() => null);
+		if (!outputStat || outputStat.size !== job.result.proxy.size) {
+			return false;
+		}
 		const mediaIndex = await readMediaIndex({ directory }).catch(() => null);
 		const proxy = mediaIndex?.[assetId]?.proxy;
+		const storageEntry = mediaIndex?.[storageId];
 		return (
 			isRecord(proxy) &&
-			proxy.storageId === job.result.proxy.storageId &&
+			proxy.storageId === storageId &&
 			proxy.profile === job.result.proxy.profile &&
-			proxy.sourceSha256 === job.result.proxy.sourceSha256
+			proxy.sourceSha256 === job.result.proxy.sourceSha256 &&
+			storageEntry?.ext === "mp4" &&
+			storageEntry.id === storageId
 		);
 	}
 
@@ -842,12 +798,15 @@ export class NativeMediaJobService {
 			directory,
 			`${assetId}.${probe.source.extension}`,
 		);
-		const outputPath = path.join(directory, `${assetId}-proxy.mp4`);
+		const storageId = `${jobId}-proxy`;
+		const outputPath = path.join(directory, `${storageId}.mp4`);
 		const temporaryOutputPath = path.join(
 			directory,
 			`.${assetId}-proxy.${jobId}.tmp.mp4`,
 		);
 		let terminalUpdate: ((job: NativeMediaJob) => void) | undefined;
+		let proxyCommitted = false;
+		let previousProxyPath: string | undefined;
 		try {
 			if (controller.signal.aborted) {
 				throw new DOMException("Transcode cancelled", "AbortError");
@@ -906,7 +865,6 @@ export class NativeMediaJobService {
 				rotationDegrees: video?.rotationDegrees ?? 0,
 				maxLongEdge: PROXY_PROFILES[profile].maxLongEdge,
 			});
-			const storageId = `${assetId}-proxy`;
 			const proxy: NativeProxyMetadata = {
 				storageId,
 				name: `${path.parse(probe.source.fileName).name}.proxy.mp4`,
@@ -921,12 +879,39 @@ export class NativeMediaJobService {
 				profile,
 				sourceSha256: probe.source.sha256,
 			};
-			await this.mutateMediaIndex({
-				projectId,
-				update: (mediaIndex) => {
+			await mutateMediaIndex({
+				directory,
+				update: async (mediaIndex) => {
 					const original = mediaIndex[assetId];
 					if (!original) {
 						throw new Error(`No asset ${assetId}`);
+					}
+					const currentSourceStat = await stat(inputPath);
+					if (
+						original.ext !== probe.source.extension ||
+						currentSourceStat.size !== probe.source.sizeBytes ||
+						currentSourceStat.mtimeMs !== probe.source.mtimeMs ||
+						currentSourceStat.ctimeMs !== probe.source.ctimeMs ||
+						currentSourceStat.ino !== probe.source.inode
+					) {
+						throw new Error(`Source asset ${assetId} changed during transcode`);
+					}
+					const previousProxy = original.proxy;
+					if (
+						isRecord(previousProxy) &&
+						typeof previousProxy.storageId === "string" &&
+						previousProxy.storageId !== storageId &&
+						SAFE_ID.test(previousProxy.storageId) &&
+						previousProxy.storageId.endsWith("-proxy")
+					) {
+						const previousEntry = mediaIndex[previousProxy.storageId];
+						if (previousEntry && SAFE_EXT.test(previousEntry.ext)) {
+							previousProxyPath = path.join(
+								directory,
+								`${previousProxy.storageId}.${previousEntry.ext}`,
+							);
+						}
+						delete mediaIndex[previousProxy.storageId];
 					}
 					mediaIndex[assetId] = { ...original, proxy };
 					mediaIndex[storageId] = {
@@ -948,6 +933,10 @@ export class NativeMediaJobService {
 					};
 				},
 			});
+			proxyCommitted = true;
+			if (previousProxyPath && previousProxyPath !== outputPath) {
+				await rm(previousProxyPath, { force: true }).catch(() => undefined);
+			}
 			terminalUpdate = (job) => {
 				job.status = "succeeded";
 				job.progress = 1;
@@ -958,6 +947,9 @@ export class NativeMediaJobService {
 				delete job.error;
 			};
 		} catch (error) {
+			if (!proxyCommitted) {
+				await rm(outputPath, { force: true }).catch(() => undefined);
+			}
 			const cancelled = controller.signal.aborted || isAbortError(error);
 			terminalUpdate = (job) => {
 				job.status = cancelled ? "cancelled" : "failed";
