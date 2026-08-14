@@ -58,7 +58,11 @@ describe("bookmark snapping during direct edits", () => {
 			excludeClipElementIds: new Set(["moving"]),
 		});
 
-		expect(snapPoints.map(({ time }) => time)).toEqual([20, 30, 40]);
+		expect(snapPoints.map(({ time }) => time)).toEqual([
+			mediaTime({ ticks: 20 }),
+			mediaTime({ ticks: 30 }),
+			mediaTime({ ticks: 40 }),
+		]);
 	});
 
 	test("snaps a moved group edge to an active-scene bookmark", () => {

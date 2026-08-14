@@ -17,7 +17,7 @@
 		"deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
 		"lint": "bunx --bun eslint src --ext .ts,.tsx",
 		"lint:fix": "bunx --bun eslint src --ext .ts,.tsx --fix",
-		"typecheck": "bun --bun next typegen && bunx --bun tsc --noEmit",
+		"typecheck": "bun --bun next typegen && bunx --bun tsc --noEmit --incremental false",
 		"format": "prettier src --write",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",

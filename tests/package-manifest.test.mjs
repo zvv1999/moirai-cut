@@ -71,6 +71,7 @@ describe("root package manifest", () => {
 	test("generates clean-clone content types before TypeScript validation", () => {
 		expect(webManifest.scripts.typecheck).toContain("next typegen");
 		expect(webManifest.scripts.typecheck).toContain("tsc --noEmit");
+		expect(webManifest.scripts.typecheck).toContain("--incremental false");
 	});
 
 	test("uses the Moirai Cut public package identity", () => {
