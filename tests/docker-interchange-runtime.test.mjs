@@ -18,6 +18,15 @@ const smokeScriptUrl = new URL(
 const smokeScript = existsSync(smokeScriptUrl)
 	? readFileSync(smokeScriptUrl, "utf8")
 	: "";
+const smokeProject = JSON.parse(
+	readFileSync(
+		new URL(
+			"../tests/fixtures/interchange-http-smoke/project.json",
+			import.meta.url,
+		),
+		"utf8",
+	),
+);
 
 describe("web production image interchange runtime", () => {
 	test("builds the Rust CLI in an independently pinned stage", () => {
@@ -56,6 +65,24 @@ describe("web production image interchange runtime", () => {
 });
 
 describe("production image FCPXML HTTP smoke", () => {
+	test("uses an exportable positive-duration timeline fixture", () => {
+		const scene = smokeProject.scenes.find(
+			(candidate) => candidate.id === smokeProject.currentSceneId,
+		);
+		const tracks = scene
+			? [scene.tracks.main, ...scene.tracks.overlay, ...scene.tracks.audio]
+			: [];
+		expect(
+			tracks.some(
+				(track) =>
+					!track.hidden &&
+					track.elements.some(
+						(element) => !element.hidden && element.duration > 0,
+					),
+			),
+		).toBe(true);
+	});
+
 	test("runs only for Ubuntu CI and delegates to a checked-in script", () => {
 		expect(workflow).toMatch(
 			/- name: Smoke-test production FCPXML handoff image\s+if: runner\.os == 'Linux'\s+run: sh scripts\/ci\/interchange-docker-http-smoke\.sh/,

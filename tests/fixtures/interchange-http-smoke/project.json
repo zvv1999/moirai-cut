@@ -24,7 +24,18 @@
 					"type": "video",
 					"hidden": false,
 					"muted": false,
-					"elements": []
+					"elements": [
+						{
+							"id": "ci-title",
+							"name": "CI title",
+							"type": "text",
+							"startTime": 0,
+							"duration": 120000,
+							"trimStart": 0,
+							"trimEnd": 0,
+							"params": { "text": "Moirai Cut" }
+						}
+					]
 				},
 				"overlay": [],
 				"audio": []
