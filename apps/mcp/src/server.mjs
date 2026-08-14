@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -31,6 +32,13 @@ import {
 	saveMediaAnalysis,
 	writeMediaCatalog,
 } from "./media-analysis.mjs";
+
+const packageManifest = JSON.parse(
+	readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+);
+if (typeof packageManifest.version !== "string") {
+	throw new Error("apps/mcp/package.json must declare a string version");
+}
 
 /**
  * MCP server for a Moirai Cut editor tab. Legacy protocol identifiers remain
@@ -221,7 +229,7 @@ async function bridge({ method, args = [], projectId: id, target }) {
 
 export function createOpenCutMcpServer() {
 	const server = new McpServer(
-		{ name: "opencut", version: "0.1.1" },
+		{ name: "opencut", version: packageManifest.version },
 		{
 			instructions: [
 				"Two ways in.",

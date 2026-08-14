@@ -20,6 +20,9 @@ Apple 官方将 FCPXML 定义为 Final Cut Pro 与第三方应用交换项目、
 [Apple 的 FCPXML 使用说明](https://support.apple.com/zh-cn/guide/final-cut-pro/verdbd66ae/mac)。
 Moirai Cut 当前输出的是 FCPXML 1.10 单文件 `.fcpxml`；Apple 自己导出 1.10 或更高版本
 时可能使用 `.fcpxmld` 捆绑包，两者不要仅靠修改扩展名互相伪装。
+生成文档使用标准 `library > event > project` 结构，并可按
+[Apple FCPXML 1.10 DTD](https://developer.apple.com/documentation/professional-video-applications/document-type-definition)
+校验；DTD 通过只能证明结构合法，不能替代目标软件的实际导入测试。
 
 ## 推荐工作流
 
@@ -105,17 +108,19 @@ curl \
 	"revision": 7,
 	"currentRevision": 7,
 	"stable": true,
-	"name": "review-handoff-r7.fcpxml",
-	"path": "/projects/PROJECT_ID/exports/review-handoff-r7.fcpxml",
-	"downloadUrl": "/api/exports/PROJECT_ID/review-handoff-r7.fcpxml",
-	"reportName": "review-handoff-r7.interchange-report.json",
-	"reportPath": "/projects/PROJECT_ID/exports/review-handoff-r7.interchange-report.json",
-	"reportDownloadUrl": "/api/exports/PROJECT_ID/review-handoff-r7.interchange-report.json",
+	"name": "review-handoff-scene-main-759c5d82-r7-a1b2c3d4e5f6.fcpxml",
+	"path": "/projects/PROJECT_ID/exports/review-handoff-scene-main-759c5d82-r7-a1b2c3d4e5f6.fcpxml",
+	"downloadUrl": "/api/exports/PROJECT_ID/review-handoff-scene-main-759c5d82-r7-a1b2c3d4e5f6.fcpxml",
+	"reportName": "review-handoff-scene-main-759c5d82-r7-a1b2c3d4e5f6.interchange-report.json",
+	"reportPath": "/projects/PROJECT_ID/exports/review-handoff-scene-main-759c5d82-r7-a1b2c3d4e5f6.interchange-report.json",
+	"reportDownloadUrl": "/api/exports/PROJECT_ID/review-handoff-scene-main-759c5d82-r7-a1b2c3d4e5f6.interchange-report.json",
 	"report": {}
 }
 ```
 
-`path` 是示意值，实际返回本机绝对路径。文件写入：
+`path` 和内容指纹是示意值，实际响应返回本机绝对路径和真实 SHA-256 前缀。显式传入
+`sceneId` 时，文件名包含清理后的场景 ID 及其 8 位摘要；省略时不含该场景后缀。所有
+文件名都包含 revision 和 12 位内容指纹。文件写入：
 
 ```text
 <OPENCUT_PROJECTS_DIR>/<projectId>/exports/
@@ -150,12 +155,16 @@ revision 过期时失败，不会尝试合并一个已改变的工程。
 
 ## 输出文件与 sidecar 报告
 
-一次成功导出产生两个同 revision 文件：
+一次成功导出产生共享同一不可变 stem 的 XML 和报告：
 
 ```text
-review-handoff-r7.fcpxml
-review-handoff-r7.interchange-report.json
+review-handoff-scene-main-759c5d82-r7-a1b2c3d4e5f6.fcpxml
+review-handoff-scene-main-759c5d82-r7-a1b2c3d4e5f6.interchange-report.json
 ```
+
+同一请求产生完全相同的字节时会复用原文件对；内容发生变化时会发布带新指纹的新文件对，
+不会覆盖旧交付物。报告先落盘，XML 最后作为完成标记发布；同名路径已被其他内容占用时返回
+`artifact_conflict`，不会拼出一对新旧混合文件。
 
 报告 schema 是 `moirai-cut.interchange-report.v1`，主要字段如下：
 
@@ -221,8 +230,6 @@ review-handoff-r7.interchange-report.json
 
 ### 会降级或省略并写入报告
 
-- 转场会退化为硬切；
-- 复合片段结构会被压平；
 - 片段级书签会变成时间线 marker；
 - 变速、关键帧动画、运动跟踪和防抖数据不进入当前 XML；
 - 特效、蒙版和非默认的静态变换、外观或音频参数不进入当前 XML；
@@ -243,7 +250,9 @@ review-handoff-r7.interchange-report.json
 - 主轨媒体片段互相重叠，无法构成 FCPXML storyline；
 - 被引用素材不在 `media/index.json` 中，或对应文件不存在；
 - 媒体 ID、扩展名或本地路径不能被安全序列化；
-- XML 或进程响应序列化失败。
+- XML 或进程响应序列化失败；
+- 场景中存在转场；为避免把重叠起点误导出成硬切，先移除转场再导出；
+- 场景中存在复合片段；为避免只保留容器的首个素材，先拆分复合片段再导出。
 
 这些是导出错误，不会作为 `issues` 降级后继续。应先修复工程或素材，再重新生成。
 
@@ -254,26 +263,30 @@ review-handoff-r7.interchange-report.json
 - 中国版剪映桌面端、国际版 CapCut Desktop、Web 和移动端的发行节奏与功能开关不同；
 - 同名菜单可能随操作系统、地区、账号、版本或灰度发布出现、移动或消失；
 - 部分剪映桌面端版本可能提供专业工作流或 XML 入口，这仍是实验性兼容目标；
-- 如果当前安装中没有明确的 XML/FCPXML 导入入口，就视为该版本不支持，不要推断隐藏
-  草稿格式可以替代；
+- 如果当前安装的工程导入文件选择器不接受 FCPXML，或短工程实导失败，就视为该版本
+  不支持，不要推断隐藏草稿格式可以替代；
 - CapCut 官方当前给出的跨编辑器建议仍是导出成片，或携带原素材后在 CapCut 中重建，
   而不是直接转移第三方工程。
 
 因此，Moirai Cut 不维护一个“从某个版本开始永远支持”的静态版本号承诺。发布或生产
 交接前，应在目标机器的具体版本上用短工程试导，并保存目标软件版本、系统和报告文件。
 
-### 在出现“导入工程”入口的剪映版本中尝试
+### 已验证的剪映 11.1.0 路径
 
-目前能找到的是社区对中国版剪映桌面端的版本性记录，不是剪映官方公开的稳定交换规范。
-例如，天极下载在 2025 年的剪映 10.3.0 指引中记录了 FCP/FCPX `FCPXML` 导入路径：先在
-全局设置中开启“导入工程”，再从首页“更多 > 导入工程”选择文件；抖音上的近期教程也
-展示了从 Final Cut Pro 导出 XML 后导入剪映的流程。参见
-[天极下载的版本操作记录](https://mydown.yesky.com/news/343713.html)和
-[抖音上的 FCP XML 导入演示](https://www.douyin.com/shipin/7369601824145442827)。
+2026-08-14 在 macOS 中国版剪映专业版 11.1.0 上完成了本机短工程实导：从首页本地草稿
+区域的“更多 > 导入工程”选择 Moirai Cut 生成的 `.fcpxml`，成功创建 5 秒、30 fps 的
+可编辑草稿。样例核对了两段主轨及 1 秒空隙、两层重叠画面的遮挡顺序、独立音频和四个
+本地素材引用。剪映首次读取素材时会请求目录权限；只授权报告 `relink.assets` 所在的素材
+目录即可。
+
+这项结果只证明该台 Mac 上这一份 11.1.0 安装可用，不代表国际版 CapCut、移动端、Web
+或其他剪映版本拥有相同入口。实测还表明剪映转换器要求标准的 `library` 包装；Apple DTD
+允许的顶层 `event` 文档在该版本中不会完成导入，因此生成器固定输出
+`library > event > project`。
 
 实际尝试时：
 
-1. 先用一个只有一段视频和一段音频的短工程确认目标版本真的显示入口。
+1. 先用一个只有一段视频和一段音频的短工程确认目标版本的文件选择器接受 FCPXML。
 2. 选择 Moirai Cut 生成的 `.fcpxml`，不要选择 sidecar 报告。
 3. 导入后立即核对时长、切点、源裁剪、画面层级和源音频状态。
 4. 依据 `.interchange-report.json` 逐项重建已降级或省略的能力。
@@ -304,10 +317,16 @@ review-handoff-r7.interchange-report.json
 完成。`NEXT_PUBLIC_OPENCUT_PROJECT_FILES=1` 开启文件工程；`OPENCUT_PROJECTS_DIR`
 必须指向 Web、API 和 MCP 共用的目录。
 
-### HTTP 409 或 `revision_conflict`
+### `revision_conflict`
 
 工程在你读取后被用户、Agent、另一窗口或自动保存更新。重新读取 `project.json`，确认
 变化，再用最新 revision 发起新导出。不要关闭冲突检查。
+
+### `artifact_conflict`
+
+目标 XML 或报告路径已经存在，但内容与本次导出不一致。服务会保留已有文件并返回 HTTP
+409。不要手工覆盖其中一个文件；检查 exports 目录是否被外部程序占用或修改，换一个
+`name` 后重新生成，或在确认旧交付物已另行保存后再处理冲突文件。
 
 ### `project_not_found`、下载 404 或结果出现在错误目录
 
@@ -339,9 +358,10 @@ Web 进程需要对它有执行权限。
 
 ### 目标软件拒绝 XML
 
-1. 确认目标应用当前版本真的提供 XML/FCPXML 导入，而不是普通媒体导入。
+1. 确认目标应用当前版本的工程导入文件选择器接受 XML/FCPXML，而不是使用普通媒体导入。
 2. 在 Final Cut Pro 中使用“文件 > 导入 > XML”。
-3. 保持 `.fcpxml` 原扩展名，不要手工改成剪映草稿或 `.fcpxmld`。
+3. 在已验证的剪映 11.1.0 中，从首页“更多 > 导入工程”进入；保持 `.fcpxml` 原扩展名，
+   不要手工改成剪映草稿或 `.fcpxmld`。
 4. 用一个只有单片段的短工程区分“入口不支持”和“具体时间线能力不支持”。
 5. 查看 sidecar report；若 XML 本身有效但剪映仍拒绝，应把该版本视为不兼容。
 
@@ -352,7 +372,7 @@ Web 进程需要对它有执行权限。
 - 主轨空隙与 connected clip 层级；
 - 源裁剪点和非整数帧率；
 - 静音、隐藏和素材自带音频；
-- 变速、转场、字幕、关键帧、特效、蒙版、变换与音量。
+- 变速、字幕、关键帧、特效、蒙版、变换与音量。
 
 如果这些能力决定最终观感，先在 Moirai Cut 输出高质量参考视频，与可编辑 XML 一起交付，
 让接收方有可比对的视觉和声音基准。

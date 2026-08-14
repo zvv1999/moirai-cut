@@ -101,7 +101,7 @@ export function ProjectInterchangePanel() {
 					<div className="bg-muted/40 rounded p-2">
 						<div className="font-medium">显式报告</div>
 						<div className="text-muted-foreground mt-0.5">
-							文字、转场、动画、特效、遮罩、变速和隐藏内容
+							文字、动画、特效、遮罩、变速、静音和关系语义
 						</div>
 					</div>
 					<div className="bg-muted/40 rounded p-2">

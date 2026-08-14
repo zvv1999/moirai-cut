@@ -1,6 +1,6 @@
 {
 	"name": "@moirai-cut/web",
-	"version": "0.1.2",
+	"version": "0.4.0",
 	"private": true,
 	"description": "Moirai Cut web editor for the shared, visible and editable human-agent loop.",
 	"license": "MIT",
