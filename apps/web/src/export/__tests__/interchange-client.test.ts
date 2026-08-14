@@ -4,14 +4,16 @@ import { requestProjectFcpxml } from "@/export/interchange-client";
 describe("FCPXML export client", () => {
 	test("flushes dirty state before reading and sending the file revision", async () => {
 		const events: string[] = [];
+		let dirty = true;
 		let revision = 6;
 		let received: Record<string, unknown> = {};
 		const result = await requestProjectFcpxml({
 			projectId: "project",
 			projectName: "Demo",
-			isDirty: () => true,
+			isDirty: () => dirty,
 			flush: async () => {
 				events.push("flush");
+				dirty = false;
 				revision = 7;
 			},
 			getRevision: () => {

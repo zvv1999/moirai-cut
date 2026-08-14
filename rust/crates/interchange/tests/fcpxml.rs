@@ -279,7 +279,7 @@ fn exports_revision_bound_fcpxml_with_connected_tracks_and_loss_report() {
     assert!(
         exported
             .document
-            .contains("name=\"叠加.mov\" ref=\"r3\" lane=\"2\" offset=\"11s\"")
+            .contains("name=\"叠加.mov\" ref=\"r3\" lane=\"1\" offset=\"11s\"")
     );
     // Audio at timeline 1s is connected to the first clip, which starts at source
     // 1s. Its parent-local offset is therefore 2s, not the absolute 1s.
@@ -530,16 +530,14 @@ fn default_built_in_media_params_do_not_create_false_loss_issues() {
     let export = exported(&fixture, options(7));
 
     assert!(!export.report.issues.iter().any(|issue| {
-        issue.code == "static_params_omitted"
-            && issue.element_id.as_deref() == Some("main-a")
+        issue.code == "static_params_omitted" && issue.element_id.as_deref() == Some("main-a")
     }));
 
-    fixture.project["scenes"][0]["tracks"]["main"]["elements"][0]["params"]
-        ["transform.scaleX"] = json!(1.25);
+    fixture.project["scenes"][0]["tracks"]["main"]["elements"][0]["params"]["transform.scaleX"] =
+        json!(1.25);
     let changed = exported(&fixture, options(7));
     assert!(changed.report.issues.iter().any(|issue| {
-        issue.code == "static_params_omitted"
-            && issue.element_id.as_deref() == Some("main-a")
+        issue.code == "static_params_omitted" && issue.element_id.as_deref() == Some("main-a")
     }));
 }
 
@@ -567,8 +565,7 @@ fn reports_group_and_link_relationships_that_fcpxml_does_not_preserve() {
 #[test]
 fn preserves_overlay_z_order_when_mapping_tracks_to_fcpxml_lanes() {
     let mut fixture = temp_fixture();
-    fs::write(fixture.media_root.join("background.mov"), b"fixture")
-        .expect("background media");
+    fs::write(fixture.media_root.join("background.mov"), b"fixture").expect("background media");
     fixture.media_index["background"] = json!({
         "id": "background",
         "name": "背景.mov",
@@ -604,12 +601,16 @@ fn preserves_overlay_z_order_when_mapping_tracks_to_fcpxml_lanes() {
 
     let export = exported(&fixture, options(7));
 
-    assert!(export.document.contains(
-        "name=\"叠加.mov\" ref=\"r3\" lane=\"2\""
-    ));
-    assert!(export.document.contains(
-        "name=\"背景.mov\" ref=\"r5\" lane=\"1\""
-    ));
+    assert!(
+        export
+            .document
+            .contains("name=\"叠加.mov\" ref=\"r3\" lane=\"2\"")
+    );
+    assert!(
+        export
+            .document
+            .contains("name=\"背景.mov\" ref=\"r4\" lane=\"1\"")
+    );
 }
 
 #[test]

@@ -40,7 +40,12 @@ export async function requestProjectFcpxml({
 	getRevision: () => number | null;
 	fetcher?: Fetcher;
 }): Promise<FcpxmlClientResult> {
-	if (isDirty()) await flush();
+	if (isDirty()) {
+		await flush();
+		if (isDirty()) {
+			throw new Error("工程仍有未保存的更改，暂不能生成 revision-bound FCPXML。");
+		}
+	}
 	const revision = getRevision();
 	if (revision === null) {
 		throw new Error("工程尚未保存到本地文件，无法生成 revision-bound FCPXML。");

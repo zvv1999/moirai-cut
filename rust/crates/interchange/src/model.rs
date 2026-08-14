@@ -86,6 +86,10 @@ pub(crate) struct TimelineElement {
     #[serde(rename = "type")]
     pub kind: String,
     #[serde(default)]
+    pub group_id: Option<String>,
+    #[serde(default)]
+    pub link_group_id: Option<String>,
+    #[serde(default)]
     pub media_id: Option<String>,
     #[serde(default)]
     pub source_type: Option<String>,

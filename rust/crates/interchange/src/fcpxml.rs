@@ -297,6 +297,15 @@ fn validate_scene_timing(scene: &Scene) -> Result<(), InterchangeError> {
         .chain(scene.tracks.audio.iter())
     {
         for element in &track.elements {
+            if TimelineElement::has_nonempty_value(&element.compound) {
+                return Err(InterchangeError::new(
+                    ErrorCode::UnsupportedTimeline,
+                    format!(
+                        "Element {} is a compound clip. Break it apart before FCPXML export so child edits are not silently replaced by the container's first source.",
+                        element.id
+                    ),
+                ));
+            }
             if element.duration <= 0 || element.start_time < 0 || element.trim_start < 0 {
                 return Err(InterchangeError::new(
                     ErrorCode::InvalidProject,
@@ -610,10 +619,18 @@ fn attach_connected_clips(
     issues: &mut Vec<InterchangeIssue>,
 ) -> Result<(), InterchangeError> {
     let has_solo_track = scene_has_solo_track(scene);
-    for (track_index, track) in scene.tracks.overlay.iter().enumerate() {
-        if track.hidden {
-            continue;
-        }
+    let exportable_overlay_tracks: Vec<&Track> = scene
+        .tracks
+        .overlay
+        .iter()
+        .filter(|track| {
+            !track.hidden
+                && track.elements.iter().any(|element| {
+                    !element.hidden && matches!(element.kind.as_str(), "video" | "image")
+                })
+        })
+        .collect();
+    for (track_index, track) in exportable_overlay_tracks.iter().enumerate() {
         for element in &track.elements {
             if element.hidden {
                 continue;
@@ -622,12 +639,13 @@ fn attach_connected_clips(
                 continue;
             }
             let asset = asset_for(element, asset_by_id)?;
-            let lane = i32::try_from(track_index + 1).map_err(|_| {
-                InterchangeError::new(
-                    ErrorCode::UnsupportedTimeline,
-                    "The overlay track count exceeds the FCPXML lane range.",
-                )
-            })?;
+            let lane =
+                i32::try_from(exportable_overlay_tracks.len() - track_index).map_err(|_| {
+                    InterchangeError::new(
+                        ErrorCode::UnsupportedTimeline,
+                        "The overlay track count exceeds the FCPXML lane range.",
+                    )
+                })?;
             let connection = media_clip_node(
                 element,
                 asset,
@@ -940,13 +958,6 @@ fn build_document(
                     "0"
                 },
             );
-        let node = if audio_only {
-            node.attr("audioSources", "1")
-                .attr("audioChannels", "2")
-                .attr("audioRate", "48000")
-        } else {
-            node
-        };
         node.child(
             XmlNode::new("media-rep")
                 .attr("kind", "original-media")
@@ -1098,6 +1109,20 @@ fn collect_loss_issues(scene: &Scene) -> Vec<InterchangeIssue> {
                 );
                 continue;
             }
+            if track_is_audible(track, has_solo_track) && element.audio_muted() {
+                issues.push(
+                    InterchangeIssue::new(
+                        "muted_element_audio_omitted",
+                        IssueSeverity::Omitted,
+                        format!("Muted audio on '{}' was omitted.", element.name),
+                    )
+                    .on_track(&track.id)
+                    .on_element(&element.id),
+                );
+                if element.kind == "audio" {
+                    continue;
+                }
+            }
             if !matches!(element.kind.as_str(), "video" | "image" | "audio") {
                 issues.push(
                     InterchangeIssue::new(
@@ -1126,14 +1151,26 @@ fn collect_loss_issues(scene: &Scene) -> Vec<InterchangeIssue> {
                     .on_element(&element.id),
                 );
             }
-            issue_for_optional(
-                &mut issues,
-                track,
-                element,
-                "compound_flattened",
-                "Compound clip structure was flattened.",
-                TimelineElement::has_nonempty_value(&element.compound),
-            );
+            if element.group_id.is_some() {
+                issue_for_optional(
+                    &mut issues,
+                    track,
+                    element,
+                    "group_relation_omitted",
+                    "Edit-group membership was omitted.",
+                    true,
+                );
+            }
+            if element.link_group_id.is_some() {
+                issue_for_optional(
+                    &mut issues,
+                    track,
+                    element,
+                    "linked_media_relation_omitted",
+                    "Linked source relationship was omitted.",
+                    true,
+                );
+            }
             issue_for_optional(
                 &mut issues,
                 track,
@@ -1186,7 +1223,7 @@ fn collect_loss_issues(scene: &Scene) -> Vec<InterchangeIssue> {
                     true,
                 );
             }
-            if non_default_params(&element.params) {
+            if non_default_params(&element.kind, &element.params) {
                 issue_for_optional(
                     &mut issues,
                     track,
@@ -1259,18 +1296,88 @@ fn issue_for_optional(
     }
 }
 
-fn non_default_params(params: &Value) -> bool {
+#[derive(Clone, Copy)]
+enum DefaultParamValue {
+    Number(f64),
+    Bool(bool),
+    Text(&'static str),
+}
+
+fn default_param(kind: &str, key: &str) -> Option<DefaultParamValue> {
+    let visual = matches!(kind, "video" | "image" | "text" | "sticker" | "graphic");
+    let media_geometry = matches!(kind, "video" | "image" | "graphic");
+    let audio = matches!(kind, "video" | "audio");
+    let text = kind == "text";
+
+    match key {
+        "transform.positionX" | "transform.positionY" | "transform.rotate" if visual => {
+            Some(DefaultParamValue::Number(0.0))
+        }
+        "transform.scaleX" | "transform.scaleY" | "opacity" if visual => {
+            Some(DefaultParamValue::Number(1.0))
+        }
+        "blendMode" if visual => Some(DefaultParamValue::Text("normal")),
+        "geometry.mirrorX" | "geometry.mirrorY" | "geometry.shadow.enabled" if media_geometry => {
+            Some(DefaultParamValue::Bool(false))
+        }
+        "crop.left"
+        | "crop.right"
+        | "crop.top"
+        | "crop.bottom"
+        | "geometry.cornerRadius"
+        | "geometry.shadow.blur"
+        | "geometry.shadow.offsetX"
+        | "geometry.stroke.width"
+            if media_geometry =>
+        {
+            Some(DefaultParamValue::Number(0.0))
+        }
+        "geometry.shadow.offsetY" if media_geometry => Some(DefaultParamValue::Number(8.0)),
+        "geometry.shadow.color" if media_geometry => Some(DefaultParamValue::Text("#00000080")),
+        "geometry.stroke.color" if media_geometry => Some(DefaultParamValue::Text("#ffffff")),
+        "volume" | "audioFadeIn" | "audioFadeOut" if audio => Some(DefaultParamValue::Number(0.0)),
+        "muted" if audio => Some(DefaultParamValue::Bool(false)),
+        "content" if text => Some(DefaultParamValue::Text("Default text")),
+        "fontFamily" if text => Some(DefaultParamValue::Text("Arial")),
+        "fontSize" if text => Some(DefaultParamValue::Number(15.0)),
+        "color" if text => Some(DefaultParamValue::Text("#ffffff")),
+        "textAlign" if text => Some(DefaultParamValue::Text("center")),
+        "fontWeight" | "fontStyle" if text => Some(DefaultParamValue::Text("normal")),
+        "textDecoration" if text => Some(DefaultParamValue::Text("none")),
+        "letterSpacing"
+        | "background.cornerRadius"
+        | "background.offsetX"
+        | "background.offsetY"
+            if text =>
+        {
+            Some(DefaultParamValue::Number(0.0))
+        }
+        "lineHeight" if text => Some(DefaultParamValue::Number(1.2)),
+        "background.enabled" if text => Some(DefaultParamValue::Bool(false)),
+        "background.color" if text => Some(DefaultParamValue::Text("#000000")),
+        "background.paddingX" if text => Some(DefaultParamValue::Number(30.0)),
+        "background.paddingY" if text => Some(DefaultParamValue::Number(42.0)),
+        _ => None,
+    }
+}
+
+fn matches_default(value: &Value, expected: DefaultParamValue) -> bool {
+    match expected {
+        DefaultParamValue::Number(expected) => value
+            .as_f64()
+            .is_some_and(|actual| (actual - expected).abs() <= 0.000_001),
+        DefaultParamValue::Bool(expected) => value.as_bool() == Some(expected),
+        DefaultParamValue::Text(expected) => value.as_str() == Some(expected),
+    }
+}
+
+fn non_default_params(kind: &str, params: &Value) -> bool {
     let Some(params) = params.as_object() else {
         return !params.is_null();
     };
     params.iter().any(|(key, value)| {
-        if matches!(key.as_str(), "opacity" | "volume") {
-            let expected = if key == "opacity" { 1.0 } else { 0.0 };
-            return value
-                .as_f64()
-                .is_none_or(|actual| (actual - expected).abs() > 0.000_001);
-        }
-        !value.is_null()
+        default_param(kind, key).is_none_or(|expected| !matches_default(value, expected))
+            && !value.is_null()
     })
 }
 

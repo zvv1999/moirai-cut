@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { constants } from "node:fs";
 import {
 	access,
@@ -137,15 +137,64 @@ function titleOf(document: Record<string, unknown>): string {
 }
 
 function safeExportStem(value: string): string {
-	const stem = value
+	const normalized = value
 		.normalize("NFC")
 		// Keep this in lockstep with the export download route: Unicode letters,
 		// numbers, underscore, dot, and dash are the complete routable alphabet.
 		.replace(/[^\p{L}\p{N}_.-]+/gu, "-")
 		.replace(/-+/g, "-")
-		.replace(/^[.-]+|[.-]+$/g, "")
-		.slice(0, 110);
+		.replace(/^[.-]+|[.-]+$/g, "");
+	const stem = truncateUtf16(normalized, 110);
 	return stem || FALLBACK_NAME;
+}
+
+function truncateUtf16(value: string, maxLength: number): string {
+	let result = "";
+	for (const character of value) {
+		if (result.length + character.length > maxLength) break;
+		result += character;
+	}
+	return result;
+}
+
+function artifactStem({
+	name,
+	revision,
+	sceneId,
+}: {
+	name: string;
+	revision: number;
+	sceneId?: string;
+}): string {
+	const revisionSuffix = `-r${revision}`;
+	const sceneSuffix = sceneId
+		? `-${truncateUtf16(safeExportStem(sceneId), 24)}-${createHash("sha256")
+				.update(sceneId)
+				.digest("hex")
+				.slice(0, 8)}`
+		: "";
+	const baseLength = Math.max(
+		1,
+		110 - revisionSuffix.length - sceneSuffix.length,
+	);
+	const base = truncateUtf16(safeExportStem(name), baseLength) || FALLBACK_NAME;
+	return `${base}${sceneSuffix}${revisionSuffix}`;
+}
+
+function validInterchangeReport(value: unknown): value is InterchangeReport {
+	if (!isRecord(value) || value.schema !== "moirai-cut.interchange-report.v1") {
+		return false;
+	}
+	if (!Array.isArray(value.issues)) return false;
+	return value.issues.every(
+		(issue) =>
+			isRecord(issue) &&
+			typeof issue.code === "string" &&
+			["info", "degraded", "omitted"].includes(String(issue.severity)) &&
+			(issue.message === undefined || typeof issue.message === "string") &&
+			(issue.trackId === undefined || typeof issue.trackId === "string") &&
+			(issue.elementId === undefined || typeof issue.elementId === "string"),
+	);
 }
 
 async function readJsonFile(
@@ -461,7 +510,7 @@ async function exportProjectFcpxmlLocked({
 	});
 	if (
 		!generated.document.startsWith("<?xml") ||
-		generated.report.schema !== "moirai-cut.interchange-report.v1"
+		!validInterchangeReport(generated.report)
 	) {
 		throw new InterchangeServiceError(
 			"Rust interchange returned an invalid export envelope",
@@ -488,7 +537,11 @@ async function exportProjectFcpxmlLocked({
 
 	const exportsDirectory = path.join(directory, "exports");
 	await mkdir(exportsDirectory, { recursive: true });
-	const stem = `${safeExportStem(name?.trim() || titleOf(project))}-r${revision}`;
+	const stem = artifactStem({
+		name: name?.trim() || titleOf(project),
+		revision,
+		sceneId,
+	});
 	const xmlName = `${stem}.fcpxml`;
 	const reportName = `${stem}.interchange-report.json`;
 	const xmlPath = path.join(exportsDirectory, xmlName);
