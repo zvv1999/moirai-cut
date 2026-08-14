@@ -254,6 +254,12 @@ fn exports_revision_bound_fcpxml_with_connected_tracks_and_loss_report() {
     );
     assert!(exported.document.contains("<!DOCTYPE fcpxml>"));
     assert!(exported.document.contains("<fcpxml version=\"1.10\">"));
+    assert!(
+        exported
+            .document
+            .contains("<library><event name=\"Moirai Cut\">")
+    );
+    assert!(exported.document.contains("</event></library>"));
     assert!(exported.document.contains("frameDuration=\"1001/30000s\""));
     assert!(exported.document.contains("name=\"剪映互通 &amp; Demo\""));
     assert!(exported.document.contains("name=\"主素材 &amp; one.mp4\""));
@@ -708,6 +714,35 @@ fn rejects_transitions_instead_of_exporting_the_incoming_clip_at_the_overlap_sta
     assert_eq!(error.code, ErrorCode::UnsupportedTimeline);
     assert!(error.to_string().contains("transition"));
     assert!(error.to_string().contains("main-b"));
+}
+
+#[test]
+fn hidden_content_cannot_block_or_extend_the_exported_timeline() {
+    let mut fixture = temp_fixture();
+    let hidden = &mut fixture.project["scenes"][0]["tracks"]["overlay"][2]["elements"][0];
+    hidden["startTime"] = json!(100 * SECOND);
+    hidden["transitionIn"] = json!({
+        "id": "hidden-transition",
+        "type": "cross-dissolve",
+        "duration": SECOND / 2
+    });
+    hidden["compound"] = json!({
+        "id": "hidden-compound",
+        "children": []
+    });
+
+    let export = exported(&fixture, options(7));
+
+    assert!(
+        export
+            .document
+            .contains("<sequence format=\"r1\" duration=\"8s\"")
+    );
+    assert!(!export.document.contains("duration=\"101s\""));
+    assert!(export.report.issues.iter().any(|issue| {
+        issue.code == "hidden_track_omitted"
+            && issue.track_id.as_deref() == Some("hidden-track")
+    }));
 }
 
 #[test]
