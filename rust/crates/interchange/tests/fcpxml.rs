@@ -638,7 +638,7 @@ fn does_not_invent_audio_stream_metadata_absent_from_the_media_index() {
 }
 
 #[test]
-fn reports_compound_children_as_omitted_instead_of_claiming_they_were_flattened() {
+fn rejects_compound_clips_instead_of_exporting_the_first_child_as_the_container() {
     let mut fixture = temp_fixture();
     fixture.project["scenes"][0]["tracks"]["main"]["elements"][0]["compound"] = json!({
         "id": "compound-1",
@@ -660,18 +660,17 @@ fn reports_compound_children_as_omitted_instead_of_claiming_they_were_flattened(
         }]
     });
 
-    let export = exported(&fixture, options(7));
+    let error = export_fcpxml(
+        &fixture.project,
+        &fixture.media_index,
+        &fixture.media_root,
+        options(7),
+    )
+    .expect_err("compound clips must fail closed until recursive flattening exists");
 
-    assert!(!export
-        .report
-        .issues
-        .iter()
-        .any(|issue| issue.code == "compound_flattened"));
-    assert!(export.report.issues.iter().any(|issue| {
-        issue.code == "compound_children_omitted"
-            && issue.severity == IssueSeverity::Omitted
-            && issue.element_id.as_deref() == Some("main-a")
-    }));
+    assert_eq!(error.code, ErrorCode::UnsupportedTimeline);
+    assert!(error.to_string().contains("compound"));
+    assert!(error.to_string().contains("main-a"));
 }
 
 #[test]
