@@ -537,6 +537,91 @@ describe("native media proxy jobs", () => {
 		});
 	});
 
+	test("keeps successful jobs non-terminal until worker cleanup finishes", async () => {
+		const source = await fixture();
+		let signalCleanupStarted!: () => void;
+		const cleanupStarted = new Promise<void>((resolve) => {
+			signalCleanupStarted = resolve;
+		});
+		let allowCleanup!: () => void;
+		const cleanupAllowed = new Promise<void>((resolve) => {
+			allowCleanup = resolve;
+		});
+		const service = new NativeMediaJobService({
+			projectsRoot: source.projectsRoot,
+			probeFile,
+			transcode: async ({ temporaryOutputPath }) => {
+				await writeFile(temporaryOutputPath, "proxy");
+			},
+			removeTemporaryOutput: async (outputPath) => {
+				signalCleanupStarted();
+				await cleanupAllowed;
+				await rm(outputPath, { force: true });
+			},
+		});
+		const queued = await service.ensureProxy({
+			projectId: source.projectId,
+			assetId: source.assetId,
+		});
+		await cleanupStarted;
+		try {
+			expect(
+				await service.get({
+					projectId: source.projectId,
+					jobId: queued.id,
+				}),
+			).toMatchObject({ status: "running" });
+		} finally {
+			allowCleanup();
+		}
+		expect(
+			await service.waitForTerminal({
+				projectId: source.projectId,
+				jobId: queued.id,
+			}),
+		).toMatchObject({ status: "succeeded" });
+	});
+
+	test("coalesces concurrent retries for the same proxy", async () => {
+		const source = await fixture();
+		let transcodes = 0;
+		const service = new NativeMediaJobService({
+			projectsRoot: source.projectsRoot,
+			probeFile,
+			transcode: async ({ temporaryOutputPath }) => {
+				transcodes += 1;
+				if (transcodes === 1) {
+					throw new Error("initial failure");
+				}
+				await Bun.sleep(20);
+				await writeFile(temporaryOutputPath, "proxy");
+			},
+		});
+		const initial = await service.ensureProxy({
+			projectId: source.projectId,
+			assetId: source.assetId,
+		});
+		await service.waitForTerminal({
+			projectId: source.projectId,
+			jobId: initial.id,
+		});
+		const retries = await Promise.all([
+			service.retry({ projectId: source.projectId, jobId: initial.id }),
+			service.retry({ projectId: source.projectId, jobId: initial.id }),
+		]);
+		await Promise.all(
+			[...new Set(retries.map((job) => job.id))].map((jobId) =>
+				service.waitForTerminal({
+					projectId: source.projectId,
+					jobId,
+				}),
+			),
+		);
+
+		expect(retries[0]?.id).toBe(retries[1]?.id);
+		expect(transcodes).toBe(2);
+	});
+
 	test("recovers interrupted jobs and persists their terminal status", async () => {
 		const source = await fixture();
 		const jobsDirectory = path.join(
