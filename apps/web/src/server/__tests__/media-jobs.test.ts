@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
 import {
 	mkdir,
 	mkdtemp,
@@ -483,9 +484,10 @@ describe("native media proxy jobs", () => {
 		});
 	});
 
-	test("removes partial output when the disk write path fails", async () => {
+	test("keeps failed jobs non-terminal until partial output cleanup finishes", async () => {
 		const source = await fixture();
 		let temporaryOutputPath = "";
+		let partialOutputExistedWhenTerminal = false;
 		const service = new NativeMediaJobService({
 			projectsRoot: source.projectsRoot,
 			probeFile,
@@ -495,6 +497,22 @@ describe("native media proxy jobs", () => {
 				throw new Error("No space left on device");
 			},
 		});
+		type UpdateJobArguments = {
+			projectId: string;
+			jobId: string;
+			update: (job: NativeMediaJob) => void;
+		};
+		const internals = service as unknown as {
+			updateJob: (args: UpdateJobArguments) => NativeMediaJob;
+		};
+		const updateJob = internals.updateJob.bind(service);
+		internals.updateJob = (args) => {
+			const job = updateJob(args);
+			if (job.status === "failed") {
+				partialOutputExistedWhenTerminal = existsSync(temporaryOutputPath);
+			}
+			return job;
+		};
 		const queued = await service.ensureProxy({
 			projectId: source.projectId,
 			assetId: source.assetId,
@@ -503,11 +521,11 @@ describe("native media proxy jobs", () => {
 			projectId: source.projectId,
 			jobId: queued.id,
 		});
-
 		expect(terminal).toMatchObject({
 			status: "failed",
 			error: { message: "No space left on device" },
 		});
+		expect(partialOutputExistedWhenTerminal).toBe(false);
 		await expect(stat(temporaryOutputPath)).rejects.toMatchObject({
 			code: "ENOENT",
 		});
