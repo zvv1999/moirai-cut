@@ -3,6 +3,7 @@ import { useEditor } from "@/editor/use-editor";
 import { useCommittedRef } from "@/hooks/use-committed-ref";
 import { useShiftKey } from "@/hooks/use-shift-key";
 import { useEdgeAutoScroll } from "@/timeline/hooks/use-edge-auto-scroll";
+import { useTimelineStore } from "@/timeline/timeline-store";
 import { timelineTimeToPixels } from "@/timeline";
 import {
 	PlayheadController,
@@ -27,6 +28,7 @@ export function useTimelinePlayhead({
 }: UseTimelinePlayheadProps) {
 	const editor = useEditor();
 	const isShiftHeldRef = useShiftKey();
+	const snappingEnabled = useTimelineStore((state) => state.snappingEnabled);
 	// isScrubbing drives useEdgeAutoScroll — the controller sets it on the editor,
 	// so this reactive read naturally reflects whether scrubbing is active.
 	const isScrubbing = useEditor((e) => e.playback.getIsScrubbing());
@@ -34,6 +36,7 @@ export function useTimelinePlayhead({
 	const config: PlayheadConfig = {
 		zoomLevel,
 		duration: editor.timeline.getTotalDuration(),
+		snappingEnabled,
 		getActiveProjectFps: () => editor.project.getActive()?.settings.fps ?? null,
 		isShiftHeld: () => isShiftHeldRef.current,
 		getIsPlaying: () => editor.playback.getIsPlaying(),

@@ -95,8 +95,8 @@ describe("direct manipulation feedback", () => {
 		).toMatchObject({
 			kind: "move",
 			tone: "positive",
-			title: "Move 1 clip · 00:02.00",
-			detail: "Main Track · Snapped to clip start",
+			title: "移动 1 个素材 · 00:02.00",
+			detail: "Main Track · 吸附到素材起点",
 		});
 	});
 
@@ -115,7 +115,7 @@ describe("direct manipulation feedback", () => {
 			}),
 		).toMatchObject({
 			tone: "warning",
-			detail: "Creates 1 compatible track to avoid an overlap",
+			detail: "将新建 1 条兼容轨道以避免重叠",
 		});
 
 		expect(
@@ -128,8 +128,8 @@ describe("direct manipulation feedback", () => {
 			}),
 		).toMatchObject({
 			tone: "negative",
-			title: "Cannot place clip",
-			detail: "Release cancels this move",
+			title: "无法放置素材",
+			detail: "松开后取消本次移动",
 		});
 	});
 
@@ -188,9 +188,8 @@ describe("direct manipulation feedback", () => {
 		).toMatchObject({
 			kind: "trim",
 			tone: "warning",
-			title: "Ripple right edge · −00:01.00",
-			detail:
-				"Limited by source or neighbour · Ripple shifts 2 following clips",
+			title: "联动修剪右边缘 · −00:01.00",
+			detail: "受素材范围或相邻素材限制 · 联动移动后续 2 个素材",
 		});
 
 		expect(
@@ -204,7 +203,7 @@ describe("direct manipulation feedback", () => {
 			}),
 		).toMatchObject({
 			tone: "positive",
-			detail: "Snapped to playhead",
+			detail: "吸附到播放头",
 		});
 	});
 });

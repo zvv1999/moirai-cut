@@ -63,8 +63,10 @@ import {
 	formatNativeDeliveryResultSummary,
 	type DeliveryPresetName,
 } from "@/export/native-delivery-contract";
+import { ProjectInterchangePanel } from "@/components/editor/project-interchange-panel";
 
-type ExportTab = "setup" | "preflight" | "components" | "queue" | "history";
+type ExportTab =
+	"setup" | "preflight" | "components" | "interchange" | "queue" | "history";
 type DeliverySelection = "browser" | DeliveryPresetName;
 
 const EXPORT_PRESET_COPY: Record<
@@ -1046,7 +1048,8 @@ export function AdvancedExportPopover({
 			return;
 		}
 		const safeProject =
-			project.metadata.name.replace(/[<>:"/\\|?*]/g, "-").trim() || "moirai-cut";
+			project.metadata.name.replace(/[<>:"/\\|?*]/g, "-").trim() ||
+			"moirai-cut";
 		if (item.kind === "still") {
 			const result = await editor.renderer.saveSnapshot();
 			if (!result.success) toast.error(result.error ?? "保存快照失败");
@@ -1131,6 +1134,7 @@ export function AdvancedExportPopover({
 		{ id: "setup", label: "设置" },
 		{ id: "preflight", label: "预检" },
 		{ id: "components", label: "分项导出" },
+		{ id: "interchange", label: "工程互通" },
 		{ id: "queue", label: "队列" },
 		{ id: "history", label: "历史" },
 	];
@@ -1141,7 +1145,7 @@ export function AdvancedExportPopover({
 				<div>
 					<div className="text-sm font-semibold">导出工作台</div>
 					<div className="text-muted-foreground text-[11px]">
-						可编辑预设 · 预检 · 分项导出 · 队列 · 历史
+						可编辑预设 · 预检 · 分项导出 · 工程互通 · 队列 · 历史
 					</div>
 				</div>
 				<button
@@ -1153,7 +1157,7 @@ export function AdvancedExportPopover({
 				</button>
 			</div>
 
-			<div className="border-border grid grid-cols-5 gap-1 border-b p-2">
+			<div className="border-border grid grid-cols-6 gap-1 border-b p-2">
 				{tabs.map((item) => (
 					<button
 						key={item.id}
@@ -1772,6 +1776,8 @@ export function AdvancedExportPopover({
 					</div>
 				) : null}
 
+				{tab === "interchange" ? <ProjectInterchangePanel /> : null}
+
 				{tab === "queue" ? (
 					<div className="space-y-3">
 						<div className="flex items-center justify-between">
@@ -1930,50 +1936,52 @@ export function AdvancedExportPopover({
 				) : null}
 			</div>
 
-			<div className="border-border border-t p-3">
-				{activeExportUi ? (
-					<div className="space-y-2">
-						<div className="flex justify-between text-[10px]">
-							<span>{activeExportUi.step}</span>
-							<span>
-								{remainingSeconds === null
-									? "正在估算时间…"
-									: `约剩余 ${formatDuration(remainingSeconds)}`}
-							</span>
+			{tab !== "interchange" ? (
+				<div className="border-border border-t p-3">
+					{activeExportUi ? (
+						<div className="space-y-2">
+							<div className="flex justify-between text-[10px]">
+								<span>{activeExportUi.step}</span>
+								<span>
+									{remainingSeconds === null
+										? "正在估算时间…"
+										: `约剩余 ${formatDuration(remainingSeconds)}`}
+								</span>
+							</div>
+							<Progress value={activeExportUi.progress * 100} />
+							<Button
+								variant="outline"
+								className="w-full"
+								onClick={cancelCurrent}
+							>
+								取消当前导出
+							</Button>
 						</div>
-						<Progress value={activeExportUi.progress * 100} />
-						<Button
-							variant="outline"
-							className="w-full"
-							onClick={cancelCurrent}
-						>
-							取消当前导出
-						</Button>
-					</div>
-				) : (
-					<div className="grid grid-cols-3 gap-2">
-						<Button variant="outline" onClick={() => void runPreflight()}>
-							预检
-						</Button>
-						<Button variant="outline" onClick={addToQueue}>
-							加入队列
-						</Button>
-						<Button
-							onClick={() =>
-								void performVideoExport({
-									requestDraft: draft,
-									label: getPresetCopy(draft.presetId).name,
-								})
-							}
-							disabled={actionableValidationIssues.some(
-								(issue) => issue.severity === "error",
-							)}
-						>
-							立即导出
-						</Button>
-					</div>
-				)}
-			</div>
+					) : (
+						<div className="grid grid-cols-3 gap-2">
+							<Button variant="outline" onClick={() => void runPreflight()}>
+								预检
+							</Button>
+							<Button variant="outline" onClick={addToQueue}>
+								加入队列
+							</Button>
+							<Button
+								onClick={() =>
+									void performVideoExport({
+										requestDraft: draft,
+										label: getPresetCopy(draft.presetId).name,
+									})
+								}
+								disabled={actionableValidationIssues.some(
+									(issue) => issue.severity === "error",
+								)}
+							>
+								立即导出
+							</Button>
+						</div>
+					)}
+				</div>
+			) : null}
 		</div>
 	);
 }

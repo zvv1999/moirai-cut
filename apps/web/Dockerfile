@@ -1,13 +1,22 @@
 FROM oven/bun:1.3.14-alpine AS base
 
+FROM rust:1.93.1-alpine AS interchange-builder
+
+WORKDIR /app
+
+# Cargo resolves the complete workspace even when building one package. Keep
+# every workspace member manifest/source available while compiling the small
+# interchange CLI as an independent production artifact.
+COPY Cargo.toml Cargo.lock ./
+COPY rust/ rust/
+COPY apps/desktop/ apps/desktop/
+RUN cargo build --locked --release -p interchange --bin moirai-interchange
+
 FROM base AS builder
 
 WORKDIR /app
 
-ARG FREESOUND_CLIENT_ID
-ARG FREESOUND_API_KEY
 ARG NEXT_PUBLIC_MARBLE_API_URL=https://api.marblecms.com
-ARG MARBLE_WORKSPACE_KEY=build-placeholder
 
 COPY package.json package.json
 COPY bun.lock bun.lock
@@ -23,17 +32,10 @@ COPY apps/mcp/ apps/mcp/
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build-time env stubs to pass zod validation
-ENV DATABASE_URL="postgresql://opencut:opencut@localhost:5432/opencut"
-ENV BETTER_AUTH_SECRET="build-time-secret"
-ENV UPSTASH_REDIS_REST_URL="http://localhost:8079"
-ENV UPSTASH_REDIS_REST_TOKEN="example_token"
+# Public build configuration is safe to inline. Optional hosted-service
+# credentials stay unset here and must be provided only to the runtime.
 ENV NEXT_PUBLIC_SITE_URL="http://localhost:3000"
 ENV NEXT_PUBLIC_MARBLE_API_URL=$NEXT_PUBLIC_MARBLE_API_URL
-ENV MARBLE_WORKSPACE_KEY=$MARBLE_WORKSPACE_KEY
-
-ENV FREESOUND_CLIENT_ID=$FREESOUND_CLIENT_ID
-ENV FREESOUND_API_KEY=$FREESOUND_API_KEY
 
 WORKDIR /app/apps/web
 RUN bun run build
@@ -49,6 +51,7 @@ RUN apk add --no-cache curl ffmpeg
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+COPY --from=interchange-builder --chown=nextjs:nodejs /app/target/release/moirai-interchange /usr/local/bin/moirai-interchange
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
@@ -65,5 +68,6 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV MOIRAI_INTERCHANGE_BIN="/usr/local/bin/moirai-interchange"
 
 CMD ["bun", "apps/web/server.js"]

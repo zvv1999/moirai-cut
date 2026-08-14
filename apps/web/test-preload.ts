@@ -80,6 +80,23 @@ mock.module("opencut-wasm", () => ({
     const frame = remainder * 2 >= frameTicks ? floor + 1 : floor;
     return frame * frameTicks;
   },
+  // media_time.rs:87-90 — round to the nearest frame, then clamp to duration.
+  snappedSeekTime: ({
+    time,
+    duration,
+    rate,
+  }: {
+    time: number;
+    duration: number;
+    rate: { numerator: number; denominator: number };
+  }) => {
+    const frameTicks = ticksPerFrame(rate);
+    if (frameTicks === undefined) return undefined;
+    const floor = Math.floor(time / frameTicks);
+    const remainder = time - floor * frameTicks;
+    const frame = remainder * 2 >= frameTicks ? floor + 1 : floor;
+    return Math.min(Math.max(frame * frameTicks, 0), duration);
+  },
 
   // ── refuse rather than approximate ──────────────────────────────────────
   ...stub(
@@ -89,7 +106,6 @@ mock.module("opencut-wasm", () => ({
     "mediaTimeFromFrame",
     "mediaTimeToFrame",
     "lastFrameTime",
-    "snappedSeekTime",
     "formatTimecode",
     "parseTimecode",
     "guessTimecodeFormat",

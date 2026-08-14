@@ -27,6 +27,17 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Verify release version metadata
+        run: bun test tests/package-manifest.test.mjs
+
+      - name: Verify release version tag
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          expected_tag="v$(bun -e 'process.stdout.write((await Bun.file("package.json").json()).version)')"
+          test "$GITHUB_REF_NAME" = "$expected_tag"
+
       - name: Validate public tree
         run: bun run release:check
 

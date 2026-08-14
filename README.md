@@ -8,7 +8,7 @@
 
 ![Moirai Cut shared human-agent timeline](docs/brand/assets/moirai-cut-launch-landscape.png)
 
-> **v0.1.2 Public Preview** — Moirai Cut is ready for local editing and
+> **v0.4.0 Public Preview** — Moirai Cut is ready for local editing and
 > Agent-driven workflows. The project format and integration surface may still
 > evolve before 1.0, with migration notes published in the changelog.
 
@@ -238,6 +238,7 @@ docs/           使用、架构、隐私与 Agent 工作规范
 进一步阅读：
 
 - [智能剪辑双向工作流与 Agent 操作规范](docs/agent-smart-edit.md)
+- [FCPXML 1.10 与剪映 / CapCut 工程互通](docs/interchange.md)
 - [品牌资产与使用规范](docs/brand/README.md)
 - [隐私与网络出站说明](docs/PRIVACY_AND_NETWORK.md)
 - [系统要求、编解码与硬件限制](docs/SYSTEM_REQUIREMENTS.md)

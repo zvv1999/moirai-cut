@@ -21,7 +21,7 @@ masks = { version = "0.1.0", path = "../crates/masks" }
 num-traits = "0.2.19"
 serde = { version = "1.0.228", features = ["derive"] }
 serde-wasm-bindgen = "0.6.5"
-time = { version = "0.1.0", path = "../crates/time", features = ["wasm"] }
+moirai-time = { version = "0.1.0", path = "../crates/time", features = ["wasm"] }
 wasm-bindgen = "0.2.116"
 wasm-bindgen-futures = "0.4.66"
 web-sys = { version = "0.3.93", features = ["OffscreenCanvas", "HtmlCanvasElement", "CanvasRenderingContext2d", "Document", "Window", "Performance"] }

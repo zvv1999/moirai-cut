@@ -40,7 +40,11 @@ cargo run -p moirai-cut-desktop
 
 **Linux:** supports apt (Debian/Ubuntu/Mint), dnf (Fedora/RHEL), and pacman (Arch).
 
-**macOS:** installs Xcode Command Line Tools if missing.
+**macOS:** requires the full Xcode application, not only Command Line Tools,
+because GPUI compiles Metal shaders during the Rust build. Launch Xcode once
+after installation, then select it with
+`sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer` if
+`xcrun --find metal` cannot locate the compiler.
 
 **Windows:** the setup script checks for Visual Studio Build Tools. If missing, it prints the install link.
 

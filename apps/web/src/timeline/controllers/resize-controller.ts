@@ -26,8 +26,10 @@ import {
 import { getElementEdgeSnapPoints } from "@/timeline/element-snap-source";
 import { getPlayheadSnapPoints } from "@/timeline/playhead-snap-source";
 import { getAnimationKeyframeSnapPointsForTimeline } from "@/timeline/animation-snap-points";
+import { getBookmarkSnapPoints } from "@/timeline/bookmarks/index";
 import {
 	isRetimableElement,
+	type Bookmark,
 	type SceneTracks,
 	type TimelineElement,
 	type TimelineTrack,
@@ -71,6 +73,7 @@ export interface ResizeConfig {
 	snappingEnabled: boolean;
 	isShiftHeld: () => boolean;
 	getSceneTracks: () => SceneTracks;
+	getSceneBookmarks: () => Bookmark[];
 	getCurrentPlayheadTime: () => MediaTime;
 	getActiveProjectFps: () => FrameRate | null;
 	getTrimMode: () => PrecisionTrimMode;
@@ -166,6 +169,20 @@ export function buildResizeMembers({
 			},
 		];
 	});
+}
+
+function retainAppliedResizeSnapPoint({
+	snapPoint,
+	candidateDeltaTime,
+	appliedDeltaTime,
+}: {
+	snapPoint: SnapPoint | null;
+	candidateDeltaTime: MediaTime;
+	appliedDeltaTime: MediaTime;
+}): SnapPoint | null {
+	return snapPoint !== null && candidateDeltaTime === appliedDeltaTime
+		? snapPoint
+		: null;
 }
 
 function hasResizeChanges({
@@ -341,6 +358,11 @@ export class ResizeController {
 		const snapPoints = buildTimelineSnapPoints({
 			sources: [
 				() => getElementEdgeSnapPoints({ tracks, excludeElementIds }),
+				() =>
+					getBookmarkSnapPoints({
+						bookmarks: this.config.getSceneBookmarks(),
+						excludeClipElementIds: excludeElementIds,
+					}),
 				() => getPlayheadSnapPoints({ playheadTime }),
 				() =>
 					getAnimationKeyframeSnapPointsForTimeline({
@@ -408,6 +430,15 @@ export class ResizeController {
 						fps: session.fps,
 					})
 				: this.buildPrecisionResult({ session, deltaTime });
+		const appliedSnapPoint = retainAppliedResizeSnapPoint({
+			snapPoint: session.snapPoint,
+			candidateDeltaTime: deltaTime,
+			appliedDeltaTime: result.deltaTime,
+		});
+		if (appliedSnapPoint !== session.snapPoint) {
+			this.config.onSnapPointChange?.(appliedSnapPoint);
+		}
+		session.snapPoint = appliedSnapPoint;
 
 		session.result = result;
 		session.requestedDeltaTime = rawDeltaTime;

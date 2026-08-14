@@ -4,6 +4,60 @@ All notable Moirai Cut changes are documented here. The repository is in develop
 preview and follows semantic versioning for public release artifacts; project
 schema and Agent surfaces may still change with migration notes.
 
+## 0.4.0 — 2026-08-14
+
+Open-timeline handoff update for the public preview.
+
+### Added
+
+- A Rust-owned FCPXML 1.10 adapter that preserves supported timeline structure
+  and emits a structured compatibility, omission and media-relink report.
+- A revision-bound Web export panel and HTTP API, plus an MCP
+  `export_fcpxml` tool that reuses the same Rust conversion path.
+- A packaged `moirai-interchange` CLI in the production container and an Ubuntu
+  HTTP smoke test that generates and downloads both handoff artifacts.
+
+### Changed
+
+- FCPXML publication now uses content-fingerprinted immutable names and, when a
+  scene is explicitly selected, a scene identity suffix; identical retries are
+  idempotent and changed output never overwrites an older XML/report pair.
+- Project saves, deletes and interchange exports share the same per-project
+  single-process lock, with revision revalidation immediately before publishing.
+- Release metadata, the MCP handshake, public docs and tag verification are now
+  locked to and automatically checked against `0.4.0`.
+
+### Fixed
+
+- Preserved Moirai's overlay z-order when mapping visible layers to FCPXML lanes.
+- Removed false loss warnings for built-in default parameters and added explicit
+  reporting for muted audio and omitted group/link relationships.
+- Stopped inventing audio channel and sample-rate metadata that the media index
+  does not know.
+- Rejected compound clips and transitions instead of producing a successful but
+  content-changing handoff; split compounds and remove transitions before export.
+- Rejected invalid XML 1.0 characters, malformed native-runtime envelopes, stale
+  saves and damaged project JSON with stable error codes.
+- Wrapped projects in the standard FCPXML `library` hierarchy required by the
+  locally verified Jianying 11.1.0 importer, and excluded hidden content from
+  timing, media relinking, audio/solo semantics and sequence-length calculation.
+- Made the timeline snapping switch consistent for playhead scrubbing, clip moves
+  and trims; clip edits now snap to bookmarks, constrained edits clear stale snap
+  guides, and drag previews reflect the timing that will actually be committed.
+
+### Compatibility and migration
+
+- Existing Moirai Cut project documents require no schema migration.
+- This is a one-way FCPXML handoff, not a Jianying/CapCut private draft and not a
+  lossless round trip. Text, effects, masks, animation, retime and other unsupported
+  semantics remain listed in the sidecar report.
+- A macOS Jianying 11.1.0 short-project import verified the main cuts and gap,
+  overlay order, independent audio and media relinking; other versions remain a
+  version-specific compatibility target rather than a blanket support promise.
+- The export service requires a local or single-machine server with project-file
+  access and the native interchange runtime; pure browser and serverless targets
+  cannot run it.
+
 ## 0.1.2 — 2026-08-03
 
 Agent interoperability and motion-design update for the developer preview.

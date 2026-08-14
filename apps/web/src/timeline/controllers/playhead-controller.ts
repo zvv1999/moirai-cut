@@ -41,6 +41,7 @@ type Session = { kind: "idle" } | ScrubSession;
 export interface PlayheadConfig {
 	zoomLevel: number;
 	duration: MediaTime;
+	snappingEnabled: boolean;
 	getActiveProjectFps: () => FrameRate | null;
 	isShiftHeld: () => boolean;
 	getIsPlaying: () => boolean;
@@ -252,7 +253,11 @@ export class PlayheadController {
 		const frameTime = snapSeekMediaTime({ time: rawTime, duration, fps });
 
 		const time = (() => {
-			if (!isElementSnappingEnabled || this.config.isShiftHeld())
+			if (
+				!isElementSnappingEnabled ||
+				!this.config.snappingEnabled ||
+				this.config.isShiftHeld()
+			)
 				return frameTime;
 
 			const snapPoints = buildTimelineSnapPoints({

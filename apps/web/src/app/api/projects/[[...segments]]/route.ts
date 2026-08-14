@@ -20,6 +20,7 @@ import {
 	summarizeProjectRevision,
 } from "@/project/revision-diff";
 import { prepareRevisionDuplicate } from "@/project/version-duplicate";
+import { withProjectLock } from "@/server/project-lock";
 
 /**
  * Project files on disk.
@@ -89,28 +90,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-/**
- * One write at a time per project.
- *
- * The compare-and-swap reads the current revision and writes several awaits
- * later. Without serialisation two concurrent PUTs both read 5, both satisfy
- * `if-match: 5`, both compute 6, and the second rename wins — the lost update
- * the CAS exists to prevent. Reachable in normal use: the editor's autosave and
- * an agent's edit_project can easily overlap.
- */
-const writeQueues = new Map<string, Promise<unknown>>();
-
-function withProjectLock<T>(id: string, work: () => Promise<T>): Promise<T> {
-	const previous = writeQueues.get(id) ?? Promise.resolve();
-	const next = previous.then(work, work);
-	// Keep the chain alive but never let a rejection poison the next writer.
-	writeQueues.set(
-		id,
-		next.catch(() => undefined),
-	);
-	return next;
-}
-
+// withProjectLock serializes this route's compare-and-swap writes with derived
+// artifact publication. Without one shared queue, autosave can advance the
+// revision between an exporter's last check and its final rename.
 async function pruneRevisionHistory({
 	revDir,
 	limit = 50,
@@ -625,11 +607,15 @@ export async function DELETE(_request: Request, { params }: Context) {
 	try {
 		if (id === null) {
 			for (const existing of await listProjectIds()) {
-				await rm(projectDir(existing), { recursive: true, force: true });
+				await withProjectLock(existing, () =>
+					rm(projectDir(existing), { recursive: true, force: true }),
+				);
 			}
 			return NextResponse.json({ ok: true });
 		}
-		await rm(projectDir(id), { recursive: true, force: true });
+		await withProjectLock(id, () =>
+			rm(projectDir(id), { recursive: true, force: true }),
+		);
 		return NextResponse.json({ ok: true });
 	} catch (error) {
 		return failed(error);

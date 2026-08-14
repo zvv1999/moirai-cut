@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -23,6 +24,7 @@ import { importMedia, listMedia, mediaIndexOf } from "./media-import.mjs";
 import { analyzeAudio } from "./audio-analyze.mjs";
 import { inspectMedia, inspectMediaScenes } from "./video-inspect.mjs";
 import { lintDocument } from "./cut-lint.mjs";
+import { exportFcpxml } from "./interchange.mjs";
 import {
 	buildMediaCatalog,
 	planTimelineRangeInspection,
@@ -30,6 +32,13 @@ import {
 	saveMediaAnalysis,
 	writeMediaCatalog,
 } from "./media-analysis.mjs";
+
+const packageManifest = JSON.parse(
+	readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+);
+if (typeof packageManifest.version !== "string") {
+	throw new Error("apps/mcp/package.json must declare a string version");
+}
 
 /**
  * MCP server for a Moirai Cut editor tab. Legacy protocol identifiers remain
@@ -220,7 +229,7 @@ async function bridge({ method, args = [], projectId: id, target }) {
 
 export function createOpenCutMcpServer() {
 	const server = new McpServer(
-		{ name: "opencut", version: "0.1.1" },
+		{ name: "opencut", version: packageManifest.version },
 		{
 			instructions: [
 				"Two ways in.",
@@ -229,6 +238,7 @@ export function createOpenCutMcpServer() {
 				"VISION workflow — inspect_media_scenes finds source-video shot changes; inspect_timeline_range maps a selected timeline interval back to source frames and returns contact sheets. After looking at those images, persist observations with save_media_analysis so later turns can read_media_catalog instead of looking again.",
 				"TAB tools — status, get_state, get_context, reveal_context, apply_operation, render_frames, undo, redo — drive a live editor tab over CDP, for the things only a running editor knows: human-selected context, rendered pixels and undo history.",
 				"Both refuse a stale baseRevision rather than merging it, so always read first and pass the revision you read.",
+				"PROJECT HANDOFF — export_fcpxml creates a revision-bound FCPXML 1.10 file plus an interchange report for editable handoff to Final Cut and the experimental Jianying desktop import path. Always inspect report.issues; XML validity does not imply lossless transfer.",
 				"Read the result. noEffect:true means the operation ran but changed nothing, so the edit did NOT happen.",
 			].join(" "),
 		},
@@ -624,6 +634,54 @@ export function createOpenCutMcpServer() {
 				return asError({
 					code: error.code ?? "driver_error",
 					message: error.message,
+				});
+			}
+		},
+	);
+
+	server.registerTool(
+		"export_fcpxml",
+		{
+			description:
+				"Export one saved Moirai Cut scene as FCPXML 1.10 plus a structured loss/relink report. This is an open NLE interchange artifact and an EXPERIMENTAL one-way handoff for Jianying desktop, not a CapCut project file. Read the project first and pass its exact revision; generation fails if that revision changes before publication.",
+			inputSchema: {
+				projectId: z.string().min(1).describe("From list_projects."),
+				baseRevision: z
+					.number()
+					.int()
+					.nonnegative()
+					.describe("The exact revision from read_project."),
+				sceneId: z
+					.string()
+					.min(1)
+					.optional()
+					.describe("Scene to export; omit for the active/main scene."),
+				name: z
+					.string()
+					.min(1)
+					.max(110)
+					.optional()
+					.describe("Safe display stem for the generated files."),
+			},
+			annotations: mutating,
+		},
+		async ({ projectId: id, baseRevision, sceneId, name }) => {
+			try {
+				return asText(
+					await exportFcpxml({
+						projectId: id,
+						baseRevision,
+						sceneId,
+						name,
+					}),
+				);
+			} catch (error) {
+				return asError({
+					code: error.code ?? "interchange_failed",
+					message: error.message,
+					...(typeof error.revision === "number"
+						? { revision: error.revision }
+						: {}),
 				});
 			}
 		},
