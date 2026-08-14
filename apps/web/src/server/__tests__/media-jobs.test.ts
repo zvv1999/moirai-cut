@@ -1102,6 +1102,9 @@ describe("native media proxy jobs", () => {
 		expect(persistedJobs.map((job) => job.id).sort()).toEqual(
 			queued.map((job) => job?.id ?? "").sort(),
 		);
+		expect(persistedJobs.every((job) => job.status === "succeeded")).toBe(
+			true,
+		);
 
 		const mediaIndex = JSON.parse(await readFile(indexPath, "utf8"));
 		expect(mediaIndex[source.assetId].proxy).toBeDefined();
