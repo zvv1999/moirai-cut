@@ -41,6 +41,9 @@ Open-timeline handoff update for the public preview.
 - Wrapped projects in the standard FCPXML `library` hierarchy required by the
   locally verified Jianying 11.1.0 importer, and excluded hidden content from
   timing, media relinking, audio/solo semantics and sequence-length calculation.
+- Made the timeline snapping switch consistent for playhead scrubbing, clip moves
+  and trims; clip edits now snap to bookmarks, constrained edits clear stale snap
+  guides, and drag previews reflect the timing that will actually be committed.
 
 ### Compatibility and migration
 

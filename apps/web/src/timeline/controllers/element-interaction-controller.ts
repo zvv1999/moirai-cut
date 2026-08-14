@@ -26,6 +26,7 @@ import type {
 	DropTarget,
 	ElementRef,
 	ElementDragView,
+	Bookmark,
 	SceneTracks,
 	TimelineElement,
 	TimelineTrack,
@@ -50,6 +51,7 @@ export interface InputAdapter {
 
 export interface SceneReader {
 	getTracks: () => SceneTracks;
+	getBookmarks: () => Bookmark[];
 	getActiveFps: () => FrameRate | null;
 }
 
@@ -168,6 +170,30 @@ function movedPastDragThreshold({
 		Math.abs(current.x - origin.x) > TIMELINE_DRAG_THRESHOLD_PX ||
 		Math.abs(current.y - origin.y) > TIMELINE_DRAG_THRESHOLD_PX
 	);
+}
+
+export function resolveAppliedGroupMovePreview({
+	group,
+	result,
+	candidateAnchorStartTime,
+	snapPoint,
+}: {
+	group: MoveGroup;
+	result: GroupMoveResult | null;
+	candidateAnchorStartTime: MediaTime;
+	snapPoint: SnapPoint | null;
+}): { anchorStartTime: MediaTime; snapPoint: SnapPoint | null } {
+	const appliedAnchorStartTime = result?.moves.find(
+		(move) => move.elementId === group.anchor.elementId,
+	)?.newStartTime;
+	if (appliedAnchorStartTime === undefined) {
+		return { anchorStartTime: candidateAnchorStartTime, snapPoint: null };
+	}
+	return {
+		anchorStartTime: appliedAnchorStartTime,
+		snapPoint:
+			appliedAnchorStartTime === candidateAnchorStartTime ? snapPoint : null,
+	};
 }
 
 function frameSnappedMouseTime({
@@ -479,6 +505,7 @@ export class ElementInteractionController {
 			group,
 			anchorStartTime: frameSnappedTime,
 			tracks: scene.getTracks(),
+			bookmarks: scene.getBookmarks(),
 			playheadTime: playback.getCurrentTime(),
 			zoomLevel: viewport.getZoomLevel(),
 		});
@@ -530,8 +557,16 @@ export class ElementInteractionController {
 					reservedNewTrackIds: drag.reservedNewTrackIds,
 				})
 			: null;
+		const appliedPreview = resolveAppliedGroupMovePreview({
+			group: drag.moveGroup,
+			result: nextGroupMoveResult,
+			candidateAnchorStartTime: snappedTime,
+			snapPoint: drag.snapPoint,
+		});
 
 		drag.groupMoveResult = nextGroupMoveResult;
+		drag.currentTime = appliedPreview.anchorStartTime;
+		drag.snapPoint = appliedPreview.snapPoint;
 		drag.dropTarget =
 			anchorDropTarget && (anchorDropTarget.isNewTrack || !nextGroupMoveResult)
 				? { ...anchorDropTarget, isNewTrack: true }
@@ -642,7 +677,7 @@ export class ElementInteractionController {
 			snappedTime,
 		});
 
-		this.deps.snap.onChange?.(snapPoint);
+		this.deps.snap.onChange?.(drag.snapPoint);
 		this.notify();
 	}
 
@@ -687,7 +722,7 @@ export class ElementInteractionController {
 			snappedTime,
 		});
 
-		this.deps.snap.onChange?.(snapPoint);
+		this.deps.snap.onChange?.(drag.snapPoint);
 		this.notify();
 	}
 

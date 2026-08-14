@@ -60,19 +60,19 @@ export function buildMoveFeedback({
 		return {
 			kind: "move",
 			tone: "negative",
-			title: `Cannot place ${elementCount === 1 ? "clip" : "clips"}`,
-			detail: "Release cancels this move",
+			title: "无法放置素材",
+			detail: "松开后取消本次移动",
 		};
 	}
 
-	const title = `Move ${elementCount} ${elementCount === 1 ? "clip" : "clips"} · ${formatMediaTime(anchorTime)}`;
+	const title = `移动 ${elementCount} 个素材 · ${formatMediaTime(anchorTime)}`;
 	if (result.createTracks.length > 0) {
 		const count = result.createTracks.length;
 		return {
 			kind: "move",
 			tone: "warning",
 			title,
-			detail: `Creates ${count} compatible ${count === 1 ? "track" : "tracks"} to avoid an overlap`,
+			detail: `将新建 ${count} 条兼容轨道以避免重叠`,
 		};
 	}
 
@@ -82,14 +82,14 @@ export function buildMoveFeedback({
 	const targetNames = [
 		...new Set(
 			result.moves.map(
-				(move) => tracksById.get(move.targetTrackId)?.name ?? "Unknown track",
+				(move) => tracksById.get(move.targetTrackId)?.name ?? "未知轨道",
 			),
 		),
 	];
 	const targetLabel =
 		targetNames.length === 1
 			? targetNames[0]
-			: `${targetNames.length} destination tracks`;
+			: `${targetNames.length} 条目标轨道`;
 	const snapLabel = snapPoint ? ` · ${describeSnapPoint(snapPoint)}` : "";
 	return {
 		kind: "move",
@@ -118,27 +118,29 @@ export function buildResizeFeedback({
 		return {
 			kind: "trim",
 			tone: "negative",
-			title: "Cannot trim selection",
-			detail: "Release keeps the current timing",
+			title: "无法修剪所选素材",
+			detail: "松开后保留当前时间",
 		};
 	}
 
-	const modeLabel = `${mode[0].toUpperCase()}${mode.slice(1)}`;
-	const title = `${modeLabel} ${side} edge · ${formatSignedMediaTime(result.deltaTime)}`;
+	const modeLabel: Record<PrecisionTrimMode, string> = {
+		standard: "普通修剪",
+		ripple: "联动修剪",
+		roll: "滚动编辑",
+		slip: "滑移编辑",
+		slide: "滑动编辑",
+	};
+	const title = `${modeLabel[mode]}${side === "left" ? "左" : "右"}边缘 · ${formatSignedMediaTime(result.deltaTime)}`;
 	const details: string[] = [];
 	const constrained =
 		result.deltaTime !== requestedDeltaTime && snapPoint === null;
-	if (constrained) details.push("Limited by source or neighbour");
+	if (constrained) details.push("受素材范围或相邻素材限制");
 	if (snapPoint) details.push(describeSnapPoint(snapPoint));
 	if (mode === "ripple" && rippleShiftedElementCount > 0) {
-		details.push(
-			`Ripple shifts ${rippleShiftedElementCount} following ${
-				rippleShiftedElementCount === 1 ? "clip" : "clips"
-			}`,
-		);
+		details.push(`联动移动后续 ${rippleShiftedElementCount} 个素材`);
 	}
 	if (details.length === 0) {
-		details.push(`${result.updates.length} clip previewed`);
+		details.push(`已预览 ${result.updates.length} 个素材`);
 	}
 
 	return {
@@ -237,15 +239,15 @@ function orderedTracks(tracks: SceneTracks): TimelineTrack[] {
 function describeSnapPoint(snapPoint: SnapPoint): string {
 	switch (snapPoint.type) {
 		case "element-start":
-			return "Snapped to clip start";
+			return "吸附到素材起点";
 		case "element-end":
-			return "Snapped to clip end";
+			return "吸附到素材终点";
 		case "playhead":
-			return "Snapped to playhead";
+			return "吸附到播放头";
 		case "bookmark":
-			return "Snapped to marker";
+			return "吸附到标记点";
 		case "keyframe":
-			return "Snapped to keyframe";
+			return "吸附到关键帧";
 	}
 }
 

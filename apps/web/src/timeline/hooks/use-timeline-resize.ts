@@ -41,6 +41,7 @@ export function useTimelineResize({
 		snappingEnabled,
 		isShiftHeld: () => isShiftHeldRef.current,
 		getSceneTracks: () => editor.scenes.getActiveScene().tracks,
+		getSceneBookmarks: () => editor.scenes.getActiveScene().bookmarks,
 		getCurrentPlayheadTime: () => editor.playback.getCurrentTime(),
 		getActiveProjectFps: () => editor.project.getActive()?.settings.fps ?? null,
 		getTrimMode: () =>
