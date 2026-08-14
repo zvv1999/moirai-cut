@@ -19,6 +19,16 @@ const TERMINAL_STATUSES = new Set<NativeMediaJobStatus>([
 	"cancelled",
 ]);
 
+type MediaJobPersistenceGlobals = typeof globalThis & {
+	__moiraiCutMediaJobPersists?: Map<string, Promise<void>>;
+};
+
+function persistenceQueues(): Map<string, Promise<void>> {
+	const globals = globalThis as MediaJobPersistenceGlobals;
+	globals.__moiraiCutMediaJobPersists ??= new Map();
+	return globals.__moiraiCutMediaJobPersists;
+}
+
 export const PROXY_PROFILE_NAMES = ["draft", "standard", "high"] as const;
 export type ProxyProfileName = (typeof PROXY_PROFILE_NAMES)[number];
 
@@ -167,6 +177,27 @@ function isNativeMediaJob(value: unknown): value is NativeMediaJob {
 	);
 }
 
+async function readPersistedJobs({
+	filePath,
+}: {
+	filePath: string;
+}): Promise<NativeMediaJob[]> {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(await readFile(filePath, "utf8"));
+	} catch (error) {
+		if (
+			error instanceof Error &&
+			"code" in error &&
+			error.code === "ENOENT"
+		) {
+			return [];
+		}
+		throw error;
+	}
+	return Array.isArray(parsed) ? parsed.filter(isNativeMediaJob) : [];
+}
+
 async function writeJsonAtomic({
 	filePath,
 	value,
@@ -190,6 +221,42 @@ async function writeJsonAtomic({
 	} catch (error) {
 		await rm(temporaryPath, { force: true }).catch(() => undefined);
 		throw error;
+	}
+}
+
+async function persistJobUpdates({
+	filePath,
+	updates,
+}: {
+	filePath: string;
+	updates: NativeMediaJob[];
+}): Promise<void> {
+	const key = path.resolve(filePath);
+	const queues = persistenceQueues();
+	const previous = queues.get(key) ?? Promise.resolve();
+	const current = previous.then(async () => {
+		const persistedJobs = new Map(
+			(await readPersistedJobs({ filePath })).map((job) => [job.id, job]),
+		);
+		for (const job of updates) {
+			persistedJobs.set(job.id, job);
+		}
+		await writeJsonAtomic({
+			filePath,
+			value: [...persistedJobs.values()],
+		});
+	});
+	const queued = current.then(
+		() => undefined,
+		() => undefined,
+	);
+	queues.set(key, queued);
+	try {
+		await current;
+	} finally {
+		if (queues.get(key) === queued) {
+			queues.delete(key);
+		}
 	}
 }
 
@@ -442,7 +509,6 @@ export class NativeMediaJobService {
 		string,
 		Promise<Map<string, NativeMediaJob>>
 	>();
-	private readonly persistingProjects = new Map<string, Promise<void>>();
 	private readonly controllers = new Map<string, AbortController>();
 	private readonly pendingExecutions: QueuedProxyExecution[] = [];
 	private readonly activeAssetExecutions = new Set<string>();
@@ -506,7 +572,7 @@ export class NativeMediaJobService {
 		projectId: string;
 	}): Promise<Map<string, NativeMediaJob>> {
 		const projectJobs = new Map<string, NativeMediaJob>();
-		let recoveredInterruptedJob = false;
+		const recoveredInterruptedJobIds: string[] = [];
 		try {
 			const parsed: unknown = JSON.parse(
 				await readFile(
@@ -520,7 +586,7 @@ export class NativeMediaJobService {
 						const job = candidate;
 						if (job.status === "queued" || job.status === "running") {
 							job.status = "failed";
-							recoveredInterruptedJob = true;
+							recoveredInterruptedJobIds.push(job.id);
 							job.error = {
 								code: "interrupted",
 								message: "The application restarted before this job completed",
@@ -542,8 +608,8 @@ export class NativeMediaJobService {
 		}
 		this.jobs.set(projectId, projectJobs);
 		this.loadedProjects.add(projectId);
-		if (recoveredInterruptedJob) {
-			await this.persist({ projectId });
+		if (recoveredInterruptedJobIds.length > 0) {
+			await this.persist({ projectId, jobIds: recoveredInterruptedJobIds });
 		}
 		return projectJobs;
 	}
@@ -592,29 +658,25 @@ export class NativeMediaJobService {
 		}
 	}
 
-	private async persist({ projectId }: { projectId: string }): Promise<void> {
-		const previous =
-			this.persistingProjects.get(projectId) ?? Promise.resolve();
-		const current = previous
-			.catch(() => undefined)
-			.then(async () => {
-				const projectJobs = this.jobs.get(projectId) ?? new Map();
-				await writeJsonAtomic({
-					filePath: jobsPath({
-						projectsRoot: this.projectsRoot,
-						projectId,
-					}),
-					value: [...projectJobs.values()],
-				});
-			});
-		this.persistingProjects.set(projectId, current);
-		try {
-			await current;
-		} finally {
-			if (this.persistingProjects.get(projectId) === current) {
-				this.persistingProjects.delete(projectId);
+	private async persist({
+		projectId,
+		jobIds,
+	}: {
+		projectId: string;
+		jobIds: string[];
+	}): Promise<void> {
+		const projectJobs = this.jobs.get(projectId) ?? new Map();
+		const updates = [...new Set(jobIds)].map((jobId) => {
+			const job = projectJobs.get(jobId);
+			if (!job) {
+				throw new Error(`No media job ${jobId}`);
 			}
-		}
+			return cloneJob(job);
+		});
+		await persistJobUpdates({
+			filePath: jobsPath({ projectsRoot: this.projectsRoot, projectId }),
+			updates,
+		});
 	}
 
 	private updateJob({
@@ -764,7 +826,7 @@ export class NativeMediaJobService {
 			updatedAt: now,
 		};
 		projectJobs.set(job.id, job);
-		await this.persist({ projectId });
+		await this.persist({ projectId, jobIds: [job.id] });
 		const controller = new AbortController();
 		this.controllers.set(
 			this.controllerKey({ projectId, jobId: job.id }),
@@ -819,7 +881,7 @@ export class NativeMediaJobService {
 					job.startedAt = new Date().toISOString();
 				},
 			});
-			await this.persist({ projectId });
+			await this.persist({ projectId, jobIds: [jobId] });
 			const args = buildProxyFfmpegArgs({
 				inputPath,
 				outputPath: temporaryOutputPath,
@@ -850,7 +912,7 @@ export class NativeMediaJobService {
 							);
 						},
 					});
-					void this.persist({ projectId });
+					void this.persist({ projectId, jobIds: [jobId] });
 				},
 			});
 			if (controller.signal.aborted) {
@@ -973,7 +1035,7 @@ export class NativeMediaJobService {
 				});
 			}
 			try {
-				await this.persist({ projectId });
+				await this.persist({ projectId, jobIds: [jobId] });
 			} finally {
 				this.controllers.delete(this.controllerKey({ projectId, jobId }));
 			}
@@ -1040,7 +1102,7 @@ export class NativeMediaJobService {
 					candidate.finishedAt = new Date().toISOString();
 				},
 			});
-			await this.persist({ projectId });
+			await this.persist({ projectId, jobIds: [jobId] });
 			return cloneJob(cancelled);
 		}
 		if (controller) {
@@ -1059,7 +1121,7 @@ export class NativeMediaJobService {
 				candidate.finishedAt = new Date().toISOString();
 			},
 		});
-		await this.persist({ projectId });
+		await this.persist({ projectId, jobIds: [jobId] });
 		return cloneJob(cancelled);
 	}
 
