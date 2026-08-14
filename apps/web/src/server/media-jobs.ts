@@ -70,6 +70,8 @@ export type NativeTranscodeRunner = ({
 
 interface QueuedProxyExecution {
 	jobId: string;
+	projectId: string;
+	assetId: string;
 	probe: ProjectMediaProbeResult;
 	controller: AbortController;
 }
@@ -468,6 +470,7 @@ export class NativeMediaJobService {
 	private readonly mutatingMediaIndexes = new Map<string, Promise<void>>();
 	private readonly controllers = new Map<string, AbortController>();
 	private readonly pendingExecutions: QueuedProxyExecution[] = [];
+	private readonly activeAssetExecutions = new Set<string>();
 	private activeExecutions = 0;
 
 	constructor({
@@ -575,18 +578,40 @@ export class NativeMediaJobService {
 		this.drainProxyQueue();
 	}
 
+	private assetExecutionKey({
+		projectId,
+		assetId,
+	}: {
+		projectId: string;
+		assetId: string;
+	}): string {
+		return `${projectId}:${assetId}`;
+	}
+
 	private drainProxyQueue(): void {
 		while (
 			this.activeExecutions < this.maxConcurrent &&
 			this.pendingExecutions.length > 0
 		) {
-			const execution = this.pendingExecutions.shift();
+			const executionIndex = this.pendingExecutions.findIndex(
+				({ projectId, assetId }) =>
+					!this.activeAssetExecutions.has(
+						this.assetExecutionKey({ projectId, assetId }),
+					),
+			);
+			if (executionIndex < 0) {
+				return;
+			}
+			const [execution] = this.pendingExecutions.splice(executionIndex, 1);
 			if (!execution) {
 				return;
 			}
+			const assetKey = this.assetExecutionKey(execution);
 			this.activeExecutions += 1;
+			this.activeAssetExecutions.add(assetKey);
 			void this.executeProxy(execution).finally(() => {
 				this.activeExecutions -= 1;
+				this.activeAssetExecutions.delete(assetKey);
 				this.drainProxyQueue();
 			});
 		}
@@ -663,6 +688,38 @@ export class NativeMediaJobService {
 		return job;
 	}
 
+	private async proxySlotMatchesJob({
+		projectId,
+		assetId,
+		job,
+	}: {
+		projectId: string;
+		assetId: string;
+		job: NativeMediaJob;
+	}): Promise<boolean> {
+		if (!job.result) {
+			return false;
+		}
+		const outputExists = await stat(job.result.outputPath)
+			.then(() => true)
+			.catch(() => false);
+		if (!outputExists) {
+			return false;
+		}
+		const directory = mediaDirectory({
+			projectsRoot: this.projectsRoot,
+			projectId,
+		});
+		const mediaIndex = await readMediaIndex({ directory }).catch(() => null);
+		const proxy = mediaIndex?.[assetId]?.proxy;
+		return (
+			isRecord(proxy) &&
+			proxy.storageId === job.result.proxy.storageId &&
+			proxy.profile === job.result.proxy.profile &&
+			proxy.sourceSha256 === job.result.proxy.sourceSha256
+		);
+	}
+
 	async ensureProxy({
 		projectId,
 		assetId,
@@ -703,7 +760,15 @@ export class NativeMediaJobService {
 		if (active) {
 			return { ...cloneJob(active), cacheHit: true };
 		}
-		if (!force) {
+		const findActiveForAsset = () =>
+			[...projectJobs.values()]
+				.reverse()
+				.find(
+					(job) =>
+						job.assetId === assetId &&
+						(job.status === "queued" || job.status === "running"),
+				);
+		if (!force && !findActiveForAsset()) {
 			const reusable = [...projectJobs.values()]
 				.reverse()
 				.find(
@@ -713,17 +778,17 @@ export class NativeMediaJobService {
 						job.status === "succeeded",
 				);
 			if (reusable) {
-				if (
-					reusable.result &&
-					(await stat(reusable.result.outputPath)
-						.then(() => true)
-						.catch(() => false))
-				) {
-					return { ...cloneJob(reusable), cacheHit: true };
-				}
+				const slotMatches = await this.proxySlotMatchesJob({
+					projectId,
+					assetId,
+					job: reusable,
+				});
 				const replacement = findActive();
 				if (replacement) {
 					return { ...cloneJob(replacement), cacheHit: true };
+				}
+				if (slotMatches && !findActiveForAsset()) {
+					return { ...cloneJob(reusable), cacheHit: true };
 				}
 			}
 		}
@@ -749,7 +814,13 @@ export class NativeMediaJobService {
 			this.controllerKey({ projectId, jobId: job.id }),
 			controller,
 		);
-		this.enqueueProxy({ jobId: job.id, probe, controller });
+		this.enqueueProxy({
+			jobId: job.id,
+			projectId,
+			assetId,
+			probe,
+			controller,
+		});
 		return cloneJob(job);
 	}
 
@@ -953,17 +1024,14 @@ export class NativeMediaJobService {
 		projectId: string;
 		jobId: string;
 	}): Promise<NativeMediaJob> {
-		await this.ensureLoaded({ projectId });
-		const job = this.updateJob({
-			projectId,
-			jobId,
-			update: (candidate) => {
-				if (!TERMINAL_STATUSES.has(candidate.status)) {
-					candidate.status = "cancelled";
-					candidate.finishedAt = new Date().toISOString();
-				}
-			},
-		});
+		const jobs = await this.ensureLoaded({ projectId });
+		const job = jobs.get(jobId);
+		if (!job) {
+			throw new Error(`No media job ${jobId}`);
+		}
+		if (TERMINAL_STATUSES.has(job.status)) {
+			return cloneJob(job);
+		}
 		const key = this.controllerKey({ projectId, jobId });
 		const controller = this.controllers.get(key);
 		const pendingIndex = this.pendingExecutions.findIndex(
@@ -972,17 +1040,35 @@ export class NativeMediaJobService {
 		if (pendingIndex >= 0) {
 			this.pendingExecutions.splice(pendingIndex, 1);
 			this.controllers.delete(key);
-		} else {
-			controller?.abort();
+			const cancelled = this.updateJob({
+				projectId,
+				jobId,
+				update: (candidate) => {
+					candidate.status = "cancelled";
+					candidate.finishedAt = new Date().toISOString();
+				},
+			});
+			await this.persist({ projectId });
+			return cloneJob(cancelled);
 		}
-		await this.persist({ projectId });
 		if (controller) {
+			controller.abort();
 			const deadline = Date.now() + 2_000;
 			while (this.controllers.has(key) && Date.now() < deadline) {
 				await new Promise((resolve) => setTimeout(resolve, 5));
 			}
+			return cloneJob(this.jobs.get(projectId)?.get(jobId) ?? job);
 		}
-		return cloneJob(this.jobs.get(projectId)?.get(jobId) ?? job);
+		const cancelled = this.updateJob({
+			projectId,
+			jobId,
+			update: (candidate) => {
+				candidate.status = "cancelled";
+				candidate.finishedAt = new Date().toISOString();
+			},
+		});
+		await this.persist({ projectId });
+		return cloneJob(cancelled);
 	}
 
 	async retry({
