@@ -37,6 +37,22 @@ describe("web production image interchange runtime", () => {
 			/^ENV MOIRAI_INTERCHANGE_BIN="\/usr\/local\/bin\/moirai-interchange"$/m,
 		);
 	});
+
+	test("does not bake optional hosted-service credentials into the build image", () => {
+		for (const name of [
+			"DATABASE_URL",
+			"BETTER_AUTH_SECRET",
+			"UPSTASH_REDIS_REST_URL",
+			"UPSTASH_REDIS_REST_TOKEN",
+			"MARBLE_WORKSPACE_KEY",
+			"FREESOUND_CLIENT_ID",
+			"FREESOUND_API_KEY",
+		]) {
+			expect(dockerfile).not.toMatch(
+				new RegExp(`^(?:ARG|ENV) ${name}(?:=|$)`, "m"),
+			);
+		}
+	});
 });
 
 describe("production image FCPXML HTTP smoke", () => {
