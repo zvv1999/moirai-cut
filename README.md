@@ -8,7 +8,7 @@
 
 ![Moirai Cut shared human-agent timeline](docs/brand/assets/moirai-cut-launch-landscape.png)
 
-> **v0.4.0 Public Preview** — Moirai Cut is ready for local editing and
+> **v0.5.0 Public Preview** — Moirai Cut is ready for local editing and
 > Agent-driven workflows. The project format and integration surface may still
 > evolve before 1.0, with migration notes published in the changelog.
 

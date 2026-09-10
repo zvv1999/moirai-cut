@@ -30,6 +30,11 @@ NODE_ENV=production bun run build:web
 bun audit
 ```
 
+For an upstream advisory without a patched version, review the narrowly scoped
+exception in `docs/security-release-exceptions.md` and run `bun run audit:release`.
+Always retain the unfiltered audit JSON in the release evidence; do not describe
+a release with an exception as vulnerability-free.
+
 Repeat the install, Agent setup, representative edit and export smoke tests on
 macOS, Windows and Linux. Record the commit SHA, OS, browser, Bun, FFmpeg and
 result in the release issue.

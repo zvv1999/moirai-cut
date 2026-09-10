@@ -4,6 +4,39 @@ All notable Moirai Cut changes are documented here. The repository is in develop
 preview and follows semantic versioning for public release artifacts; project
 schema and Agent surfaces may still change with migration notes.
 
+## 0.5.0 — 2026-09-10
+
+Local product footage library and optional team synchronization.
+
+### Added
+
+- Drag-and-drop product video ingestion, fixed 720p model proxies, AI shot
+  proposals and tags, human review, and verified local publication.
+- Rust-owned durable processing queues and optional background NAS sync for
+  original media, published clips, labels and immutable version metadata.
+- Editor imports with source/shot/release lineage, versioned label snapshots,
+  and reverse lookup of project and timeline references.
+- First-start NAS and LLM configuration prompts, private endpoint storage,
+  media-tool checks and automatic native service startup.
+
+### Changed
+
+- NAS is optional and cannot block local editing or publication. Sync retries
+  preserve the exact approved media and metadata snapshot.
+- Updated vulnerable dependency versions, including Next.js 16.3.3. One
+  unpatched transitive adm-zip advisory has a documented, scoped exception in
+  `docs/security-release-exceptions.md`; unfiltered audit evidence is retained.
+
+### Compatibility and migration
+
+- Run `bun run setup:local` with Bun, Rust and FFmpeg installed. Existing
+  configuration is preserved; `bun run setup:footage` reopens configuration.
+- Existing library records remain usable. NAS synchronization defaults off.
+  Enable file-backed editor projects for persistent reverse lineage lookup;
+  browser-private projects require export/migration before switching storage.
+- Automatic analysis requires a video-capable Chat Completions endpoint.
+  This release does not provide team authentication or multi-user hosting.
+
 ## 0.4.0 — 2026-08-14
 
 Open-timeline handoff update for the public preview.

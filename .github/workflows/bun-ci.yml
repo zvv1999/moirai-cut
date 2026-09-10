@@ -66,6 +66,12 @@ jobs:
       - name: Lint Rust interchange
         run: cargo clippy -p interchange --all-targets -- -D warnings
 
+      - name: Test Rust footage
+        run: cargo test -p moirai-footage --all-targets
+
+      - name: Lint Rust footage
+        run: cargo clippy -p moirai-footage --all-targets -- -D warnings
+
       - name: Install Bun
         uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
         with:
@@ -81,7 +87,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Audit dependencies
-        run: bun audit
+        run: bun run audit:release
 
       - name: Validate public release surface
         run: bun run release:check
