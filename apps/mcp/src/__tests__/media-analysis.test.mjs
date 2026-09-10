@@ -8,6 +8,15 @@ import { TICKS_PER_SECOND } from "../document.mjs";
 
 const ticks = (seconds) => seconds * TICKS_PER_SECOND;
 
+test("footage publication metadata and timeline uses reach the agent catalog", () => {
+  const footage = { schemaVersion: "moirai.lineage.v1", releaseId: "release-a", shotId: "shot-a", shotRevision: 5, sourceId: "source-a", sourceStartTicks: ticks(12), sourceEndTicks: ticks(16), modelId: "glm-5.3-flash", description: "Product closeup", tags: ["detail"], roles: [{ role: "product_demo" }], unsupportedClaims: ["Unverified effect"] };
+  const catalog = buildMediaCatalog({ document: projectDocument(), mediaIndex: { "media-a": { type: "video", footage } } });
+  assert.deepEqual(catalog.assets["media-a"].footage, footage);
+  assert.equal(catalog.assets["media-a"].analysis.summary, "Product closeup");
+  assert.deepEqual(catalog.assets["media-a"].analysis.unsupportedClaims, ["Unverified effect"]);
+  assert.equal(catalog.assets["media-a"].timelineUses[0].elementId, "clip-a");
+});
+
 function projectDocument() {
   return {
     revision: 7,

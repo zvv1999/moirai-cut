@@ -4,6 +4,7 @@ members = [
     "apps/desktop",
     "rust/crates/time",
     "rust/crates/interchange",
+    "rust/crates/footage",
     "rust/crates/bridge",
     "rust/crates/effects",
     "rust/crates/gpu",

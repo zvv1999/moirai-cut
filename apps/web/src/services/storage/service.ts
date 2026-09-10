@@ -391,6 +391,7 @@ class StorageService {
 		const previousMetadata = await mediaMetadataAdapter.get(mediaAsset.id);
 
 		const metadata: MediaAssetData = {
+			footage: mediaAsset.footage,
 			id: mediaAsset.id,
 			name: mediaAsset.name,
 			type: mediaAsset.type,
@@ -564,6 +565,7 @@ class StorageService {
 
 		return {
 			id: metadata.id,
+			footage: metadata.footage,
 			name: metadata.name,
 			type: metadata.type,
 			file,

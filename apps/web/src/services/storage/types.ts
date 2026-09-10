@@ -15,6 +15,7 @@ export interface StorageAdapter<T> {
 }
 
 export interface MediaAssetData {
+	footage?: import("@/footage/types").FootageLineage;
 	id: string;
 	name: string;
 	type: MediaType;

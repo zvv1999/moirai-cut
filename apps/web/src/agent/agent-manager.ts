@@ -153,6 +153,7 @@ export interface ProjectStateSummary {
    * out-of-page agent.
    */
   media: Array<{
+    footage?: import("@/footage/types").FootageLineage;
     id: string;
     name: string;
     type: string;
@@ -854,6 +855,7 @@ export class AgentManager {
           : null;
       return {
         id: String(asset.id ?? ""),
+        ...(asset.footage ? { footage: asset.footage as import("@/footage/types").FootageLineage } : {}),
         name: String(asset.name ?? ""),
         type: String(asset.type ?? asset.mediaType ?? "unknown"),
         // NOT toSeconds(): a MediaAsset's duration is already in seconds — it comes

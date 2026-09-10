@@ -43,6 +43,7 @@ export interface AgentRangeContextReference {
 }
 
 export interface AgentMediaContextReference {
+	footage?: import("@/footage/types").FootageLineage;
 	kind: "media";
 	uri: string;
 	label: string;
@@ -317,8 +318,7 @@ export function buildElementContextReferences({
 						mediaId: found.element.mediaId,
 						...(found.element.trimStartSeconds !== null
 							? {
-									sourceStartSeconds:
-										found.element.trimStartSeconds,
+									sourceStartSeconds: found.element.trimStartSeconds,
 									sourceEndSeconds:
 										found.element.trimStartSeconds +
 										(endSeconds - startSeconds),
@@ -401,6 +401,7 @@ export function buildMediaContextReferences({
 			sceneId,
 			mediaId,
 			mediaType: asset.type,
+			...(asset.footage ? { footage: asset.footage } : {}),
 			durationSeconds: asset.durationSeconds,
 			...(asset.width !== undefined ? { width: asset.width } : {}),
 			...(asset.height !== undefined ? { height: asset.height } : {}),
@@ -643,9 +644,7 @@ export function parseAgentContextUri(uri: string): ParsedAgentContextReference {
 		const startValue = url.searchParams.get("start");
 		const endValue = url.searchParams.get("end");
 		if (startValue === null || endValue === null) {
-			throw new InvalidAgentContextReferenceError(
-				"Codex Path 缺少时间范围。",
-			);
+			throw new InvalidAgentContextReferenceError("Codex Path 缺少时间范围。");
 		}
 		const startSeconds = Number(startValue);
 		const endSeconds = Number(endValue);

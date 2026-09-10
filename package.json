@@ -14,6 +14,9 @@
 		"packages/*"
 	],
 	"scripts": {
+		"setup:footage": "node scripts/footage/setup.mjs --configure --config-only",
+		"dev:footage": "node scripts/footage/start.mjs",
+		"test:footage": "cargo test -p moirai-footage",
 		"agent:doctor": "bun apps/mcp/src/agent-doctor.mjs",
 		"agent:up": "bun apps/mcp/src/agent-up.mjs",
 		"brand:render": "bun scripts/brand/render-brand-assets.mjs",

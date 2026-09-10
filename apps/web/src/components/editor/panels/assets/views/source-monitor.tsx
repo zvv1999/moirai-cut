@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { FootageOrigin } from "@/footage/lineage-view";
 import {
 	useEffect,
 	useMemo,
@@ -424,6 +425,7 @@ export function SourceMonitorView({
 					</div>
 				</div>
 
+				{asset.footage && <FootageOrigin value={asset.footage} />}
 				{asset.type !== "image" && presentation === "dialog" ? (
 					<MediaCodecDiagnostics
 						asset={asset}

@@ -21,7 +21,28 @@ Each app is a frontend that calls into Rust. Logic is never duplicated between a
 
 - Read components before using them. They may already apply classes, which affects what you need to pass and how to override them.
 
-## Smart Edit and Codex
+## Local Startup and Optional Services
+
+When asked to install or start this project, first inspect existing local configuration.
+On first setup, ask whether the user wants to configure (1) an optional mounted team
+NAS directory and (2) an LLM Base URL and model for footage analysis. Respect an
+existing answer; do not repeatedly ask or overwrite existing credentials. NAS is
+optional and the workbench must remain usable locally. Explain that automatic
+analysis requires a compatible video model; skipping LLM configuration still allows
+local import and manual review. Never ask the user to paste API keys into chat:
+use the hidden terminal prompt in `bun run setup:footage`.
+
+Use `bun run setup:local` for first startup; it prompts for optional integrations,
+checks media tools, builds and starts the Rust footage service and starts the web
+editor. Use `bun run setup:footage` to reconfigure later. For explicitly requested
+unattended local setup use `bun run setup:local --local`. See
+`rust/crates/footage/README.md` for prerequisites and endpoint compatibility.
+Keep paths machine-local, credentials outside the repository, and NAS sync disabled
+until the user enables it. Verify `/api/footage/state` and `/footage` after startup;
+report missing dependencies or untested model connectivity instead of claiming the
+entire AI workflow works. Do not upload user videos just to test an endpoint.
+
+## Smart Edit Protocol
 
 Before controlling a Moirai Cut project, read
 [`docs/agent-smart-edit.md`](docs/agent-smart-edit.md). It defines the two Codex

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { EditorFootageLibrary } from "@/footage/editor-library";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { MediaDragOverlay } from "@/components/editor/panels/assets/drag-overlay";
@@ -1043,6 +1044,7 @@ export function MediaView() {
 			<PanelView
 				title="媒体"
 				actions={
+					<><EditorFootageLibrary />
 					<MediaActions
 						mediaViewMode={mediaViewMode}
 						setMediaViewMode={setMediaViewMode}
@@ -1053,6 +1055,7 @@ export function MediaView() {
 						onReviewDuplicates={() => setDuplicateReviewOpen(true)}
 						onImport={openFilePicker}
 					/>
+					</>
 				}
 				className={cn(isDragOver && "bg-accent/30")}
 				contentClassName="h-full"

@@ -318,12 +318,21 @@ export function buildMediaCatalog({
       type: asset.type ?? "unknown",
       uri: `opencut://project/${encodeURIComponent(projectId)}/media/${encodeURIComponent(assetId)}`,
       technical: technicalMetadata(asset),
+      ...(asset.footage ? { footage: asset.footage } : {}),
       ...(proxy ? { proxy } : {}),
       timelineUses: timelineUsesFor(document, assetId),
       analysis:
         previous?.analysis && typeof previous.analysis === "object"
           ? previous.analysis
-          : {
+          : asset.footage ? {
+              status: "ready",
+              provider: asset.footage.modelId,
+              summary: asset.footage.description,
+              tags: asset.footage.tags,
+              roles: asset.footage.roles,
+              unsupportedClaims: asset.footage.unsupportedClaims,
+              scenes: [],
+            } : {
               status: "unprocessed",
               provider: null,
               summary: null,

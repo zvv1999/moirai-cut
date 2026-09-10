@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { setup as setupFootage } from "../../../scripts/footage/setup.mjs";
 
 const HERE = path.dirname(fileURLToPath(new URL(import.meta.url)));
 const REPO = path.resolve(HERE, "..", "..", "..");
@@ -37,6 +38,11 @@ function ensureEnvironment() {
 	upsert("NEXT_PUBLIC_OPENCUT_PROJECT_FILES", "1");
 	upsert("MOIRAI_PROJECTS_DIR", JSON.stringify(projectsDir));
 	upsert("OPENCUT_PROJECTS_DIR", JSON.stringify(projectsDir));
+	if (process.env.MOIRAI_FOOTAGE_CONFIG)
+		upsert(
+			"MOIRAI_FOOTAGE_CONFIG",
+			JSON.stringify(path.resolve(process.env.MOIRAI_FOOTAGE_CONFIG)),
+		);
 	upsert("OPENCUT_CODEX_APP_SERVER_URL", "ws://127.0.0.1:48721");
 	writeFileSync(ENV_FILE, `${current.trimEnd()}\n`, "utf8");
 	console.log(`已检查 ${path.relative(REPO, ENV_FILE)}`);
@@ -48,15 +54,23 @@ ensureEnvironment();
 
 if (!existsSync(path.join(REPO, "node_modules"))) {
 	console.log("正在安装依赖…");
-	const installed = spawnSync(process.execPath, ["install"], {
-		cwd: REPO,
-		stdio: "inherit",
-	});
+	const installed = spawnSync(
+		process.execPath,
+		["install", "--frozen-lockfile"],
+		{
+			cwd: REPO,
+			stdio: "inherit",
+		},
+	);
 	if (installed.status !== 0) process.exit(installed.status ?? 1);
 }
+
+process.env.OPENCUT_PROJECTS_DIR = projectsDir;
+await setupFootage();
 
 const started = spawnSync(process.execPath, ["run", "agent:up"], {
 	cwd: REPO,
 	stdio: "inherit",
+	env: { ...process.env, OPENCUT_PROJECTS_DIR: projectsDir },
 });
 process.exit(started.status ?? 0);

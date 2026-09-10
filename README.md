@@ -82,6 +82,7 @@ flowchart LR
 
 - [Bun](https://bun.sh/) 1.3.14+
 - [FFmpeg](https://ffmpeg.org/) 与 FFprobe
+- [Rust](https://rustup.rs/)（工具链由 `rust-toolchain.toml` 固定，素材库首次启动会编译）
 - 推荐：已经登录的 Codex / ChatGPT 桌面 App、Codex CLI 或 Claude Code
 - 可选：Docker 与 Docker Compose（数据库、Redis 和完整自托管模式）
 
@@ -93,9 +94,21 @@ cd moirai-cut
 bun run setup:local
 ```
 
-该命令会安装依赖、创建本地工程目录、启动编辑器、执行环境诊断，并打开
+首次运行会询问是否配置团队 NAS、是否配置素材识别 LLM 端点，二者均可跳过。
+API Key 在终端隐藏输入，单独存放在用户目录，不会写入仓库。
+该命令会安装依赖、创建本地工程目录、构建并启动 Rust 素材库服务、启动编辑器、执行环境诊断，并打开
 [http://127.0.0.1:3000](http://127.0.0.1:3000)。重复运行会复用已有配置和进程；只体验
 编辑器不需要 Docker。
+
+素材库入口为 [http://127.0.0.1:3000/footage](http://127.0.0.1:3000/footage)。
+NAS 同步默认关闭；启用后异步同步视频、标签和血缘数据。本地导入、审核、入库和编辑器引用
+不依赖 NAS。自动识别需要支持视频输入的 OpenAI-compatible Chat Completions 端点，
+默认模型为 `glm-5.3-flash`，可在工作台修改。仅支持 Responses 的端点不能用于素材识别。
+
+之后调整配置运行 `bun run setup:footage`，再重启素材库服务。无人值守且明确跳过首次询问时
+可用 `bun run setup:local --local`（保留已有配置）。缺少 FFmpeg 时可用 macOS 的
+`brew install ffmpeg` 或 Debian/Ubuntu 的 `sudo apt install ffmpeg` 安装；Rust 使用 rustup 安装。
+更多配置与故障排查见 [素材库说明](rust/crates/footage/README.md)。
 
 检查当前环境：
 
