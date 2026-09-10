@@ -57,7 +57,7 @@ jobs:
       - name: Upload release evidence
         uses: actions/upload-artifact@v4
         with:
-          name: moirai-cut-release-evidence-${{ github.ref_name }}
+          name: moirai-cut-release-evidence-${{ github.sha }}
           path: artifacts/
           if-no-files-found: error
           retention-days: 30
