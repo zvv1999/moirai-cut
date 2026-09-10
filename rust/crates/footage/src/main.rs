@@ -9,7 +9,11 @@ use std::{fs, path::PathBuf, sync::Arc};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let home = PathBuf::from(std::env::var("HOME").context("HOME 未设置")?);
+    let home = PathBuf::from(
+        std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .context("HOME / USERPROFILE 未设置")?,
+    );
     let config_path = std::env::var_os("MOIRAI_FOOTAGE_CONFIG")
         .map(PathBuf::from)
         .unwrap_or(home.join(".moirai-cut/footage-runtime.json"));

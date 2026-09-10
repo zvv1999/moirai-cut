@@ -32,12 +32,14 @@ test("publishes the current package version through the generated changelog coll
 
 		const generated = (await import(
 			`${pathToFileURL(join(outputDirectory, "allChangelogs.js")).href}?test=${Date.now()}`
-		)).default as Array<{ published?: boolean; version: string }>;
+		)).default as Array<{ published?: boolean; version: string; isLatest: boolean }>;
 		const publishedVersions = generated
 			.filter((entry) => entry.published !== false)
 			.map((entry) => entry.version);
 
-		expect(publishedVersions).toEqual([rootManifest.version]);
+		expect(publishedVersions).toContain(rootManifest.version);
+		expect(generated.filter((entry) => entry.isLatest).map((entry) => entry.version))
+			.toEqual([rootManifest.version]);
 	} finally {
 		await rm(temporaryRoot, { recursive: true, force: true });
 	}

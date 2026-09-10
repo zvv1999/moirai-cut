@@ -22,6 +22,7 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
@@ -50,6 +51,8 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-rust-1.93.1-wasm-pack-0.14.0-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-rust-1.93.1-wasm-pack-0.14.0-
 
       - name: Install wasm-pack
         run: cargo install --locked wasm-pack --version 0.14.0
@@ -66,6 +69,12 @@ jobs:
       - name: Lint Rust interchange
         run: cargo clippy -p interchange --all-targets -- -D warnings
 
+      - name: Test Rust footage
+        run: cargo test -p moirai-footage --all-targets
+
+      - name: Lint Rust footage
+        run: cargo clippy -p moirai-footage --all-targets -- -D warnings
+
       - name: Install Bun
         uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
         with:
@@ -81,7 +90,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Audit dependencies
-        run: bun audit
+        run: bun run audit:release
 
       - name: Validate public release surface
         run: bun run release:check
