@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-test("fresh local setup creates private portable config and preserves it on rerun", (t) => {
+test("fresh local setup validates dependencies and preserves portable configuration", () => {
 	const home = mkdtempSync(path.join(tmpdir(), "moirai-setup-"));
 	try {
 		const configPath = path.join(home, "config.json");
@@ -26,7 +26,9 @@ test("fresh local setup creates private portable config and preserves it on reru
 		assert.match(unattended.stderr, /--local/);
 		for (const [name, override] of [["ffmpeg", process.env.FFMPEG_PATH], ["ffprobe", process.env.FFPROBE_PATH]]) {
 			if (spawnSync(override || name, ["-version"]).status !== 0) {
-				t.skip("Local configuration smoke test requires FFmpeg and ffprobe on PATH (or FFMPEG_PATH/FFPROBE_PATH).");
+				const missingDependency = run("--local");
+				assert.equal(missingDependency.status, 1);
+				assert.match(missingDependency.stderr, /FFmpeg\/ffprobe/);
 				return;
 			}
 		}
