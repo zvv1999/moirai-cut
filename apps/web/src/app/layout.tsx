@@ -6,6 +6,7 @@ import { TooltipProvider } from "../components/ui/tooltip";
 import { baseMetaData } from "./metadata";
 import { BotIdClient } from "botid/client";
 import { webEnv } from "@/env/web";
+import { OverlayScrollbars } from "@/components/ui/overlay-scrollbars";
 
 export const metadata = baseMetaData;
 
@@ -34,6 +35,7 @@ export default function RootLayout({
 				>
 					<TooltipProvider>
 						<Toaster />
+						<OverlayScrollbars />
 						{webEnv.NEXT_PUBLIC_DATABUDDY_CLIENT_ID ? (
 							<Script
 								src="https://cdn.databuddy.cc/databuddy.js"

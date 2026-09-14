@@ -1,0 +1,25 @@
+/* Keep scrolling native; only the handles are overlaid. */
+html.has-overlay-scrollbars,
+html.has-overlay-scrollbars * {
+	scrollbar-width: none !important;
+	scrollbar-gutter: auto !important;
+}
+html.has-overlay-scrollbars::-webkit-scrollbar,
+html.has-overlay-scrollbars *::-webkit-scrollbar {
+	display: none !important;
+	width: 0 !important;
+	height: 0 !important;
+}
+.overlay-scrollbar {
+	position: fixed;
+	z-index: 100;
+	border-radius: 4px;
+	background: color-mix(in srgb, var(--foreground) 32%, transparent);
+	touch-action: none;
+	user-select: none;
+	cursor: default;
+}
+.overlay-scrollbar:hover,
+.overlay-scrollbar:focus-visible {
+	background: color-mix(in srgb, var(--foreground) 55%, transparent);
+}

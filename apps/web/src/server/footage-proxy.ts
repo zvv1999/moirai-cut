@@ -50,6 +50,8 @@ export async function proxyFootage(request: Request, segments: string[]) {
 			"utf8",
 		);
 		const headers = new Headers({ "x-footage-token": token.trim() });
+		const libraryId = request.headers.get("x-footage-library");
+		if (libraryId) headers.set("x-footage-library", libraryId);
 		for (const name of ["content-type", "range"]) {
 			const value = request.headers.get(name);
 			if (value) headers.set(name, value);

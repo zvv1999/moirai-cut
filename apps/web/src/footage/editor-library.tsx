@@ -66,7 +66,9 @@ export function EditorFootageLibrary() {
 				throw new Error("视频与发布版本不一致");
 			if (editor.project.getActiveOrNull()?.metadata.id !== projectId)
 				throw new Error("工程已切换，请重新导入");
-			const file = new File([bytes], metadata.name, { type: "video/mp4" });
+			const file = new File([bytes], metadata.name, {
+				type: media.headers.get("content-type") ?? "video/mp4",
+			});
 			const url = URL.createObjectURL(file);
 			const asset = await editor.media.addMediaAsset({
 				projectId,

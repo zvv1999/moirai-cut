@@ -1,4 +1,4 @@
-use crate::domain::{Shot, Source, TICKS, id};
+use crate::domain::{Recipe, Shot, Source, TICKS, id};
 use anyhow::{Context, Result, bail, ensure};
 use serde_json::Value;
 use std::{
@@ -146,6 +146,31 @@ impl Media {
     }
     pub fn source_dir(&self, id: &str) -> PathBuf {
         self.root.join("sources").join(id)
+    }
+    pub fn verify_original(&self, source: &Source) -> Result<()> {
+        ensure!(
+            crate::storage::hash(Path::new(&source.path))? == source.sha256,
+            "上传分镜文件校验失败"
+        );
+        self.run(
+            &self.ffmpeg,
+            &strings(&[
+                "-v",
+                "error",
+                "-xerror",
+                "-i",
+                &source.path,
+                "-map",
+                "0:v:0",
+                "-map",
+                "0:a?",
+                "-f",
+                "null",
+                "-",
+            ]),
+            3600,
+        )?;
+        Ok(())
     }
     pub fn prepare(&self, source: &Source) -> Result<()> {
         let dir = self.source_dir(&source.id);
@@ -332,11 +357,29 @@ impl Media {
         let output = dir.join("master.mp4");
         let temp = dir.join("master.tmp.mp4");
         let brightness = if shot.recipe.color_mode == "auto" {
-            self.exposure(source, shot)?
+            self.exposure(source, shot.start_ticks, shot.end_ticks)?
         } else {
             shot.recipe.brightness
         };
-        let filters = filter_graph(shot, source, brightness);
+        let mut filters = filter_graph(shot, source, brightness);
+        if shot.recipe.color_mode == "adaptive" || crate::manual_color::enabled(&shot.recipe) {
+            let lut = if shot.recipe.color_mode == "adaptive" {
+                crate::manual_color::apply_to(
+                    self.adaptive_lut(source, shot.start_ticks, shot.end_ticks)?,
+                    &shot.recipe,
+                )
+            } else {
+                crate::manual_color::lut(&shot.recipe)
+            };
+            let path = dir.join("color.cube");
+            fs::write(&path, lut.cube())?;
+            let escaped = path
+                .to_string_lossy()
+                .replace('\\', "\\\\")
+                .replace('\'', "'\\\\\''")
+                .replace(':', "\\:");
+            filters = format!("lut3d=file='{escaped}':interp=trilinear,{filters}");
+        }
         self.run(
             &self.ffmpeg,
             &strings(&[
@@ -421,18 +464,23 @@ impl Media {
         )?;
         Ok((output, issues))
     }
-    fn exposure(&self, source: &Source, shot: &Shot) -> Result<f64> {
+    pub(crate) fn exposure(
+        &self,
+        source: &Source,
+        start_ticks: i64,
+        end_ticks: i64,
+    ) -> Result<f64> {
         let raw = self.run(
             &self.ffmpeg,
             &strings(&[
                 "-v",
                 "error",
                 "-ss",
-                &(shot.start_ticks as f64 / TICKS as f64).to_string(),
+                &(start_ticks as f64 / TICKS as f64).to_string(),
                 "-i",
                 &source.path,
                 "-t",
-                &((shot.end_ticks - shot.start_ticks) as f64 / TICKS as f64).to_string(),
+                &((end_ticks - start_ticks) as f64 / TICKS as f64).to_string(),
                 "-an",
                 "-vf",
                 "fps=1,scale=64:64,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-",
@@ -482,22 +530,34 @@ pub fn filter_graph(shot: &Shot, source: &Source, brightness: f64) -> String {
         270 => filters.push("transpose=2".into()),
         _ => {}
     }
-    let (width, height) = if r.rotation % 180 == 90 {
-        (source.height, source.width)
-    } else {
-        (source.width, source.height)
-    };
     if r.crop_mode == "vertical" {
-        let units = (width / 9).min(height / 16) / 2 * 2;
-        let w = (units * 9).max(2);
-        let h = (units * 16).max(2);
+        let g = frame_geometry(r, source).expect("validated render geometry");
         filters.push(format!(
-            "crop={w}:{h}:{}:{}",
-            ((width - w) as f64 * r.crop_x).round() as u32 / 2 * 2,
-            ((height - h) as f64 * r.crop_y).round() as u32 / 2 * 2
+            "crop={}:{}:{}:{}",
+            g.crop_width, g.crop_height, g.crop_x, g.crop_y
         ));
     }
-    if r.color_mode != "preserve" {
+    if r.flip_horizontal {
+        filters.push("hflip".into());
+    }
+    if r.flip_vertical {
+        filters.push("vflip".into());
+    }
+    if r.push_in_end_scale() > 1.0 {
+        let g = frame_geometry(r, source).expect("validated render geometry");
+        let duration = (shot.end_ticks - shot.start_ticks) as f64 / TICKS as f64;
+        let zoom = format!(
+            "1+({}-1)*clip(in_time/{duration},0,1)",
+            r.push_in_end_scale()
+        );
+        // Normalize variable-rate inputs before zoompan so one output frame per input preserves timing.
+        let fps = source.fps;
+        filters.push(format!(
+            "setpts=PTS-STARTPTS,fps={fps},scale=iw*2:ih*2,zoompan=z='{zoom}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s={}x{}:fps={fps}",
+            g.crop_width, g.crop_height
+        ));
+    }
+    if r.color_mode == "auto" || r.color_mode == "manual" && !crate::manual_color::enabled(r) {
         filters.push(format!(
             "eq=brightness={}:contrast={}:saturation={}",
             brightness,
@@ -515,4 +575,88 @@ pub fn filter_graph(shot: &Shot, source: &Source, brightness: f64) -> String {
     }
     filters.push("scale=w='min(iw,1080)':h='min(ih,1920)':force_original_aspect_ratio=decrease:force_divisible_by=2,setsar=1".into());
     filters.join(",")
+}
+
+#[cfg(test)]
+mod mirror_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn mirrors_apply_to_the_rotated_cropped_output_without_changing_geometry() {
+        let source: Source = serde_json::from_value(json!({
+            "id":"s","name":"test.mp4","path":"test.mp4","product":"","batch":"",
+            "sha256":"test","durationTicks":240000,"width":1280,"height":720,
+            "fps":30,"colorTransfer":"bt709","rotation":0,"status":"review","createdAt":0
+        }))
+        .unwrap();
+        let mut shot: Shot = serde_json::from_value(json!({
+            "id":"shot","sourceId":"s","revision":1,"name":"test","startTicks":0,
+            "endTicks":240000,"description":"","tags":[],"roles":[],"unsupportedClaims":[],
+            "evidence":"","recipe":Recipe::default(),"status":"review","qualityIssues":[],
+            "analysisRunId":"test","modelId":"test","inputMode":"video","createdAt":0
+        }))
+        .unwrap();
+        shot.recipe.rotation = 90;
+        shot.recipe.color_mode = "manual".into();
+        shot.recipe.crop_mode = "vertical".into();
+        shot.recipe.crop_y = 0.25;
+        let original_geometry =
+            serde_json::to_value(frame_geometry(&shot.recipe, &source).unwrap()).unwrap();
+        for (horizontal, vertical, expected) in [
+            (true, false, ",hflip,eq="),
+            (false, true, ",vflip,eq="),
+            (true, true, ",hflip,vflip,eq="),
+        ] {
+            shot.recipe.flip_horizontal = horizontal;
+            shot.recipe.flip_vertical = vertical;
+            let filters = filter_graph(&shot, &source, 0.0);
+            assert!(filters.starts_with("transpose=1,crop="));
+            assert!(filters.contains(expected));
+            assert_eq!(
+                serde_json::to_value(frame_geometry(&shot.recipe, &source).unwrap()).unwrap(),
+                original_geometry
+            );
+        }
+    }
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameGeometry {
+    pub width: u32,
+    pub height: u32,
+    pub crop_width: u32,
+    pub crop_height: u32,
+    pub crop_x: u32,
+    pub crop_y: u32,
+}
+
+// Preview and export use the same even-pixel crop rectangle after rotation.
+pub fn frame_geometry(recipe: &Recipe, source: &Source) -> Result<FrameGeometry> {
+    recipe.validate()?;
+    let (width, height) = if recipe.rotation % 180 == 90 {
+        (source.height, source.width)
+    } else {
+        (source.width, source.height)
+    };
+    ensure!(width > 0 && height > 0, "原片尺寸无效");
+    let (crop_width, crop_height) = if recipe.crop_mode == "vertical" {
+        ensure!(
+            width >= 32 && height >= 32,
+            "原片尺寸过小，无法生成竖屏裁切"
+        );
+        let units = (width / 9).min(height / 16) / 2 * 2;
+        (units * 9, units * 16)
+    } else {
+        (width, height)
+    };
+    Ok(FrameGeometry {
+        width,
+        height,
+        crop_width,
+        crop_height,
+        crop_x: ((width - crop_width) as f64 * recipe.crop_x).round() as u32 / 2 * 2,
+        crop_y: ((height - crop_height) as f64 * recipe.crop_y).round() as u32 / 2 * 2,
+    })
 }
