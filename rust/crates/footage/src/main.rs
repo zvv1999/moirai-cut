@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use fs2::FileExt;
 use moirai_footage::{
     media::Media,
-    service::{self, App, Config},
+    service::{App, Config},
     store::Store,
 };
 use std::{fs, path::PathBuf, sync::Arc};
@@ -58,6 +58,7 @@ async fn main() -> Result<()> {
     };
     let port = config.port;
     let app = Arc::new(App {
+        storage_gate: std::sync::Mutex::new(()),
         db,
         config,
         media,
@@ -65,10 +66,10 @@ async fn main() -> Result<()> {
         token,
     });
     moirai_footage::lineage::cache_legacy_releases(&app)?;
-    service::worker(app.clone());
+    let libraries = moirai_footage::libraries::Libraries::open(app, true)?;
     let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, port)).await?;
     println!("Moirai footage service: http://127.0.0.1:{port}");
-    axum::serve(listener, service::router(app)).await?;
+    axum::serve(listener, libraries.router()).await?;
     drop(lock);
     Ok(())
 }

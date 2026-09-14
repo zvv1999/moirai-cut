@@ -1,7 +1,9 @@
 use crate::{
     domain::*,
+    location,
     media::Media,
     model::{self, AnalysisSettings, ModelSettings},
+    products::{self, Product},
     storage,
     store::{self, Store},
 };
@@ -39,6 +41,7 @@ pub struct Config {
     pub port: u16,
 }
 pub struct App {
+    pub storage_gate: std::sync::Mutex<()>,
     pub db: Store,
     pub config: Config,
     pub media: Media,
@@ -74,26 +77,32 @@ pub struct SyncSettings {
     pub sync_to_nas: bool,
 }
 pub fn sync_enabled(db: &rusqlite::Connection) -> bool {
-    store::get::<SyncSettings>(db, "settings", "storage")
-        .unwrap_or_default()
-        .sync_to_nas
+    !location::folder_mode(db)
+        && store::get::<SyncSettings>(db, "settings", "storage")
+            .unwrap_or_default()
+            .sync_to_nas
 }
 async fn set_storage(
     State(app): State<Shared>,
     Json(settings): Json<SyncSettings>,
 ) -> ApiResult<Json<Value>> {
     blocking(move || {
+        let _guard = app
+            .storage_gate
+            .lock()
+            .map_err(|_| anyhow::anyhow!("存储配置锁不可用"))?;
         if settings.sync_to_nas {
             ensure!(
-                !app.config.nas_root.as_os_str().is_empty(),
+                !location::current(&app)?.nas_root.as_os_str().is_empty(),
                 "请先配置团队 NAS 目录"
             );
         }
         let releases = crate::lineage::releases(&app)?;
         app.db.transaction(|db| {
             store::put(db, "settings", "storage", &settings)?;
-            if settings.sync_to_nas {
+            if sync_enabled(db) {
                 for source in store::list::<Source>(db, "source")? {
+                    if source.status == "deleted" { continue; }
                     enqueue_sync(db, "sync_source", &source.id, 0)?;
                 }
                 for release in releases {
@@ -111,9 +120,14 @@ async fn set_storage(
     })
     .await
 }
-fn enqueue_sync(db: &rusqlite::Connection, kind: &str, target: &str, revision: u64) -> Result<()> {
+pub(crate) fn enqueue_sync(
+    db: &rusqlite::Connection,
+    kind: &str,
+    target: &str,
+    revision: u64,
+) -> Result<()> {
     let mut job = Job::new(kind, target, revision);
-    job.id = format!("{kind}-{target}");
+    job.id = location::nas_job_id(db, kind, target);
     if store::get::<Job>(db, "job", &job.id).is_err() {
         store::put(db, "job", &job.id, &job)?;
     }
@@ -122,6 +136,10 @@ fn enqueue_sync(db: &rusqlite::Connection, kind: &str, target: &str, revision: u
 
 pub fn router(app: Shared) -> Router {
     Router::new()
+        .merge(products::router())
+        .merge(location::router())
+        .merge(crate::tag_settings::router())
+        .merge(crate::preview::router())
         .route("/state", get(state))
         .route("/releases", get(releases))
         .route("/releases/{id}", get(editor_asset))
@@ -132,8 +150,10 @@ pub fn router(app: Shared) -> Router {
         .route("/imports", post(upload).layer(DefaultBodyLimit::disable()))
         .route("/scan", post(scan))
         .route("/shots/{id}", patch(edit))
+        .route("/shots/{id}/confirm", post(confirm_labels))
         .route("/shots/{id}/action", post(action))
         .route("/sources/{id}/manual", post(manual))
+        .route("/sources/{id}/delete", post(delete_source))
         .route("/jobs/{id}/retry", post(retry))
         .route("/media/{kind}/{id}/{variant}", get(media_file))
         .layer(DefaultBodyLimit::max(1024 * 1024))
@@ -180,14 +200,25 @@ struct Search {
     q: Option<String>,
     status: Option<String>,
     role: Option<String>,
+    tag: Option<String>,
+    category: Option<usize>,
 }
 async fn state(State(app): State<Shared>, Query(search): Query<Search>) -> ApiResult<Json<Value>> {
     blocking(move||{
-        let sources=app.db.list::<Source>("source")?;
+        app.db.transaction(crate::tag_settings::migrate_legacy_roles)?;
+        app.db.transaction(crate::adaptive_lut::migrate_drafts)?;
+        let sources=app.db.list::<Source>("source")?.into_iter().filter(|s| s.status != "deleted").collect::<Vec<_>>();
         let mut shots=app.db.list::<Shot>("shot")?;
-        let counts=json!({"sources":sources.len(),"draft":shots.iter().filter(|s|s.status=="draft").count(),"review":shots.iter().filter(|s|s.status=="review").count(),"published":shots.iter().filter(|s|s.status=="published").count()});
-        if let Some(status)=search.status.filter(|s|!s.is_empty()){shots.retain(|s|s.status==status);}
+        shots.retain(|shot| shot.status != "deleted");
+        let all_shots = shots.clone();
+        let counts=json!({"sources":sources.len(),"pendingConfirm":shots.iter().filter(|s|["draft","review","tag_review"].contains(&s.status.as_str())).count(),"processing":shots.iter().filter(|s|["tagging","recognizing","rendering","publishing"].contains(&s.status.as_str())).count(),"draft":shots.iter().filter(|s|s.status=="draft").count(),"review":shots.iter().filter(|s|s.status=="review").count(),"tagReview":shots.iter().filter(|s|s.status=="tag_review").count(),"published":shots.iter().filter(|s|s.status=="published").count()});
+        if let Some(status)=search.status.filter(|s|!s.is_empty()){shots.retain(|s|if status=="pending_confirm" {["draft","review","tag_review"].contains(&s.status.as_str())}else{s.status==status});}
         if let Some(role)=search.role.filter(|s|!s.is_empty()){shots.retain(|s|s.roles.iter().any(|r|r.role==role));}
+        if let Some(tag)=search.tag.filter(|s|!s.is_empty()){shots.retain(|s|s.tags.contains(&tag));}
+        if let Some(category)=search.category {
+            let settings=app.db.transaction(crate::tag_settings::current)?;
+            shots.retain(|s|settings.groups.get(category).is_some_and(|group|s.tags.iter().any(|tag|group.contains(tag))));
+        }
         if let Some(query)=search.q.filter(|s|!s.trim().is_empty()){
             let query=query.to_lowercase();shots.retain(|s|{
                 let product=sources.iter().find(|a|a.id==s.source_id).map(|a|a.product.as_str()).unwrap_or("");
@@ -195,15 +226,31 @@ async fn state(State(app): State<Shared>, Query(search): Query<Search>) -> ApiRe
             });
         }
         let all_jobs=app.db.list::<Job>("job")?;
+        let confirmations=app.db.list::<LabelConfirmation>("label_confirmation")?;
         let mut jobs=all_jobs.clone();jobs.sort_by_key(|j|std::cmp::Reverse(j.updated_at));jobs.truncate(200);
         let sync_to_nas=app.db.transaction(|db|Ok(sync_enabled(db)))?;
-        let nas=if sync_to_nas {storage::verify_root(&app.config.nas_root,app.config.require_smb)}else{Ok(())};
+        let location=location::current(&app)?;
+        let nas=if sync_to_nas {storage::verify_root(&location.nas_root,app.config.require_smb)}else{Ok(())};
         let endpoint=model::current_endpoint(&app.home);
         let model_settings=app.db.get::<ModelSettings>("settings","model").unwrap_or_default();
-        let sources=sources.iter().map(|s|{let mut v=serde_json::to_value(s).unwrap();let obj=v.as_object_mut().unwrap();obj.remove("path");let sync=all_jobs.iter().find(|j|j.kind=="sync_source" && j.target_id==s.id);obj.insert("nasSync".into(),json!(sync.map(|j|j.status.as_str()).unwrap_or(if s.nas_relative_path.is_some(){"succeeded"}else{"local_only"})));v}).collect::<Vec<_>>();
-        let shots=shots.iter().map(|s|{let mut v=serde_json::to_value(s).unwrap();let obj=v.as_object_mut().unwrap();obj.insert("hasOutput".into(),json!(s.output_path.is_some()));obj.remove("outputPath");obj.remove("publishedPath");let publish=all_jobs.iter().find(|j|j.kind=="publish" && j.target_id==s.id && j.revision+1==s.revision);let sync=publish.and_then(|p|all_jobs.iter().find(|j|j.kind=="sync_release" && j.target_id==p.id));obj.insert("nasSync".into(),json!(sync.map(|j|j.status.as_str()).unwrap_or("local_only")));v}).collect::<Vec<_>>();
-        Ok(Json(json!({"sources":sources,"shots":shots,"jobs":jobs,"counts":counts,"settings":model_settings,
-            "runtime":{"syncToNas":sync_to_nas,"localRoot":app.config.data_dir,"nasOnline":sync_to_nas && nas.is_ok(),"nasError":nas.err().map(|e|e.to_string()),"nasRoot":app.config.nas_root,"endpoint":endpoint.as_ref().map(|e|e.base_url.clone()).ok(),"endpointError":endpoint.err().map(|e|e.to_string()),"dailyTarget":100,"outputAspect":"9:16"}})))
+        let tag_settings=app.db.transaction(crate::tag_settings::current)?;
+        let sources=sources.iter().map(|s|{let mut v=serde_json::to_value(s).unwrap();let obj=v.as_object_mut().unwrap();obj.remove("path");obj.insert("previewReady".into(),json!(app.media.source_dir(&s.id).join("preview.mp4").is_file() && app.media.source_dir(&s.id).join("poster.jpg").is_file()));if let Some(shot)=all_shots.iter().find(|shot|shot.source_id==s.id && shot.direct_upload) {obj.insert("directUpload".into(),json!(true));obj.insert("status".into(),json!(shot.status));obj.insert("error".into(),json!(shot.error));}let sync=all_jobs.iter().find(|j|j.kind=="sync_source" && j.target_id==s.id);obj.insert("nasSync".into(),json!(sync.map(|j|j.status.as_str()).unwrap_or(if s.nas_relative_path.is_some(){"succeeded"}else{"local_only"})));v}).collect::<Vec<_>>();
+        let shots=shots.iter().map(|s|{let mut v=serde_json::to_value(s).unwrap();let obj=v.as_object_mut().unwrap();obj.insert("labelsConfirmed".into(),json!(confirmations.iter().any(|c|c.shot_id==s.id)||s.status=="published"||all_jobs.iter().any(|j|j.kind=="publish"&&j.target_id==s.id&&j.status=="succeeded")));obj.insert("hasOutput".into(),json!(s.output_path.is_some()));obj.remove("outputPath");obj.remove("publishedPath");let publish=all_jobs.iter().find(|j|j.kind=="publish" && j.target_id==s.id && j.revision+1==s.revision);let sync=publish.and_then(|p|all_jobs.iter().find(|j|j.kind=="sync_release" && j.target_id==p.id));obj.insert("nasSync".into(),json!(sync.map(|j|j.status.as_str()).unwrap_or("local_only")));v}).collect::<Vec<_>>();
+        let shots = shots.into_iter().map(|mut shot| {
+            if let Some(source_shot) = all_shots.iter().find(|s| Some(s.id.as_str()) == shot["id"].as_str()) {
+                shot["analysisSuggestion"] = app.db.transaction(|db| crate::label_review::public_suggestion(db, source_shot)).unwrap_or(Value::Null);
+            }
+            let reanalysis = all_jobs.iter().filter(|job| job.kind == "reanalyze" && Some(job.target_id.as_str()) == shot["id"].as_str()).map(|job|job.revision).max();
+            if let Some(revision) = reanalysis.filter(|_| shot["analysisSuggestion"].is_null()) {
+                shot["labelsConfirmed"] = json!(confirmations.iter().any(|c| Some(c.shot_id.as_str()) == shot["id"].as_str() && c.revision > revision));
+            }
+            let release = all_jobs.iter().filter(|job| job.kind == "publish" && job.status == "succeeded" && Some(job.target_id.as_str()) == shot["id"].as_str()).max_by_key(|job| job.revision);
+            shot["publishedRelease"] = release.map(|job| json!({"id":job.id,"revision":job.revision + 1})).unwrap_or(Value::Null);
+            shot
+        }).collect::<Vec<_>>();
+        let sources = sources.into_iter().map(|mut s| {s["hasShot"] = json!(all_shots.iter().any(|shot|Some(shot.source_id.as_str())==s["id"].as_str()));s}).collect::<Vec<_>>();
+        Ok(Json(json!({"tagSettings":tag_settings,"storage":location::summary(&app)?,"products":products::summary(&app.db.list::<Product>("product")?),"sources":sources,"shots":shots,"jobs":jobs,"counts":counts,"settings":model_settings,
+            "runtime":{"syncToNas":sync_to_nas,"localRoot":app.config.data_dir,"nasOnline":sync_to_nas && nas.is_ok(),"nasError":nas.err().map(|e|e.to_string()),"nasRoot":location.nas_root,"endpoint":endpoint.as_ref().map(|e|e.base_url.clone()).ok(),"endpointError":endpoint.err().map(|e|e.to_string()),"dailyTarget":100,"outputAspect":"9:16"}})))
     }).await
 }
 async fn models(State(app): State<Shared>) -> ApiResult<Json<Value>> {
@@ -243,6 +290,8 @@ struct ImportQuery {
     product: String,
     #[serde(default)]
     batch: String,
+    #[serde(default)]
+    direct: bool,
 }
 async fn upload(
     State(app): State<Shared>,
@@ -275,17 +324,62 @@ async fn upload(
         return Err(e.into());
     }
     blocking(move || {
-        let result = ingest(&app, &temp, &query.filename, &query.product, &query.batch);
+        let result = ingest_mode(
+            &app,
+            &temp,
+            &query.filename,
+            &query.product,
+            &query.batch,
+            query.direct,
+        );
         let _ = fs::remove_file(&temp);
         Ok(Json(result?))
     })
     .await
 }
 fn ingest(app: &App, input: &Path, name: &str, product: &str, batch: &str) -> Result<Value> {
+    ingest_mode(app, input, name, product, batch, false)
+}
+fn duplicate_import(db: &rusqlite::Connection, sha: &str) -> Result<Option<Value>> {
+    let sources = store::list::<Source>(db, "source")?;
+    let shots = store::list::<Shot>(db, "shot")?;
+    if let Some(source) = sources
+        .iter()
+        .filter(|s| s.sha256 == sha && s.status != "deleted")
+        .min_by_key(|s| s.created_at)
+    {
+        let shot = shots.iter().find(|s| s.source_id == source.id);
+        return Ok(Some(
+            json!({"sourceId":source.id,"shotId":shot.map(|s| &s.id),"existingName":source.name,"duplicate":true,"message":"该片段已存在，已跳过上传"}),
+        ));
+    }
+    Ok(None)
+}
+pub(crate) fn ingest_mode(
+    app: &App,
+    input: &Path,
+    name: &str,
+    product: &str,
+    batch: &str,
+    direct: bool,
+) -> Result<Value> {
+    if direct {
+        ensure!(
+            ["mp4", "mov", "m4v", "webm", "mkv", "avi"].contains(&media_extension(name).as_str()),
+            "分镜支持 MP4、MOV、M4V、WebM、MKV、AVI 视频"
+        );
+    }
     let sha = storage::hash(input)?;
+    if let Some(existing) = app.db.transaction(|db| duplicate_import(db, &sha))? {
+        return Ok(existing);
+    }
     let source_id = id();
     let dir = app.media.source_dir(&source_id);
-    let original = dir.join("original");
+    let original = dir.join(if direct {
+        format!("original.{}", media_extension(name))
+    } else {
+        "original".into()
+    });
     let mut source = app.media.source(
         input,
         name.into(),
@@ -294,38 +388,105 @@ fn ingest(app: &App, input: &Path, name: &str, product: &str, batch: &str) -> Re
         sha.clone(),
         source_id,
     )?;
-    fs::create_dir_all(&dir)?;
-    fs::copy(input, &original)?;
-    fs::File::open(&original)?.sync_all()?;
-    ensure!(storage::hash(&original)? == sha, "源文件导入期间发生变化");
-    source.path = original.to_string_lossy().into();
-    app.db.transaction(|db| {
-        if let Some(existing) = store::list::<Source>(db, "source")?
-            .iter()
-            .find(|s| s.sha256 == sha && s.product == product && s.batch == batch)
-        {
-            let _ = fs::remove_dir_all(&dir);
-            return Ok(json!({"sourceId":existing.id,"duplicate":true}));
-        }
-        let job = Job::new("archive", &source.id, 0);
-        store::put(db, "source", &source.id, &source)?;
-        enqueue_analysis(db, &job, &app.home)?;
-        Ok(json!({"sourceId":source.id,"duplicate":false,"jobId":job.id}))
-    })
+    let imported = (|| -> Result<Value> {
+        fs::create_dir_all(&dir)?;
+        fs::copy(input, &original)?;
+        fs::File::open(&original)?.sync_all()?;
+        ensure!(storage::hash(&original)? == sha, "源文件导入期间发生变化");
+        source.path = original.to_string_lossy().into();
+        app.db.transaction(|db| {
+            // Recheck under the write transaction: simultaneous uploads must not both insert.
+            if let Some(existing) = duplicate_import(db, &sha)? {
+                return Ok(existing);
+            }
+            if direct {
+                let shot = Shot {
+                    tag_evidence: vec![], analyzed_tags: vec![], labels_need_review: false, product_recognition_status: String::new(),
+                    keep_original_audio: false,
+                    is_featured: false,
+                    details: Default::default(),
+                    has_holiday: false,
+                    holiday_tags: vec![],
+                    product_tags: vec![],
+                    product_matches: vec![],
+                    direct_upload: true,
+                    id: id(),
+                    source_id: source.id.clone(),
+                    revision: 1,
+                    name: Path::new(name)
+                        .file_stem()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .into(),
+                    start_ticks: 0,
+                    end_ticks: source.duration_ticks,
+                    description: String::new(),
+                    tags: vec![],
+                    roles: vec![],
+                    unsupported_claims: vec![],
+                    evidence: String::new(),
+                    recipe: Recipe {
+                        color_mode: "preserve".into(),
+                        ..Default::default()
+                    },
+                    status: "tagging".into(),
+                    error: None,
+                    quality_issues: vec![],
+                    output_path: Some(source.path.clone()),
+                    output_sha256: Some(source.sha256.clone()),
+                    published_path: None,
+                    analysis_run_id: String::new(),
+                    model_id: String::new(),
+                    input_mode: String::new(),
+                    created_at: now(),
+                };
+                source.status = "tagging".into();
+                let job = Job::new("tag", &shot.id, shot.revision);
+                store::put(db, "source", &source.id, &source)?;
+                store::put(db, "shot", &shot.id, &shot)?;
+                enqueue_analysis(db, &job, &app.home)?;
+                return Ok(
+                    json!({"sourceId":source.id,"shotId":shot.id,"jobId":job.id,"duplicate":false}),
+                );
+            }
+            let job = Job::new("archive", &source.id, 0);
+            store::put(db, "source", &source.id, &source)?;
+            enqueue_analysis(db, &job, &app.home)?;
+            Ok(json!({"sourceId":source.id,"duplicate":false,"jobId":job.id}))
+        })
+    })();
+    if imported.as_ref().map_or(true, |v| v["duplicate"] == true) {
+        let _ = fs::remove_dir_all(&dir);
+    }
+    let imported = imported?;
+    if imported["duplicate"] == true {
+        return Ok(imported);
+    }
+    location::local_event(app, imported["sourceId"].as_str(), None)?;
+    Ok(imported)
 }
 fn enqueue_analysis(db: &rusqlite::Connection, job: &Job, home: &Path) -> Result<()> {
     let settings = store::get::<ModelSettings>(db, "settings", "model").unwrap_or_default();
     let config = AnalysisSettings {
         model: settings,
         endpoint_fingerprint: model::current_endpoint(home).ok().map(|e| e.fingerprint()),
+        tag_settings: Some(crate::tag_settings::current(db)?),
     };
     store::put(db, "model_config", &job.id, &config)?;
+    products::snapshot(db, &job.id)?;
     store::put(db, "job", &job.id, job)
 }
 async fn scan(State(app): State<Shared>) -> ApiResult<Json<Value>> {
     blocking(move || {
-        storage::verify_root(&app.config.nas_root, app.config.require_smb)?;
-        let inbox = app.config.nas_root.join("inbox");
+        let location = location::current(&app)?;
+        let root = if location.mode == "folder" {
+            location::verify_folder(&location.folder_root)?;
+            location.folder_root
+        } else {
+            storage::verify_root(&location.nas_root, app.config.require_smb)?;
+            location.nas_root
+        };
+        let inbox = root.join("inbox");
         let mut results = vec![];
         for entry in fs::read_dir(inbox)?.take(100) {
             let entry = entry?;
@@ -342,7 +503,12 @@ async fn scan(State(app): State<Shared>) -> ApiResult<Json<Value>> {
                 continue;
             }
             let name = entry.file_name().to_string_lossy().to_string();
-            let result = ingest(&app, &path, &name, "", "nas-inbox");
+            let batch = if location.mode == "folder" {
+                "folder-inbox"
+            } else {
+                "nas-inbox"
+            };
+            let result = ingest(&app, &path, &name, "", batch);
             results.push(match result {
                 Ok(r) => json!({"name":name,"result":r}),
                 Err(e) => json!({"name":name,"error":e.to_string()}),
@@ -377,11 +543,66 @@ fn audit(db: &rusqlite::Connection, shot: &Shot, action: &str) -> Result<()> {
     };
     store::put(db, "review", &review.id, &review)
 }
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LabelConfirmation {
+    shot_id: String,
+    revision: u64,
+}
+
+async fn confirm_labels(
+    State(app): State<Shared>,
+    ApiPath(shot_id): ApiPath<String>,
+    Json(edit): Json<ShotEdit>,
+) -> ApiResult<Json<Shot>> {
+    Ok(Json(app.db.transaction(|db| {
+        let mut shot = store::get::<Shot>(db, "shot", &shot_id)?;
+        ensure!(shot.status != "rejected", "请先恢复已淘汰分镜");
+        let source = store::get::<Source>(db, "source", &shot.source_id)?;
+        edit.apply(&mut shot, &source)?;
+        ensure!(
+            !shot.description.trim().is_empty(),
+            "确认打标前请填写画面描述"
+        );
+        let ready = shot.output_sha256.is_some()
+            && shot
+                .output_path
+                .as_ref()
+                .is_some_and(|p| Path::new(p).is_file());
+        ensure!(
+            !shot.direct_upload || ready,
+            "分镜原文件不可用，请重试导入任务"
+        );
+        let kind = if ready { "publish" } else { "render" };
+        shot.labels_need_review = false;
+        shot.status = if ready { "publishing" } else { "rendering" }.into();
+        let job = Job::new(kind, &shot.id, shot.revision);
+        if !ready {
+            store::put(db, "auto_publish", &job.id, &true)?;
+        }
+        audit(db, &shot, "confirm_labels")?;
+        store::put(
+            db,
+            "label_confirmation",
+            &shot.id,
+            &LabelConfirmation {
+                shot_id: shot.id.clone(),
+                revision: shot.revision,
+            },
+        )?;
+        store::put(db, "job", &job.id, &job)?;
+        store::put(db, "shot", &shot.id, &shot)?;
+        Ok(shot)
+    })?))
+}
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Action {
     base_revision: u64,
     action: String,
+    #[serde(default)]
+    fields: Vec<String>,
 }
 async fn action(
     State(app): State<Shared>,
@@ -391,12 +612,50 @@ async fn action(
     Ok(Json(app.db.transaction(|db| {
         let mut shot = store::get::<Shot>(db, "shot", &shot_id)?;
         ensure!(shot.revision == action.base_revision, "revision_conflict");
+        ensure!(shot.status != "deleted", "片段已删除");
         ensure!(
-            !["rendering", "publishing"].contains(&shot.status.as_str()),
+            !["rendering", "publishing", "tagging", "recognizing"].contains(&shot.status.as_str()),
             "片段正在处理"
         );
         let kind = match action.action.as_str() {
+            "delete" => {
+                delete_source_records(db, &shot.source_id)?;
+                return store::get(db, "shot", &shot.id);
+            }
+            "reanalyze" | "reanalyze_replace" => {
+                ensure!(shot.status != "rejected", "请先恢复已淘汰分镜");
+                let previous_status = if shot.status == "failed" {
+                    store::get::<String>(db, "reanalysis_previous_status", &shot.id).unwrap_or_else(|_| {
+                        if shot.published_path.is_some() { "published" } else if shot.direct_upload { "tag_review" } else if shot.output_path.is_some() { "review" } else { "draft" }.into()
+                    })
+                } else { shot.status.clone() };
+                store::put(db, "reanalysis_previous_status", &shot.id, &previous_status)?;
+                shot.status = "tagging".into();
+                Some("reanalyze")
+            }
+            "accept_analysis" => {
+                crate::label_review::accept(db, &mut shot, &action.fields)?;
+                None
+            }
+            "dismiss_analysis" => {
+                crate::label_review::dismiss(db, &shot.id)?;
+                None
+            }
+            "recognize_products" => {
+                ensure!(shot.status != "rejected", "请先恢复已淘汰分镜");
+                ensure!(
+                    !store::list::<Product>(db, "product")?.is_empty()
+                        || !shot.product_tags.is_empty(),
+                    "请先添加商品参考图与代称"
+                );
+                shot.status = "recognizing".into();
+                Some("recognize_products")
+            }
             "render" => {
+                ensure!(
+                    !shot.direct_upload,
+                    "直接上传的分镜无需加工，请审核标签后入库"
+                );
                 shot.recipe.validate()?;
                 ensure!(shot.status != "published", "修改已发布片段后再加工");
                 if shot.status == "review"
@@ -415,8 +674,14 @@ async fn action(
                 Some("render")
             }
             "publish" => {
+                ensure!(!shot.description.trim().is_empty(), "入库前请填写画面描述");
                 ensure!(
-                    shot.status == "review"
+                    shot.status
+                        == if shot.direct_upload {
+                            "tag_review"
+                        } else {
+                            "review"
+                        }
                         && shot.output_path.is_some()
                         && shot.output_sha256.is_some(),
                     "必须先完成加工并审核当前结果"
@@ -431,7 +696,9 @@ async fn action(
             }
             "restore" => {
                 ensure!(shot.status == "rejected", "只能恢复已淘汰片段");
-                shot.status = if shot.output_path.is_some() {
+                shot.status = if shot.direct_upload {
+                    "tag_review"
+                } else if shot.output_path.is_some() {
                     "review"
                 } else {
                     "draft"
@@ -446,12 +713,64 @@ async fn action(
         audit(db, &shot, &action.action)?;
         if let Some(kind) = kind {
             let job = Job::new(kind, &shot.id, shot.revision);
-            store::put(db, "job", &job.id, &job)?;
+            if kind == "reanalyze" {
+                store::put(db, "reanalysis_replace", &job.id, &(action.action == "reanalyze_replace"))?;
+            }
+            if ["recognize_products", "reanalyze"].contains(&kind) {
+                enqueue_analysis(db, &job, &app.home)?;
+            } else {
+                store::put(db, "job", &job.id, &job)?;
+            }
         }
         store::put(db, "shot", &shot.id, &shot)?;
         Ok(shot)
     })?))
 }
+fn delete_source_records(db: &rusqlite::Connection, source_id: &str) -> Result<()> {
+    let mut source = store::get::<Source>(db, "source", source_id)?;
+    ensure!(source.status != "deleted", "原片已删除");
+    let shots: Vec<Shot> = store::list::<Shot>(db, "shot")?.into_iter()
+        .filter(|s| s.source_id == source_id).collect();
+    let mut targets = std::collections::HashSet::from([source_id.to_owned()]);
+    targets.extend(shots.iter().map(|s| s.id.clone()));
+    let mut jobs = store::list::<Job>(db, "job")?;
+    // Publication sync jobs refer to a job ID rather than directly to a shot.
+    loop {
+        let before = targets.len();
+        for job in &jobs {
+            if targets.contains(&job.target_id) { targets.insert(job.id.clone()); }
+        }
+        if targets.len() == before { break; }
+    }
+    ensure!(!jobs.iter().any(|j| targets.contains(&j.target_id) && j.status == "running"),
+        "素材正在处理或同步，请任务结束后再删除");
+    for job in &mut jobs {
+        if targets.contains(&job.target_id) && ["queued", "failed"].contains(&job.status.as_str()) {
+            job.status = "cancelled".into();
+            job.error = None;
+            job.updated_at = now();
+            store::put(db, "job", &job.id, job)?;
+        }
+    }
+    for mut shot in shots {
+        if shot.status == "deleted" { continue; }
+        shot.status = "deleted".into();
+        shot.revision += 1;
+        shot.error = None;
+        shot.published_path = None;
+        audit(db, &shot, "delete")?;
+        store::put(db, "shot", &shot.id, &shot)?;
+    }
+    source.status = "deleted".into();
+    source.error = None;
+    store::put(db, "source", source_id, &source)
+}
+
+async fn delete_source(State(app): State<Shared>, ApiPath(source_id): ApiPath<String>) -> ApiResult<Json<Value>> {
+    app.db.transaction(|db| delete_source_records(db, &source_id))?;
+    Ok(Json(json!({"deleted":true})))
+}
+
 async fn manual(
     State(app): State<Shared>,
     ApiPath(source_id): ApiPath<String>,
@@ -464,14 +783,30 @@ async fn manual(
         "请先重试原片任务以生成预览",
     )?;
     Ok(Json(app.db.transaction(|db| {
-        let source = store::get::<Source>(db, "source", &source_id)?;
+        let mut source = store::get::<Source>(db, "source", &source_id)?;
+        ensure!(source.status != "deleted", "原片已删除");
+        ensure!(
+            !store::list::<Shot>(db, "shot")?
+                .iter()
+                .any(|s| s.source_id == source.id),
+            "该原片已有分镜，请在分镜页修改现有片段"
+        );
         ensure!(
             ["review", "failed"].contains(&source.status.as_str()),
             "请等待原片分析完成"
         );
         let shot = Shot {
+            tag_evidence: vec![], analyzed_tags: vec![], labels_need_review: false, product_recognition_status: String::new(),
+            keep_original_audio: false,
+            is_featured: false,
+            details: Default::default(),
+            has_holiday: false,
+            holiday_tags: vec![],
+            product_tags: vec![],
+            product_matches: vec![],
+            direct_upload: false,
             id: id(),
-            source_id: source.id,
+            source_id: source.id.clone(),
             revision: 1,
             name: format!("{} 手工分镜", source.name),
             start_ticks: 0,
@@ -495,6 +830,9 @@ async fn manual(
         };
         audit(db, &shot, "manual")?;
         store::put(db, "shot", &shot.id, &shot)?;
+        source.status = "review".into();
+        source.error = None;
+        store::put(db, "source", &source.id, &source)?;
         Ok(shot)
     })?))
 }
@@ -520,7 +858,11 @@ async fn retry(
             );
             shot.revision += 1;
             job.revision = shot.revision;
-            shot.status = if job.kind == "render" {
+            shot.status = if job.kind == "recognize_products" {
+                "recognizing"
+            } else if ["tag", "reanalyze"].contains(&job.kind.as_str()) {
+                "tagging"
+            } else if job.kind == "render" {
                 "rendering"
             } else {
                 "publishing"
@@ -528,6 +870,9 @@ async fn retry(
             .into();
             shot.error = None;
             store::put(db, "shot", &shot.id, &shot)?;
+            if ["tag", "recognize_products", "reanalyze"].contains(&job.kind.as_str()) {
+                enqueue_analysis(db, &job, &app.home)?;
+            }
         }
         job.status = "queued".into();
         job.error = None;
@@ -538,22 +883,45 @@ async fn retry(
 }
 
 pub fn worker(app: Shared) {
+    worker_until(app, Arc::new(std::sync::atomic::AtomicBool::new(false)));
+}
+
+pub fn worker_until(
+    app: Shared,
+    stopped: Arc<std::sync::atomic::AtomicBool>,
+) -> Vec<std::thread::JoinHandle<()>> {
+    let initial = app.clone();
+    let mut handles = vec![std::thread::spawn(move || {
+        if let Err(error) = location::backfill(&initial) {
+            eprintln!("本地文件夹同步失败: {error}");
+        }
+    })];
     // Separate bounded lanes keep model latency and SMB writes off the render queue.
     for kinds in [
         vec!["render"],
         vec!["archive", "publish"],
-        vec!["analyze"],
+        vec!["analyze", "tag", "recognize_products", "reanalyze"],
         vec!["sync_source", "sync_release"],
     ] {
         let app = app.clone();
-        std::thread::spawn(move || {
+        let stopped = stopped.clone();
+        handles.push(std::thread::spawn(move || {
             loop {
+                if stopped.load(std::sync::atomic::Ordering::SeqCst) {
+                    break;
+                }
+                let _storage_guard = if kinds.contains(&"sync_source") {
+                    Some(app.storage_gate.lock().unwrap_or_else(|e| e.into_inner()))
+                } else {
+                    None
+                };
                 if kinds.contains(&"sync_source")
                     && !app
                         .db
                         .transaction(|db| Ok(sync_enabled(db)))
                         .unwrap_or(false)
                 {
+                    drop(_storage_guard);
                     std::thread::sleep(Duration::from_millis(500));
                     continue;
                 }
@@ -569,43 +937,233 @@ pub fn worker(app: Shared) {
                         .into();
                         job.error = result.err().map(|e| e.to_string());
                         let stored = app.db.transaction(|db| {
-                            if let Some(error) = &job.error {
-                                if ["analyze", "archive"].contains(&job.kind.as_str()) {
-                                    let mut src =
-                                        store::get::<Source>(db, "source", &job.target_id)?;
-                                    src.status = "failed".into();
-                                    src.error = Some(error.clone());
-                                    store::put(db, "source", &src.id, &src)?;
-                                } else if !["sync_source", "sync_release"]
-                                    .contains(&job.kind.as_str())
-                                {
-                                    let mut shot = store::get::<Shot>(db, "shot", &job.target_id)?;
-                                    if shot.revision == job.revision {
-                                        shot.revision += 1;
-                                        shot.status = "failed".into();
-                                        shot.error = Some(error.clone());
-                                        store::put(db, "shot", &shot.id, &shot)?;
-                                    }
-                                }
-                            }
+                            record_failure(db, &job)?;
                             store::put(db, "job", &job.id, &job)
                         });
                         if let Err(e) = stored {
                             eprintln!("任务状态落盘失败: {e}");
                         }
                     }
-                    Ok(None) => std::thread::sleep(Duration::from_millis(200)),
+                    Ok(None) => {
+                        drop(_storage_guard);
+                        std::thread::sleep(Duration::from_millis(200));
+                    }
                     Err(e) => {
+                        drop(_storage_guard);
                         eprintln!("任务队列错误: {e}");
                         std::thread::sleep(Duration::from_secs(2));
                     }
                 }
             }
-        });
+        }));
     }
+    handles
 }
+fn record_failure(db: &rusqlite::Connection, job: &Job) -> Result<()> {
+    if let Some(error) = &job.error {
+        if ["analyze", "archive"].contains(&job.kind.as_str()) {
+            let mut source = store::get::<Source>(db, "source", &job.target_id)?;
+            source.status = "failed".into();
+            source.error = Some(error.clone());
+            store::put(db, "source", &source.id, &source)?;
+        } else if !["sync_source", "sync_release"].contains(&job.kind.as_str()) {
+            let mut shot = store::get::<Shot>(db, "shot", &job.target_id)?;
+            if shot.revision == job.revision {
+                shot.revision += 1;
+                shot.status = "failed".into();
+                shot.error = Some(error.clone());
+                store::put(db, "shot", &shot.id, &shot)?;
+            }
+        }
+    }
+    Ok(())
+}
+fn recognize_products(
+    app: &App,
+    job: &Job,
+    source: &Source,
+    shot: &mut Shot,
+    initial: bool,
+) -> Result<()> {
+    let products = app.db.transaction(|db| products::for_job(db, &job.id))?;
+    if initial {
+        shot.analyzed_tags = shot.tags.clone();
+        shot.tags
+            .retain(|t| !products.iter().any(|p| p.alias == *t));
+    }
+    if products.is_empty() {
+        shot.product_recognition_status = "unconfigured".into();
+        return products::apply_matches(shot, vec![]);
+    }
+    let config = app.db.get::<AnalysisSettings>("model_config", &job.id)?;
+    let endpoint = model::current_endpoint(&app.home)?;
+    ensure!(
+        config.endpoint_fingerprint.as_deref() == Some(endpoint.fingerprint().as_str()),
+        "模型端点配置已变化，请重试以使用当前配置"
+    );
+    let result = products::recognize(
+        &app.media,
+        source,
+        shot,
+        &endpoint,
+        &config.model,
+        &products,
+    );
+    shot.product_recognition_status = if result.is_err() { "failed" } else if shot.product_matches.is_empty() { "unmatched" } else { "matched" }.into();
+    result
+}
+
 fn execute(app: &App, job: &Job) -> Result<()> {
+    execute_job(app, job)?;
+    if job.kind == "publish" {
+        location::local_event(app, None, Some(&job.id))?;
+    }
+    Ok(())
+}
+fn execute_job(app: &App, job: &Job) -> Result<()> {
     match job.kind.as_str() {
+        "reanalyze" => {
+            let previous = app.db.get::<Shot>("shot", &job.target_id)?;
+            let replace = app.db.get::<bool>("reanalysis_replace", &job.id).unwrap_or(true);
+            if !replace && previous.revision == job.revision + 1 && previous.status != "tagging" { return Ok(()); }
+            if previous.revision == job.revision + 1
+                && ["draft", "tag_review"].contains(&previous.status.as_str())
+            {
+                return Ok(());
+            }
+            ensure!(previous.revision == job.revision && previous.status == "tagging", "revision_conflict");
+            let source = app.db.get::<Source>("source", &previous.source_id)?;
+            app.media.prepare(&source)?;
+            let config = app.db.get::<AnalysisSettings>("model_config", &job.id)?;
+            let endpoint = model::current_endpoint(&app.home)?;
+            ensure!(config.endpoint_fingerprint.as_deref() == Some(endpoint.fingerprint().as_str()), "模型端点配置已变化，请重试以使用当前配置");
+            let mut shot = if !replace {
+                let mut proposed = previous.clone();
+                proposed.product_tags.clear();
+                proposed.product_matches.clear();
+                model::tag_range(&app.media, &source, &endpoint, &config.model, config.tag_settings.as_ref(), &mut proposed)?;
+                proposed
+            } else if previous.direct_upload {
+                let mut shot = previous.clone();
+                shot.keep_original_audio = false;
+                shot.is_featured = false;
+                shot.start_ticks = 0;
+                shot.end_ticks = source.duration_ticks;
+                shot.recipe = Default::default();
+                shot.quality_issues.clear();
+                shot.output_path = Some(source.path.clone());
+                shot.output_sha256 = Some(source.sha256.clone());
+                shot.product_tags.clear();
+                shot.product_matches.clear();
+                model::tag(&app.media, &source, &endpoint, &config.model, config.tag_settings.as_ref(), &mut shot)?;
+                shot
+            } else {
+                model::analyze(&app.media, &source, &endpoint, &config.model, config.tag_settings.as_ref())?
+            };
+            shot.id = previous.id.clone();
+            shot.keep_original_audio = previous.keep_original_audio;
+            shot.is_featured = previous.is_featured;
+            shot.created_at = previous.created_at;
+            shot.revision = job.revision + 1;
+            recognize_products(app, job, &source, &mut shot, true)?;
+            shot.status = if shot.direct_upload { "tag_review" } else { "draft" }.into();
+            shot.published_path = None;
+            shot.error = None;
+            shot.labels_need_review = false;
+            app.db.transaction(|db| {
+                let mut current = store::get::<Shot>(db, "shot", &shot.id)?;
+                ensure!(current.revision == job.revision && current.status == "tagging", "revision_conflict");
+                if !replace {
+                    current.revision += 1;
+                    current.status = store::get::<String>(db, "reanalysis_previous_status", &current.id).unwrap_or_else(|_| "draft".into());
+                    if current.status == "failed" { current.status = if current.direct_upload { "tag_review" } else { "draft" }.into(); }
+                    current.error = None;
+                    store::put(db, "analysis_suggestion", &current.id, &crate::label_review::Suggestion { base_revision: current.revision, shot })?;
+                    audit(db, &current, "analysis_suggested")?;
+                    return store::put(db, "shot", &current.id, &current);
+                }
+                crate::label_review::dismiss(db, &shot.id)?;
+                audit(db, &shot, "reanalyze")?;
+                store::put(db, "shot", &shot.id, &shot)
+            })
+        }
+        "recognize_products" => {
+            let mut shot = app.db.get::<Shot>("shot", &job.target_id)?;
+            if shot.revision == job.revision + 1
+                && ["draft", "review", "tag_review"].contains(&shot.status.as_str())
+            {
+                return Ok(());
+            }
+            ensure!(
+                shot.revision == job.revision && shot.status == "recognizing",
+                "revision_conflict"
+            );
+            let source = app.db.get::<Source>("source", &shot.source_id)?;
+            recognize_products(app, job, &source, &mut shot, false)?;
+            shot.status = if shot.direct_upload {
+                "tag_review"
+            } else if shot.output_path.is_some() {
+                "review"
+            } else {
+                "draft"
+            }
+            .into();
+            shot.published_path = None;
+            shot.error = None;
+            shot.revision += 1;
+            app.db.transaction(|db| {
+                ensure!(
+                    store::get::<Shot>(db, "shot", &shot.id)?.revision == job.revision,
+                    "revision_conflict"
+                );
+                audit(db, &shot, "recognize_products")?;
+                store::put(db, "shot", &shot.id, &shot)
+            })
+        }
+        "tag" => {
+            let mut shot = app.db.get::<Shot>("shot", &job.target_id)?;
+            if shot.revision == job.revision + 1 && shot.status == "tag_review" {
+                return Ok(());
+            }
+            ensure!(
+                shot.direct_upload && shot.revision == job.revision && shot.status == "tagging",
+                "revision_conflict"
+            );
+            let source = app.db.get::<Source>("source", &shot.source_id)?;
+            app.media.prepare(&source)?;
+            app.db.transaction(|db| {
+                if sync_enabled(db) {
+                    enqueue_sync(db, "sync_source", &source.id, 0)?;
+                }
+                Ok(())
+            })?;
+            let config = app.db.get::<AnalysisSettings>("model_config", &job.id)?;
+            let endpoint = model::current_endpoint(&app.home)?;
+            ensure!(
+                config.endpoint_fingerprint.as_deref() == Some(endpoint.fingerprint().as_str()),
+                "模型端点配置已变化，请重试以使用当前配置"
+            );
+            model::tag(
+                &app.media,
+                &source,
+                &endpoint,
+                &config.model,
+                config.tag_settings.as_ref(),
+                &mut shot,
+            )?;
+            recognize_products(app, job, &source, &mut shot, true)?;
+            shot.status = "tag_review".into();
+            shot.error = None;
+            shot.revision += 1;
+            app.db.transaction(|db| {
+                let current = store::get::<Shot>(db, "shot", &shot.id)?;
+                ensure!(
+                    current.revision == job.revision && current.status == "tagging",
+                    "revision_conflict"
+                );
+                store::put(db, "shot", &shot.id, &shot)
+            })
+        }
         "archive" => {
             let mut source = app.db.get::<Source>("source", &job.target_id)?;
             if source.nas_relative_path.is_some()
@@ -625,6 +1183,9 @@ fn execute(app: &App, job: &Job) -> Result<()> {
                 let analysis = Job::new("analyze", &source.id, 0);
                 let settings = store::get::<AnalysisSettings>(db, "model_config", &job.id)?;
                 store::put(db, "model_config", &analysis.id, &settings)?;
+                let catalog =
+                    store::get::<String>(db, "product_config", &job.id).unwrap_or_default();
+                store::put(db, "product_config", &analysis.id, &catalog)?;
                 store::put(db, "job", &analysis.id, &analysis)?;
                 store::put(db, "prepared_source", &source.id, &true)?;
                 if sync_enabled(db) {
@@ -648,11 +1209,22 @@ fn execute(app: &App, job: &Job) -> Result<()> {
                 config.endpoint_fingerprint.as_deref() == Some(endpoint.fingerprint().as_str()),
                 "模型端点配置已变化，请重试以使用当前配置"
             );
-            let shots = model::analyze(&app.media, &source, &endpoint, &config.model)?;
+            let mut shot = model::analyze(
+                &app.media,
+                &source,
+                &endpoint,
+                &config.model,
+                config.tag_settings.as_ref(),
+            )?;
+            recognize_products(app, job, &source, &mut shot, true)?;
             app.db.transaction(|db| {
-                for shot in shots {
-                    store::put(db, "shot", &shot.id, &shot)?;
-                }
+                ensure!(
+                    !store::list::<Shot>(db, "shot")?
+                        .iter()
+                        .any(|s| s.source_id == source.id),
+                    "该原片已有分镜，请修改现有片段"
+                );
+                store::put(db, "shot", &shot.id, &shot)?;
                 source.status = "review".into();
                 source.error = None;
                 store::put(db, "source", &source.id, &source)
@@ -660,6 +1232,12 @@ fn execute(app: &App, job: &Job) -> Result<()> {
         }
         "render" => {
             let mut shot = app.db.get::<Shot>("shot", &job.target_id)?;
+            let auto_publish = app.db.get::<bool>("auto_publish", &job.id).unwrap_or(false);
+            let publish_id = format!("publish-{}", job.id);
+            // The next job and rendered shot commit together, including after crash recovery.
+            if auto_publish && app.db.get::<Job>("job", &publish_id).is_ok() {
+                return Ok(());
+            }
             if shot.revision == job.revision + 1 && shot.status == "review" {
                 return Ok(());
             }
@@ -682,11 +1260,16 @@ fn execute(app: &App, job: &Job) -> Result<()> {
             shot.output_sha256 = Some(storage::hash(&output)?);
             shot.output_path = Some(output.to_string_lossy().into());
             shot.quality_issues = issues;
-            shot.status = "review".into();
+            shot.status = if auto_publish { "publishing" } else { "review" }.into();
             shot.revision += 1;
             app.db.transaction(|db| {
                 let current = store::get::<Shot>(db, "shot", &shot.id)?;
                 ensure!(current.revision == job.revision, "revision_conflict");
+                if auto_publish {
+                    let mut publish = Job::new("publish", &shot.id, shot.revision);
+                    publish.id = publish_id;
+                    store::put(db, "job", &publish.id, &publish)?;
+                }
                 store::put(db, "shot", &shot.id, &shot)
             })
         }
@@ -699,16 +1282,26 @@ fn execute(app: &App, job: &Job) -> Result<()> {
                 shot.revision == job.revision && shot.status == "publishing",
                 "revision_conflict"
             );
-            ensure!(
-                !shot.description.trim().is_empty() && !shot.roles.is_empty(),
-                "发布前请填写画面描述和至少一个用途标签"
-            );
+            ensure!(!shot.description.trim().is_empty(), "发布前请填写画面描述");
             let source = app.db.get::<Source>("source", &shot.source_id)?;
             let local_root = app.config.data_dir.join("releases");
             fs::create_dir_all(&local_root)?;
             let root = &local_root;
             let required = false;
-            let relative = format!("shots/{}/r{}/master.mp4", shot.id, shot.revision);
+            if shot.direct_upload {
+                ensure!(
+                    shot.start_ticks == 0 && shot.end_ticks == source.duration_ticks,
+                    "直接上传分镜必须保留完整时长"
+                );
+                app.media.prepare(&source)?;
+                app.media.verify_original(&source)?;
+            }
+            let extension = if shot.direct_upload {
+                media_extension(&source.name)
+            } else {
+                "mp4".into()
+            };
+            let relative = format!("shots/{}/r{}/master.{extension}", shot.id, shot.revision);
             let output = Path::new(shot.output_path.as_ref().context("加工文件缺失")?);
             let sha = shot.output_sha256.as_ref().context("加工校验信息缺失")?;
             ensure!(storage::hash(output)? == *sha, "加工文件与审核版本不一致");
@@ -780,62 +1373,17 @@ fn execute(app: &App, job: &Job) -> Result<()> {
             let source = app.db.get::<Source>("source", &job.target_id)?;
             sync_source(app, &source)
         }
-        "sync_release" => {
-            let metadata = app
-                .config
-                .data_dir
-                .join("publications")
-                .join(format!("{}.json", job.target_id));
-            let manifest: Value = serde_json::from_slice(&fs::read(&metadata)?)?;
-            let source = app.db.get::<Source>(
-                "source",
-                manifest["shot"]["sourceId"]
-                    .as_str()
-                    .context("发布来源缺失")?,
-            )?;
-            sync_source(app, &source)?;
-            let relative = manifest["shot"]["publishedPath"]
-                .as_str()
-                .context("发布路径缺失")?;
-            let local = app.config.data_dir.join("releases").join(relative);
-            let sha = manifest["shot"]["outputSha256"]
-                .as_str()
-                .context("发布哈希缺失")?;
-            storage::publish_file(
-                &app.config.nas_root,
-                Path::new(relative),
-                &local,
-                sha,
-                app.config.require_smb,
-            )?;
-            let poster = local.parent().unwrap().join("poster.jpg");
-            let poster_relative = Path::new(relative).parent().unwrap().join("poster.jpg");
-            storage::publish_file(
-                &app.config.nas_root,
-                &poster_relative,
-                &poster,
-                &storage::hash(&poster)?,
-                app.config.require_smb,
-            )?;
-            let meta_relative = format!(
-                "metadata/{}/{}.json",
-                manifest["shot"]["id"].as_str().context("分镜 ID 缺失")?,
-                job.target_id
-            );
-            storage::publish_file(
-                &app.config.nas_root,
-                Path::new(&meta_relative),
-                &metadata,
-                &storage::hash(&metadata)?,
-                app.config.require_smb,
-            )?;
-            Ok(())
-        }
+        "sync_release" => location::copy_release(
+            app,
+            &job.target_id,
+            &location::current(app)?.nas_root,
+            app.config.require_smb,
+        ),
         _ => anyhow::bail!("未知任务类型"),
     }
 }
 
-fn source_relative(source: &Source) -> String {
+pub(crate) fn source_relative(source: &Source) -> String {
     let ext = Path::new(&source.name)
         .extension()
         .and_then(|v| v.to_str())
@@ -843,15 +1391,29 @@ fn source_relative(source: &Source) -> String {
         .unwrap_or("bin");
     format!("sources/{}/original.{ext}", source.id)
 }
+pub fn media_extension(name: &str) -> String {
+    Path::new(name)
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_lowercase()
+}
+pub fn media_mime(path: &Path) -> &'static str {
+    match media_extension(&path.to_string_lossy()).as_str() {
+        "mov" => "video/quicktime",
+        "webm" => "video/webm",
+        "mkv" => "video/x-matroska",
+        "avi" => "video/x-msvideo",
+        _ => "video/mp4",
+    }
+}
 fn sync_source(app: &App, source: &Source) -> Result<()> {
-    storage::publish_file(
-        &app.config.nas_root,
-        Path::new(&source_relative(source)),
-        Path::new(&source.path),
-        &source.sha256,
+    location::copy_source(
+        app,
+        source,
+        &location::current(app)?.nas_root,
         app.config.require_smb,
-    )?;
-    Ok(())
+    )
 }
 
 pub fn byte_range(range: Option<&str>, len: u64) -> Result<(u64, u64, bool)> {
@@ -932,7 +1494,7 @@ async fn media_file(
             if variant == "poster" {
                 "image/jpeg"
             } else {
-                "video/mp4"
+                media_mime(&path)
             },
         )
         .header(header::ACCEPT_RANGES, "bytes")
@@ -945,8 +1507,71 @@ async fn media_file(
 }
 
 #[cfg(test)]
+#[path = "direct_upload_tests.rs"]
+mod direct_upload_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn deleting_source_cascades_cancels_queue_and_preserves_history() {
+        let root = tempfile::tempdir().unwrap();
+        let db = Store::open(&root.path().join("delete.sqlite3")).unwrap();
+        let source: Source = serde_json::from_value(json!({"id":"source","name":"clip.mp4","product":"","batch":"","sha256":"same-content","path":"original.mp4","durationTicks":120000,"width":640,"height":480,"fps":25,"colorTransfer":"bt709","rotation":0,"status":"review","createdAt":0})).unwrap();
+        db.put("source", "source", &source).unwrap();
+        for id in ["shot-a", "shot-b"] {
+            let shot: Shot = serde_json::from_value(json!({"id":id,"sourceId":"source","revision":1,"name":"clip","startTicks":0,"endTicks":120000,"description":"","tags":[],"roles":[],"unsupportedClaims":[],"evidence":"","recipe":Recipe::default(),"status":"draft","qualityIssues":[],"analysisRunId":"","modelId":"","inputMode":"video","createdAt":0})).unwrap();
+            db.put("shot", id, &shot).unwrap();
+            db.put("shot_version", id, &shot).unwrap();
+        }
+        let mut running = Job::new("publish", "shot-a", 1);
+        running.status = "running".into();
+        db.put("job", &running.id, &running).unwrap();
+        let sync = Job::new("sync_release", &running.id, 1);
+        db.put("job", &sync.id, &sync).unwrap();
+        assert!(db.transaction(|c| delete_source_records(c, "source")).is_err());
+        assert_eq!(db.get::<Source>("source", "source").unwrap().status, "review");
+        running.status = "succeeded".into();
+        db.put("job", &running.id, &running).unwrap();
+        db.transaction(|c| delete_source_records(c, "source")).unwrap();
+        assert_eq!(db.get::<Source>("source", "source").unwrap().status, "deleted");
+        assert!(db.list::<Shot>("shot").unwrap().iter().all(|s|s.status=="deleted" && s.revision==2));
+        assert_eq!(db.get::<Job>("job", &sync.id).unwrap().status, "cancelled");
+        assert_eq!(db.get::<Shot>("shot_version", "shot-a").unwrap().status, "draft");
+        assert!(db.transaction(|c| duplicate_import(c, "same-content")).unwrap().is_none());
+    }
+    #[test]
+    fn tag_configuration_is_snapshotted_at_enqueue_and_old_jobs_still_load() {
+        let root = tempfile::tempdir().unwrap();
+        let db = Store::open(&root.path().join("tags.sqlite3")).unwrap();
+        let settings = crate::tag_settings::TagSettings {
+            explanations: Default::default(),
+            holidays: vec![],
+            revision: 1,
+            groups: [vec!["提问".into()], vec![], vec![], vec![]],
+        };
+        db.put("settings", "tags", &settings).unwrap();
+        let job = Job::new("tag", "test-shot", 1);
+        db.transaction(|db| enqueue_analysis(db, &job, root.path()))
+            .unwrap();
+        db.put(
+            "settings",
+            "tags",
+            &crate::tag_settings::TagSettings::default(),
+        )
+        .unwrap();
+        assert_eq!(
+            db.get::<AnalysisSettings>("model_config", &job.id)
+                .unwrap()
+                .tag_settings,
+            Some(settings)
+        );
+        let legacy: AnalysisSettings = serde_json::from_value(
+            json!({"model":{"modelId":"test","inputMode":"video"},"endpointFingerprint":null}),
+        )
+        .unwrap();
+        assert!(legacy.tag_settings.is_none());
+    }
     #[tokio::test]
     async fn local_publish_survives_offline_nas_and_syncs_immutable_metadata_later() {
         let local = tempfile::tempdir().unwrap();
@@ -964,6 +1589,7 @@ mod tests {
         db.put("shot", &shot.id, &shot).unwrap();
         let mut job = Job::new("publish", &shot.id, shot.revision);
         let app = Arc::new(App {
+            storage_gate: std::sync::Mutex::new(()),
             db,
             config: Config {
                 data_dir: local.path().into(),
@@ -1047,6 +1673,7 @@ mod tests {
         db.put("source", &source.id, &source).unwrap();
         db.put("shot", &shot.id, &shot).unwrap();
         let app = App {
+            storage_gate: std::sync::Mutex::new(()),
             db,
             config: Config {
                 data_dir: local.path().into(),

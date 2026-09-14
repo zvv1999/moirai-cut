@@ -1,5 +1,9 @@
 export interface Recipe {
 	rotation: number;
+	flipHorizontal?: boolean;
+	flipVertical?: boolean;
+	pushIn?: boolean;
+	pushInEndPercent?: number;
 	cropMode: string;
 	cropX: number;
 	cropY: number;
@@ -7,8 +11,19 @@ export interface Recipe {
 	brightness: number;
 	contrast: number;
 	saturation: number;
+	exposure?: number;
+	temperature?: number;
+	tint?: number;
+	highlights?: number;
+	shadows?: number;
+	whites?: number;
+	blacks?: number;
+	vibrance?: number;
 }
 export interface FootageSource {
+	hasShot?: boolean;
+	previewReady?: boolean;
+	directUpload?: boolean;
 	nasSync?: string;
 	id: string;
 	name: string;
@@ -27,6 +42,21 @@ export interface Role {
 	reason: string;
 }
 export interface Shot {
+	analysisSuggestion?: import("./analysis-review").AnalysisSuggestion | null;
+	tagEvidence?: import("./tag-evidence-view").TagEvidence[];
+	analyzedTags?: string[];
+	labelsNeedReview?: boolean;
+	productRecognitionStatus?: string;
+	publishedRelease?: { id: string; revision: number } | null;
+	labelsConfirmed?: boolean;
+	productTags?: string[];
+	productMatches?: {
+		productId: string;
+		alias: string;
+		confidence: number;
+		evidence: string;
+	}[];
+	directUpload?: boolean;
 	nasSync?: string;
 	id: string;
 	sourceId: string;
@@ -35,6 +65,11 @@ export interface Shot {
 	startTicks: number;
 	endTicks: number;
 	description: string;
+	details?: ShotDetails;
+	keepOriginalAudio?: boolean;
+	isFeatured?: boolean;
+	hasHoliday?: boolean;
+	holidayTags?: string[];
 	tags: string[];
 	roles: Role[];
 	unsupportedClaims: string[];
@@ -57,11 +92,39 @@ export interface Job {
 	error: string | null;
 	updatedAt: number;
 }
+export interface ReferenceProduct {
+	id: string;
+	revision: number;
+	alias: string;
+	appearance?: string;
+	images: { id: string; url: string }[];
+}
+export interface StorageLocation {
+	mode: "nas" | "folder";
+	nasRoot: string;
+	folderRoot: string;
+	revision: number;
+	folderOnline: boolean;
+	status: string;
+	error: string | null;
+}
 export interface LibraryState {
+	libraryId?: string;
+	tagSettings?: TagSettings;
+	storage?: StorageLocation;
+	products?: ReferenceProduct[];
 	sources: FootageSource[];
 	shots: Shot[];
 	jobs: Job[];
-	counts: { sources: number; draft: number; review: number; published: number };
+	counts: {
+		pendingConfirm?: number;
+		processing?: number;
+		sources: number;
+		draft: number;
+		review: number;
+		published: number;
+		tagReview?: number;
+	};
 	settings: { modelId: string; inputMode: string };
 	runtime: {
 		syncToNas: boolean;
@@ -72,6 +135,22 @@ export interface LibraryState {
 		endpoint: string | null;
 		endpointError: string | null;
 	};
+}
+
+export interface TagSettings {
+	revision: number;
+	groups: [string[], string[], string[], string[]];
+	holidays?: string[];
+	explanations?: Record<string, string>;
+}
+
+export interface ShotDetails {
+	subject: string;
+	action: string;
+	scene: string;
+	composition: string;
+	camera: string;
+	mood: string;
 }
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -87,18 +166,24 @@ export const ROLE_LABELS: Record<string, string> = {
 	transition: "过渡",
 };
 export const STATUS_LABELS: Record<string, string> = {
+	superseded: "存储位置已更换",
+	recognizing: "商品识别中",
+	tagging: "打标中",
+	pending_confirm: "待确认打标",
+	tag_review: "待确认打标",
 	queued: "排队中",
 	archiving: "原片归档中",
 	analyzing: "分析中",
-	draft: "粗剪待审",
-	rendering: "加工中",
-	review: "待确认",
+	draft: "待确认打标",
+	rendering: "加工并入库中",
+	review: "待确认打标",
 	publishing: "本地入库中",
 	published: "本地已入库",
 	rejected: "已淘汰",
 	failed: "失败",
 	running: "处理中",
 	succeeded: "已完成",
+	cancelled: "已取消",
 };
 export interface FootageLineage {
 	schemaVersion: "moirai.lineage.v1";

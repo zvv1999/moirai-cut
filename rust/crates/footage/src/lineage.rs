@@ -28,6 +28,7 @@ pub fn releases(app: &App) -> Result<Vec<Value>> {
         let current = app
             .db
             .get::<Shot>("shot", value["shot"]["id"].as_str().context("分镜无 ID")?)?;
+        if current.status == "deleted" { continue; }
         result.push(json!({"id":id,"shot":value["shot"],"source":value["source"],"current":current.status=="published" && current.revision==value["shot"]["revision"].as_u64().unwrap_or(0)}));
     }
     Ok(result)
@@ -54,7 +55,13 @@ pub fn release_path(app: &App, id: &str) -> Result<PathBuf> {
         );
         return Ok(path);
     }
-    let root = app.config.nas_root.canonicalize()?;
+    let location = crate::location::current(app)?;
+    let root = if location.mode == "folder" {
+        location.folder_root
+    } else {
+        location.nas_root
+    }
+    .canonicalize()?;
     let path = root.join(relative).canonicalize()?;
     ensure!(path.starts_with(root), "发布路径越界");
     Ok(path)
@@ -139,6 +146,12 @@ pub fn editor_asset(app: &App, id: &str) -> Result<Value> {
     let source = app
         .db
         .get::<Source>("source", shot["sourceId"].as_str().unwrap_or_default())?;
+    let extension = crate::service::media_extension(&path.to_string_lossy());
+    let (width, height) = if shot["directUpload"] == true {
+        (json!(source.width), json!(source.height))
+    } else {
+        (video["width"].clone(), video["height"].clone())
+    };
     let lineage = json!({
         "schemaVersion":"moirai.lineage.v1","releaseId":id,"shotId":shot["id"],"shotRevision":shot["revision"],
         "sourceId":source.id,"sourceSha256":source.sha256,"sourceName":source.name,"product":source.product,"batch":source.batch,
@@ -148,7 +161,7 @@ pub fn editor_asset(app: &App, id: &str) -> Result<Value> {
         "description":shot["description"],"tags":shot["tags"],"roles":shot["roles"],"unsupportedClaims":shot["unsupportedClaims"],"evidence":shot["evidence"]
     });
     Ok(
-        json!({"name":format!("{}.mp4",shot["name"].as_str().unwrap_or("shot")),"type":"video","width":video["width"],"height":video["height"],"duration":probe["format"]["duration"].as_str().and_then(|s|s.parse::<f64>().ok()),"fps":source.fps,"hasAudio":streams.iter().any(|s|s["codec_type"]=="audio"),"footage":lineage,"mediaUrl":format!("/api/footage/media/release/{id}/master")}),
+        json!({"name":format!("{}.{extension}",shot["name"].as_str().unwrap_or("shot")),"type":"video","width":width,"height":height,"duration":probe["format"]["duration"].as_str().and_then(|s|s.parse::<f64>().ok()),"fps":source.fps,"hasAudio":streams.iter().any(|s|s["codec_type"]=="audio"),"footage":lineage,"mediaUrl":format!("/api/footage/media/release/{id}/master")}),
     )
 }
 

@@ -1,7 +1,16 @@
 pub mod domain;
+pub mod label_review;
+pub mod adaptive_lut;
+pub mod manual_color;
+pub mod libraries;
 pub mod lineage;
+pub mod location;
 pub mod media;
 pub mod model;
+pub mod preview;
+pub mod products;
 pub mod service;
 pub mod storage;
 pub mod store;
+pub mod tag_settings;
+pub mod tag_evidence;
