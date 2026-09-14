@@ -28,6 +28,36 @@ use tower::ServiceExt;
 
 const MARKER: &str = ".moirai-library";
 
+#[cfg(not(windows))]
+fn replace_file(from: &Path, to: &Path) -> Result<()> {
+    fs::rename(from, to)?;
+    Ok(())
+}
+
+#[cfg(windows)]
+fn replace_file(from: &Path, to: &Path) -> Result<()> {
+    use std::os::windows::ffi::OsStrExt;
+
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn MoveFileExW(existing: *const u16, replacement: *const u16, flags: u32) -> i32;
+    }
+
+    const MOVEFILE_REPLACE_EXISTING: u32 = 0x1;
+    const MOVEFILE_WRITE_THROUGH: u32 = 0x8;
+    let from: Vec<_> = from.as_os_str().encode_wide().chain(Some(0)).collect();
+    let to: Vec<_> = to.as_os_str().encode_wide().chain(Some(0)).collect();
+    let result = unsafe {
+        MoveFileExW(
+            from.as_ptr(),
+            to.as_ptr(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+        )
+    };
+    ensure!(result != 0, std::io::Error::last_os_error());
+    Ok(())
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Identity {
@@ -68,8 +98,8 @@ pub struct Libraries {
 fn write_json(path: &Path, value: &impl Serialize) -> Result<()> {
     let temp = path.with_extension(format!("{}.tmp", id()));
     fs::write(&temp, serde_json::to_vec(value)?)?;
-    fs::File::open(&temp)?.sync_all()?;
-    fs::rename(&temp, path)?;
+    fs::OpenOptions::new().write(true).open(&temp)?.sync_all()?;
+    replace_file(&temp, path)?;
     Ok(())
 }
 
