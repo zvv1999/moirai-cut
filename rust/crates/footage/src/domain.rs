@@ -4,7 +4,9 @@ use serde_json::Value;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const TICKS: i64 = 120_000;
-fn default_push_in_end_percent() -> f64 { 110.0 }
+fn default_push_in_end_percent() -> f64 {
+    110.0
+}
 pub const ROLES: &[&str] = &[
     "hook",
     "pain_point",
@@ -114,13 +116,35 @@ impl Default for Recipe {
 }
 impl Recipe {
     pub fn push_in_end_scale(&self) -> f64 {
-        if self.push_in { self.push_in_end_percent / 100.0 } else { 1.0 }
+        if self.push_in {
+            self.push_in_end_percent / 100.0
+        } else {
+            1.0
+        }
     }
     pub fn validate(&self) -> Result<()> {
-        ensure!(self.push_in_end_percent.is_finite() && (100.0..=200.0).contains(&self.push_in_end_percent), "镜头拉近结束比例需在 100% 至 200% 之间");
-        ensure!(self.exposure.is_finite() && (-2.0..=2.0).contains(&self.exposure), "曝光越界");
-        for value in [self.temperature, self.tint, self.highlights, self.shadows, self.whites, self.blacks, self.vibrance] {
-            ensure!(value.is_finite() && (-1.0..=1.0).contains(&value), "调色参数越界");
+        ensure!(
+            self.push_in_end_percent.is_finite()
+                && (100.0..=200.0).contains(&self.push_in_end_percent),
+            "镜头拉近结束比例需在 100% 至 200% 之间"
+        );
+        ensure!(
+            self.exposure.is_finite() && (-2.0..=2.0).contains(&self.exposure),
+            "曝光越界"
+        );
+        for value in [
+            self.temperature,
+            self.tint,
+            self.highlights,
+            self.shadows,
+            self.whites,
+            self.blacks,
+            self.vibrance,
+        ] {
+            ensure!(
+                value.is_finite() && (-1.0..=1.0).contains(&value),
+                "调色参数越界"
+            );
         }
         ensure!([0, 90, 180, 270].contains(&self.rotation), "旋转角度无效");
         ensure!(
@@ -325,7 +349,8 @@ impl ShotEdit {
                 "节日标签过多或过长"
             );
         }
-        let range_changed = shot.start_ticks != self.start_ticks || shot.end_ticks != self.end_ticks;
+        let range_changed =
+            shot.start_ticks != self.start_ticks || shot.end_ticks != self.end_ticks;
         let changed = range_changed || shot.recipe != self.recipe;
         if range_changed {
             shot.labels_need_review = true;
@@ -467,7 +492,8 @@ mod tests {
         recipe.flip_vertical = true;
         recipe.rotation = 90;
         recipe.validate().unwrap();
-        let restored: Recipe = serde_json::from_value(serde_json::to_value(&recipe).unwrap()).unwrap();
+        let restored: Recipe =
+            serde_json::from_value(serde_json::to_value(&recipe).unwrap()).unwrap();
         assert_eq!(recipe, restored);
         assert_eq!(restored.push_in_end_scale(), 1.25);
         for invalid in [99.0, 201.0, f64::NAN, f64::INFINITY] {

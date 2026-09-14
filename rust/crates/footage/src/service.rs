@@ -102,7 +102,9 @@ async fn set_storage(
             store::put(db, "settings", "storage", &settings)?;
             if sync_enabled(db) {
                 for source in store::list::<Source>(db, "source")? {
-                    if source.status == "deleted" { continue; }
+                    if source.status == "deleted" {
+                        continue;
+                    }
                     enqueue_sync(db, "sync_source", &source.id, 0)?;
                 }
                 for release in releases {
@@ -401,7 +403,10 @@ pub(crate) fn ingest_mode(
             }
             if direct {
                 let shot = Shot {
-                    tag_evidence: vec![], analyzed_tags: vec![], labels_need_review: false, product_recognition_status: String::new(),
+                    tag_evidence: vec![],
+                    analyzed_tags: vec![],
+                    labels_need_review: false,
+                    product_recognition_status: String::new(),
                     keep_original_audio: false,
                     is_featured: false,
                     details: Default::default(),
@@ -625,10 +630,23 @@ async fn action(
             "reanalyze" | "reanalyze_replace" => {
                 ensure!(shot.status != "rejected", "请先恢复已淘汰分镜");
                 let previous_status = if shot.status == "failed" {
-                    store::get::<String>(db, "reanalysis_previous_status", &shot.id).unwrap_or_else(|_| {
-                        if shot.published_path.is_some() { "published" } else if shot.direct_upload { "tag_review" } else if shot.output_path.is_some() { "review" } else { "draft" }.into()
-                    })
-                } else { shot.status.clone() };
+                    store::get::<String>(db, "reanalysis_previous_status", &shot.id).unwrap_or_else(
+                        |_| {
+                            if shot.published_path.is_some() {
+                                "published"
+                            } else if shot.direct_upload {
+                                "tag_review"
+                            } else if shot.output_path.is_some() {
+                                "review"
+                            } else {
+                                "draft"
+                            }
+                            .into()
+                        },
+                    )
+                } else {
+                    shot.status.clone()
+                };
                 store::put(db, "reanalysis_previous_status", &shot.id, &previous_status)?;
                 shot.status = "tagging".into();
                 Some("reanalyze")
@@ -714,7 +732,12 @@ async fn action(
         if let Some(kind) = kind {
             let job = Job::new(kind, &shot.id, shot.revision);
             if kind == "reanalyze" {
-                store::put(db, "reanalysis_replace", &job.id, &(action.action == "reanalyze_replace"))?;
+                store::put(
+                    db,
+                    "reanalysis_replace",
+                    &job.id,
+                    &(action.action == "reanalyze_replace"),
+                )?;
             }
             if ["recognize_products", "reanalyze"].contains(&kind) {
                 enqueue_analysis(db, &job, &app.home)?;
@@ -729,8 +752,10 @@ async fn action(
 fn delete_source_records(db: &rusqlite::Connection, source_id: &str) -> Result<()> {
     let mut source = store::get::<Source>(db, "source", source_id)?;
     ensure!(source.status != "deleted", "原片已删除");
-    let shots: Vec<Shot> = store::list::<Shot>(db, "shot")?.into_iter()
-        .filter(|s| s.source_id == source_id).collect();
+    let shots: Vec<Shot> = store::list::<Shot>(db, "shot")?
+        .into_iter()
+        .filter(|s| s.source_id == source_id)
+        .collect();
     let mut targets = std::collections::HashSet::from([source_id.to_owned()]);
     targets.extend(shots.iter().map(|s| s.id.clone()));
     let mut jobs = store::list::<Job>(db, "job")?;
@@ -738,12 +763,20 @@ fn delete_source_records(db: &rusqlite::Connection, source_id: &str) -> Result<(
     loop {
         let before = targets.len();
         for job in &jobs {
-            if targets.contains(&job.target_id) { targets.insert(job.id.clone()); }
+            if targets.contains(&job.target_id) {
+                targets.insert(job.id.clone());
+            }
         }
-        if targets.len() == before { break; }
+        if targets.len() == before {
+            break;
+        }
     }
-    ensure!(!jobs.iter().any(|j| targets.contains(&j.target_id) && j.status == "running"),
-        "素材正在处理或同步，请任务结束后再删除");
+    ensure!(
+        !jobs
+            .iter()
+            .any(|j| targets.contains(&j.target_id) && j.status == "running"),
+        "素材正在处理或同步，请任务结束后再删除"
+    );
     for job in &mut jobs {
         if targets.contains(&job.target_id) && ["queued", "failed"].contains(&job.status.as_str()) {
             job.status = "cancelled".into();
@@ -753,7 +786,9 @@ fn delete_source_records(db: &rusqlite::Connection, source_id: &str) -> Result<(
         }
     }
     for mut shot in shots {
-        if shot.status == "deleted" { continue; }
+        if shot.status == "deleted" {
+            continue;
+        }
         shot.status = "deleted".into();
         shot.revision += 1;
         shot.error = None;
@@ -766,8 +801,12 @@ fn delete_source_records(db: &rusqlite::Connection, source_id: &str) -> Result<(
     store::put(db, "source", source_id, &source)
 }
 
-async fn delete_source(State(app): State<Shared>, ApiPath(source_id): ApiPath<String>) -> ApiResult<Json<Value>> {
-    app.db.transaction(|db| delete_source_records(db, &source_id))?;
+async fn delete_source(
+    State(app): State<Shared>,
+    ApiPath(source_id): ApiPath<String>,
+) -> ApiResult<Json<Value>> {
+    app.db
+        .transaction(|db| delete_source_records(db, &source_id))?;
     Ok(Json(json!({"deleted":true})))
 }
 
@@ -796,7 +835,10 @@ async fn manual(
             "请等待原片分析完成"
         );
         let shot = Shot {
-            tag_evidence: vec![], analyzed_tags: vec![], labels_need_review: false, product_recognition_status: String::new(),
+            tag_evidence: vec![],
+            analyzed_tags: vec![],
+            labels_need_review: false,
+            product_recognition_status: String::new(),
             keep_original_audio: false,
             is_featured: false,
             details: Default::default(),
@@ -1009,7 +1051,14 @@ fn recognize_products(
         &config.model,
         &products,
     );
-    shot.product_recognition_status = if result.is_err() { "failed" } else if shot.product_matches.is_empty() { "unmatched" } else { "matched" }.into();
+    shot.product_recognition_status = if result.is_err() {
+        "failed"
+    } else if shot.product_matches.is_empty() {
+        "unmatched"
+    } else {
+        "matched"
+    }
+    .into();
     result
 }
 
@@ -1024,24 +1073,42 @@ fn execute_job(app: &App, job: &Job) -> Result<()> {
     match job.kind.as_str() {
         "reanalyze" => {
             let previous = app.db.get::<Shot>("shot", &job.target_id)?;
-            let replace = app.db.get::<bool>("reanalysis_replace", &job.id).unwrap_or(true);
-            if !replace && previous.revision == job.revision + 1 && previous.status != "tagging" { return Ok(()); }
+            let replace = app
+                .db
+                .get::<bool>("reanalysis_replace", &job.id)
+                .unwrap_or(true);
+            if !replace && previous.revision == job.revision + 1 && previous.status != "tagging" {
+                return Ok(());
+            }
             if previous.revision == job.revision + 1
                 && ["draft", "tag_review"].contains(&previous.status.as_str())
             {
                 return Ok(());
             }
-            ensure!(previous.revision == job.revision && previous.status == "tagging", "revision_conflict");
+            ensure!(
+                previous.revision == job.revision && previous.status == "tagging",
+                "revision_conflict"
+            );
             let source = app.db.get::<Source>("source", &previous.source_id)?;
             app.media.prepare(&source)?;
             let config = app.db.get::<AnalysisSettings>("model_config", &job.id)?;
             let endpoint = model::current_endpoint(&app.home)?;
-            ensure!(config.endpoint_fingerprint.as_deref() == Some(endpoint.fingerprint().as_str()), "模型端点配置已变化，请重试以使用当前配置");
+            ensure!(
+                config.endpoint_fingerprint.as_deref() == Some(endpoint.fingerprint().as_str()),
+                "模型端点配置已变化，请重试以使用当前配置"
+            );
             let mut shot = if !replace {
                 let mut proposed = previous.clone();
                 proposed.product_tags.clear();
                 proposed.product_matches.clear();
-                model::tag_range(&app.media, &source, &endpoint, &config.model, config.tag_settings.as_ref(), &mut proposed)?;
+                model::tag_range(
+                    &app.media,
+                    &source,
+                    &endpoint,
+                    &config.model,
+                    config.tag_settings.as_ref(),
+                    &mut proposed,
+                )?;
                 proposed
             } else if previous.direct_upload {
                 let mut shot = previous.clone();
@@ -1055,10 +1122,23 @@ fn execute_job(app: &App, job: &Job) -> Result<()> {
                 shot.output_sha256 = Some(source.sha256.clone());
                 shot.product_tags.clear();
                 shot.product_matches.clear();
-                model::tag(&app.media, &source, &endpoint, &config.model, config.tag_settings.as_ref(), &mut shot)?;
+                model::tag(
+                    &app.media,
+                    &source,
+                    &endpoint,
+                    &config.model,
+                    config.tag_settings.as_ref(),
+                    &mut shot,
+                )?;
                 shot
             } else {
-                model::analyze(&app.media, &source, &endpoint, &config.model, config.tag_settings.as_ref())?
+                model::analyze(
+                    &app.media,
+                    &source,
+                    &endpoint,
+                    &config.model,
+                    config.tag_settings.as_ref(),
+                )?
             };
             shot.id = previous.id.clone();
             shot.keep_original_audio = previous.keep_original_audio;
@@ -1066,19 +1146,44 @@ fn execute_job(app: &App, job: &Job) -> Result<()> {
             shot.created_at = previous.created_at;
             shot.revision = job.revision + 1;
             recognize_products(app, job, &source, &mut shot, true)?;
-            shot.status = if shot.direct_upload { "tag_review" } else { "draft" }.into();
+            shot.status = if shot.direct_upload {
+                "tag_review"
+            } else {
+                "draft"
+            }
+            .into();
             shot.published_path = None;
             shot.error = None;
             shot.labels_need_review = false;
             app.db.transaction(|db| {
                 let mut current = store::get::<Shot>(db, "shot", &shot.id)?;
-                ensure!(current.revision == job.revision && current.status == "tagging", "revision_conflict");
+                ensure!(
+                    current.revision == job.revision && current.status == "tagging",
+                    "revision_conflict"
+                );
                 if !replace {
                     current.revision += 1;
-                    current.status = store::get::<String>(db, "reanalysis_previous_status", &current.id).unwrap_or_else(|_| "draft".into());
-                    if current.status == "failed" { current.status = if current.direct_upload { "tag_review" } else { "draft" }.into(); }
+                    current.status =
+                        store::get::<String>(db, "reanalysis_previous_status", &current.id)
+                            .unwrap_or_else(|_| "draft".into());
+                    if current.status == "failed" {
+                        current.status = if current.direct_upload {
+                            "tag_review"
+                        } else {
+                            "draft"
+                        }
+                        .into();
+                    }
                     current.error = None;
-                    store::put(db, "analysis_suggestion", &current.id, &crate::label_review::Suggestion { base_revision: current.revision, shot })?;
+                    store::put(
+                        db,
+                        "analysis_suggestion",
+                        &current.id,
+                        &crate::label_review::Suggestion {
+                            base_revision: current.revision,
+                            shot,
+                        },
+                    )?;
                     audit(db, &current, "analysis_suggested")?;
                     return store::put(db, "shot", &current.id, &current);
                 }
@@ -1529,16 +1634,38 @@ mod tests {
         db.put("job", &running.id, &running).unwrap();
         let sync = Job::new("sync_release", &running.id, 1);
         db.put("job", &sync.id, &sync).unwrap();
-        assert!(db.transaction(|c| delete_source_records(c, "source")).is_err());
-        assert_eq!(db.get::<Source>("source", "source").unwrap().status, "review");
+        assert!(
+            db.transaction(|c| delete_source_records(c, "source"))
+                .is_err()
+        );
+        assert_eq!(
+            db.get::<Source>("source", "source").unwrap().status,
+            "review"
+        );
         running.status = "succeeded".into();
         db.put("job", &running.id, &running).unwrap();
-        db.transaction(|c| delete_source_records(c, "source")).unwrap();
-        assert_eq!(db.get::<Source>("source", "source").unwrap().status, "deleted");
-        assert!(db.list::<Shot>("shot").unwrap().iter().all(|s|s.status=="deleted" && s.revision==2));
+        db.transaction(|c| delete_source_records(c, "source"))
+            .unwrap();
+        assert_eq!(
+            db.get::<Source>("source", "source").unwrap().status,
+            "deleted"
+        );
+        assert!(
+            db.list::<Shot>("shot")
+                .unwrap()
+                .iter()
+                .all(|s| s.status == "deleted" && s.revision == 2)
+        );
         assert_eq!(db.get::<Job>("job", &sync.id).unwrap().status, "cancelled");
-        assert_eq!(db.get::<Shot>("shot_version", "shot-a").unwrap().status, "draft");
-        assert!(db.transaction(|c| duplicate_import(c, "same-content")).unwrap().is_none());
+        assert_eq!(
+            db.get::<Shot>("shot_version", "shot-a").unwrap().status,
+            "draft"
+        );
+        assert!(
+            db.transaction(|c| duplicate_import(c, "same-content"))
+                .unwrap()
+                .is_none()
+        );
     }
     #[test]
     fn tag_configuration_is_snapshotted_at_enqueue_and_old_jobs_still_load() {

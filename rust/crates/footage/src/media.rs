@@ -546,7 +546,10 @@ pub fn filter_graph(shot: &Shot, source: &Source, brightness: f64) -> String {
     if r.push_in_end_scale() > 1.0 {
         let g = frame_geometry(r, source).expect("validated render geometry");
         let duration = (shot.end_ticks - shot.start_ticks) as f64 / TICKS as f64;
-        let zoom = format!("1+({}-1)*clip(in_time/{duration},0,1)", r.push_in_end_scale());
+        let zoom = format!(
+            "1+({}-1)*clip(in_time/{duration},0,1)",
+            r.push_in_end_scale()
+        );
         // Normalize variable-rate inputs before zoompan so one output frame per input preserves timing.
         let fps = source.fps;
         filters.push(format!(

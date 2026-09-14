@@ -232,7 +232,9 @@ async fn save(
                 }
                 if crate::service::sync_enabled(db) {
                     for source in store::list::<Source>(db, "source")? {
-                        if source.status == "deleted" { continue; }
+                        if source.status == "deleted" {
+                            continue;
+                        }
                         crate::service::enqueue_sync(db, "sync_source", &source.id, 0)?;
                     }
                     for release in release_jobs(db)? {
@@ -313,7 +315,9 @@ fn backfill_locked(app: &App, location: &Location) -> Result<()> {
         verify_folder(&location.folder_root)?;
         fs::create_dir_all(location.folder_root.join("inbox"))?;
         for source in app.db.list::<Source>("source")? {
-            if source.status == "deleted" { continue; }
+            if source.status == "deleted" {
+                continue;
+            }
             copy_source(app, &source, &location.folder_root, false)?;
         }
         for job in app.db.transaction(release_jobs)? {

@@ -329,7 +329,9 @@ async fn dispatch(State(libraries): State<Arc<Libraries>>, request: Request) -> 
             let mut running = tokio::time::timeout(
                 std::time::Duration::from_secs(10),
                 libraries.running.write(),
-            ).await.map_err(|_| anyhow::anyhow!("当前仍有素材请求未结束，请稍后重新打开素材库"))?;
+            )
+            .await
+            .map_err(|_| anyhow::anyhow!("当前仍有素材请求未结束，请稍后重新打开素材库"))?;
             ensure!(
                 expected.as_deref().is_none_or(
                     |id| id == running.active.as_ref().map_or("legacy", |a| a.id.as_str())
@@ -360,7 +362,11 @@ async fn dispatch(State(libraries): State<Arc<Libraries>>, request: Request) -> 
         };
     }
     let running = libraries.running.read().await;
-    let library_id = running.active.as_ref().map_or("legacy", |a| a.id.as_str()).to_owned();
+    let library_id = running
+        .active
+        .as_ref()
+        .map_or("legacy", |a| a.id.as_str())
+        .to_owned();
     if request.method() != "GET"
         && request
             .headers()
@@ -373,10 +379,11 @@ async fn dispatch(State(libraries): State<Arc<Libraries>>, request: Request) -> 
     let is_state = request.method() == "GET" && request.uri().path() == "/state";
     let app = running.app.clone();
     // Preview POSTs only compute disposable caches in their captured library.
-    let preview_read = request.method() == "POST" && {
-        let parts: Vec<_> = request.uri().path().split('/').collect();
-        matches!(parts.as_slice(), ["", "shots", id, "preview-plan" | "preview-exposure" | "preview-lut"] if !id.is_empty())
-    };
+    let preview_read = request.method() == "POST"
+        && {
+            let parts: Vec<_> = request.uri().path().split('/').collect();
+            matches!(parts.as_slice(), ["", "shots", id, "preview-plan" | "preview-exposure" | "preview-lut"] if !id.is_empty())
+        };
     let _write_guard = if request.method() == "GET" || preview_read {
         drop(running);
         None
@@ -667,19 +674,27 @@ mod tests {
             fs::create_dir_all(&old).unwrap();
             fs::create_dir_all(&new).unwrap();
             let libraries = Libraries::open(fixture(temp.path(), &old), false).unwrap();
-            let body = Body::from_stream(futures_util::stream::pending::<Result<axum::body::Bytes, std::io::Error>>());
-            let request = Request::builder().method("POST")
+            let body = Body::from_stream(futures_util::stream::pending::<
+                Result<axum::body::Bytes, std::io::Error>,
+            >());
+            let request = Request::builder()
+                .method("POST")
                 .uri(format!("/shots/test/{endpoint}"))
                 .header("x-footage-token", "test")
                 .header("content-type", "application/json")
-                .body(body).unwrap();
+                .body(body)
+                .unwrap();
             let pending = tokio::spawn(libraries.clone().router().oneshot(request));
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
             assert!(!pending.is_finished());
             if endpoint == "action" {
                 assert!(libraries.running.try_write().is_err());
             } else {
-                let result = tokio::time::timeout(std::time::Duration::from_secs(2), change(&libraries, &new, "folder", 0, None)).await;
+                let result = tokio::time::timeout(
+                    std::time::Duration::from_secs(2),
+                    change(&libraries, &new, "folder", 0, None),
+                )
+                .await;
                 assert_eq!(result.unwrap().0, StatusCode::OK);
             }
             pending.abort();
@@ -700,11 +715,23 @@ mod tests {
         let result = change(&libraries, &new, "folder", 0, Some("legacy")).await;
 
         assert_eq!(result.0, StatusCode::BAD_REQUEST, "{}", result.1);
-        assert!(result.1["error"].as_str().unwrap().contains("重新连接原目录"));
+        assert!(
+            result.1["error"]
+                .as_str()
+                .unwrap()
+                .contains("重新连接原目录")
+        );
         assert!(!new.join(MARKER).exists());
         assert!(!temp.path().join("app/active-library.json").exists());
         assert_eq!(
-            libraries.running.read().await.app.db.get::<String>("marker", "history").unwrap(),
+            libraries
+                .running
+                .read()
+                .await
+                .app
+                .db
+                .get::<String>("marker", "history")
+                .unwrap(),
             "keep me"
         );
     }
@@ -736,26 +763,44 @@ mod tests {
         fs::create_dir_all(&old).unwrap();
         fs::create_dir_all(&new).unwrap();
         let host = fixture(temp.path(), &old);
-        host.db.put("source", "source", &json!({
-            "id":"source","name":"fixture.mp4","product":"","batch":"","sha256":"fixture",
-            "path":"unused","durationTicks":120000,"width":32,"height":32,"fps":30.0,
-            "colorTransfer":"bt709","rotation":0,"status":"review","createdAt":0
-        })).unwrap();
+        host.db
+            .put(
+                "source",
+                "source",
+                &json!({
+                    "id":"source","name":"fixture.mp4","product":"","batch":"","sha256":"fixture",
+                    "path":"unused","durationTicks":120000,"width":32,"height":32,"fps":30.0,
+                    "colorTransfer":"bt709","rotation":0,"status":"review","createdAt":0
+                }),
+            )
+            .unwrap();
         let fifo = host.config.data_dir.join("sources/source/preview.mp4");
         fs::create_dir_all(fifo.parent().unwrap()).unwrap();
         let name = std::ffi::CString::new(fifo.as_os_str().as_bytes()).unwrap();
         assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o600) }, 0);
         let libraries = Libraries::open(host, false).unwrap();
-        let request = Request::builder().uri("/media/source/source/preview")
-            .header("x-footage-token", "test").body(Body::empty()).unwrap();
+        let request = Request::builder()
+            .uri("/media/source/source/preview")
+            .header("x-footage-token", "test")
+            .body(Body::empty())
+            .unwrap();
         let pending = tokio::spawn(libraries.clone().router().oneshot(request));
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         assert!(!pending.is_finished());
-        let result = tokio::time::timeout(std::time::Duration::from_secs(2), change(&libraries, &new, "folder", 0, None)).await;
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            change(&libraries, &new, "folder", 0, None),
+        )
+        .await;
         // Release the intentionally blocked reader even if the regression reappears.
-        tokio::task::spawn_blocking(move || fs::OpenOptions::new().write(true).open(fifo).unwrap()).await.unwrap();
+        tokio::task::spawn_blocking(move || fs::OpenOptions::new().write(true).open(fifo).unwrap())
+            .await
+            .unwrap();
         pending.await.unwrap().unwrap();
-        assert_eq!(result.expect("a read must not hold the switch lock").0, StatusCode::OK);
+        assert_eq!(
+            result.expect("a read must not hold the switch lock").0,
+            StatusCode::OK
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]

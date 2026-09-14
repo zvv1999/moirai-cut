@@ -431,7 +431,14 @@ async fn preview_uses_export_geometry_without_saving_edits_or_jobs() {
         let plan: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(plan["zoom"]["durationSeconds"], 4.0);
         assert_eq!(plan["zoom"]["startScale"], 1.0);
-        assert_eq!(plan["zoom"]["endScale"], match mode { "manual" => 1.25, "auto" => 1.1, _ => 1.0 });
+        assert_eq!(
+            plan["zoom"]["endScale"],
+            match mode {
+                "manual" => 1.25,
+                "auto" => 1.1,
+                _ => 1.0,
+            }
+        );
         assert_eq!(
             (
                 plan["brightness"].as_f64().unwrap(),
@@ -568,39 +575,100 @@ fn push_in_export_grows_about_center_without_changing_duration_or_frame_size() {
         ffprobe: std::env::var("MOIRAI_FFPROBE").unwrap(),
     };
     let input = dir.path().join("center.mp4");
-    media.run(&media.ffmpeg, &strings(&[
-        "-v", "error", "-f", "lavfi", "-i",
-        "color=c=black:s=320x180:r=20:d=4,drawbox=x=120:y=60:w=80:h=60:color=white:t=fill",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p", &input.to_string_lossy(),
-    ]), 60).unwrap();
-    let source = media.source(&input, "fixture".into(), String::new(), String::new(), String::new(), "source".into()).unwrap();
-    for (rotation, crop, enabled) in [(0, "preserve", false), (0, "preserve", true), (90, "vertical", true)] {
+    media
+        .run(
+            &media.ffmpeg,
+            &strings(&[
+                "-v",
+                "error",
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=black:s=320x180:r=20:d=4,drawbox=x=120:y=60:w=80:h=60:color=white:t=fill",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                &input.to_string_lossy(),
+            ]),
+            60,
+        )
+        .unwrap();
+    let source = media
+        .source(
+            &input,
+            "fixture".into(),
+            String::new(),
+            String::new(),
+            String::new(),
+            "source".into(),
+        )
+        .unwrap();
+    for (rotation, crop, enabled) in [
+        (0, "preserve", false),
+        (0, "preserve", true),
+        (90, "vertical", true),
+    ] {
         let mut shot = shot();
         shot.id = format!("push-in-{rotation}-{enabled}");
         shot.start_ticks = 120000;
         shot.end_ticks = 360000;
         let end_percent = if rotation == 90 { 125.0 } else { 110.0 };
-        shot.recipe = Recipe { rotation, crop_mode: crop.into(), color_mode: "preserve".into(), push_in: enabled, push_in_end_percent: end_percent, flip_horizontal: true, ..Recipe::default() };
+        shot.recipe = Recipe {
+            rotation,
+            crop_mode: crop.into(),
+            color_mode: "preserve".into(),
+            push_in: enabled,
+            push_in_end_percent: end_percent,
+            flip_horizontal: true,
+            ..Recipe::default()
+        };
         let g = frame_geometry(&shot.recipe, &source).unwrap();
         let (output, _) = media.render(&shot, &source).unwrap();
         let probe = media.probe(&output).unwrap();
         assert_eq!(probe["streams"][0]["width"], g.crop_width);
         assert_eq!(probe["streams"][0]["height"], g.crop_height);
-        let duration: f64 = probe["format"]["duration"].as_str().unwrap().parse().unwrap();
+        let duration: f64 = probe["format"]["duration"]
+            .as_str()
+            .unwrap()
+            .parse()
+            .unwrap();
         assert!((duration - 2.0).abs() < 0.1);
         let bounds = |time: &str| {
-            let decoded = std::process::Command::new(&media.ffmpeg).args([
-                "-v", "error", "-ss", time, "-i", &output.to_string_lossy(),
-                "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "gray", "pipe:1",
-            ]).output().unwrap();
+            let decoded = std::process::Command::new(&media.ffmpeg)
+                .args([
+                    "-v",
+                    "error",
+                    "-ss",
+                    time,
+                    "-i",
+                    &output.to_string_lossy(),
+                    "-frames:v",
+                    "1",
+                    "-f",
+                    "rawvideo",
+                    "-pix_fmt",
+                    "gray",
+                    "pipe:1",
+                ])
+                .output()
+                .unwrap();
             assert!(decoded.status.success());
-            assert_eq!(decoded.stdout.len(), (g.crop_width * g.crop_height) as usize);
+            assert_eq!(
+                decoded.stdout.len(),
+                (g.crop_width * g.crop_height) as usize
+            );
             let mut bounds = (g.crop_width, 0, g.crop_height, 0);
             for (i, pixel) in decoded.stdout.iter().enumerate() {
                 if *pixel > 200 {
                     let x = i as u32 % g.crop_width;
                     let y = i as u32 / g.crop_width;
-                    bounds = (bounds.0.min(x), bounds.1.max(x), bounds.2.min(y), bounds.3.max(y));
+                    bounds = (
+                        bounds.0.min(x),
+                        bounds.1.max(x),
+                        bounds.2.min(y),
+                        bounds.3.max(y),
+                    );
                 }
             }
             bounds
@@ -611,11 +679,26 @@ fn push_in_export_grows_about_center_without_changing_duration_or_frame_size() {
         let width = |b: (u32, u32, u32, u32)| (b.1 - b.0 + 1) as f64;
         let expected_width = if rotation == 0 { 80.0 } else { 60.0 };
         assert!((width(first) - expected_width).abs() <= 2.0);
-        let growth = if enabled { end_percent / 100.0 - 1.0 } else { 0.0 };
+        let growth = if enabled {
+            end_percent / 100.0 - 1.0
+        } else {
+            0.0
+        };
         for (b, scale) in [(middle, 1.0 + growth * 0.5), (last, 1.0 + growth * 0.975)] {
-            assert!((width(b) - expected_width * scale).abs() <= 2.0, "bounds={b:?}, scale={scale}");
-            assert!(((b.0 + b.1) as f64 / 2.0 - (g.crop_width - 1) as f64 / 2.0).abs() <= 2.0, "rotation={rotation}, enabled={enabled}, bounds={b:?}, first={first:?}, width={}", g.crop_width);
-            assert!(((b.2 + b.3) as f64 / 2.0 - (g.crop_height - 1) as f64 / 2.0).abs() <= 2.0, "rotation={rotation}, bounds={b:?}, height={}", g.crop_height);
+            assert!(
+                (width(b) - expected_width * scale).abs() <= 2.0,
+                "bounds={b:?}, scale={scale}"
+            );
+            assert!(
+                ((b.0 + b.1) as f64 / 2.0 - (g.crop_width - 1) as f64 / 2.0).abs() <= 2.0,
+                "rotation={rotation}, enabled={enabled}, bounds={b:?}, first={first:?}, width={}",
+                g.crop_width
+            );
+            assert!(
+                ((b.2 + b.3) as f64 / 2.0 - (g.crop_height - 1) as f64 / 2.0).abs() <= 2.0,
+                "rotation={rotation}, bounds={b:?}, height={}",
+                g.crop_height
+            );
         }
     }
 }

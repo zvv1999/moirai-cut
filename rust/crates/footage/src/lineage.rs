@@ -28,7 +28,9 @@ pub fn releases(app: &App) -> Result<Vec<Value>> {
         let current = app
             .db
             .get::<Shot>("shot", value["shot"]["id"].as_str().context("分镜无 ID")?)?;
-        if current.status == "deleted" { continue; }
+        if current.status == "deleted" {
+            continue;
+        }
         result.push(json!({"id":id,"shot":value["shot"],"source":value["source"],"current":current.status=="published" && current.revision==value["shot"]["revision"].as_u64().unwrap_or(0)}));
     }
     Ok(result)
