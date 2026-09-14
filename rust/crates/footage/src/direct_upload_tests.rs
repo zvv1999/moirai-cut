@@ -89,6 +89,9 @@ async fn upload_paths_preserve_direct_clip_and_select_one_raw_shot() {
                 assert_eq!(candidates.as_array().unwrap().len(),2);
                 return Json(json!({"choices":[{"message":{"content":"{\"candidateIndex\":1}"}}]}));
             }
+            if prompt.contains("复核整个画面的正立方向") {
+                return Json(json!({"choices":[{"message":{"content":"{\"candidateIndex\":0,\"reason\":\"fixture is upright\"}"}}]}));
+            }
             assert!(content[0]["text"].as_str().unwrap().contains("不切分"));
             assert_eq!(content[1]["type"], "video_url");
             let attempt = count.fetch_add(1, Ordering::SeqCst);

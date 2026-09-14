@@ -17,6 +17,22 @@ export interface PreviewPlan {
 	saturation: number;
 }
 
+export function previewZoomScale(
+	motion: NonNullable<PreviewPlan["zoom"]> | undefined,
+	currentTime: number,
+	startTime: number,
+) {
+	if (!motion) return 1;
+	const progress =
+		motion.durationSeconds > 0
+			? Math.max(
+					0,
+					Math.min(1, (currentTime - startTime) / motion.durationSeconds),
+				)
+			: 0;
+	return motion.startScale + (motion.endScale - motion.startScale) * progress;
+}
+
 export function createPreviewRenderer(canvas: HTMLCanvasElement) {
 	const gl = canvas.getContext("webgl", {
 		alpha: false,
@@ -134,7 +150,7 @@ export function createPreviewRenderer(canvas: HTMLCanvasElement) {
 		new Uint8Array([0, 0, 0, 255]),
 	);
 	return {
-		draw(video: HTMLVideoElement, plan: PreviewPlan) {
+		draw(video: HTMLVideoElement, plan: PreviewPlan, startTime = 0) {
 			if (video.readyState < 2 || gl.isContextLost()) return;
 			const g = plan.geometry;
 			const scale = Math.min(1, 960 / Math.max(g.cropWidth, g.cropHeight));
@@ -188,12 +204,7 @@ export function createPreviewRenderer(canvas: HTMLCanvasElement) {
 			);
 			gl.uniform1i(rotation, plan.rotation);
 			const motion = plan.zoom;
-			const progress = motion && motion.durationSeconds > 0
-				? Math.max(0, Math.min(1, video.currentTime / motion.durationSeconds))
-				: 0;
-			gl.uniform1f(zoom, motion
-				? motion.startScale + (motion.endScale - motion.startScale) * progress
-				: 1);
+			gl.uniform1f(zoom, previewZoomScale(motion, video.currentTime, startTime));
 			gl.uniform2f(
 				mirror,
 				plan.flipHorizontal ? 1 : 0,

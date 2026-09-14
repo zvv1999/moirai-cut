@@ -1073,8 +1073,12 @@ function ShotEditor({
 			if (event.repeat) return;
 			if (player.paused) {
 				const end = Number(player.dataset.playbackEnd ?? player.duration);
-				if (Number.isFinite(end) && player.currentTime >= end - 0.02)
-					player.currentTime = 0;
+				const start = Number(player.dataset.playbackStart ?? 0);
+				if (
+					Number.isFinite(end) &&
+					(player.currentTime < start || player.currentTime >= end - 0.02)
+				)
+					player.currentTime = start;
 				void player.play().catch((error: unknown) => {
 					if (!(error instanceof DOMException && error.name === "AbortError"))
 						toast.error("无法播放视频，请重试");

@@ -186,6 +186,17 @@ impl Libraries {
             location.nas_root
         };
         if !root.is_dir() {
+            let has_content = running.app.db.transaction(|db| {
+                Ok(db.query_row(
+                    "SELECT EXISTS(SELECT 1 FROM records WHERE kind <> 'settings' OR id <> 'location')",
+                    [],
+                    |row| row.get::<_, bool>(0),
+                )?)
+            })?;
+            ensure!(
+                !has_content,
+                "原素材库目录当前不可用；请先重新连接原目录，以便绑定并保留已有素材、标签和任务"
+            );
             return Ok(());
         }
         // Existing data belongs only to the previously selected directory.
@@ -674,6 +685,45 @@ mod tests {
             pending.abort();
             let _ = pending.await;
         }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn offline_legacy_library_with_content_must_be_reconnected_before_switching() {
+        let temp = tempfile::tempdir().unwrap();
+        let old = temp.path().join("offline-old");
+        let new = temp.path().join("new");
+        fs::create_dir_all(&new).unwrap();
+        let host = fixture(temp.path(), &old);
+        host.db.put("marker", "history", &"keep me").unwrap();
+        let libraries = Libraries::open(host, false).unwrap();
+
+        let result = change(&libraries, &new, "folder", 0, Some("legacy")).await;
+
+        assert_eq!(result.0, StatusCode::BAD_REQUEST, "{}", result.1);
+        assert!(result.1["error"].as_str().unwrap().contains("重新连接原目录"));
+        assert!(!new.join(MARKER).exists());
+        assert!(!temp.path().join("app/active-library.json").exists());
+        assert_eq!(
+            libraries.running.read().await.app.db.get::<String>("marker", "history").unwrap(),
+            "keep me"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn empty_offline_legacy_database_can_select_its_first_library() {
+        let temp = tempfile::tempdir().unwrap();
+        let old = temp.path().join("offline-old");
+        let new = temp.path().join("new");
+        fs::create_dir_all(&new).unwrap();
+        let libraries = Libraries::open(fixture(temp.path(), &old), false).unwrap();
+
+        let result = change(&libraries, &new, "folder", 0, Some("legacy")).await;
+
+        assert_eq!(result.0, StatusCode::OK, "{}", result.1);
+        assert_eq!(
+            libraries.running.read().await.active.as_ref().unwrap().root,
+            new.canonicalize().unwrap()
+        );
     }
 
     #[cfg(unix)]

@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { createPreviewRenderer, type PreviewPlan } from "./preview-renderer";
 import type { FootageSource, Shot } from "./types";
-import { trimmedPreview } from "./trimmed-preview";
 import { requestPreview as request } from "./preview-request";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
@@ -40,50 +39,9 @@ export function LivePreview({
 	const [ready, setReady] = useState(false);
 	const start = shot.startTicks / 120000;
 	const end = shot.endTicks / 120000;
-	const [clip, setClip] = useState<{
-		url: string;
-		start: number;
-		end: number;
-	} | null>(null);
-	const [clipError, setClipError] = useState("");
-	const clipCurrent = clip?.start === start && clip?.end === end;
+	const range = useRef({ start, end });
 	useEffect(() => {
-		const controller = new AbortController();
-		let url: string | undefined;
-		videoRef.current?.pause();
-		setReady(false);
-		setClipError("");
-		const timer = setTimeout(() => {
-			void trimmedPreview(
-				`/api/footage/media/source/${source.id}/preview`,
-				start,
-				end,
-				controller.signal,
-			)
-				.then((value) => {
-					if (controller.signal.aborted) {
-						URL.revokeObjectURL(value);
-						return;
-					}
-					url = value;
-					setClip({ url: value, start, end });
-				})
-				.catch((error) => {
-					if (!controller.signal.aborted)
-						setClipError(
-							error instanceof Error ? error.message : "裁剪预览失败",
-						);
-				});
-		}, 150);
-		return () => {
-			clearTimeout(timer);
-			controller.abort();
-			if (url) URL.revokeObjectURL(url);
-		};
-	}, [source.id, start, end, videoRef, retryCount]);
-	const range = useRef({ start: 0, end: end - start });
-	useEffect(() => {
-		range.current = { start: 0, end: end - start };
+		range.current = { start, end };
 	}, [start, end]);
 	const recipeJson = JSON.stringify(shot.recipe);
 	const valid =
@@ -99,25 +57,30 @@ export function LivePreview({
 		adaptive && exposure?.key === exposureKey ? exposure.lut : undefined;
 	const brightness =
 		auto && exposure?.key === exposureKey ? exposure.brightness : 0;
-	const draw = () => {
+	const draw = useCallback(() => {
 		const player = outsideTime.current === null ? videoRef.current : scrubVideo.current;
 		if (player && player.readyState >= 2 && plan.current)
 			renderer.current?.draw(player, outsideTime.current === null
-				? plan.current : { ...plan.current, zoom: undefined });
-	};
+				? plan.current : { ...plan.current, zoom: undefined }, start);
+	}, [start, videoRef]);
 	useEffect(() => {
 		const outside = initialTime < start || initialTime > end;
 		outsideTime.current = outside ? initialTime : null;
 		const player = videoRef.current;
 		if (player) {
 			if (outside) player.dataset.scrubSourceTime = String(initialTime);
-			else delete player.dataset.scrubSourceTime;
+			else {
+				delete player.dataset.scrubSourceTime;
+				const target = Math.max(start, Math.min(initialTime, end));
+				if (player.readyState >= 1 && Math.abs(player.currentTime - target) > 0.01)
+					player.currentTime = target;
+			}
 		}
 		if (outside && scrubVideo.current?.readyState) {
 			scrubVideo.current.currentTime = Math.min(initialTime, Math.max(0, scrubVideo.current.duration - 0.001));
 		}
 		draw();
-	}, [initialTime, start, end]);
+	}, [initialTime, start, end, draw, videoRef]);
 
 	useEffect(() => {
 		if (!canvas.current) return;
@@ -143,7 +106,7 @@ export function LivePreview({
 					video.currentTime = range.current.end;
 				} else if (video.currentTime < range.current.start)
 					video.currentTime = range.current.start;
-				if (plan.current) renderer.current?.draw(video, plan.current);
+				if (plan.current) renderer.current?.draw(video, plan.current, start);
 			}
 			frame = requestAnimationFrame(tick);
 		};
@@ -154,7 +117,7 @@ export function LivePreview({
 			renderer.current?.dispose();
 			renderer.current = null;
 		};
-	}, [videoRef, retryCount]);
+	}, [videoRef, retryCount, start]);
 
 	useEffect(() => {
 		if (!valid || !auto || exposure?.key === exposureKey) {
@@ -251,6 +214,7 @@ export function LivePreview({
 		lut,
 		valid,
 		videoRef,
+		draw,
 	]);
 
 	useEffect(() => {
@@ -259,18 +223,17 @@ export function LivePreview({
 			video &&
 			ready &&
 			valid &&
-			(video.currentTime < 0 || video.currentTime > end - start)
+			(video.currentTime < start || video.currentTime > end)
 		) {
-			video.currentTime = Math.max(0, Math.min(video.currentTime, end - start));
+			video.currentTime = Math.max(start, Math.min(video.currentTime, end));
 		}
 	}, [start, end, ready, valid, videoRef]);
 
 	const visibleError =
-		clipError || renderError || error || (auto ? exposureError : "");
+		renderError || error || (auto ? exposureError : "");
 	return (
 		<div className="footage-live-preview">
 			{/* A separate decoder keeps out-of-range scrubbing independent of trimmed playback. */}
-			{/* eslint-disable-next-line jsx-a11y/media-has-caption */}
 			<video
 				ref={scrubVideo}
 				hidden
@@ -288,23 +251,25 @@ export function LivePreview({
 			{/* Source audio stays on the media element; the canvas only draws its decoded frames. */}
 			{/* eslint-disable-next-line jsx-a11y/media-has-caption */}
 			<video
+				key={`${source.id}:${retryCount}`}
 				ref={videoRef}
 				className="footage-preview-decoder"
 				playsInline
 				controls
 				controlsList="nofullscreen nodownload noremoteplayback"
 				preload="auto"
-				src={clipCurrent ? clip.url : undefined}
-				data-source-offset={clip?.start ?? start}
-				data-playback-end={end - start}
+				src={`/api/footage/media/source/${source.id}/preview`}
+				data-source-offset={0}
+				data-playback-start={start}
+				data-playback-end={end}
 				disablePictureInPicture
 				disableRemotePlayback
 				aria-label="实时预览播放器"
 				onLoadedMetadata={() => {
 					if (videoRef.current)
 						videoRef.current.currentTime = Math.max(
-							0,
-							Math.min(initialTime - start, end - start),
+							start,
+							Math.min(initialTime, end),
 						);
 				}}
 				onLoadedData={() => {
@@ -315,8 +280,8 @@ export function LivePreview({
 					const video = videoRef.current;
 					if (video && valid && !video.paused) {
 						const clamped = Math.max(
-							0,
-							Math.min(video.currentTime, end - start),
+							start,
+							Math.min(video.currentTime, end),
 						);
 						if (clamped !== video.currentTime) video.currentTime = clamped;
 					}
@@ -326,14 +291,14 @@ export function LivePreview({
 				onPlay={() => {
 					const video = videoRef.current;
 					if (!video) return;
-					if (!valid || visibleError || !clipCurrent) {
+					if (!valid || visibleError) {
 						video.pause();
 						return;
 					}
-					if (outsideTime.current !== null || video.currentTime >= end - start - 0.02) {
+					if (outsideTime.current !== null || video.currentTime >= end - 0.02) {
 						outsideTime.current = null;
 						delete video.dataset.scrubSourceTime;
-						video.currentTime = 0;
+						video.currentTime = start;
 						void video.play().catch((cause: unknown) => {
 							if (!(cause instanceof DOMException && cause.name === "AbortError"))
 								setError("无法播放视频，请重试");
@@ -350,7 +315,6 @@ export function LivePreview({
 						<Button variant="outline" onClick={() => {
 							setRenderError("");
 							setError("");
-							setClipError("");
 							setExposureError("");
 							setRetryCount((count) => count + 1);
 						}}>

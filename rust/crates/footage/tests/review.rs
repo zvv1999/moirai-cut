@@ -228,6 +228,7 @@ async fn deleting_shot_hides_it_and_blocks_stale_writes_and_pending_sync() {
         )
     };
     let mut job = Job::new("publish", "shot", 1);
+    job.status = "running".into();
     app.db.put("job", &job.id, &job).unwrap();
     assert_eq!(
         send(1, "delete").await.unwrap().status(),
