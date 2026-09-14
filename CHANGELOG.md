@@ -4,6 +4,50 @@ All notable Moirai Cut changes are documented here. The repository is in develop
 preview and follows semantic versioning for public release artifacts; project
 schema and Agent surfaces may still change with migration notes.
 
+## 0.6.0 — 2026-09-14
+
+Reviewed product-footage workflows and isolated local or NAS libraries.
+
+### Added
+
+- Multiple footage libraries with durable identities, directory isolation,
+  snapshots and per-library records for local folders and NAS mounts.
+- Product-reference matching, configurable category labels, per-label evidence
+  and selectable suggestions from re-analysis.
+- Live source preview controls for trim, rotation, mirroring, manual color,
+  adaptive LUT and animated zoom.
+
+### Changed
+
+- Direct uploads stay as one full-length clip for tagging, while raw footage
+  produces one continuous proposal for human review.
+- Confirming labels queues preparation once, retains earlier published versions
+  and preserves source, shot and release lineage when importing into the editor.
+- Large previews stream from the source with source-time trim and scrub bounds
+  instead of transcoding the selected segment into browser memory.
+
+### Fixed
+
+- Libraries with existing records now refuse an offline directory switch until
+  their identity and snapshot can be persisted; empty legacy libraries can
+  select their first directory normally.
+- Atomic metadata and snapshot replacement now works safely on Windows and
+  flushes writable file handles before replacement.
+- Preview replay, trim boundaries and zoom timing now follow source time.
+
+### Compatibility and migration
+
+- Existing 0.5.0 footage records are associated with their configured directory
+  when switching libraries for the first time. Reconnect an offline directory
+  that already contains records before switching so its identity and snapshot
+  can be persisted.
+- Existing published versions and editor lineage remain available. Each library
+  keeps its own local records and writes a marker and snapshot beneath its root.
+- Adaptive LUT generation requires the optional Image-Adaptive-3DLUT runtime and
+  its license; the remaining preview and color controls work without it.
+- This remains a local-first Public Preview and source release. It does not add
+  team authentication or multi-user hosting.
+
 ## 0.5.0 — 2026-09-10
 
 Local product footage library and optional team synchronization.
