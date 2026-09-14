@@ -481,8 +481,11 @@ fn copy_tree(from: &Path, to: &Path) -> Result<()> {
             }
             let temporary = target.with_extension(format!("{}.tmp", id()));
             fs::copy(entry.path(), &temporary)?;
-            fs::File::open(&temporary)?.sync_all()?;
-            fs::rename(temporary, target)?;
+            fs::OpenOptions::new()
+                .write(true)
+                .open(&temporary)?
+                .sync_all()?;
+            replace_file(&temporary, &target)?;
         }
     }
     Ok(())
