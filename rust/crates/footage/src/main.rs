@@ -49,7 +49,15 @@ async fn main() -> Result<()> {
         file.write_all(token.as_bytes())?;
         token
     };
-    let db = Store::open(&config.data_dir.join("library.sqlite3"))?;
+    // Once a library has been selected, its database is loaded by Libraries from
+    // the shared library directory. Keep the host database as a bootstrap store
+    // so a stale legacy database cannot prevent the selected library from opening.
+    let bootstrap_name = if config.data_dir.join("active-library.json").is_file() {
+        "service-bootstrap.sqlite3"
+    } else {
+        "library.sqlite3"
+    };
+    let db = Store::open(&config.data_dir.join(bootstrap_name))?;
     db.recover()?;
     let media = Media {
         ffmpeg: config.ffmpeg.clone(),

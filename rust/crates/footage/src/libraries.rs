@@ -28,6 +28,10 @@ use tower::ServiceExt;
 
 const MARKER: &str = ".moirai-library";
 
+fn shared_data(root: &Path) -> PathBuf {
+    root.join(MARKER).join("data")
+}
+
 #[cfg(not(windows))]
 fn replace_file(from: &Path, to: &Path) -> Result<()> {
     fs::rename(from, to)?;
@@ -173,8 +177,22 @@ impl Libraries {
     fn load_app(host: &App, active: &Active) -> Result<Arc<App>> {
         ensure!(uuid::Uuid::parse_str(&active.id).is_ok(), "素材库标识无效");
         let registered = Self::registry(host)?.get(&active.id).cloned();
-        let data =
-            registered.unwrap_or_else(|| host.config.data_dir.join("libraries").join(&active.id));
+        let shared = shared_data(&active.root);
+        // Keep the previous local cache as an offline fallback until the volume reconnects.
+        let data = if !active.root.is_dir() {
+            registered
+                .clone()
+                .filter(|path| path.join("library.sqlite3").is_file())
+                .unwrap_or_else(|| host.config.data_dir.join("libraries").join(&active.id))
+        } else {
+            shared.clone()
+        };
+        if data == shared && !data.join("library.sqlite3").is_file() {
+            if let Some(local) = registered.filter(|path| path != &data && path.join("library.sqlite3").is_file()) {
+                fs::create_dir_all(&data)?;
+                copy_tree(&local, &data)?;
+            }
+        }
         if !data.join("library.sqlite3").is_file() {
             restore(&active.root, &data)?;
         }
@@ -784,6 +802,21 @@ mod tests {
             libraries.running.read().await.active.as_ref().unwrap().root,
             new.canonicalize().unwrap()
         );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn library_database_lives_under_selected_directory_for_reuse() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("shared");
+        fs::create_dir_all(&root).unwrap();
+        let host = fixture(temp.path(), &temp.path().join("legacy"));
+        let libraries = Libraries::open(host, false).unwrap();
+        let result = change(&libraries, &root, "folder", 0, None).await;
+        assert_eq!(result.0, StatusCode::OK, "{}", result.1);
+        let data = root.join(MARKER).join("data");
+        assert!(data.join("library.sqlite3").is_file());
+        let running = libraries.running.read().await;
+        assert_eq!(running.app.config.data_dir, data.canonicalize().unwrap());
     }
 
     #[cfg(unix)]

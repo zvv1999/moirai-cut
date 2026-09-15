@@ -9,6 +9,7 @@ pub struct Store(pub Mutex<Connection>);
 impl Store {
     pub fn open(path: &Path) -> Result<Self> {
         let db = Connection::open(path)?;
+        db.busy_timeout(std::time::Duration::from_secs(30))?;
         db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;
             CREATE TABLE IF NOT EXISTS records (kind TEXT NOT NULL, id TEXT NOT NULL, body TEXT NOT NULL, PRIMARY KEY(kind,id));")?;
         Ok(Self(Mutex::new(db)))
