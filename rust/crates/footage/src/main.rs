@@ -52,7 +52,8 @@ async fn main() -> Result<()> {
     // Once a library has been selected, its database is loaded by Libraries from
     // the shared library directory. Keep the host database as a bootstrap store
     // so a stale legacy database cannot prevent the selected library from opening.
-    let bootstrap_name = if config.data_dir.join("active-library.json").is_file() {
+    let has_active_library = config.data_dir.join("active-library.json").is_file();
+    let bootstrap_name = if has_active_library {
         "service-bootstrap.sqlite3"
     } else {
         "library.sqlite3"
@@ -73,7 +74,9 @@ async fn main() -> Result<()> {
         home,
         token,
     });
-    moirai_footage::lineage::cache_legacy_releases(&app)?;
+    if !has_active_library {
+        moirai_footage::lineage::cache_legacy_releases(&app)?;
+    }
     let libraries = moirai_footage::libraries::Libraries::open(app, true)?;
     let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, port)).await?;
     println!("Moirai footage service: http://127.0.0.1:{port}");
