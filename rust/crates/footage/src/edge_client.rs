@@ -387,6 +387,41 @@ fn upload(
     }
     Ok(())
 }
+fn wire_relative(path: &Path) -> Result<String> {
+    path.components()
+        .map(|part| match part {
+            std::path::Component::Normal(value) => value
+                .to_str()
+                .map(str::to_owned)
+                .context("媒体路径必须是 UTF-8"),
+            _ => anyhow::bail!("媒体路径必须在本地素材目录中"),
+        })
+        .collect::<Result<Vec<_>>>()
+        .map(|parts| parts.join("/"))
+}
+
+fn encode_paths(value: &mut Value, root: &Path) -> Result<()> {
+    match value {
+        Value::String(text) => {
+            if let Ok(relative) = Path::new(text).strip_prefix(root) {
+                *text = format!("{}/{}", edge::LOGICAL_ROOT, wire_relative(relative)?);
+            }
+        }
+        Value::Array(values) => {
+            for value in values {
+                encode_paths(value, root)?;
+            }
+        }
+        Value::Object(values) => {
+            for value in values.values_mut() {
+                encode_paths(value, root)?;
+            }
+        }
+        _ => (),
+    }
+    Ok(())
+}
+
 fn collect(root: &Path, dir: &Path, result: &mut Vec<Asset>) -> Result<()> {
     if !dir.is_dir() {
         return Ok(());
@@ -412,7 +447,7 @@ fn collect(root: &Path, dir: &Path, result: &mut Vec<Asset>) -> Result<()> {
                 continue;
             }
             result.push(Asset {
-                path: path.strip_prefix(root)?.to_string_lossy().into(),
+                path: wire_relative(path.strip_prefix(root)?)?,
                 sha256: storage::hash(&path)?,
                 size: fs::metadata(&path)?.len(),
             });
@@ -520,7 +555,7 @@ fn process(
             vec![]
         };
         for r in &mut records {
-            crate::libraries::rebase(&mut r.value, &root, Path::new(edge::LOGICAL_ROOT));
+            encode_paths(&mut r.value, &root)?;
         }
         let mut files = vec![];
         collect(&root, &root.join("sources"), &mut files)?;
@@ -582,4 +617,37 @@ fn process(
     stop.store(true, Ordering::SeqCst);
     let _ = heartbeat.join();
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn native_paths_use_posix_components_on_the_wire() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        let relative = PathBuf::from("sources").join("source").join("original.mp4");
+        let mut record = json!({"path":root.join(&relative),"nested":[{"output":root.join("shots").join("shot").join("r1").join("master.mp4")}],"description":"human text"});
+        encode_paths(&mut record, root).unwrap();
+        assert_eq!(
+            wire_relative(&relative).unwrap(),
+            "sources/source/original.mp4"
+        );
+        assert_eq!(
+            record["path"],
+            "/__moirai_edge__/sources/source/original.mp4"
+        );
+        assert_eq!(
+            record["nested"][0]["output"],
+            "/__moirai_edge__/shots/shot/r1/master.mp4"
+        );
+        assert_eq!(record["description"], "human text");
+        assert!(wire_relative(Path::new("../escape")).is_err());
+        crate::libraries::rebase(&mut record, Path::new(edge::LOGICAL_ROOT), root);
+        assert_eq!(
+            PathBuf::from(record["path"].as_str().unwrap()),
+            root.join(relative)
+        );
+    }
 }
