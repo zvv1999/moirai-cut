@@ -9,6 +9,12 @@ use std::{fs, path::PathBuf, sync::Arc};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    if std::env::args().nth(1).as_deref() == Some("--edge") {
+        let path = std::env::args()
+            .nth(2)
+            .context("--edge 需要客户端配置文件")?;
+        return moirai_footage::edge_client::run(PathBuf::from(path)).await;
+    }
     let home = PathBuf::from(
         std::env::var("HOME")
             .or_else(|_| std::env::var("USERPROFILE"))

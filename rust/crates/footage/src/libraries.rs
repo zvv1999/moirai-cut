@@ -651,7 +651,7 @@ fn rebase_publications(publications: &Path, previous: &Path, data: &Path) -> Res
     Ok(())
 }
 
-fn rebase(value: &mut Value, from: &Path, to: &Path) {
+pub(crate) fn rebase(value: &mut Value, from: &Path, to: &Path) {
     match value {
         Value::String(text) => {
             if let Ok(relative) = Path::new(text).strip_prefix(from) {

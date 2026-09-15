@@ -16,9 +16,9 @@ exec "$DOCKER" run -d --name "$NAME" --restart unless-stopped --init \
   --log-driver=json-file --log-opt max-size=10m --log-opt max-file=3 \
   --security-opt=no-new-privileges:true --cap-drop=ALL \
   -p 127.0.0.1:4318:4318 \
+  -e MOIRAI_FOOTAGE_COORDINATOR=1 \
   -v "$ROOT/state:/var/lib/moirai" \
   -v "$ROOT/library:/library" \
-  -v "$ROOT/model:/home/moirai/.moirai-cut:ro" \
   --health-cmd='curl -fsS -H "x-footage-token: $(cat /var/lib/moirai/service-token)" http://127.0.0.1:4318/state >/dev/null' \
   --health-interval=30s --health-timeout=10s --health-retries=3 \
   --health-start-period=30s "$IMAGE"

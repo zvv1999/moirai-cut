@@ -91,7 +91,7 @@ export async function setup() {
 				)
 					.trim()
 					.toLowerCase();
-				if (nas === "y" || nas === "yes") {
+				if ((nas === "y" || nas === "yes") && !config.serverUrl) {
 					const root = (
 						await rl.question("已挂载 NAS 的素材库绝对路径：")
 					).trim();
@@ -153,7 +153,9 @@ export async function setup() {
 	binary("ffmpeg", config.ffmpeg);
 	binary("ffprobe", config.ffprobe);
 	console.log(
-		"素材库配置已就绪。NAS 同步默认关闭，可在工作台开启；LLM 模型可在工作台选择，未配置端点时可使用本地导入和人工审核。",
+		config.serverUrl
+			? "团队模式：本地 Worker 计算，团队服务保存共享数据；LLM 凭据仅保存在本机。"
+			: "素材库配置已就绪。NAS 同步默认关闭，可在工作台开启；LLM 模型可在工作台选择，未配置端点时可使用本地导入和人工审核。",
 	);
 	if (configOnly) return;
 	const tokenPath = path.join(config.dataDir, "service-token");
@@ -163,10 +165,11 @@ export async function setup() {
 				headers: { "x-footage-token": readFileSync(tokenPath, "utf8").trim() },
 				signal: AbortSignal.timeout(2000),
 			});
-			return (
-				response.ok &&
-				(await response.json()).runtime?.localRoot === config.dataDir
-			);
+			if (!response.ok) return false;
+			const runtime = (await response.json()).runtime;
+			return config.serverUrl
+				? runtime?.worker?.workerId === config.workerId
+				: runtime?.localRoot === config.dataDir;
 		} catch {
 			return false;
 		}
@@ -200,7 +203,7 @@ export async function setup() {
 			"debug",
 			process.platform === "win32" ? "moirai-footage.exe" : "moirai-footage",
 		),
-		[],
+		config.serverUrl ? ["--edge", configPath] : [],
 		{
 			cwd: repository,
 			detached: true,

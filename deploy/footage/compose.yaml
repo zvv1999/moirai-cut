@@ -4,6 +4,8 @@ services:
       context: ../..
       dockerfile: deploy/footage/Dockerfile
     restart: unless-stopped
+    environment:
+      MOIRAI_FOOTAGE_COORDINATOR: "1"
     init: true
     mem_limit: 1536m
     cpuset: "0,1"
@@ -17,7 +19,6 @@ services:
     volumes:
       - ./state:/var/lib/moirai
       - ./library:/library
-      - ./model:/home/moirai/.moirai-cut:ro
     security_opt:
       - no-new-privileges:true
     cap_drop:

@@ -40,6 +40,11 @@ impl Store {
         self.transaction(|db| {
             for mut job in list::<Job>(db, "job")? {
                 if job.status == "running" {
+                    if get::<serde_json::Value>(db, "edge_lease", &job.id).is_ok_and(|lease| {
+                        lease["expiresAt"].as_u64().unwrap_or(0) > crate::domain::now()
+                    }) {
+                        continue;
+                    }
                     job.status = "queued".into();
                     put(db, "job", &job.id, &job)?;
                 }

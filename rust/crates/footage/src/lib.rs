@@ -1,5 +1,7 @@
 pub mod adaptive_lut;
 pub mod domain;
+pub mod edge;
+pub mod edge_client;
 pub mod label_review;
 pub mod libraries;
 pub mod lineage;

@@ -127,6 +127,8 @@ export interface LibraryState {
 	};
 	settings: { modelId: string; inputMode: string };
 	runtime: {
+		computeLocation?: "local";
+		worker?: { workerId: string; stage: string; jobId?: string | null };
 		syncToNas: boolean;
 		localRoot: string;
 		nasOnline: boolean;

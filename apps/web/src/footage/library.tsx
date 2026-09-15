@@ -191,7 +191,8 @@ function Tool({
 	);
 }
 
-function syncLabel(status?: string, folder = false) {
+function syncLabel(status?: string, folder = false, team = false) {
+	if (team) return "团队素材库";
 	if (folder) return "本机文件夹";
 	return (
 		(
@@ -400,6 +401,7 @@ export function FootageLibrary({
 	};
 	const shot = data?.shots.find((s) => s.id === selected) ?? data?.shots[0];
 	const folderMode = data?.storage?.mode === "folder";
+	const teamMode = data?.runtime.computeLocation === "local";
 	return (
 		<div
 			className="footage-app footage-page"
@@ -460,19 +462,21 @@ export function FootageLibrary({
 								: "footage-warning"
 						}
 					>
-						{folderMode
-							? data?.storage?.error
-								? "文件夹同步异常"
-								: data?.storage?.status === "running"
-									? "文件夹同步中"
-									: "本机文件夹"
-							: !data?.runtime.syncToNas
-								? "本地素材库"
-								: data.runtime.nasOnline
-									? "NAS 已连接"
-									: "NAS 未连接"}
+						{teamMode
+							? "团队素材库 · 本机处理"
+							: folderMode
+								? data?.storage?.error
+									? "文件夹同步异常"
+									: data?.storage?.status === "running"
+										? "文件夹同步中"
+										: "本机文件夹"
+								: !data?.runtime.syncToNas
+									? "本地素材库"
+									: data.runtime.nasOnline
+										? "NAS 已连接"
+										: "NAS 未连接"}
 					</span>
-					{!folderMode && (
+					{!folderMode && !teamMode && (
 						<label className="flex items-center gap-2 text-xs">
 							<input
 								type="checkbox"
@@ -594,7 +598,11 @@ export function FootageLibrary({
 							}
 						>
 							<FolderInput />
-							{folderMode ? "读取文件夹待导入" : "读取 NAS 待导入"}
+							{teamMode
+								? "读取团队待导入"
+								: folderMode
+									? "读取文件夹待导入"
+									: "读取 NAS 待导入"}
 						</Button>
 					)}
 					<Button
@@ -807,6 +815,7 @@ export function FootageLibrary({
 									tagGroups={data.tagSettings?.groups ?? [[], [], [], []]}
 									holidays={data.tagSettings?.holidays ?? []}
 									folderMode={folderMode}
+									teamMode={teamMode}
 									source={data.sources.find((s) => s.id === shot.sourceId)!}
 									onRefresh={refresh}
 								/>
@@ -860,7 +869,7 @@ export function FootageLibrary({
 									<td>
 										<Status value={source.status} />
 										<p className="text-xs">
-											{syncLabel(source.nasSync, folderMode)}
+											{syncLabel(source.nasSync, folderMode, teamMode)}
 										</p>
 										{source.nasRelativePath && (
 											<div
@@ -1020,6 +1029,7 @@ function ShotEditor({
 	tagGroups,
 	holidays,
 	folderMode,
+	teamMode,
 	source,
 	onRefresh,
 }: {
@@ -1027,6 +1037,7 @@ function ShotEditor({
 	tagGroups: string[][];
 	holidays: string[];
 	folderMode: boolean;
+	teamMode: boolean;
 	source: FootageSource;
 	onRefresh: () => Promise<void>;
 }) {
@@ -1644,7 +1655,9 @@ function ShotEditor({
 				</section>
 			</div>
 			{shot.status === "published" && (
-				<p className="text-sm">{syncLabel(shot.nasSync, folderMode)}</p>
+				<p className="text-sm">
+					{syncLabel(shot.nasSync, folderMode, teamMode)}
+				</p>
 			)}
 			<footer className="footage-review-actions">
 				<div>

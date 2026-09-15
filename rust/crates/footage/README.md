@@ -4,6 +4,12 @@ Local Rust service for Moirai Cut's `/footage` workbench. The web route is a str
 
 ## Run
 
+For a shared NAS service with local edge computation, use `bun run setup:team`
+and follow `deploy/footage/README.md`. That mode connects through the NAS API;
+the mounted-directory option below is a standalone service's optional backup,
+not a multi-writer shared database. Team LLM credentials and media computation
+remain local to each worker.
+
 Requires Rust 1.93.1, Bun, FFmpeg and ffprobe (native binaries for the host CPU). Install web dependencies with `bun install --frozen-lockfile`.
 
 Run `bun run setup:local` from the repository root. First setup asks whether to configure
