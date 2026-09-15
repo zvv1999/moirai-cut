@@ -8,9 +8,13 @@ pub struct Store(pub Mutex<Connection>);
 
 impl Store {
     pub fn open(path: &Path) -> Result<Self> {
-        let db = Connection::open(path)?;
-        db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;
-            CREATE TABLE IF NOT EXISTS records (kind TEXT NOT NULL, id TEXT NOT NULL, body TEXT NOT NULL, PRIMARY KEY(kind,id));")?;
+        let db = Connection::open(path)
+            .with_context(|| format!("无法打开素材库数据库 {}", path.display()))?;
+        db.busy_timeout(std::time::Duration::from_secs(30))?;
+        // Rollback journals do not require WAL's cross-process shared memory on NAS.
+        db.execute_batch("PRAGMA journal_mode=DELETE; PRAGMA synchronous=FULL;
+            CREATE TABLE IF NOT EXISTS records (kind TEXT NOT NULL, id TEXT NOT NULL, body TEXT NOT NULL, PRIMARY KEY(kind,id));")
+            .with_context(|| format!("无法初始化素材库数据库 {}", path.display()))?;
         Ok(Self(Mutex::new(db)))
     }
     pub fn transaction<T>(&self, action: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
