@@ -6,6 +6,14 @@ at a Docker SMB/NFS volume. The service rejects network database filesystems and
 holds an exclusive library lock for the lifetime of the database connection.
 All team clients connect to this one service; they must not open its database.
 
+This deployment also runs footage analysis and rendering workers on the NAS.
+The local Web adapter only transports requests; connecting it does not move
+FFmpeg or model calls to the client. Edge computation is not implemented yet:
+it requires a local Rust worker, server-side job leases and heartbeats, and
+validated result/media submission with revision checks and retry idempotency.
+In that architecture the NAS owns shared records and media, while each client
+owns its media cache, 720p proxy generation, processing and LLM credentials.
+
 ## Deployment
 
 Requires NAS Docker/Compose administration, an amd64/arm64 Linux CPU, free space
