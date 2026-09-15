@@ -3517,7 +3517,7 @@ dependencies = [
 
 [[package]]
 name = "moirai-cut-desktop"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "gpui",
 ]
@@ -4829,12 +4829,14 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
+ "tokio-util",
  "tower",
  "tower-http",
  "tower-service",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "wasm-streams",
  "web-sys",
  "webpki-roots",
 ]

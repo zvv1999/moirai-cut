@@ -138,6 +138,7 @@ pub(crate) fn enqueue_sync(
 
 pub fn router(app: Shared) -> Router {
     Router::new()
+        .merge(crate::edge::router())
         .merge(products::router())
         .merge(location::router())
         .merge(crate::tag_settings::router())
@@ -298,6 +299,7 @@ struct ImportQuery {
 async fn upload(
     State(app): State<Shared>,
     Query(query): Query<ImportQuery>,
+    headers: HeaderMap,
     body: Body,
 ) -> ApiResult<Json<Value>> {
     ensure_api(
@@ -335,7 +337,24 @@ async fn upload(
             query.direct,
         );
         let _ = fs::remove_file(&temp);
-        Ok(Json(result?))
+        let result = result?;
+        if crate::edge::coordinator()
+            && result["duplicate"] != true
+            && let (Some(source), Some(worker)) = (
+                result["sourceId"].as_str(),
+                headers
+                    .get("x-footage-worker")
+                    .and_then(|h| h.to_str().ok()),
+            )
+            && uuid::Uuid::parse_str(worker).is_ok()
+        {
+            app.db.put(
+                "edge_preferred",
+                source,
+                &json!({"workerId":worker,"createdAt":now()}),
+            )?;
+        }
+        Ok(Json(result))
     })
     .await
 }
@@ -474,7 +493,11 @@ fn enqueue_analysis(db: &rusqlite::Connection, job: &Job, home: &Path) -> Result
     let settings = store::get::<ModelSettings>(db, "settings", "model").unwrap_or_default();
     let config = AnalysisSettings {
         model: settings,
-        endpoint_fingerprint: model::current_endpoint(home).ok().map(|e| e.fingerprint()),
+        endpoint_fingerprint: if crate::edge::coordinator() {
+            None
+        } else {
+            model::current_endpoint(home).ok().map(|e| e.fingerprint())
+        },
         tag_settings: Some(crate::tag_settings::current(db)?),
     };
     store::put(db, "model_config", &job.id, &config)?;
@@ -945,6 +968,15 @@ pub fn worker_until(
         vec!["analyze", "tag", "recognize_products", "reanalyze"],
         vec!["sync_source", "sync_release"],
     ] {
+        let kinds: Vec<_> = kinds
+            .into_iter()
+            .filter(|kind| {
+                !crate::edge::coordinator() || !crate::edge::COMPUTE_KINDS.contains(kind)
+            })
+            .collect();
+        if kinds.is_empty() {
+            continue;
+        }
         let app = app.clone();
         let stopped = stopped.clone();
         handles.push(std::thread::spawn(move || {
@@ -1001,7 +1033,7 @@ pub fn worker_until(
     }
     handles
 }
-fn record_failure(db: &rusqlite::Connection, job: &Job) -> Result<()> {
+pub(crate) fn record_failure(db: &rusqlite::Connection, job: &Job) -> Result<()> {
     if let Some(error) = &job.error {
         if ["analyze", "archive"].contains(&job.kind.as_str()) {
             let mut source = store::get::<Source>(db, "source", &job.target_id)?;
@@ -1062,7 +1094,7 @@ fn recognize_products(
     result
 }
 
-fn execute(app: &App, job: &Job) -> Result<()> {
+pub fn execute(app: &App, job: &Job) -> Result<()> {
     execute_job(app, job)?;
     if job.kind == "publish" {
         location::local_event(app, None, Some(&job.id))?;
@@ -1398,8 +1430,18 @@ fn execute_job(app: &App, job: &Job) -> Result<()> {
                     shot.start_ticks == 0 && shot.end_ticks == source.duration_ticks,
                     "直接上传分镜必须保留完整时长"
                 );
-                app.media.prepare(&source)?;
-                app.media.verify_original(&source)?;
+                if !crate::edge::coordinator() {
+                    app.media.prepare(&source)?;
+                    app.media.verify_original(&source)?;
+                } else {
+                    ensure!(
+                        app.media
+                            .source_dir(&source.id)
+                            .join("poster.jpg")
+                            .is_file(),
+                        "请先由本地 Worker 完成媒体准备"
+                    );
+                }
             }
             let extension = if shot.direct_upload {
                 media_extension(&source.name)

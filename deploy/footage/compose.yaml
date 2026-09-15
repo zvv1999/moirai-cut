@@ -1,0 +1,31 @@
+services:
+  footage:
+    build:
+      context: ../..
+      dockerfile: deploy/footage/Dockerfile
+    restart: unless-stopped
+    environment:
+      MOIRAI_FOOTAGE_COORDINATOR: "1"
+    init: true
+    mem_limit: 1536m
+    cpuset: "0,1"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    ports:
+      - "127.0.0.1:4318:4318"
+    volumes:
+      - ./state:/var/lib/moirai
+      - ./library:/library
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -H \"x-footage-token: $$(cat /var/lib/moirai/service-token)\" http://127.0.0.1:4318/state >/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

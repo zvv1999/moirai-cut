@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { spawn } from "node:child_process";
 import path from "node:path";
@@ -12,7 +12,9 @@ const config =
 	process.env.MOIRAI_FOOTAGE_CONFIG ??
 	path.join(homedir(), ".moirai-cut", "footage-runtime.json");
 if (!existsSync(config))
-	throw new Error(`Missing ${config}. Run bun run setup:local to configure NAS/LLM and start both services.`);
+	throw new Error(
+		`Missing ${config}. Run bun run setup:local to configure NAS/LLM and start both services.`,
+	);
 const localCargo = path.join(
 	homedir(),
 	".cargo",
@@ -21,11 +23,22 @@ const localCargo = path.join(
 );
 const cargo =
 	process.env.CARGO ?? (existsSync(localCargo) ? localCargo : "cargo");
-const child = spawn(cargo, ["run", "--locked", "-p", "moirai-footage"], {
-	cwd: repository,
-	stdio: "inherit",
-	env: { ...process.env, MOIRAI_FOOTAGE_CONFIG: config },
-});
+const edge = Boolean(JSON.parse(readFileSync(config, "utf8")).serverUrl);
+const child = spawn(
+	cargo,
+	[
+		"run",
+		"--locked",
+		"-p",
+		"moirai-footage",
+		...(edge ? ["--", "--edge", config] : []),
+	],
+	{
+		cwd: repository,
+		stdio: "inherit",
+		env: { ...process.env, MOIRAI_FOOTAGE_CONFIG: config },
+	},
+);
 child.on("error", (error) => {
 	console.error(error.message);
 	process.exitCode = 1;

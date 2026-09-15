@@ -117,7 +117,10 @@ describe("production image FCPXML HTTP smoke", () => {
 		if (process.platform === "win32") expect(existsSync(shell)).toBe(true);
 		const result = spawnSync(shell, ["-n", fileURLToPath(smokeScriptUrl)], {
 			encoding: "utf8",
+			timeout: 20_000,
 		});
+		expect(result.error).toBeUndefined();
 		expect(result.status).toBe(0);
-	});
+	// Git for Windows can take more than Bun's default five seconds to start.
+	}, 30_000);
 });

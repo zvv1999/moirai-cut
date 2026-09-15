@@ -1,6 +1,6 @@
 {
 	"name": "moirai-cut",
-	"version": "0.6.0",
+	"version": "0.7.0",
 	"private": true,
 	"description": "An open-source, local-first video editor where humans and agents create inside the same visible, editable loop.",
 	"license": "MIT",
@@ -16,6 +16,7 @@
 	"scripts": {
 		"audit:release": "bun audit --ignore GHSA-vwc7-r8mq-g2x9",
 		"setup:footage": "node scripts/footage/setup.mjs --configure --config-only",
+		"setup:team": "node scripts/footage/setup-team.mjs",
 		"dev:footage": "node scripts/footage/start.mjs",
 		"test:footage": "cargo test -p moirai-footage",
 		"agent:doctor": "bun apps/mcp/src/agent-doctor.mjs",
