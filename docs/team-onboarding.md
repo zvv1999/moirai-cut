@@ -5,6 +5,13 @@
 
 ## 1. 连接关系
 
+新增独立成员入口：如果管理员提供的是端口 `2222` 的连接配置，使用
+`bun run join:team --connection 配置文件路径 --identity 自己的私钥路径` 登录，
+再执行 `bun run team:llm` 和 `bun run team:start`。服务令牌通过认证连接自动取得，
+不需要个人 DSM 管理员账号或 NAS 密码。此入口使用管理员分配的英文成员名，
+与 DSM 中文账号分开；部署及撤销方式见 [独立接入网关](../deploy/footage/gateway/README.md)。
+下文的手动令牌配置方式继续兼容原有部署。
+
 ```text
 本机浏览器 /footage
   -> 本机 Web 工作台 :3000

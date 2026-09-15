@@ -13,6 +13,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline/promises";
 import { Writable } from "node:stream";
+import { ensureTeamRelay } from "./team-relay.mjs";
 
 const repository = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -158,6 +159,7 @@ export async function setup() {
 			: "素材库配置已就绪。NAS 同步默认关闭，可在工作台开启；LLM 模型可在工作台选择，未配置端点时可使用本地导入和人工审核。",
 	);
 	if (configOnly) return;
+	await ensureTeamRelay(config);
 	const tokenPath = path.join(config.dataDir, "service-token");
 	async function ready() {
 		try {
