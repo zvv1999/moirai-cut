@@ -4,6 +4,36 @@ All notable Moirai Cut changes are documented here. The repository is in develop
 preview and follows semantic versioning for public release artifacts; project
 schema and Agent surfaces may still change with migration notes.
 
+## 0.7.0 — 2026-09-15
+
+Shared NAS footage coordination with local Rust edge workers.
+
+### Added
+
+- NAS Docker deployment owns shared SQLite, media, labels, lineage and task state.
+- Local Rust workers prepare proxies, analyze/tag footage and render reviewed clips.
+  Video model input remains fixed at 720p; model credentials stay on each worker.
+- Leases, heartbeats, expired-task reassignment, revision checks, resumable media
+  transfer and idempotent completion receipts protect concurrent team processing.
+- `setup:team`, configuration templates and a detailed Chinese onboarding guide:
+  [Team setup](docs/team-onboarding.md).
+
+### Fixed
+
+- A library has one database owner; network-mounted SQLite and a second owner
+  are rejected. Clients access the NAS API through an encrypted connection.
+- Team workbench labels distinguish shared storage from local computation.
+
+### Compatibility and limitations
+
+- Standalone local mode remains available without NAS. Existing shared-library
+  databases must be backed up and their old owner stopped before migration.
+- Team mode requires an online coordinator and currently uses full-access team
+  tokens, without individual roles. On-demand preview and probing still partly
+  run on the NAS. Cache eviction and offline write reconciliation are not included.
+- This release distributes source, not signed desktop installers. Rust, Bun,
+  Node.js, FFmpeg/ffprobe and a compatible video model are needed as documented.
+
 ## 0.6.0 — 2026-09-14
 
 Reviewed product-footage workflows and isolated local or NAS libraries.

@@ -1,0 +1,7 @@
+{
+  "host": "NAS_HOST_FROM_ADMIN",
+  "user": "NAS_SSH_USER_FROM_ADMIN",
+  "identityFile": "/absolute/private/moirai-team/id_ed25519",
+  "knownHostsFile": "/absolute/private/moirai-team/known_hosts",
+  "port": 14318
+}

@@ -1,0 +1,9 @@
+{
+  "serverUrl": "http://127.0.0.1:14318",
+  "serverTokenFile": "/absolute/private/moirai-team/nas-service-token",
+  "dataDir": "/absolute/local/moirai-team/cache",
+  "workerId": "GENERATE_A_UNIQUE_UUID_FOR_THIS_COMPUTER",
+  "port": 14319,
+  "ffmpeg": "/absolute/path/to/ffmpeg",
+  "ffprobe": "/absolute/path/to/ffprobe"
+}
