@@ -20,6 +20,70 @@ pub fn hash(path: &Path) -> Result<String> {
     Ok(format!("{:x}", sha.finalize()))
 }
 
+/// SQLite WAL requires a local filesystem. NAS containers must bind a NAS-local volume.
+pub fn verify_database_volume(root: &Path) -> Result<()> {
+    ensure!(
+        root.is_dir(),
+        "素材库目录离线，拒绝回退到旧副本写入；请重新连接目录"
+    );
+    #[cfg(target_os = "macos")]
+    {
+        use std::{
+            ffi::{CStr, CString},
+            os::unix::ffi::OsStrExt,
+        };
+        let name = CString::new(root.as_os_str().as_bytes())?;
+        let mut stat = std::mem::MaybeUninit::<libc::statfs>::uninit();
+        ensure!(
+            unsafe { libc::statfs(name.as_ptr(), stat.as_mut_ptr()) } == 0,
+            "无法检查数据库文件系统"
+        );
+        let stat = unsafe { stat.assume_init() };
+        let kind = unsafe { CStr::from_ptr(stat.f_fstypename.as_ptr()) }.to_string_lossy();
+        ensure!(
+            ["apfs", "hfs"].contains(&kind.as_ref()),
+            "数据库须由 NAS 内的服务或本机本地磁盘承载，不能直接使用网络挂载"
+        );
+    }
+    #[cfg(target_os = "linux")]
+    {
+        use std::{ffi::CString, os::unix::ffi::OsStrExt};
+        let name = CString::new(root.as_os_str().as_bytes())?;
+        let mut stat = std::mem::MaybeUninit::<libc::statfs>::uninit();
+        ensure!(
+            unsafe { libc::statfs(name.as_ptr(), stat.as_mut_ptr()) } == 0,
+            "无法检查数据库文件系统"
+        );
+        let stat = unsafe { stat.assume_init() };
+        ensure!(
+            [0xef53_u64, 0x9123683e, 0x58465342, 0x794c7630, 0x01021994]
+                .contains(&(stat.f_type as u64)),
+            "数据库须使用本地 ext4/btrfs/xfs/overlay/tmpfs 卷，不能使用 SMB/NFS"
+        );
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        #[link(name = "kernel32")]
+        unsafe extern "system" {
+            fn GetVolumePathNameW(path: *const u16, volume: *mut u16, size: u32) -> i32;
+            fn GetDriveTypeW(root: *const u16) -> u32;
+        }
+        let path: Vec<u16> = root.as_os_str().encode_wide().chain(Some(0)).collect();
+        let mut volume = vec![0u16; 32768];
+        ensure!(
+            unsafe { GetVolumePathNameW(path.as_ptr(), volume.as_mut_ptr(), volume.len() as u32) }
+                != 0,
+            "无法检查数据库卷"
+        );
+        ensure!(
+            [2, 3, 6].contains(&unsafe { GetDriveTypeW(volume.as_ptr()) }),
+            "不能在网络盘上打开 SQLite，请连接团队服务"
+        );
+    }
+    Ok(())
+}
+
 pub fn verify_root(root: &Path, require_smb: bool) -> Result<()> {
     ensure!(root.is_dir(), "NAS 目录不可用，请挂载后重试");
     if require_smb {

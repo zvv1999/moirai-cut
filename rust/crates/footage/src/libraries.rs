@@ -12,6 +12,7 @@ use axum::{
     extract::{Request, State},
     response::{IntoResponse, Response},
 };
+use fs2::FileExt;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::{
@@ -178,19 +179,43 @@ impl Libraries {
         ensure!(uuid::Uuid::parse_str(&active.id).is_ok(), "素材库标识无效");
         let registered = Self::registry(host)?.get(&active.id).cloned();
         let shared = shared_data(&active.root);
-        // Keep the previous local cache as an offline fallback until the volume reconnects.
-        let data = if !active.root.is_dir() {
-            registered
-                .clone()
-                .filter(|path| path.join("library.sqlite3").is_file())
-                .unwrap_or_else(|| host.config.data_dir.join("libraries").join(&active.id))
-        } else {
-            shared.clone()
-        };
-        if data == shared && !data.join("library.sqlite3").is_file() {
-            if let Some(local) = registered.filter(|path| path != &data && path.join("library.sqlite3").is_file()) {
-                fs::create_dir_all(&data)?;
-                copy_tree(&local, &data)?;
+        crate::storage::verify_database_volume(&active.root)?;
+        ensure!(
+            !active.root.join(MARKER).is_symlink() && !shared.is_symlink(),
+            "素材库数据目录不能是符号链接"
+        );
+        fs::create_dir_all(active.root.join(MARKER))?;
+        let lock = fs::OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .read(true)
+            .write(true)
+            .open(active.root.join(MARKER).join("owner.lock"))?;
+        lock.try_lock_exclusive()
+            .context("素材库已由另一服务打开，请连接该服务，不要重复启动")?;
+        let data = shared;
+        if !data.join("library.sqlite3").is_file()
+            && let Some(local) =
+                registered.filter(|path| path != &data && path.join("library.sqlite3").is_file())
+        {
+            if local == host.config.data_dir {
+                snapshot(host, &active.root)?;
+            } else {
+                let mut config = host.config.clone();
+                config.data_dir = local.clone();
+                let legacy = App {
+                    storage_gate: Mutex::new(()),
+                    db: Store::open(&local.join("library.sqlite3"))?,
+                    media: Media {
+                        root: local,
+                        ffmpeg: config.ffmpeg.clone(),
+                        ffprobe: config.ffprobe.clone(),
+                    },
+                    config,
+                    home: host.home.clone(),
+                    token: host.token.clone(),
+                };
+                snapshot(&legacy, &active.root)?;
             }
         }
         if !data.join("library.sqlite3").is_file() {
@@ -198,9 +223,39 @@ impl Libraries {
         }
         let mut config = host.config.clone();
         config.data_dir = data.clone();
+        let mut db = Store::open(&data.join("library.sqlite3"))?;
+        db.hold_library_lock(lock);
+        if let Ok(previous) = db.get::<PathBuf>("settings", "data_root")
+            && previous != data
+        {
+            db.transaction(|conn| {
+                let rows = {
+                    let mut stmt = conn.prepare("SELECT kind,id,body FROM records")?;
+                    stmt.query_map([], |r| {
+                        Ok((
+                            r.get::<_, String>(0)?,
+                            r.get::<_, String>(1)?,
+                            r.get::<_, String>(2)?,
+                        ))
+                    })?
+                    .collect::<rusqlite::Result<Vec<_>>>()?
+                };
+                for (kind, id, body) in rows {
+                    let mut value: Value = serde_json::from_str(&body)?;
+                    rebase(&mut value, &previous, &data);
+                    conn.execute(
+                        "UPDATE records SET body=?1 WHERE kind=?2 AND id=?3",
+                        rusqlite::params![value.to_string(), kind, id],
+                    )?;
+                }
+                Ok(())
+            })?;
+            rebase_publications(&data.join("publications"), &previous, &data)?;
+        }
+        db.put("settings", "data_root", &data)?;
         let app = Arc::new(App {
             storage_gate: Mutex::new(()),
-            db: Store::open(&data.join("library.sqlite3"))?,
+            db,
             media: Media {
                 root: data,
                 ffmpeg: config.ffmpeg.clone(),
@@ -578,13 +633,17 @@ fn restore_into(root: &Path, staged: &Path, data: &Path) -> Result<()> {
         Ok(())
     })?;
     // Publication manifests also contain local absolute paths.
-    let publications = staged.join("publications");
+    rebase_publications(&staged.join("publications"), Path::new(previous), data)?;
+    Ok(())
+}
+
+fn rebase_publications(publications: &Path, previous: &Path, data: &Path) -> Result<()> {
     if publications.is_dir() {
         for entry in fs::read_dir(publications)? {
             let path = entry?.path();
             if path.extension().is_some_and(|e| e == "json") {
                 let mut value: Value = serde_json::from_slice(&fs::read(&path)?)?;
-                rebase(&mut value, Path::new(previous), data);
+                rebase(&mut value, previous, data);
                 write_json(&path, &value)?;
             }
         }
@@ -621,6 +680,135 @@ mod tests {
         body::Body,
         http::{Request, StatusCode},
     };
+
+    #[test]
+    fn migration_rebases_paths_and_excludes_machine_credentials() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("selected");
+        fs::create_dir_all(&root).unwrap();
+        let host = fixture(temp.path(), &root);
+        let old = host.config.data_dir.join("sources/original.mp4");
+        fs::create_dir_all(old.parent().unwrap()).unwrap();
+        fs::write(&old, b"video").unwrap();
+        fs::write(
+            host.config.data_dir.join("service-token"),
+            b"test-private-token",
+        )
+        .unwrap();
+        host.db.put("source", "test", &json!({"path":old})).unwrap();
+        let active = Active {
+            id: id(),
+            root: root.clone(),
+            mode: "folder".into(),
+            revision: 1,
+        };
+        Libraries::register(
+            &host,
+            &Identity {
+                version: 1,
+                id: active.id.clone(),
+            },
+            &host.config.data_dir,
+        )
+        .unwrap();
+        let app = Libraries::load_app(&host, &active).unwrap();
+        let value = app.db.get::<Value>("source", "test").unwrap();
+        assert!(app.config.data_dir.join("sources/original.mp4").exists());
+        assert!(!app.config.data_dir.join("service-token").exists());
+        assert_eq!(
+            value["path"],
+            json!(app.config.data_dir.join("sources/original.mp4"))
+        );
+    }
+
+    #[test]
+    fn second_host_cannot_requeue_active_owners_job() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("selected");
+        fs::create_dir_all(shared_data(&root)).unwrap();
+        drop(Store::open(&shared_data(&root).join("library.sqlite3")).unwrap());
+        let first = fixture(&temp.path().join("first"), &root);
+        let second = fixture(&temp.path().join("second"), &root);
+        let active = Active {
+            id: id(),
+            root,
+            mode: "folder".into(),
+            revision: 1,
+        };
+        let a = Libraries::load_app(&first, &active).unwrap();
+        let job = Job::new("render", "shot", 1);
+        a.db.put("job", &job.id, &job).unwrap();
+        a.db.claim().unwrap().unwrap();
+        assert_eq!(a.db.get::<Job>("job", &job.id).unwrap().status, "running");
+        assert!(Libraries::load_app(&second, &active).is_err());
+        assert_eq!(a.db.get::<Job>("job", &job.id).unwrap().status, "running");
+        drop(a);
+        let b = Libraries::load_app(&second, &active).unwrap();
+        assert_eq!(b.db.claim().unwrap().unwrap().id, job.id);
+    }
+
+    #[test]
+    fn offline_library_does_not_open_stale_local_copy() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("offline");
+        let host = fixture(temp.path(), &root);
+        let active = Active {
+            id: id(),
+            root,
+            mode: "folder".into(),
+            revision: 1,
+        };
+        Libraries::register(
+            &host,
+            &Identity {
+                version: 1,
+                id: active.id.clone(),
+            },
+            &host.config.data_dir,
+        )
+        .unwrap();
+        assert!(Libraries::load_app(&host, &active).is_err());
+    }
+
+    #[test]
+    fn relocated_library_rebases_records_and_publications() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("before");
+        fs::create_dir_all(shared_data(&root)).unwrap();
+        drop(Store::open(&shared_data(&root).join("library.sqlite3")).unwrap());
+        let host = fixture(temp.path(), &root);
+        let mut active = Active {
+            id: id(),
+            root: root.clone(),
+            mode: "folder".into(),
+            revision: 1,
+        };
+        let app = Libraries::load_app(&host, &active).unwrap();
+        let original = app.config.data_dir.join("sources/a.mp4");
+        app.db
+            .put("source", "a", &json!({"path":original}))
+            .unwrap();
+        fs::create_dir_all(app.config.data_dir.join("publications")).unwrap();
+        write_json(
+            &app.config.data_dir.join("publications/a.json"),
+            &json!({"path":original}),
+        )
+        .unwrap();
+        drop(app);
+        active.root = temp.path().join("after");
+        fs::rename(root, &active.root).unwrap();
+        let app = Libraries::load_app(&host, &active).unwrap();
+        let expected = json!(app.config.data_dir.join("sources/a.mp4"));
+        assert_eq!(
+            app.db.get::<Value>("source", "a").unwrap()["path"],
+            expected
+        );
+        let manifest: Value = serde_json::from_slice(
+            &fs::read(app.config.data_dir.join("publications/a.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(manifest["path"], expected);
+    }
 
     #[test]
     fn failed_restore_never_leaves_a_loadable_partial_database() {

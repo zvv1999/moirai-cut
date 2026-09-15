@@ -4,7 +4,7 @@ use rusqlite::{Connection, params};
 use serde::{Serialize, de::DeserializeOwned};
 use std::{path::Path, sync::Mutex};
 
-pub struct Store(pub Mutex<Connection>);
+pub struct Store(pub Mutex<Connection>, Option<std::fs::File>);
 
 impl Store {
     pub fn open(path: &Path) -> Result<Self> {
@@ -12,7 +12,10 @@ impl Store {
         db.busy_timeout(std::time::Duration::from_secs(30))?;
         db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;
             CREATE TABLE IF NOT EXISTS records (kind TEXT NOT NULL, id TEXT NOT NULL, body TEXT NOT NULL, PRIMARY KEY(kind,id));")?;
-        Ok(Self(Mutex::new(db)))
+        Ok(Self(Mutex::new(db), None))
+    }
+    pub fn hold_library_lock(&mut self, lock: std::fs::File) {
+        self.1 = Some(lock);
     }
     pub fn transaction<T>(&self, action: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
         let mut conn = self

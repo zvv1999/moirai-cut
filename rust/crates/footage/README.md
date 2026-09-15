@@ -39,14 +39,19 @@ with SHA-256 deduplication; hidden directories and symbolic links are skipped.
 Original files remain untouched. Later additions still use upload or the manual
 `inbox` import; no folder watcher or deletion propagation is introduced.
 
-Each directory has a `.moirai-library/identity.json` identifier. Live SQLite and
-working files remain local, under `dataDir/libraries/<id>` (the legacy library keeps
-its original data path). Machine-local `library-registry.json` and
-`active-library.json` remember cache locations and the active library. Before switching,
+Each directory has a `.moirai-library/identity.json` identifier. Selected libraries
+store SQLite and working files in `.moirai-library/data`, on a local filesystem
+owned exclusively by one Rust service. NAS deployments run that service inside Docker
+on a NAS-local volume; SMB/NFS database access is rejected. Clients connect to the
+service, not the database. See `deploy/footage/README.md` for deployment and access.
+Legacy data migrates through a staged whitelist snapshot with rebased paths; credentials
+and other libraries are excluded. Offline directories fail closed instead of accepting
+writes into a stale local copy. Machine-local `library-registry.json` and
+`active-library.json` remember locations and the active library. Before switching,
 running work finishes, remaining jobs pause, and a catalog/media checkpoint is saved
 to the **old** directory's `.moirai-library` folder. New directories never receive
 the old library's data. Reopening resumes that library's queue. If a cache is missing,
-the directory checkpoint restores it; the latest live state remains in the local cache
+the directory checkpoint restores it; the latest live state remains in the selected data directory
 until the next checkpoint. Keep the hidden folder when moving a library.
 
 The legacy library is bound to its previously selected directory on first switch.

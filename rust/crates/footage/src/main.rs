@@ -21,6 +21,7 @@ async fn main() -> Result<()> {
         &fs::read(&config_path).with_context(|| format!("请先配置 {}", config_path.display()))?,
     )?;
     fs::create_dir_all(&config.data_dir)?;
+    moirai_footage::storage::verify_database_volume(&config.data_dir)?;
     let lock = fs::OpenOptions::new()
         .create(true)
         .truncate(false)
@@ -75,7 +76,11 @@ async fn main() -> Result<()> {
     });
     moirai_footage::lineage::cache_legacy_releases(&app)?;
     let libraries = moirai_footage::libraries::Libraries::open(app, true)?;
-    let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, port)).await?;
+    let bind: std::net::IpAddr = std::env::var("MOIRAI_FOOTAGE_BIND")
+        .unwrap_or_else(|_| "127.0.0.1".into())
+        .parse()
+        .context("MOIRAI_FOOTAGE_BIND 必须是 IP 地址")?;
+    let listener = tokio::net::TcpListener::bind((bind, port)).await?;
     println!("Moirai footage service: http://127.0.0.1:{port}");
     axum::serve(listener, libraries.router()).await?;
     drop(lock);

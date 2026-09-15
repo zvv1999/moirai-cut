@@ -1,0 +1,8 @@
+{
+  "dataDir": "/var/lib/moirai",
+  "nasRoot": "/library",
+  "requireSmb": false,
+  "ffmpeg": "/usr/bin/ffmpeg",
+  "ffprobe": "/usr/bin/ffprobe",
+  "port": 4318
+}
