@@ -188,6 +188,7 @@ async fn gateway(State(c): State<Arc<Client>>, request: Request) -> Result<Respo
         return Ok(Response::builder()
             .header("content-type", "application/json")
             .header("x-moirai-preview-compute", "local")
+            .header("cache-control", "private, no-store")
             .body(Body::from(serde_json::to_vec(&value)?))?);
     }
     if path == "/models" {
@@ -309,18 +310,22 @@ fn local_preview(
 ) -> Result<Value> {
     let http = http_client()?;
     let state = response(request(c, &http, reqwest::Method::GET, "/state", library)?.send()?)?;
+    ensure!(
+        state["libraryId"].as_str() == Some(library),
+        "素材库已切换，请刷新页面后重试"
+    );
     let shot = state["shots"]
         .as_array()
         .context("团队分镜数据无效")?
         .iter()
-        .find(|s| s["id"].as_str() == Some(id))
+        .find(|s| s["id"].as_str() == Some(id) && s["status"] != "deleted")
         .context("分镜不存在或已删除")?;
     ensure!(shot["directUpload"] != true, "直接上传分镜不进行画面加工");
     let mut source = state["sources"]
         .as_array()
         .context("团队原片数据无效")?
         .iter()
-        .find(|s| s["id"] == shot["sourceId"])
+        .find(|s| s["id"] == shot["sourceId"] && s["status"] != "deleted")
         .context("原片不存在或已删除")?
         .clone();
     source["path"] = json!("");
@@ -754,6 +759,9 @@ fn process(
     let _ = heartbeat.join();
     result
 }
+
+#[cfg(test)]
+mod preview_tests;
 
 #[cfg(test)]
 mod tests {

@@ -140,6 +140,10 @@ on each workstation, not on the NAS. The coordinator also hashes/copies publishe
 files. It therefore still needs FFmpeg/ffprobe; this is not a pure
 storage-only server. Team mode currently requires an online coordinator for
 imports/review; disconnected writes are not queued for later synchronization.
+Every preview checks the current library ID and active shot/source metadata,
+including when the original or LUT is already cached locally. Stale pages must
+refresh after a library switch. Preview responses are private and not HTTP-cached;
+the worker's verified media and LUT caches remain reusable.
 Standalone local mode remains independent and fully available without NAS.
 Caches and unreferenced staged blobs do not yet have automatic quota eviction.
 
