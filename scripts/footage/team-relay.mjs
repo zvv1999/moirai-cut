@@ -29,7 +29,7 @@ export async function ensureTeamRelay(config) {
   mkdirSync(config.dataDir, { recursive: true });
   const log = openSync(path.join(config.dataDir, 'team-relay.log'), 'a', 0o600);
   const script = fileURLToPath(new URL('../../deploy/footage/connect.mjs', import.meta.url));
-  const child = spawn(process.execPath, [script, connectionFile], { detached: true, stdio: ['ignore', log, log] });
+  const child = spawn(process.execPath, [script, connectionFile], { windowsHide: true, detached: true, stdio: ['ignore', log, log] });
   closeSync(log);
   let failure;
   child.on('error', error => { failure = error; });

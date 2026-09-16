@@ -35,6 +35,7 @@ const runCodexCommand: CodexCommandRunner = ({ binary, args }) =>
 			args,
 			{
 				encoding: "utf8",
+				windowsHide: true,
 				maxBuffer: 64 * 1024,
 				timeout: 5_000,
 			},

@@ -54,7 +54,7 @@ function binary(name, override) {
 	const result = spawnSync(
 		command,
 		[name === "cargo" ? "--version" : "-version"],
-		{ encoding: "utf8" },
+		{ encoding: "utf8", windowsHide: true },
 	);
 	if (result.status !== 0)
 		throw new Error(
@@ -185,14 +185,14 @@ export async function setup() {
 	const build = spawnSync(
 		cargo,
 		["build", "--locked", "-p", "moirai-footage"],
-		{ cwd: repository, stdio: "inherit" },
+		{ cwd: repository, stdio: "inherit", windowsHide: true },
 	);
 	if (build.status !== 0)
 		throw new Error("Rust 构建失败，请修复上方依赖错误后重试。");
 	const metadata = spawnSync(
 		cargo,
 		["metadata", "--no-deps", "--format-version", "1"],
-		{ cwd: repository, encoding: "utf8" },
+		{ cwd: repository, encoding: "utf8", windowsHide: true },
 	);
 	if (metadata.status !== 0) throw new Error("无法获取 Rust 构建目录。");
 	const target = JSON.parse(metadata.stdout).target_directory;
@@ -209,6 +209,7 @@ export async function setup() {
 		{
 			cwd: repository,
 			detached: true,
+			windowsHide: true,
 			stdio: ["ignore", log, log],
 			env: { ...process.env, MOIRAI_FOOTAGE_CONFIG: configPath },
 		},

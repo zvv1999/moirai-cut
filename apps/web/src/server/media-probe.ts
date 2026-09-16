@@ -321,6 +321,7 @@ const runFfprobeCommand: FfprobeCommandRunner = ({
 			args,
 			{
 				encoding: "utf8",
+				windowsHide: true,
 				maxBuffer: MAX_FFPROBE_OUTPUT_BYTES,
 				timeout: timeoutMs,
 			},

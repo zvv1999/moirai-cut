@@ -840,6 +840,7 @@ async function startSharedAppServerHost(
 ): Promise<void> {
 	if (await sharedHostReady(runtime.sharedAppServerUrl)) return;
 	const child = spawn(runtime.binary, buildCodexSharedHostArgs({ runtime }), {
+		windowsHide: true,
 		cwd: runtime.repoRoot,
 		env: passthroughEnvironment(runtime),
 		shell: false,
