@@ -99,7 +99,7 @@ impl Default for Recipe {
             crop_mode: "preserve".into(),
             crop_x: 0.5,
             crop_y: 0.5,
-            color_mode: "adaptive".into(),
+            color_mode: "preserve".into(),
             brightness: 0.0,
             contrast: 1.0,
             saturation: 1.0,
