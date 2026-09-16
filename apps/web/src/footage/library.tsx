@@ -1134,6 +1134,9 @@ function ShotEditor({
 	};
 	const recipe = (patch: Partial<Recipe>) =>
 		change({ recipe: { ...draft.recipe, ...patch } });
+	const colorMode = ["auto", "adaptive"].includes(draft.recipe.colorMode)
+		? "adaptive"
+		: "preserve";
 	const locked =
 		busy ||
 		["rendering", "publishing", "tagging", "recognizing"].includes(shot.status);
@@ -1482,21 +1485,30 @@ function ShotEditor({
 							</div>
 						</div>
 						<PushInControl value={draft.recipe} onChange={recipe} />
-						<label>
-							调色
-							<select
+						<div className="footage-color-mode">
+							<span>调色</span>
+							<div
+								className="footage-color-modes"
+								role="radiogroup"
 								aria-label="调色"
-								value={
-									["manual", "preserve"].includes(draft.recipe.colorMode)
-										? "preserve"
-										: "adaptive"
-								}
-								onChange={(e) => recipe({ colorMode: e.target.value })}
 							>
-								<option value="adaptive">AI 调色</option>
-								<option value="preserve">原色</option>
-							</select>
-						</label>
+								{[
+									{ value: "preserve", label: "原色" },
+									{ value: "adaptive", label: "AI 调色" },
+								].map(({ value, label }) => (
+									<label key={value}>
+										<input
+											type="radio"
+											name={`footage-color-mode-${shot.id}`}
+											value={value}
+											checked={colorMode === value}
+											onChange={() => recipe({ colorMode: value })}
+										/>
+										{label}
+									</label>
+								))}
+							</div>
+						</div>
 						<div className="footage-color-controls">
 							<Button
 								variant="ghost"

@@ -1210,6 +1210,37 @@
 	line-height: 1.6;
 	overflow-wrap: anywhere;
 }
+.footage-color-mode {
+	display: grid;
+	gap: 7px;
+	font-size: 12px;
+	color: var(--muted-foreground);
+}
+.footage-color-modes {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+	min-height: 36px;
+}
+.footage-app .footage-color-modes label {
+	flex-direction: row;
+	align-items: center;
+	gap: 6px;
+	color: var(--foreground);
+	white-space: nowrap;
+	cursor: pointer;
+}
+.footage-color-modes input {
+	width: 14px;
+	height: 14px;
+	margin: 0;
+	flex-shrink: 0;
+	accent-color: #359782;
+}
+.footage-color-modes label:has(input:disabled) {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
 .footage-color-controls {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
