@@ -165,6 +165,31 @@ async fn gateway(State(c): State<Arc<Client>>, request: Request) -> Result<Respo
         return Ok(Response::builder().status(401).body(Body::empty())?);
     }
     let path = request.uri().path().to_owned();
+    if let Some((id, operation)) = preview_route(&path) {
+        if request.method() != reqwest::Method::POST {
+            return Err(anyhow::anyhow!("预览接口需要 POST").into());
+        }
+        let id = id.to_owned();
+        let operation = operation.to_owned();
+        let library = request
+            .headers()
+            .get("x-footage-library")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_owned();
+        if library.is_empty() {
+            return Err(anyhow::anyhow!("团队预览需要素材库标识").into());
+        }
+        let bytes = axum::body::to_bytes(request.into_body(), 4 * 1024 * 1024).await?;
+        let value = tokio::task::spawn_blocking(move || {
+            local_preview(&c, &library, &id, &operation, &bytes)
+        })
+        .await??;
+        return Ok(Response::builder()
+            .header("content-type", "application/json")
+            .header("x-moirai-preview-compute", "local")
+            .body(Body::from(serde_json::to_vec(&value)?))?);
+    }
     if path == "/models" {
         let home = c.home.clone();
         let value =
@@ -260,6 +285,117 @@ async fn gateway(State(c): State<Arc<Client>>, request: Request) -> Result<Respo
         .header("cache-control", "private, no-store")
         .body(Body::from_stream(remote.bytes_stream()))?)
 }
+fn preview_route(path: &str) -> Option<(&str, &str)> {
+    let rest = path.strip_prefix("/shots/")?;
+    let (id, operation) = rest.split_once('/')?;
+    if uuid::Uuid::parse_str(id).is_ok()
+        && matches!(
+            operation,
+            "preview-plan" | "preview-lut" | "preview-exposure"
+        )
+    {
+        Some((id, operation))
+    } else {
+        None
+    }
+}
+
+fn local_preview(
+    c: &Client,
+    library: &str,
+    id: &str,
+    operation: &str,
+    bytes: &[u8],
+) -> Result<Value> {
+    let http = http_client()?;
+    let state = response(request(c, &http, reqwest::Method::GET, "/state", library)?.send()?)?;
+    let shot = state["shots"]
+        .as_array()
+        .context("团队分镜数据无效")?
+        .iter()
+        .find(|s| s["id"].as_str() == Some(id))
+        .context("分镜不存在或已删除")?;
+    ensure!(shot["directUpload"] != true, "直接上传分镜不进行画面加工");
+    let mut source = state["sources"]
+        .as_array()
+        .context("团队原片数据无效")?
+        .iter()
+        .find(|s| s["id"] == shot["sourceId"])
+        .context("原片不存在或已删除")?
+        .clone();
+    source["path"] = json!("");
+    let mut source: crate::domain::Source = serde_json::from_value(source)?;
+    if operation == "preview-plan" {
+        return crate::preview::calculate_plan(&source, serde_json::from_slice(bytes)?);
+    }
+    let input: crate::preview::RangeInput = serde_json::from_slice(bytes)?;
+    crate::domain::validate_range(input.start_ticks, input.end_ticks, source.duration_ticks)?;
+    ensure!(
+        source.sha256.len() == 64 && source.sha256.bytes().all(|b| b.is_ascii_hexdigit()),
+        "原片校验码无效"
+    );
+    ensure!(uuid::Uuid::parse_str(&source.id).is_ok(), "原片标识无效");
+    let root = c.config.data_dir.join("preview");
+    let objects = c.config.data_dir.join("objects");
+    fs::create_dir_all(&objects)?;
+    fs::create_dir_all(&root)?;
+    let lock = fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(root.join(format!("{}.lock", source.sha256)))?;
+    lock.lock_exclusive()?;
+    let cached = objects.join(&source.sha256);
+    if !cached.is_file() || storage::hash(&cached)? != source.sha256 {
+        let temp = objects.join(format!("{}.preview-{}", source.sha256, crate::domain::id()));
+        let _cleanup = TemporaryUpload(temp.clone());
+        let remote = request(
+            c,
+            &http,
+            reqwest::Method::GET,
+            &format!("/media/source/{}/original", source.id),
+            library,
+        )?
+        .send()?;
+        ensure!(
+            remote.status().is_success(),
+            "下载预览原片失败 {}；请确认团队服务已更新",
+            remote.status()
+        );
+        let mut output = fs::File::create(&temp)?;
+        let limit = 20 * 1024 * 1024 * 1024u64;
+        let size = std::io::copy(&mut remote.take(limit + 1), &mut output)?;
+        output.sync_all()?;
+        drop(output);
+        ensure!(
+            size <= limit && storage::hash(&temp)? == source.sha256,
+            "预览原片校验失败"
+        );
+        if cached.exists() {
+            fs::remove_file(&cached)?;
+        }
+        fs::rename(&temp, &cached)?;
+    }
+    source.path = cached.to_string_lossy().into_owned();
+    let media = Media {
+        root,
+        ffmpeg: c.config.ffmpeg.clone(),
+        ffprobe: c.config.ffprobe.clone(),
+    };
+    match operation {
+        "preview-lut" => serde_json::to_value(
+            media
+                .adaptive_lut(&source, input.start_ticks, input.end_ticks)
+                .context("本机 AI 调色预览失败，请检查当前电脑的调色模型环境")?,
+        )
+        .map_err(Into::into),
+        "preview-exposure" => {
+            Ok(json!({"brightness":media.exposure(&source, input.start_ticks, input.end_ticks)?}))
+        }
+        _ => anyhow::bail!("未知预览操作"),
+    }
+}
+
 fn worker_loop(c: Arc<Client>) {
     loop {
         let result = (|| -> Result<bool> {

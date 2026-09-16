@@ -64,7 +64,10 @@ bun install --frozen-lockfile
 
 已有工作目录不要强制切换或覆盖未提交修改。可另行克隆一个目录。
 这是源码版，不是双击安装包。AI 调色模式另外需要本机的自适应 LUT 运行环境，
-参见 `scripts/footage/setup-lut.mjs`；尚未安装时先选“原色”。
+在每台工作台执行 `node scripts/footage/setup-lut.mjs`（Python 3.11+，Mac/Windows）。
+可通过 `MOIRAI_LUT_PYTHON` 指定用于创建环境的 Python。尚未安装时先选“原色”。
+团队预览的裁切方案、曝光和 AI 调色均由本机 Worker 计算；首次需要原片时从 NAS
+下载并校验到本地缓存。NAS 必须升级以支持原片读取，但无需安装调色模型。
 
 ## 4. 生成每人独立的 SSH 身份
 

@@ -8,14 +8,14 @@ import { createHash } from "node:crypto";
 const root = path.join(homedir(), ".moirai-cut");
 const runtime = path.join(root, "lut-runtime");
 const model = path.join(root, "models", "image-adaptive-3dlut");
-const python = path.join(runtime, "bin", "python");
+const python = path.join(runtime, process.platform === "win32" ? "Scripts" : "bin", process.platform === "win32" ? "python.exe" : "python");
 const run = (tool, args) => {
 	const result = spawnSync(tool, args, { stdio: "inherit" });
 	if (result.error || result.status !== 0)
 		throw result.error ?? new Error(`${tool} failed`);
 };
 await mkdir(model, { recursive: true });
-if (!existsSync(python)) run("python3", ["-m", "venv", runtime]);
+if (!existsSync(python)) run(process.env.MOIRAI_LUT_PYTHON || (process.platform === "win32" ? "python" : "python3"), ["-m", "venv", runtime]);
 run(python, ["-m", "pip", "install", "torch==2.10.0", "numpy==2.4.2"]);
 const base =
 	"https://raw.githubusercontent.com/HuiZeng/Image-Adaptive-3DLUT/b491f6df64a588864739a157db271e5c848e1805";

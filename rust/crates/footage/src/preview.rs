@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct PlanInput {
+pub(crate) struct PlanInput {
     start_ticks: i64,
     end_ticks: i64,
     recipe: Recipe,
@@ -27,9 +27,9 @@ struct PlanInput {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct RangeInput {
-    start_ticks: i64,
-    end_ticks: i64,
+pub(crate) struct RangeInput {
+    pub start_ticks: i64,
+    pub end_ticks: i64,
 }
 
 pub fn router() -> Router<Arc<App>> {
@@ -54,12 +54,16 @@ async fn plan(
     Json(input): Json<PlanInput>,
 ) -> Result<Json<Value>, ApiError> {
     let source = source_for(&app, &id)?;
+    Ok(Json(calculate_plan(&source, input)?))
+}
+
+pub(crate) fn calculate_plan(source: &Source, input: PlanInput) -> Result<Value> {
     validate_range(input.start_ticks, input.end_ticks, source.duration_ticks)?;
     input.recipe.validate()?;
     if !input.auto_brightness.is_finite() || input.auto_brightness.abs() > 0.025 {
-        return Err(anyhow::anyhow!("自动曝光参数无效").into());
+        return Err(anyhow::anyhow!("自动曝光参数无效"));
     }
-    let geometry = frame_geometry(&input.recipe, &source)?;
+    let geometry = frame_geometry(&input.recipe, source)?;
     let (brightness, contrast, saturation) = match input.recipe.color_mode.as_str() {
         "preserve" | "adaptive" => (0.0, 1.0, 1.0),
         "auto" => (input.auto_brightness, 1.0, 1.0),
@@ -74,7 +78,7 @@ async fn plan(
             || base.values.len() != 33 * 33 * 33 * 3
             || !base.values.iter().all(|v| v.is_finite())
         {
-            return Err(anyhow::anyhow!("调色数据无效").into());
+            return Err(anyhow::anyhow!("调色数据无效"));
         }
         Some(crate::manual_color::apply_to(base, &input.recipe))
     } else if crate::manual_color::enabled(&input.recipe) {
@@ -82,14 +86,12 @@ async fn plan(
     } else {
         None
     };
-    Ok(Json(
-        json!({"rotation":input.recipe.rotation,"geometry":geometry,
+    Ok(json!({"rotation":input.recipe.rotation,"geometry":geometry,
         "flipHorizontal":input.recipe.flip_horizontal,"flipVertical":input.recipe.flip_vertical,
         "zoom":{"startScale":1.0,"endScale":input.recipe.push_in_end_scale(),
             "durationSeconds":(input.end_ticks-input.start_ticks) as f64 / TICKS as f64},
         "brightness":brightness,"contrast":contrast,"saturation":saturation,
-        "lut":lut}),
-    ))
+        "lut":lut}))
 }
 
 async fn exposure(

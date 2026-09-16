@@ -180,7 +180,7 @@ fn adaptive_model_generates_cached_lut_and_exports_video() {
             > 1.8
     );
     assert_eq!(
-        std::fs::read_to_string(output.parent().unwrap().join("adaptive.cube")).unwrap(),
+        std::fs::read_to_string(output.parent().unwrap().join("color.cube")).unwrap(),
         lut.cube()
     );
     let shorter = media.adaptive_lut(&source, 0, 120000).unwrap();
