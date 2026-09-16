@@ -74,10 +74,18 @@ impl Media {
             !["smpte2084", "arib-std-b67"].contains(&source.color_transfer.as_str()),
             "AI 自动调色暂不支持 HDR 素材，请先转换为 SDR"
         );
-        let home = PathBuf::from(std::env::var_os("HOME").context("无法定位本机模型目录")?)
-            .join(".moirai-cut");
+        let home = PathBuf::from(
+            std::env::var_os("HOME")
+                .or_else(|| std::env::var_os("USERPROFILE"))
+                .context("无法定位本机模型目录")?,
+        )
+        .join(".moirai-cut");
         let model = home.join("models/image-adaptive-3dlut");
-        let python = home.join("lut-runtime/bin/python");
+        let python = home.join(if cfg!(windows) {
+            "lut-runtime/Scripts/python.exe"
+        } else {
+            "lut-runtime/bin/python"
+        });
         ensure!(
             python.is_file()
                 && model.join("classifier.pth").is_file()

@@ -132,9 +132,12 @@ to a versioned backup destination; do not live-copy SQLite/WAL files.
 ## Current Boundaries
 
 The main asynchronous compute pipeline runs locally. The coordinator still probes
-media on import/editor reads, normalizes uploaded product reference images and
-handles on-demand preview/exposure/LUT endpoints. It also hashes/copies published
-files. It therefore needs FFmpeg/ffprobe for these endpoints; this is not a pure
+media on import/editor reads and normalizes uploaded product reference images.
+Preview geometry, exposure and adaptive LUT computation run on the local worker.
+The worker fetches authorized metadata and caches SHA-256-verified originals;
+the coordinator must support `/media/source/{id}/original`. Install the LUT model
+on each workstation, not on the NAS. The coordinator also hashes/copies published
+files. It therefore still needs FFmpeg/ffprobe; this is not a pure
 storage-only server. Team mode currently requires an online coordinator for
 imports/review; disconnected writes are not queued for later synchronization.
 Standalone local mode remains independent and fully available without NAS.

@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { ensureTeamRelay } from "./team-relay.mjs";
 
 const repository = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -23,7 +24,9 @@ const localCargo = path.join(
 );
 const cargo =
 	process.env.CARGO ?? (existsSync(localCargo) ? localCargo : "cargo");
-const edge = Boolean(JSON.parse(readFileSync(config, "utf8")).serverUrl);
+const runtime = JSON.parse(readFileSync(config, "utf8"));
+await ensureTeamRelay(runtime);
+const edge = Boolean(runtime.serverUrl);
 const child = spawn(
 	cargo,
 	[

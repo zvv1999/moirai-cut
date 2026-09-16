@@ -1599,6 +1599,7 @@ async fn media_file(
         "source" => {
             let source = app.db.get::<Source>("source", &id)?;
             match variant.as_str() {
+                "original" if source.status != "deleted" => PathBuf::from(&source.path),
                 "preview" => app.media.source_dir(&source.id).join("preview.mp4"),
                 "poster" => app.media.source_dir(&source.id).join("poster.jpg"),
                 _ => return Err(anyhow::anyhow!("媒体不存在").into()),

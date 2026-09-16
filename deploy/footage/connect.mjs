@@ -2,9 +2,11 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
+import { sshOptions } from './ssh-options.mjs';
 
 const configPath = path.resolve(process.argv[2]);
 const config = JSON.parse(readFileSync(configPath, 'utf8'));
+const args = sshOptions(config);
 const required = ['host', 'user', 'identityFile', 'knownHostsFile'];
 for (const key of required) {
   if (typeof config[key] !== 'string' || !config[key] || config[key].startsWith('-')) {
@@ -16,11 +18,7 @@ if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Inv
 const children = new Set();
 const server = net.createServer(socket => {
   const ssh = spawn('ssh', [
-    '-T', '-o', 'BatchMode=yes', '-o', 'IdentitiesOnly=yes',
-    '-o', 'StrictHostKeyChecking=yes', '-o', 'ConnectTimeout=10',
-    '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=3',
-    '-o', `UserKnownHostsFile=${config.knownHostsFile}`,
-    '-i', config.identityFile, `${config.user}@${config.host}`, 'moirai-footage-relay',
+    ...args, 'moirai-footage-relay',
   ], { stdio: ['pipe', 'pipe', 'pipe'] });
   children.add(ssh);
   socket.pipe(ssh.stdin);

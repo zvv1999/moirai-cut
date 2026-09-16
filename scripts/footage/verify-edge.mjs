@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -9,6 +9,13 @@ import { createServer as httpServer } from "node:http";
 
 // Synthetic media only. The isolated HOME deliberately has no model credentials.
 const root = mkdtempSync(join(tmpdir(), "moirai-edge-qa-"));
+const lutHome = process.env.MOIRAI_TEST_LUT_HOME;
+if (lutHome) {
+	mkdirSync(join(root, ".moirai-cut"), { recursive: true });
+	for (const name of ["models", "lut-runtime"]) {
+		symlinkSync(join(lutHome, ".moirai-cut", name), join(root, ".moirai-cut", name), process.platform === "win32" ? "junction" : "dir");
+	}
+}
 const binary = resolve(
 	process.env.MOIRAI_FOOTAGE_BINARY || "target/debug/moirai-footage",
 );
@@ -295,6 +302,35 @@ try {
 					(s) => s.sourceId === imported.sourceId,
 				)
 			: await api(`/sources/${imported.sourceId}/manual`, "POST");
+	if (!direct && !remote) {
+		const range = { startTicks: shot.startTicks, endTicks: shot.endTicks };
+		const source = (await api("/state")).sources.find(s => s.id === imported.sourceId);
+		const cached = join(root, "worker/objects", source.sha256);
+		rmSync(cached, { force: true });
+		const plan = await api(`/shots/${shot.id}/preview-plan`, "POST", { ...range, recipe: shot.recipe });
+		assert.ok(plan.geometry);
+		assert.equal(existsSync(cached), false, "geometry must not download media");
+		const exposure = await api(`/shots/${shot.id}/preview-exposure`, "POST", range);
+		assert.equal(typeof exposure.brightness, "number");
+		assert.equal(existsSync(cached), true, "cold preview downloads the original locally");
+		writeFileSync(cached, "corrupt-cache");
+		assert.deepEqual(await api(`/shots/${shot.id}/preview-exposure`, "POST", range), exposure,
+			"corrupt cached originals must be replaced before computing");
+		if (lutHome) {
+			const lut = await api(`/shots/${shot.id}/preview-lut`, "POST", range);
+			assert.equal(lut.size, 33);
+			assert.equal(lut.values.length, 33 ** 3 * 3);
+			assert.ok(lut.values.every(Number.isFinite));
+			assert.deepEqual(await api(`/shots/${shot.id}/preview-lut`, "POST", range), lut);
+		} else {
+			await assert.rejects(api(`/shots/${shot.id}/preview-lut`, "POST", range), /本机 AI 调色预览失败/);
+		}
+		// Invalid ranges are rejected before running media tools or downloading.
+		await assert.rejects(api(`/shots/${shot.id}/preview-exposure`, "POST", { startTicks: -1, endTicks: 1 }));
+		assert.equal((await api("/state")).shots.find(s => s.id === shot.id).revision, shot.revision,
+			"preview must not save draft edits");
+		console.log(`Local preview plan, cold-cache exposure, and ${lutHome ? "real LUT and cache reuse" : "local LUT failure"} verified with NAS FFmpeg disabled`);
+	}
 	await api(`/shots/${shot.id}/confirm`, "POST", {
 		baseRevision: shot.revision,
 		name: "Edge QA",
