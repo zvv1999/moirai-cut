@@ -76,6 +76,7 @@ const runCommand: AgentCommandRunner = ({ binary, args, timeoutMs = 6_000 }) =>
 			args,
 			{
 				encoding: "utf8",
+				windowsHide: true,
 				maxBuffer: 128 * 1024,
 				timeout: timeoutMs,
 			},

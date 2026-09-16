@@ -399,6 +399,7 @@ export const runNativeTranscode: NativeTranscodeRunner = ({
 	new Promise((resolve, reject) => {
 		const binary = process.env.FFMPEG_BIN ?? "ffmpeg";
 		const child = spawn(binary, args, {
+			windowsHide: true,
 			stdio: ["ignore", "pipe", "pipe"],
 		});
 		let stderr = "";

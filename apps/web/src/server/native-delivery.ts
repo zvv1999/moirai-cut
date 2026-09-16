@@ -472,6 +472,7 @@ export const decodeDelivery: DeliveryDecode = async ({ filePath }) => {
 			],
 			{
 				encoding: "utf8",
+				windowsHide: true,
 				maxBuffer: 8 * 1024 * 1024,
 				timeout: 120_000,
 			},

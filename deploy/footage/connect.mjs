@@ -19,7 +19,7 @@ const children = new Set();
 const server = net.createServer(socket => {
   const ssh = spawn('ssh', [
     ...args, 'moirai-footage-relay',
-  ], { stdio: ['pipe', 'pipe', 'pipe'] });
+  ], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
   children.add(ssh);
   socket.pipe(ssh.stdin);
   ssh.stdout.pipe(socket);

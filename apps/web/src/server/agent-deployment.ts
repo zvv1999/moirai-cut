@@ -71,6 +71,7 @@ const runAgentCommand: AgentCommandRunner = ({
 			args,
 			{
 				encoding: "utf8",
+				windowsHide: true,
 				maxBuffer: 128 * 1024,
 				timeout: timeoutMs,
 			},

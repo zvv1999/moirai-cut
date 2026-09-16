@@ -46,6 +46,7 @@ async function openBrowser(url) {
 				? { binary: "cmd", args: ["/c", "start", "", url] }
 				: { binary: "xdg-open", args: [url] };
 	const child = spawn(command.binary, command.args, {
+		windowsHide: true,
 		detached: true,
 		stdio: "ignore",
 	});
@@ -57,6 +58,7 @@ if (!running) {
 	console.log(`正在启动 Moirai Cut（日志：${DEV_LOG}）…`);
 	const log = openSync(DEV_LOG, "a");
 	const child = spawn(process.execPath, ["run", "dev:web"], {
+		windowsHide: true,
 		cwd: REPO,
 		detached: true,
 		env: process.env,

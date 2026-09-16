@@ -24,7 +24,14 @@ impl Media {
         let out = dir.join(format!("{name}.out"));
         let err = dir.join(format!("{name}.err"));
         let result = (|| {
-            let mut child = Command::new(tool)
+            let mut command = Command::new(tool);
+            // Redirecting output alone does not prevent Windows console allocation.
+            #[cfg(windows)]
+            {
+                use std::os::windows::process::CommandExt;
+                command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+            }
+            let mut child = command
                 .args(args)
                 .stdin(Stdio::null())
                 .stdout(File::create(&out)?)
@@ -575,6 +582,63 @@ pub fn filter_graph(shot: &Shot, source: &Source, brightness: f64) -> String {
     }
     filters.push("scale=w='min(iw,1080)':h='min(ih,1920)':force_original_aspect_ratio=decrease:force_divisible_by=2,setsar=1".into());
     filters.join(",")
+}
+
+#[cfg(all(test, windows))]
+mod windows_process_tests {
+    use super::*;
+
+    fn run_script(media: &Media, script: &str, timeout: u64) -> Result<String> {
+        let powershell = PathBuf::from(std::env::var_os("SystemRoot").unwrap())
+            .join("System32/WindowsPowerShell/v1.0/powershell.exe");
+        media.run(
+            &powershell.to_string_lossy(),
+            &strings(&["-NoProfile", "-NonInteractive", "-Command", script]),
+            timeout,
+        )
+    }
+
+    #[test]
+    fn background_tool_has_no_console_and_captures_output() {
+        let root = tempfile::tempdir().unwrap();
+        let media = Media {
+            ffmpeg: String::new(),
+            ffprobe: String::new(),
+            root: root.path().into(),
+        };
+        let output = run_script(
+            &media,
+            r#"Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class ConsoleCheck { [DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow(); }'; [ConsoleCheck]::GetConsoleWindow().ToInt64()"#,
+            30,
+        ).unwrap();
+        assert_eq!(output.trim(), "0", "background tool allocated a console");
+        assert_eq!(
+            fs::read_dir(root.path().join("process")).unwrap().count(),
+            0
+        );
+    }
+
+    #[test]
+    fn hidden_tool_preserves_errors_timeouts_and_cleanup() {
+        let root = tempfile::tempdir().unwrap();
+        let media = Media {
+            ffmpeg: String::new(),
+            ffprobe: String::new(),
+            root: root.path().into(),
+        };
+        let error = run_script(
+            &media,
+            "[Console]::Error.WriteLine('tool-failed'); exit 7",
+            30,
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("tool-failed"));
+        assert!(run_script(&media, "Start-Sleep -Seconds 30", 0).is_err());
+        assert_eq!(
+            fs::read_dir(root.path().join("process")).unwrap().count(),
+            0
+        );
+    }
 }
 
 #[cfg(test)]

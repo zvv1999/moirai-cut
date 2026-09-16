@@ -391,6 +391,7 @@ async function executeProcess(
 			args,
 			{
 				cwd: REPO_ROOT,
+				windowsHide: true,
 				maxBuffer: 64 * 1024 * 1024,
 				timeout: 120_000,
 			},
