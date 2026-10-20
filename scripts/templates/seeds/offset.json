@@ -1,0 +1,322 @@
+{
+  "applications": [
+    {
+      "enabled": true,
+      "target": {
+        "id": "root",
+        "kind": "group"
+      },
+      "treatmentId": "group-fade-root"
+    }
+  ],
+  "canvas": {
+    "fps": 30,
+    "height": 720,
+    "width": 720
+  },
+  "evidence": [
+    {
+      "description": "Typography and motion study; visual review pending",
+      "endSeconds": null,
+      "referenceId": null,
+      "startSeconds": null,
+      "status": "authored"
+    }
+  ],
+  "id": "style-pilot-20260923-offset",
+  "inputs": [
+    {
+      "default": "重点来了",
+      "id": "text",
+      "label": "主文字",
+      "layerIds": [
+        "headline",
+        "offset-text"
+      ],
+      "maxCharacters": 20
+    }
+  ],
+  "layers": [
+    {
+      "content": {
+        "composite": true,
+        "id": "root",
+        "kind": "group",
+        "region": {
+          "height": 1.0,
+          "width": 1.0,
+          "x": 0.0,
+          "y": 0.0
+        },
+        "separateInstances": true
+      },
+      "parentId": null
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "花字主体",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "text",
+            "role": "subtitle"
+          },
+          "id": "headline",
+          "intents": [],
+          "literal": "重点来了",
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "overshoot",
+                  "time": 0.0,
+                  "value": 0.88
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": -7.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": -3.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -3.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.3,
+            "width": 0.85,
+            "x": 0.075,
+            "y": 0.35
+          },
+          "resourceId": null,
+          "styleId": "headline-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 1
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "粉色偏移层",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "text",
+            "role": "subtitle"
+          },
+          "id": "offset-text",
+          "intents": [],
+          "literal": "重点来了",
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "overshoot",
+                  "time": 0.0,
+                  "value": 0.88
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": -7.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": -3.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -3.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.3,
+            "width": 0.85,
+            "x": 0.087,
+            "y": 0.372
+          },
+          "resourceId": null,
+          "styleId": "offset-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 0
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    }
+  ],
+  "name": "综艺强调 · 双层花字",
+  "provenance": "Original editable study informed by visual inspection of local Kaipai 47 variety preview; not an extracted template or a fidelity claim. Revision 6: preserve the two-layer silhouette with isolated group opacity; 40ms entrance, shared 120ms scale/tilt settling, 60ms exit; native short-event compression. Visual review required. Revision 7: separate non-overlapping active intervals so each occurrence fades out. Shared scale/tilt entrance retains full opacity; use the editor-managed group exit envelope without a custom opacity entrance. r8: equal outline widths give both editable text layers identical glyph-fitting budgets; pink offset, rotation and shared opacity retained.",
+  "purposes": [
+    "keyword",
+    "decorative_text"
+  ],
+  "resourceBindings": [],
+  "resourceSlots": [],
+  "revision": 0,
+  "schemaVersion": "moirai.dynamic-asset.v1",
+  "styles": [
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#FFFFFF",
+      "fontFamily": "PingFang SC",
+      "fontSize": 100.0,
+      "id": "headline-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.12,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#171B20",
+      "strokeWidth": 7.0,
+      "textAlign": "center",
+      "weight": 700
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#F170A6",
+      "fontFamily": "PingFang SC",
+      "fontSize": 100.0,
+      "id": "offset-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.12,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#F170A6",
+      "strokeWidth": 7.0,
+      "textAlign": "center",
+      "weight": 700
+    }
+  ],
+  "treatments": [
+    {
+      "id": "group-fade-root",
+      "operation": {
+        "channels": [
+          {
+            "keys": [
+              {
+                "easing": "linear",
+                "time": 0.0,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 0.8,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 1.0,
+                "value": 0.0
+              }
+            ],
+            "property": "opacity"
+          }
+        ],
+        "kind": "motion",
+        "motionTiming": {
+          "enterEnd": 0.2,
+          "enterSeconds": 0.12,
+          "exitSeconds": 0.06,
+          "exitStart": 0.8
+        }
+      }
+    }
+  ],
+  "usageGuide": {
+    "adjustments": "可在本次应用调整位置、整体比例和两层一致的文字行宽；后层偏移或颜色修改记录为定制组合，不单独缩放某一文本层。",
+    "constraints": "最多两行；实测前后层fit字号一致，最外描边/倾斜峰值留在安全区。120ms入口、60ms组退场仍需按实际事件时长检查；不能只看一张稳定帧。",
+    "coverage": "旧视觉r8的offset-equal-fit-20260930四输入16事件检查两层字号45.09–50px一致及组退场。尚未实时连续观片/试听，不能迁移为其他画幅的保证。 本次仅核对定义并补指南，未重新渲染、连续观片或试听；新版本应用评审未完成，旧分数不自动继承。",
+    "fallback": "先换空位与行宽；短事件或背景拥挤时选轻量单层强调。拆层或改厚度需以定制组合留证，不继承原应用评分。",
+    "invariants": "白色前景、粉色错位衬字形成统一厚度；前景黑描边与粉色背层描边预算同宽，前后同文同字号同换行、同倾斜/回弹，并以每个关键词独立的组合组整体退出。",
+    "purpose": "用于综艺式情绪重点与结论短语，按声音关键词生成；当前role字段为subtitle不表示它绑定全文。"
+  }
+}

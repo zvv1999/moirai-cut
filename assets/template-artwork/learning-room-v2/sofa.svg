@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" id="Layer_1" x="0px" y="0px" viewBox="0 0 968.5 618.3" style="enable-background:new 0 0 968.5 618.3;" xml:space="preserve"><style type="text/css">
+	.st0{fill:#F5F5FC;}
+	.st1{fill:#F8F8FF;}
+	.st2{fill:#E9EDFB;}
+	.st3{fill:#B0C0F4;}
+	.st4{fill:#FFFFFF;}
+	.st5{fill:#E1E6FB;}
+	.st6{fill:none;stroke:#FFFFFF;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;}
+	.st7{fill:#BAC5F4;}
+	.st8{fill:url(#SVGID_1_);}
+	.st9{fill:url(#SVGID_2_);}
+	.st10{fill:url(#SVGID_3_);}
+	.st11{fill:#7A5BF5;}
+	.st12{fill:#4B44BE;}
+	.st13{fill:url(#SVGID_4_);}
+	.st14{fill:url(#SVGID_5_);}
+	.st15{fill:url(#SVGID_6_);}
+	.st16{fill:url(#SVGID_7_);}
+	.st17{opacity:7.000000e-02;enable-background:new    ;}
+	.st18{fill:url(#SVGID_8_);}
+</style>
+<defs><linearGradient id="SVGID_1_" gradientUnits="userSpaceOnUse" x1="489.3559" y1="565.42" x2="489.6559" y2="343.66" gradientTransform="matrix(1 0 0 -1 0 620)">
+		<stop offset="0" style="stop-color:#FFFFFF" />
+		<stop offset="1" style="stop-color:#FFFFFF;stop-opacity:0" />
+	</linearGradient>
+	<linearGradient id="SVGID_2_" gradientUnits="userSpaceOnUse" x1="2185.6565" y1="-1407.4197" x2="2270.7864" y2="-1446.8497" gradientTransform="matrix(1 0 0 -1 -1511.98 -945.5601)">
+		<stop offset="0" style="stop-color:#7A5BF5" />
+		<stop offset="1" style="stop-color:#CD94EF" />
+	</linearGradient>
+	<linearGradient id="SVGID_3_" gradientUnits="userSpaceOnUse" x1="2198.8252" y1="-1396.9722" x2="2255.4053" y2="-1423.1821" gradientTransform="matrix(1 0 0 -1 -1511.98 -945.5601)">
+		<stop offset="0" style="stop-color:#7A5BF5" />
+		<stop offset="1" style="stop-color:#E5A4ED" />
+	</linearGradient>
+	<linearGradient id="SVGID_4_" gradientUnits="userSpaceOnUse" x1="1277.9457" y1="-775.9096" x2="1125.4733" y2="-775.9096" gradientTransform="matrix(1 0 0 -1 -707.48 -376.98)">
+			<stop offset="0" style="stop-color:#5ACEED" />
+			<stop offset="1" style="stop-color:#538BD6" />
+		</linearGradient>
+		<linearGradient id="SVGID_5_" gradientUnits="userSpaceOnUse" x1="469.5835" y1="411.0774" x2="554.6358" y2="411.0774" gradientTransform="matrix(1 0 0 1 0 -120)">
+			<stop offset="0" style="stop-color:#F87B58" />
+			<stop offset="0.5" style="stop-color:#F8C548" />
+			<stop offset="1" style="stop-color:#F89C51" />
+		</linearGradient>
+		<linearGradient id="SVGID_6_" gradientUnits="userSpaceOnUse" x1="433.4932" y1="-38.7471" x2="562.9027" y2="-38.7471" gradientTransform="matrix(1 0 0 -1 0 292)">
+			<stop offset="0" style="stop-color:#E1A1ED" />
+			<stop offset="1" style="stop-color:#7658F4" />
+		</linearGradient>
+		<linearGradient id="SVGID_7_" gradientUnits="userSpaceOnUse" x1="459.4201" y1="16.2216" x2="532.3234" y2="16.2216" gradientTransform="matrix(1 0 0 -1 0 292)">
+			<stop offset="0" style="stop-color:#5ACEED" />
+			<stop offset="1" style="stop-color:#538BD6" />
+		</linearGradient>
+		<linearGradient id="SVGID_8_" gradientUnits="userSpaceOnUse" x1="495.3081" y1="-484.519" x2="488.8113" y2="-484.519" gradientTransform="matrix(1 0 0 -1 0 -116)">
+			<stop offset="0" style="stop-color:#59C2E9" />
+			<stop offset="1" style="stop-color:#5BD3EF" />
+		</linearGradient>
+		</defs><path class="st7" d="M327.8,409.2c0,0-38.4-30.3-44.9-60s7.6-50.3,28.1-53.5c20.5-3.2,33-13,104.9,11.4s154.7-18.9,154.7-18.9   s67.6-31.1,101-23.5c38,8.6,46.1,31.6,35.8,72.7s-45.3,72.2-45.3,72.2L327.8,409.2z" style="fill:#AAB9E7" />
+	<path class="st7" d="M310.4,406c0,0-6,0-7,6s1,25,4,31s17.1,5.7,17.1,5.7l342.9-0.7c0,0,11.4,0.1,14-9c2.1-7.3,5.1-14.6,5.4-19.7   c0.3-6-4-11.2-9.9-12c-3.7-0.5-7.5-0.7-11.2-0.7C639.6,406.6,310.4,406,310.4,406z" style="fill:#879BD3" />
+	<polygon class="st4" points="294.4,499 317.4,449 335.4,449 311.4,499  " style="fill:#A7B6D8" />
+	<polygon class="st4" points="648.4,449 669.4,500 684.4,499 664.4,449  " style="fill:#A7B6D8" />
+	<path class="st3" d="M333.7,406.6c0,0-31.6-24.4-33.1-34.5c-1.9-13.2,10-32.8,56.2-24.1s127.7,32.2,171.9,20.2   s99.8-62.4,103.8-65.1s51.3-25.9,62,9.5S662,406.2,662,406.2L333.7,406.6z" style="fill:#92A8DB" />
+	</svg>

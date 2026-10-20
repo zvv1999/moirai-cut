@@ -1,0 +1,8 @@
+import fs from 'node:fs/promises';import assert from 'node:assert/strict';import {createHash} from 'node:crypto';
+const source='/Users/zhengwei/Downloads/clock-detail-20260929',root='/Users/zhengwei/Downloads/clock-hold-20260929';
+const prior=JSON.parse(await fs.readFile(source+'/designs.json','utf8'));
+const designs=structuredClone(prior.designs),t=designs[0].template;t.id='composition-clock-hold-candidate';t.name='时间提示 · 从声音触发并保留停顿';t.visualRhythm.minDisplaySeconds=.75;
+const manifest={name:t.name,brief:'Preview-only composition timing refinement: minimum visual hold .75 seconds, preserve measured keyword start and longer keyword spans. Does not modify the saved clock style or transcript. Validate readability and absence of overlapping instances.',previewOnly:true,designs,samples:prior.samples,idempotencyKey:'clock-hold-'+createHash('sha256').update(JSON.stringify({designs,samples:prior.samples})).digest('hex')};
+const api=async(p,b)=>{const r=await fetch('http://127.0.0.1:3000/api/footage/templates'+p,{method:b?'POST':'GET',headers:{'content-type':'application/json','x-requested-with':'moirai-footage'},body:b?JSON.stringify(b):undefined});const d=await r.json();assert.ok(r.ok,JSON.stringify(d));return d;};
+for(const s of manifest.samples)assert.equal((await api('/inputs/'+s.inputId)).transcript.revision,s.transcriptRevision);
+await fs.mkdir(root,{recursive:true});await fs.copyFile(source+'/application.json',root+'/application.json');await fs.writeFile(root+'/designs.json',JSON.stringify(manifest,null,2));const batch=await api('/production/author',manifest);await fs.writeFile(root+'/submission.json',JSON.stringify(batch,null,2));console.log(JSON.stringify({root,batchId:batch.id}));

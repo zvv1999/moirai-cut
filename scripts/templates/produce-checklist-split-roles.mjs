@@ -1,0 +1,21 @@
+import fs from 'node:fs/promises';import assert from 'node:assert/strict';import{createHash}from'node:crypto';
+const root='/Users/zhengwei/Downloads/checklist-split-roles-20260930',source='/Users/zhengwei/Downloads/checklist-live-reviewed-20260930',base='http://127.0.0.1:3000/api/footage/templates';await fs.mkdir(root,{recursive:true});
+async function api(p,b){const r=await fetch(base+p,b?{method:'POST',headers:{'content-type':'application/json','x-requested-with':'moirai-footage'},body:JSON.stringify(b)}:undefined);const v=await r.json();assert.ok(r.ok,JSON.stringify(v));return v;}
+const old=JSON.parse(await fs.readFile(source+'/manifest.json')),inputs=JSON.parse(await fs.readFile(source+'/inputs.json')),t=structuredClone(old.designs[0].template);
+const caption=t.elements.find(e=>e.id==='headline');caption.region={x:.14,y:.855,width:.72,height:.12};caption.motions=[];
+const cs=t.styles.find(s=>s.id===caption.styleId);Object.assign(cs,{fontSize:36,maxLines:2,lineHeight:1.1,strokeWidth:2,textAlign:'left',fill:'#FFF8E9'});
+const key=structuredClone(caption);Object.assign(key,{id:'side-keyword',description:'声音关键词侧栏提示',binding:'keyword',styleId:'side-keyword-style',region:{x:.045,y:.27,width:.27,height:.22},timing:{...caption.timing,anchor:'keyword_start'},motionTiming:{enterEnd:.2,enterSeconds:.12,exitSeconds:.08,exitStart:.85},motions:[{property:'y',keys:[{time:0,value:8,easing:'ease_out'},{time:.2,value:0,easing:'linear'},{time:1,value:0,easing:'linear'}]}]});key.features.role='emphasis';
+t.elements.push(key);t.styles.push({...structuredClone(cs),id:key.styleId,fontSize:44,maxLines:3,fill:'#FFECA4',weight:800,strokeWidth:2,lineHeight:1.12});
+// Keep the graphic group's internal geometry; attach it to measured keyword bounds.
+const gs=t.elements.filter(e=>e.id.startsWith('checklist--')),left=Math.min(...gs.map(e=>e.region.x)),right=Math.max(...gs.map(e=>e.region.x+e.region.width)),bottom=Math.max(...gs.map(e=>e.region.y+e.region.height));
+t.composition.spatialRelations=gs.map(e=>({elementId:e.id,relativeTo:key.id,placement:'above',referenceBounds:'text_box',gap:.018,offsetX:e.region.x+e.region.width/2-(left+right)/2,offsetY:e.region.y+e.region.height-bottom,followMotion:true}));
+// Continuous captions stay visually steady; the sparse keyword carries emphasis.
+t.composition.applications=t.composition.applications.filter(a=>a.target.id!=='headline');
+t.id='composition-checklist-split-roles-20260930';t.name='行动建议 · 字幕与重点分层';t.description='稳定底部完整字幕，左侧稀疏关键词与清单图示。仅输入已标注行动建议时触发，不按句子硬编码。';
+let d=(await api('/dynamic-assets/capture',{template:t,name:t.name})).definition;d.id='style-study-20260930-checklist-split-roles';d.revision=0;
+const found=(await api('/dynamic-assets')).assets.find(a=>a.id===d.id);if(found){const saved=(await api('/dynamic-assets/'+d.id)).definition;assert.deepEqual(saved,{...d,revision:saved.revision});d=saved;}else d=(await api('/dynamic-assets',{definition:d,baseRevision:0,idempotencyKey:'split-roles-'+createHash('sha256').update(JSON.stringify(d)).digest('hex')})).definition;
+const application={assetId:d.id,assetRevision:d.revision,canvas:{width:1280,height:720,fps:30},placement:{x:0,y:0,width:1,height:1}};
+const {template}=await api('/dynamic-assets/application',application);template.id=t.id;
+const samples=old.samples.map(s=>({...s,captionPolicy:{maxCharacters:60,maxPhraseSeconds:6,pauseBoundarySeconds:.32,maxCharactersPerSecond:24,preserveLayoutPhrases:true}}));const designs=[{template,baseRevision:0}],manifest={name:t.name,brief:'Separate stable full captions from sparse keyword checklist. Same saved visual application on three real inputs. Agent-reviewed word spans retained. Check hierarchy and occlusion; not a 90-point claim.',previewOnly:true,designs,samples,idempotencyKey:'split-roles-'+createHash('sha256').update(JSON.stringify({designs,samples})).digest('hex')};
+const validation=await api('/samples/validate',{template,samples});for(const[k,v]of Object.entries({definition:d,application,manifest,inputs,validation}))await fs.writeFile(root+'/'+k+'.json',JSON.stringify(v,null,2));
+const b=await api('/production/author',manifest);await fs.writeFile(root+'/submission.json',JSON.stringify(b,null,2));console.log(b.id);

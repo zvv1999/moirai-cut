@@ -34,6 +34,11 @@ media-catalog.json
 *.opencut.autosave
 
 target/
+rust/wasm/pkg/
+
+# Python adapters and local verification caches
+__pycache__/
+*.py[cod]
 
 .cargo-tools/
 

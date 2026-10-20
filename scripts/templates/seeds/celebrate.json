@@ -1,0 +1,1236 @@
+{
+  "applications": [],
+  "canvas": {
+    "fps": 30,
+    "height": 720,
+    "width": 720
+  },
+  "evidence": [],
+  "id": "style-study-20260928-celebrate",
+  "inputs": [],
+  "layers": [
+    {
+      "content": {
+        "id": "root",
+        "kind": "group",
+        "region": {
+          "height": 1.0,
+          "width": 1.0,
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "parentId": null
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "彩纸 1 · 独立弧线与转速",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "decoration"
+          },
+          "id": "paper-0",
+          "intents": [],
+          "literal": "Decoration",
+          "motionTiming": {
+            "enterEnd": 0.24,
+            "enterSeconds": 0.16,
+            "exitSeconds": 0.12,
+            "exitStart": 0.84
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.12,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.84,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.24,
+                  "value": -130.54
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.56,
+                  "value": -192.6
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -214.0
+                }
+              ],
+              "property": "x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.24,
+                  "value": -52.44
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.48,
+                  "value": -69.0
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.84,
+                  "value": 6.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 56.0
+                }
+              ],
+              "property": "y"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -18.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24,
+                  "value": 20.64
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.56,
+                  "value": 72.72
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 150.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.044444444444444446,
+            "width": 0.02638888888888889,
+            "x": 0.4756944444444444,
+            "y": 0.5983333333333333
+          },
+          "resourceId": null,
+          "styleId": "paper-style-0",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 0
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "彩纸 2 · 独立弧线与转速",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "decoration"
+          },
+          "id": "paper-1",
+          "intents": [],
+          "literal": "Decoration",
+          "motionTiming": {
+            "enterEnd": 0.24,
+            "enterSeconds": 0.16,
+            "exitSeconds": 0.12,
+            "exitStart": 0.84
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.12,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.84,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.24,
+                  "value": -95.77
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.56,
+                  "value": -141.3
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -157.0
+                }
+              ],
+              "property": "x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.24,
+                  "value": -134.52
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.48,
+                  "value": -177.0
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.84,
+                  "value": -119.4
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -81.0
+                }
+              ],
+              "property": "y"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 22.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24,
+                  "value": -32.28
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.56,
+                  "value": -105.44
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -214.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.05138888888888889,
+            "width": 0.020833333333333332,
+            "x": 0.4826388888888889,
+            "y": 0.5851388888888889
+          },
+          "resourceId": null,
+          "styleId": "paper-style-1",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 1
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "彩纸 3 · 独立弧线与转速",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "decoration"
+          },
+          "id": "paper-2",
+          "intents": [],
+          "literal": "Decoration",
+          "motionTiming": {
+            "enterEnd": 0.24,
+            "enterSeconds": 0.16,
+            "exitSeconds": 0.12,
+            "exitStart": 0.84
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.12,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.84,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.24,
+                  "value": -40.87
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.56,
+                  "value": -60.3
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -67.0
+                }
+              ],
+              "property": "x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.24,
+                  "value": -174.04
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.48,
+                  "value": -229.0
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.84,
+                  "value": -158.8
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -112.0
+                }
+              ],
+              "property": "y"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -42.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24,
+                  "value": 7.219999999999999
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.56,
+                  "value": 73.56
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 172.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.027777777777777776,
+            "width": 0.03333333333333333,
+            "x": 0.4847222222222222,
+            "y": 0.5900000000000001
+          },
+          "resourceId": null,
+          "styleId": "paper-style-2",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 2
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "彩纸 4 · 独立弧线与转速",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "decoration"
+          },
+          "id": "paper-3",
+          "intents": [],
+          "literal": "Decoration",
+          "motionTiming": {
+            "enterEnd": 0.24,
+            "enterSeconds": 0.16,
+            "exitSeconds": 0.12,
+            "exitStart": 0.84
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.12,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.84,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.24,
+                  "value": 10.98
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.56,
+                  "value": 16.2
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 18.0
+                }
+              ],
+              "property": "x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.24,
+                  "value": -98.8
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.48,
+                  "value": -130.0
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.84,
+                  "value": -39.400000000000006
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 21.0
+                }
+              ],
+              "property": "y"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 10.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24,
+                  "value": -26.340000000000003
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.56,
+                  "value": -75.32000000000001
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -148.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.043055555555555555,
+            "width": 0.019444444444444445,
+            "x": 0.4958333333333333,
+            "y": 0.5990277777777777
+          },
+          "resourceId": null,
+          "styleId": "paper-style-3",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 3
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "彩纸 5 · 独立弧线与转速",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "decoration"
+          },
+          "id": "paper-4",
+          "intents": [],
+          "literal": "Decoration",
+          "motionTiming": {
+            "enterEnd": 0.24,
+            "enterSeconds": 0.16,
+            "exitSeconds": 0.12,
+            "exitStart": 0.84
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.12,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.84,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.24,
+                  "value": 63.44
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.56,
+                  "value": 93.6
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 104.0
+                }
+              ],
+              "property": "x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.24,
+                  "value": -155.04
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.48,
+                  "value": -204.0
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.84,
+                  "value": -142.8
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -102.0
+                }
+              ],
+              "property": "y"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 58.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24,
+                  "value": 122.86
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.56,
+                  "value": 210.28
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 340.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.05416666666666667,
+            "width": 0.025,
+            "x": 0.4972222222222222,
+            "y": 0.5809722222222222
+          },
+          "resourceId": null,
+          "styleId": "paper-style-4",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 4
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "彩纸 6 · 独立弧线与转速",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "decoration"
+          },
+          "id": "paper-5",
+          "intents": [],
+          "literal": "Decoration",
+          "motionTiming": {
+            "enterEnd": 0.24,
+            "enterSeconds": 0.16,
+            "exitSeconds": 0.12,
+            "exitStart": 0.84
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.12,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.84,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.24,
+                  "value": 111.63
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.56,
+                  "value": 164.70000000000002
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 183.0
+                }
+              ],
+              "property": "x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.24,
+                  "value": -82.84
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.48,
+                  "value": -109.0
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.84,
+                  "value": -27.40000000000001
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 27.0
+                }
+              ],
+              "property": "y"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -28.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24,
+                  "value": -74.92
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.56,
+                  "value": -138.16000000000005
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -232.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.02361111111111111,
+            "width": 0.034722222222222224,
+            "x": 0.49652777777777773,
+            "y": 0.6059722222222222
+          },
+          "resourceId": null,
+          "styleId": "paper-style-5",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 5
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "彩纸 7 · 独立弧线与转速",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "decoration"
+          },
+          "id": "paper-6",
+          "intents": [],
+          "literal": "Decoration",
+          "motionTiming": {
+            "enterEnd": 0.24,
+            "enterSeconds": 0.16,
+            "exitSeconds": 0.12,
+            "exitStart": 0.84
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.12,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.84,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.24,
+                  "value": 141.52
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.56,
+                  "value": 208.8
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 232.0
+                }
+              ],
+              "property": "x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.24,
+                  "value": -126.16
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.48,
+                  "value": -166.0
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.84,
+                  "value": -110.8
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -74.0
+                }
+              ],
+              "property": "y"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 31.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24,
+                  "value": 62.28
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.56,
+                  "value": 104.44
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 167.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.0375,
+            "width": 0.01805555555555555,
+            "x": 0.4951388888888889,
+            "y": 0.5934722222222222
+          },
+          "resourceId": null,
+          "styleId": "paper-style-6",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    }
+  ],
+  "name": "小小庆祝 · 彩纸散开",
+  "provenance": "Original editable seven-piece confetti revision candidate. Asymmetric authored trajectory fan, varied strip sizes, independent clockwise/counterclockwise turns and decelerating expansion followed by gravity-like descent. Native primitives, no raster artwork. Candidate not yet visually accepted.",
+  "purposes": [
+    "decoration"
+  ],
+  "resourceBindings": [],
+  "resourceSlots": [],
+  "revision": 0,
+  "schemaVersion": "moirai.dynamic-asset.v1",
+  "styles": [
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#ED6A5A",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "paper-style-0",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#F4C95D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "paper-style-1",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#62C9BD",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "paper-style-2",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#7A86D8",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "paper-style-3",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#ED6A5A",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "paper-style-4",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#F4C95D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "paper-style-5",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#62C9BD",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "paper-style-6",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    }
+  ],
+  "treatments": [],
+  "usageGuide": {
+    "adjustments": "可整体调整爆发位置、尺寸及事件密度；减片数或改变轨迹是本次定制组合。 所有应用修改保存在本次应用，不隐式更新模板。",
+    "constraints": "检查完整粒子路径的画面范围和人物/字幕遮挡；不能只检查稳定帧。相邻复述同一成果不重复触发；过密事件应降低应用密度，避免累计彩纸雨。",
+    "coverage": "已与r3做同源规范方形TTS导出对照，实际抽帧显示非对称粒子和独立转动，下落及无残留；未连续观片/试听。三画幅原应用回归和真人字幕遮挡尚待检查，不继承r3评分。",
+    "fallback": "先减少触发密度，再采用更小范围的定制组合，空间或语义不合适时关闭庆祝。",
+    "invariants": "保持七片大小不同的彩纸由紧凑起点非对称散开，独立正反转，发散减速后逐渐下落并淡出；彩纸是轻量陪衬，不能形成长时间规则半圆或遮罩。",
+    "purpose": "用于明确庆祝、达成、里程碑；严肃或负向内容不适合触发。"
+  }
+}

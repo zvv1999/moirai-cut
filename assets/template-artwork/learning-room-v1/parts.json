@@ -1,0 +1,171 @@
+{
+  "sourceSha256": "ac199d3105e3203a23d97e8180bd725f4308dae38b07b52e6524fabafe4eb81b",
+  "source": "IRA Design / Creative Tim, SVG/Examples/bg5-1.svg",
+  "license": "MIT, LICENSE.txt",
+  "canvas": {
+    "width": 1200,
+    "height": 900
+  },
+  "parts": [
+    {
+      "key": "background",
+      "name": "空间衬底",
+      "svg": "background.svg",
+      "sourceElements": [
+        "path",
+        "path"
+      ],
+      "png": "background.png",
+      "bounds": {
+        "left": 0,
+        "top": 62,
+        "width": 1200,
+        "height": 775
+      },
+      "visiblePixels": 631679,
+      "partiallyTransparentPixels": 5551,
+      "sha256": "e2e387bcc59a928b4309078443b06eb7ed1a248f14183a8df119969d31433b3c"
+    },
+    {
+      "key": "books",
+      "name": "书架",
+      "svg": "books.svg",
+      "sourceElements": [
+        "books"
+      ],
+      "png": "books.png",
+      "bounds": {
+        "left": 165,
+        "top": 178,
+        "width": 272,
+        "height": 420
+      },
+      "visiblePixels": 96427,
+      "partiallyTransparentPixels": 2311,
+      "sha256": "a309c7291fedec3c11d35502f78fc458654ef67f2c10c8986e024fec175a962c"
+    },
+    {
+      "key": "plant",
+      "name": "绿植",
+      "svg": "plant.svg",
+      "sourceElements": [
+        "flower"
+      ],
+      "png": "plant.png",
+      "bounds": {
+        "left": 805,
+        "top": 345,
+        "width": 253,
+        "height": 376
+      },
+      "visiblePixels": 40173,
+      "partiallyTransparentPixels": 2618,
+      "sha256": "3fcadf77fe950a22ab70a8e7958b9af6c8262fa7e12848e52873b6ceecf66c93"
+    },
+    {
+      "key": "sofa",
+      "name": "沙发",
+      "svg": "sofa.svg",
+      "sourceElements": [
+        "path",
+        "path",
+        "polygon",
+        "polygon",
+        "path"
+      ],
+      "png": "sofa.png",
+      "bounds": {
+        "left": 344,
+        "top": 388,
+        "width": 543,
+        "height": 303
+      },
+      "visiblePixels": 99465,
+      "partiallyTransparentPixels": 3152,
+      "sha256": "a85ae5d8590de871fa8f7ab09c6777e7a24e474dc3fa302b1b0241c338b7047d"
+    },
+    {
+      "key": "lamp",
+      "name": "吊灯",
+      "svg": "lamp.svg",
+      "sourceElements": [
+        "polygon",
+        "path",
+        "path",
+        "path"
+      ],
+      "png": "lamp.png",
+      "bounds": {
+        "left": 555,
+        "top": 62,
+        "width": 104,
+        "height": 175
+      },
+      "visiblePixels": 7225,
+      "partiallyTransparentPixels": 707,
+      "sha256": "dddc76b163b40c3593f38a338746cabc8bf22aa4995170cbc814658abb4007e9"
+    },
+    {
+      "key": "light",
+      "name": "柔光",
+      "svg": "light.svg",
+      "sourceElements": [
+        "polygon"
+      ],
+      "png": "light.png",
+      "bounds": {
+        "left": 513,
+        "top": 214,
+        "width": 189,
+        "height": 168
+      },
+      "visiblePixels": 21504,
+      "partiallyTransparentPixels": 21504,
+      "sha256": "4ee13f90650361d2383ff00353b5957ec1ec8e0d009109ccb6c59a4c4a3e1711"
+    },
+    {
+      "key": "bag",
+      "name": "随身包",
+      "svg": "bag.svg",
+      "sourceElements": [
+        "bag"
+      ],
+      "png": "bag.png",
+      "bounds": {
+        "left": 850,
+        "top": 605,
+        "width": 118,
+        "height": 116
+      },
+      "visiblePixels": 7923,
+      "partiallyTransparentPixels": 884,
+      "sha256": "48f048446c02569f24316859f662d683f5b6ab3125ba7ab7084ee6633c889fbf"
+    },
+    {
+      "key": "reader",
+      "name": "学习者与电脑",
+      "svg": "reader.svg",
+      "sourceElements": [
+        "g"
+      ],
+      "png": "reader.png",
+      "bounds": {
+        "left": 513,
+        "top": 332,
+        "width": 200,
+        "height": 271
+      },
+      "visiblePixels": 27044,
+      "partiallyTransparentPixels": 1872,
+      "sha256": "bb3e8c2bff6b1cb2bee5aae2676b34a3f1bf7dc4611cc618f5b8fed5174fb05e"
+    }
+  ],
+  "derivation": "Semantic source groups separated locally; original colors and vector paths retained. All source parts preserved. No AI bitmap generation.",
+  "reassembly": {
+    "maxChannelError": 25,
+    "meanChannelError": 0.03922191358024691,
+    "changedChannelCount": 60213,
+    "totalChannels": 3240000,
+    "notes": "Independent layer rasterization/compositing can differ by edge rounding; inspect reassembled.png before importing."
+  }
+}

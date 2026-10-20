@@ -18,3 +18,7 @@ docs/reports/** export-ignore
 *.wasm binary
 *.mp4 binary
 *.mov binary
+
+# Preserve imported SVG bytes; parts.json records source and derivative hashes.
+assets/template-artwork/learning-room-v1/*.svg -whitespace
+assets/template-artwork/learning-room-v2/*.svg -whitespace

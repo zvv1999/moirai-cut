@@ -1,0 +1,285 @@
+{
+  "applications": [],
+  "canvas": {
+    "fps": 30,
+    "height": 720,
+    "width": 720
+  },
+  "evidence": [],
+  "id": "style-study-20260928-signal",
+  "inputs": [
+    {
+      "default": "重点来了",
+      "id": "text",
+      "label": "主文字",
+      "layerIds": [
+        "headline"
+      ],
+      "maxCharacters": 20
+    }
+  ],
+  "layers": [
+    {
+      "content": {
+        "id": "root",
+        "kind": "group",
+        "region": {
+          "height": 1.0,
+          "width": 1.0,
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "parentId": null
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "信息提示 · 青色侧标",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "text",
+            "role": "emphasis"
+          },
+          "id": "headline",
+          "intents": [],
+          "literal": "重点来了",
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.1,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.8,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 12.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.3,
+            "width": 0.85,
+            "x": 0.075,
+            "y": 0.35
+          },
+          "resourceId": null,
+          "styleId": "headline-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 1
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "青色侧标",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "signal-bar",
+          "intents": [],
+          "literal": null,
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.1,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.8,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.12,
+            "width": 0.018000000000000002,
+            "x": 0.02,
+            "y": 0.44
+          },
+          "resourceId": null,
+          "styleId": "signal-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 2
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    }
+  ],
+  "name": "信息提示 · 青色侧标",
+  "provenance": "Original editable typography study. All layers are native text and motion, not extracted reference imagery. Pending visual review; no aesthetic score.",
+  "purposes": [
+    "keyword",
+    "decorative_text"
+  ],
+  "resourceBindings": [],
+  "resourceSlots": [],
+  "revision": 0,
+  "schemaVersion": "moirai.dynamic-asset.v1",
+  "spatialRelations": [
+    {
+      "elementId": "signal-bar",
+      "followMotion": true,
+      "gap": 0.0,
+      "offsetX": 0.0,
+      "offsetY": 0.0,
+      "placement": "left",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline",
+      "sizeBinding": {
+        "height": {
+          "factor": 0.82,
+          "padding": 0.0
+        }
+      }
+    }
+  ],
+  "styles": [
+    {
+      "background": "#14313F",
+      "backgroundCornerRadius": 12.0,
+      "backgroundOpacity": 0.94,
+      "backgroundPadding": {
+        "x": 24.0,
+        "y": 14.0
+      },
+      "description": "字幕样式",
+      "fill": "#F4FCFF",
+      "fontFamily": "PingFang SC",
+      "fontSize": 78.0,
+      "id": "headline-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.15,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#151C22",
+      "strokeWidth": 0.0,
+      "textAlign": "left",
+      "weight": 700
+    },
+    {
+      "background": null,
+      "backgroundPadding": {
+        "x": 24.0,
+        "y": 14.0
+      },
+      "description": "字幕样式",
+      "fill": "#58E3D0",
+      "fontFamily": "PingFang SC",
+      "fontSize": 78.0,
+      "id": "signal-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.15,
+      "maxLines": 1,
+      "shadow": null,
+      "stroke": "#151C22",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 700
+    }
+  ],
+  "treatments": [],
+  "usageGuide": {
+    "adjustments": "Agent按输入调整本次位置、行宽、整体比例和触发词；明确可读字号及稳定阅读时间，再避开人物、图示与已有字幕。调整保存在Application/Sample，不写入模板。",
+    "constraints": "依附text_box而非猜测字数：一行/两行均保持侧条与底板关系。底板与侧条完整路径须在画内且不遮保护区；短窗不足或缩字后不可读时拒绝当前应用。",
+    "coverage": "r5候选已在原两份不同人物英文实拍与中文黑底TTS、单行/双行应用对照，正文/事件/字号/声音保持。保存版需单独导出复核；这些调参样例不是盲测，未连续观片或试听，不继承旧评分。",
+    "fallback": "优先换行宽与位置，再减少展示词或换更轻的样式；语义不适合时跳过，不强行缩小或延长进入下一句。",
+    "invariants": "浅白左对齐文字，最多两行；深蓝底板透明度0.94，圆角为短边一半的12%；青色侧条贴实际文字底板左缘，宽度0.018画布单位，高度随含padding的实测text_box为0.82倍并垂直居中。两个原生叶层，保留100ms轻上移淡入与60ms淡出。",
+    "purpose": "简短信息重点的阅读侧标，适合平稳解释；深蓝底板与青色侧条一起承载文字。"
+  }
+}

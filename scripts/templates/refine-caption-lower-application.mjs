@@ -1,0 +1,13 @@
+import fs from 'node:fs/promises';import assert from 'node:assert/strict';import {createHash} from 'node:crypto';
+const root='/Users/zhengwei/Downloads/caption-lower-20260929',prior='/Users/zhengwei/Downloads/caption-phrases-20260929';
+const api=async(path,body)=>{const r=await fetch('http://127.0.0.1:3000/api/footage/templates'+path,{method:body?'POST':'GET',headers:{'content-type':'application/json','x-requested-with':'moirai-footage'},body:body?JSON.stringify(body):undefined});const d=await r.json();assert.ok(r.ok,JSON.stringify(d));return d;};
+const original=JSON.parse(await fs.readFile(prior+'/designs.json','utf8'));const application=JSON.parse(await fs.readFile(prior+'/application.json','utf8'));application.transform={scale:1,centerX:.5,centerY:.90};
+const style=(await api('/dynamic-assets/'+application.assetId)).definition;assert.equal(style.revision,application.assetRevision);
+const {template}=await api('/dynamic-assets/application',application);template.id='composition-caption-lower-trial';template.name='清晰逐词字幕 · 下移应用';
+const samples=structuredClone(original.samples);samples[2].captionSpans=samples[2].captionSpans.filter(s=>s.startWord!==50).map(s=>s.startWord===45?{startWord:45,endWord:54}:s);
+const validation=await api('/samples/validate',{template,samples});assert.equal(validation.validated,true);
+for(const {plan} of validation.samples)for(const c of plan.captions)assert.ok(c.end-c.start>=.6);
+const designs=[{template,baseRevision:0}],manifest={name:template.name,brief:'Saved style v1 application with centerY 0.90, no font/scale/source crop changes. Merge final interview huge impact phrase. Compare lower backing against hand gestures and bottom safe area. Pending visual evaluation.',previewOnly:true,designs,samples,idempotencyKey:'caption-lower-'+createHash('sha256').update(JSON.stringify({designs,samples})).digest('hex')};
+await fs.mkdir(root,{recursive:true});for(const [name,value] of Object.entries({'application.json':application,'style.json':style,'designs.json':manifest,'validation.json':validation}))await fs.writeFile(root+'/'+name,JSON.stringify(value,null,2));
+await fs.writeFile(root+'/agent-content.json',JSON.stringify({version:1,entries:samples.map(s=>({...s,resourceBindings:[],layoutPhrases:[]})),liveInputId:samples[1].inputId},null,2));
+const result=await api('/production/author',manifest);await fs.writeFile(root+'/submission.json',JSON.stringify(result,null,2));console.log(JSON.stringify({root,batchId:result.id}));

@@ -1,0 +1,34 @@
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {chromium} from '/Users/zhengwei/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+const base='http://127.0.0.1:3000',root='/Users/zhengwei/Downloads/layout-phrase-ui-2026-09-29';
+const original=await(await fetch(base+'/api/footage/templates/dynamic-assets')).json();
+const id='input-cff723e5973128fcb40827c9cf585831',phrases=[{wordSpan:{startWord:13,endWord:15}}];
+await fs.mkdir(root,{recursive:true});
+const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
+try{
+ const page=await browser.newPage({viewport:{width:1280,height:1000}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(base+'/templates/effects/style-pilot-20260923-caption/try?revision=3&scale=0.85&centerX=0.5&centerY=0.7&captionWidth=0.84&format=square');
+ await page.waitForFunction(()=>document.querySelector('.tw-trial-visual')?.getAttribute('aria-busy')==='false');
+ const waitPreview=()=>page.waitForResponse(r=>r.url().endsWith('/sample-preview')&&r.ok()&&r.request().postDataJSON()?.sample?.inputId===id);
+ let ready=waitPreview();await page.locator('label.tp-choice').filter({hasText:'插画讲解样例 · 把今天安排好'}).getByRole('checkbox').click();await ready;
+ const panel=page.locator('details').filter({has:page.locator(':scope > summary').filter({hasText:/^短语排版/})});
+ await page.getByText('短语排版 · 普通换行',{exact:true}).click();
+ await page.getByLabel('同排短语起始词',{exact:true}).selectOption('13');await page.getByLabel('同排短语结束词',{exact:true}).selectOption('15');
+ ready=waitPreview();await page.getByRole('button',{name:'设为尽量同排',exact:true}).click();let response=await ready;
+ assert.deepEqual(response.request().postDataJSON().sample.layoutPhrases,phrases);
+ const preview=await response.json();assert.ok(JSON.stringify(preview).includes('text.layoutPhrases'));
+ await page.getByRole('button',{name:'保存试映内容',exact:true}).click();await page.reload();
+ ready=waitPreview();await page.getByRole('button',{name:'恢复试映内容',exact:true}).click();response=await ready;assert.deepEqual(response.request().postDataJSON().sample.layoutPhrases,phrases);
+ await page.getByText('短语排版 · 1 组尽量同排',{exact:true}).click();
+ await page.getByLabel('同排短语起始词',{exact:true}).selectOption('14');await page.getByLabel('同排短语结束词',{exact:true}).selectOption('16');
+ const rejected=page.waitForResponse(r=>r.url().endsWith('/plan')&&r.request().postDataJSON()?.layoutPhrases?.length===2);
+ await page.getByRole('button',{name:'设为尽量同排',exact:true}).click();assert.equal((await rejected).ok(),false);
+ assert.equal(await page.getByRole('button',{name:/取消第\d+组同排短语/}).count(),1);
+ await page.screenshot({path:root+'/desktop.png',fullPage:true});
+ ready=waitPreview();await page.getByRole('button',{name:'取消第1组同排短语',exact:true}).click();response=await ready;assert.deepEqual(response.request().postDataJSON().sample.layoutPhrases,[]);
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:root+'/mobile.png',fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);
+ assert.deepEqual(await(await fetch(base+'/api/footage/templates/dynamic-assets')).json(),original);assert.deepEqual(errors,[]);
+ await fs.writeFile(root+'/verification.json',JSON.stringify({passed:true,inputId:id,phrases,preview,checks:['native preview metadata','save/reload/restore','overlap rejected without replacing existing phrase','remove reflected in preview','390px no overflow','library unchanged']},null,2));
+ console.log('PASS layout phrase real UI preview, persistence, rejection and removal');
+}finally{await browser.close();}

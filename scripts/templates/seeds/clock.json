@@ -1,0 +1,4563 @@
+{
+  "applications": [
+    {
+      "enabled": true,
+      "target": {
+        "id": "root",
+        "kind": "group"
+      },
+      "treatmentId": "group-fade-root"
+    }
+  ],
+  "canvas": {
+    "fps": 30,
+    "height": 720,
+    "width": 720
+  },
+  "evidence": [],
+  "id": "style-study-20260929-clock",
+  "inputs": [],
+  "layers": [
+    {
+      "content": {
+        "composite": true,
+        "id": "root",
+        "kind": "group",
+        "region": {
+          "height": 1.0,
+          "width": 1.0,
+          "x": 0.0,
+          "y": 0.0
+        },
+        "separateInstances": true
+      },
+      "parentId": null
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "深蓝外壳厚度",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "case-depth",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.724,
+            "width": 0.724,
+            "x": 0.138,
+            "y": 0.153
+          },
+          "resourceId": null,
+          "styleId": "case-depth-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 0
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "蓝灰外壳轮廓",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "rim",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.72,
+            "width": 0.72,
+            "x": 0.14,
+            "y": 0.14
+          },
+          "resourceId": null,
+          "styleId": "rim-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 1
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "外壳上沿窄高光",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "rim-highlight",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.7,
+            "width": 0.7,
+            "x": 0.15,
+            "y": 0.145
+          },
+          "resourceId": null,
+          "styleId": "rim-highlight-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 2
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "蓝灰珐琅外壳",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "case-enamel",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.7,
+            "width": 0.7,
+            "x": 0.15,
+            "y": 0.159
+          },
+          "resourceId": null,
+          "styleId": "case-enamel-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 3
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "内圈阴影与面盘分隔",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "inner-bezel",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.638,
+            "width": 0.638,
+            "x": 0.181,
+            "y": 0.181
+          },
+          "resourceId": null,
+          "styleId": "inner-bezel-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 4
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "暖白面盘斜边",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "face-bevel",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.62,
+            "width": 0.62,
+            "x": 0.19,
+            "y": 0.19
+          },
+          "resourceId": null,
+          "styleId": "face-bevel-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 5
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "象牙白面盘",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "face",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.598,
+            "width": 0.598,
+            "x": 0.201,
+            "y": 0.198
+          },
+          "resourceId": null,
+          "styleId": "face-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "0点主刻度",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "mark-north",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.047,
+            "width": 0.017,
+            "x": 0.4915,
+            "y": 0.2295
+          },
+          "resourceId": null,
+          "styleId": "mark-north-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "1点细刻度",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "minute-mark-1",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 30.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 30.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.026,
+            "width": 0.011,
+            "x": 0.62,
+            "y": 0.26962762365010584
+          },
+          "resourceId": null,
+          "styleId": "minute-mark-1-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "2点细刻度",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "minute-mark-2",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 60.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 60.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.026,
+            "width": 0.011,
+            "x": 0.7118723763498941,
+            "y": 0.36149999999999993
+          },
+          "resourceId": null,
+          "styleId": "minute-mark-2-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "3点主刻度",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "mark-east",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 90.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 90.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.047,
+            "width": 0.017,
+            "x": 0.7385,
+            "y": 0.4765
+          },
+          "resourceId": null,
+          "styleId": "mark-east-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "4点细刻度",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "minute-mark-4",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 120.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 120.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.026,
+            "width": 0.011,
+            "x": 0.7118723763498942,
+            "y": 0.6124999999999999
+          },
+          "resourceId": null,
+          "styleId": "minute-mark-4-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "5点细刻度",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "minute-mark-5",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 150.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 150.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.026,
+            "width": 0.011,
+            "x": 0.62,
+            "y": 0.7043723763498941
+          },
+          "resourceId": null,
+          "styleId": "minute-mark-5-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "6点主刻度",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "mark-south",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 180.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 180.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.047,
+            "width": 0.017,
+            "x": 0.4915,
+            "y": 0.7235
+          },
+          "resourceId": null,
+          "styleId": "mark-south-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "7点细刻度",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "minute-mark-7",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 210.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 210.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.026,
+            "width": 0.011,
+            "x": 0.3690000000000001,
+            "y": 0.7043723763498941
+          },
+          "resourceId": null,
+          "styleId": "minute-mark-7-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "8点细刻度",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "minute-mark-8",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 240.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 240.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.026,
+            "width": 0.011,
+            "x": 0.27712762365010596,
+            "y": 0.6125000000000002
+          },
+          "resourceId": null,
+          "styleId": "minute-mark-8-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "9点主刻度",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "mark-west",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 270.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 270.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.047,
+            "width": 0.017,
+            "x": 0.2445,
+            "y": 0.4765
+          },
+          "resourceId": null,
+          "styleId": "mark-west-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "10点细刻度",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "minute-mark-10",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 300.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 300.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.026,
+            "width": 0.011,
+            "x": 0.2771276236501059,
+            "y": 0.36149999999999993
+          },
+          "resourceId": null,
+          "styleId": "minute-mark-10-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "11点细刻度",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "minute-mark-11",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 330.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 330.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.026,
+            "width": 0.011,
+            "x": 0.3689999999999999,
+            "y": 0.26962762365010595
+          },
+          "resourceId": null,
+          "styleId": "minute-mark-11-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "短时针",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "hour",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -152.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -150.56163194444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -149.24305555555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -148.0390625
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -146.94444444444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -145.95399305555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -145.0625
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -144.26475694444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -143.55555555555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -142.9296875
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -142.38194444444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -141.90711805555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -141.5
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -141.15538194444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -140.86805555555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -140.6328125
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -140.44444444444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -140.29774305555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -140.1875
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -140.10850694444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -140.05555555555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -140.0234375
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -140.00694444444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -140.00086805555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": -140.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -140.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -94.90055868009
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -94.2925980854874
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -93.71095950980502
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -93.15982275726006
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -92.64236067413924
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -92.16084975165349
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -91.71677247458064
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -91.31091141276374
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -90.94343525026822
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -90.61397708432034
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -90.3217054143011
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -90.06538828988442
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -89.84345110536174
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -89.654028521533
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -89.49501097339393
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -89.36408618634387
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -89.25877608004086
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -89.17646939085023
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -89.11445029391348
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -89.06992325649951
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -89.04003430729801
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -89.02188886307187
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -89.01256621566432
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -89.0091307495234
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": -89.00863993319658
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -89.00863993319658
+                }
+              ],
+              "property": "x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -23.661366764408932
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -24.770947363915568
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -25.77442116401528
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -26.678784788061705
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -27.49077963019497
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -28.216864248527553
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -28.863199966111576
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -29.435647221982503
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -29.939770508594695
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -30.380850005583564
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -30.763898270761644
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -31.093680576810275
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -31.374737686536054
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -31.611410041797924
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -31.80786250269289
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -31.96810891596773
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -32.09603591662455
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -32.195425475996785
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -32.2699758047649
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -32.323320301857095
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -32.359044311148025
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -32.380699508326465
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -32.391815791044294
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -32.395910587082064
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": -32.39649552820162
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -32.39649552820162
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.044,
+            "width": 0.14,
+            "x": 0.5,
+            "y": 0.478
+          },
+          "resourceId": null,
+          "styleId": "hour-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "短时针圆头",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "hour-tip",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -152.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -150.56163194444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -149.24305555555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -148.0390625
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -146.94444444444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -145.95399305555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -145.0625
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -144.26475694444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -143.55555555555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -142.9296875
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -142.38194444444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -141.90711805555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -141.5
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -141.15538194444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -140.86805555555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -140.6328125
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -140.44444444444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -140.29774305555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -140.1875
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -140.10850694444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -140.05555555555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -140.0234375
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -140.00694444444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -140.00086805555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": -140.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -140.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -189.80111736017983
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -188.58519617097463
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -187.4219190196099
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -186.31964551452
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -185.2847213482783
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -184.3216995033068
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -183.43354494916116
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -182.62182282552732
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -181.8868705005363
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -181.22795416864057
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -180.64341082860204
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -180.13077657976868
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -179.68690221072336
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -179.30805704306584
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -178.99002194678772
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -178.7281723726876
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -178.51755216008155
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -178.35293878170037
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -178.2289005878268
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -178.13984651299887
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -178.08006861459586
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -178.0437777261436
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -178.0251324313285
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -178.01826149904662
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": -178.01727986639298
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -178.01727986639298
+                }
+              ],
+              "property": "x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -47.32273352881783
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -49.54189472783109
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -51.54884232803052
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -53.35756957612337
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -54.98155926038989
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -56.43372849705506
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -57.7263999322231
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -58.87129444396496
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -59.87954101718934
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -60.76170001116708
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -61.52779654152324
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -62.1873611536205
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -62.749475373072066
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -63.2228200835958
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -63.61572500538572
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -63.9362178319354
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -64.19207183324905
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -64.39085095199353
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -64.53995160952974
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -64.64664060371415
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -64.718088622296
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -64.76139901665287
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -64.78363158208853
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -64.79182117416407
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": -64.79299105640318
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -64.79299105640318
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.044,
+            "width": 0.044,
+            "x": 0.618,
+            "y": 0.478
+          },
+          "resourceId": null,
+          "styleId": "hour-tip-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "短时针窄高光",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "hour-highlight",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -152.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -150.56163194444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -149.24305555555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -148.0390625
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -146.94444444444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -145.95399305555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -145.0625
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -144.26475694444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -143.55555555555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -142.9296875
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -142.38194444444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -141.90711805555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -141.5
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -141.15538194444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -140.86805555555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -140.6328125
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -140.44444444444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -140.29774305555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -140.1875
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -140.10850694444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -140.05555555555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -140.0234375
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -140.00694444444446
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -140.00086805555554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": -140.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -140.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -96.41435821144616
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -96.02190731231556
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -95.63607873167048
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -95.26218224777791
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -94.9045038745558
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -94.56640837455758
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -94.25043611211254
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -93.95839380489592
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -93.69143897679533
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -93.45015809719396
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -93.2346385222428
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -93.04453444174668
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -92.87912708923284
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -92.73737949981025
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -92.61798610677783
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -92.51941745887112
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -92.43996032000835
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -92.37775338611108
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -92.3308188220811
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -92.29708978878828
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -92.27443409693736
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -92.26067409347095
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -92.25360285790325
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -92.25099676151596
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": -92.25062442228408
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -92.25062442228408
+                }
+              ],
+              "property": "x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -6.0387993782668925
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -7.2252420668238
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -8.303909218292517
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -9.280851158892077
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -10.16205009180739
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -10.9533735286315
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -11.660542025190416
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -12.28910883478948
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -12.844449342229808
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -13.33175838322397
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -13.756053781900398
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -14.12218465142205
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -14.434843198106147
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -14.698578947472807
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -14.917814471652749
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -15.096861842235818
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -15.239939161856556
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -15.351186642602194
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -15.434681800715635
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -15.494453426000554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -15.53449406166915
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -15.558770796825732
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -15.57123422993154
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -15.575825507893398
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": -15.576481382182187
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -15.576481382182187
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.009,
+            "width": 0.106,
+            "x": 0.515,
+            "y": 0.483
+          },
+          "resourceId": null,
+          "styleId": "hour-highlight-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 10
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "暖铜长分针",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "minute",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -90.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -79.21223958333334
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -69.32291666666666
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -60.29296875
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -52.083333333333336
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -44.654947916666664
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -37.96875
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -31.98567708333333
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -26.66666666666668
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -21.97265625
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -17.864583333333314
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -14.303385416666686
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -11.25
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -8.665364583333329
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -6.510416666666657
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -4.74609375
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -3.333333333333343
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -2.2330729166666714
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -1.40625
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -0.8138020833333286
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -0.4166666666666714
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -0.17578125
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -0.05208333333332859
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -0.006510416666657193
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -68.39999999999998
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -55.59747124000651
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -44.2479145302479
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -34.50333609111714
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -26.367193879607193
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -19.743500054029788
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -14.47710435034012
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -10.384451066486612
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -7.275527401878605
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -4.968403245512562
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -3.2979599879776913
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -2.120322340908274
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -1.314286820419042
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -0.7807761728845577
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -0.44109393013629017
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -0.23453362792605503
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -0.1157219742452611
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -0.05194355561705777
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -0.020600801179625705
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -0.006899396985929229
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -0.001808657959060156
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -0.0003219034249895003
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -2.8260403212243546e-05
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -4.415688295011933e-07
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -68.39999999999998
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -67.19118437227861
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -63.99403696800029
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -59.41023628843969
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -53.96112683817368
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -48.073953582036495
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -42.08184079571486
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -36.23197595968392
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -30.697863925711612
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -25.59282190724772
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -20.982954660224717
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -16.898648745000166
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -13.344178025903169
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -10.305366030300082
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -7.755455227608648
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -5.6594340951772955
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -3.977106297476556
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -2.6651792201358133
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -1.6786200309672
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -0.9714885001868392
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -0.4974144525000456
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -0.2098482425868727
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -0.06217734603914826
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -0.007772169308551045
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.032,
+            "width": 0.19,
+            "x": 0.5,
+            "y": 0.484
+          },
+          "resourceId": null,
+          "styleId": "minute-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 11
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "长分针圆头",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "minute-tip",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -90.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -79.21223958333334
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -69.32291666666666
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -60.29296875
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -52.083333333333336
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -44.654947916666664
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -37.96875
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -31.98567708333333
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -26.66666666666668
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -21.97265625
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -17.864583333333314
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -14.303385416666686
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -11.25
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -8.665364583333329
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -6.510416666666657
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -4.74609375
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -3.333333333333343
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -2.2330729166666714
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -1.40625
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -0.8138020833333286
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -0.4166666666666714
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -0.17578125
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -0.05208333333332859
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -0.006510416666657193
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -136.80000000000004
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -111.1949424800131
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -88.49582906049585
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -69.00667218223433
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -52.73438775921443
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -39.4870001080596
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -28.954208700680255
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -20.76890213297324
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -14.551054803757223
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -9.936806491025123
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -6.595919975955383
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -4.240644681816548
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -2.628573640838084
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -1.5615523457691154
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -0.8821878602725803
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -0.46906725585211007
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -0.2314439484905222
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -0.10388711123411554
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -0.04120160235925141
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -0.013798793971858458
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -0.003617315918120312
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -0.0006438068499790006
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -5.652080642448709e-05
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -8.831376590023865e-07
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -136.80000000000004
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -134.3823687445573
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -127.98807393600066
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -118.82047257687944
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -107.92225367634742
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -96.14790716407305
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -84.16368159142978
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -72.46395191936789
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -61.39572785142327
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -51.18564381449547
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -41.96590932044946
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -33.79729749000035
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -26.688356051806352
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -20.610732060600174
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -15.510910455217305
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -11.318868190354598
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -7.954212594953118
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -5.33035844027163
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -3.357240061934402
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -1.9429770003736797
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -0.994828905000092
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -0.4196964851737456
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -0.1243546920782966
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -0.015544338617102098
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.032,
+            "width": 0.032,
+            "x": 0.674,
+            "y": 0.484
+          },
+          "resourceId": null,
+          "styleId": "minute-tip-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 11
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "长分针窄高光",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "minute-highlight",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -90.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -79.21223958333334
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -69.32291666666666
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -60.29296875
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -52.083333333333336
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -44.654947916666664
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -37.96875
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -31.98567708333333
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -26.66666666666668
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -21.97265625
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -17.864583333333314
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -14.303385416666686
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -11.25
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -8.665364583333329
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -6.510416666666657
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -4.74609375
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -3.333333333333343
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -2.2330729166666714
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -1.40625
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -0.8138020833333286
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -0.4166666666666714
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -0.17578125
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -0.05208333333332859
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -0.006510416666657193
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -73.80000000000003
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -61.085097055696
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -49.61185622410721
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -39.58688474858329
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -31.062976518808824
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -23.986135129369636
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -18.23521919913933
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -13.652989035301625
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -10.068869341126891
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -7.314537901270043
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -5.23374579808354
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -3.687768185051837
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -2.55772020991904
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -1.7447459624990105
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -1.1688566264865443
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -0.7669873796598097
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -0.4906732765181232
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -0.3036140571728225
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -0.17930268620000334
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -0.09882621178806517
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -0.04890357464918793
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -0.02019718056334341
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -0.005918299600551791
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -0.0007367453732882723
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -60.84000000000002
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.014583333333333332,
+                  "value": -60.86314208050521
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.029166666666666664,
+                  "value": -58.791697113008425
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.04375,
+                  "value": -55.20344282262169
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.05833333333333333,
+                  "value": -50.611164362660816
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.07291666666666667,
+                  "value": -45.44445430983313
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.0875,
+                  "value": -40.04587552890822
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.10208333333333332,
+                  "value": -34.676102027705994
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666664,
+                  "value": -29.523900320390844
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13124999999999998,
+                  "value": -24.71803388545316
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14583333333333334,
+                  "value": -20.339206535149607
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.16041666666666665,
+                  "value": -16.43095533251939
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.175,
+                  "value": -13.00896909513869
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1895833333333333,
+                  "value": -10.068681455548392
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.20416666666666664,
+                  "value": -7.59121282537034
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.21875,
+                  "value": -5.547855634186769
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2333333333333333,
+                  "value": -3.903346747851062
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.24791666666666667,
+                  "value": -2.618176474548896
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26249999999999996,
+                  "value": -1.6501638493138593
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2770833333333333,
+                  "value": -0.9554955809957492
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2916666666666667,
+                  "value": -0.48938919354866073
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.30624999999999997,
+                  "value": -0.20650435316892324
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3208333333333333,
+                  "value": -0.06119292116875208
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.33541666666666664,
+                  "value": -0.00764940901294775
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.35,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.008,
+            "width": 0.149,
+            "x": 0.519,
+            "y": 0.487
+          },
+          "resourceId": null,
+          "styleId": "minute-highlight-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 12
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "共轴深蓝轴座",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "hub",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.09,
+            "width": 0.09,
+            "x": 0.455,
+            "y": 0.455
+          },
+          "resourceId": null,
+          "styleId": "hub-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 13
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "暖铜轴心",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "hub-pin",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.046,
+            "width": 0.046,
+            "x": 0.477,
+            "y": 0.477
+          },
+          "resourceId": null,
+          "styleId": "hub-pin-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 14
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "轴心细高光",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "hub-glint",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.35,
+            "enterSeconds": 0.135,
+            "exitSeconds": 0.045,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.014,
+            "width": 0.014,
+            "x": 0.482,
+            "y": 0.48
+          },
+          "resourceId": null,
+          "styleId": "hub-glint-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 15
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    }
+  ],
+  "minDisplaySeconds": 0.65,
+  "name": "时间提示 · 指针轻转",
+  "provenance": "Original editable refinement of the existing clock family: layered enamel casing, narrow top bevel, twelve radial marks, paired hand highlights and brass common pivot. Geometry and motion are native editable layers, with no external bitmap. The short quarter-turn is a qualitative time cue, never measured real time, elapsed time, countdown or source-data value. Revision is pending fresh production/visual review; no inherited score. Revision 6 retains the exact r5 editable design and fixed animation phases. A native minimum visual hold of 0.65 seconds addresses short keyword flashes without modifying aligned word times. This remains the same clock family; new application evidence and scores are required.",
+  "purposes": [
+    "decoration"
+  ],
+  "resourceBindings": [],
+  "resourceSlots": [],
+  "revision": 0,
+  "schemaVersion": "moirai.dynamic-asset.v1",
+  "styles": [
+    {
+      "background": null,
+      "description": "深蓝外壳厚度",
+      "fill": "#22384A",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "case-depth-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "蓝灰外壳轮廓",
+      "fill": "#29475C",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "rim-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "外壳上沿窄高光",
+      "fill": "#94ADBA",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "rim-highlight-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "蓝灰珐琅外壳",
+      "fill": "#4F7084",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "case-enamel-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "内圈阴影与面盘分隔",
+      "fill": "#29475C",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "inner-bezel-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "暖白面盘斜边",
+      "fill": "#D6D4C3",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "face-bevel-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "象牙白面盘",
+      "fill": "#FFF8E8",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "face-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "0点主刻度",
+      "fill": "#405D70",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "mark-north-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "1点细刻度",
+      "fill": "#81908D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "minute-mark-1-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "2点细刻度",
+      "fill": "#81908D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "minute-mark-2-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "3点主刻度",
+      "fill": "#405D70",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "mark-east-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "4点细刻度",
+      "fill": "#81908D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "minute-mark-4-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "5点细刻度",
+      "fill": "#81908D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "minute-mark-5-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "6点主刻度",
+      "fill": "#405D70",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "mark-south-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "7点细刻度",
+      "fill": "#81908D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "minute-mark-7-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "8点细刻度",
+      "fill": "#81908D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "minute-mark-8-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "9点主刻度",
+      "fill": "#405D70",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "mark-west-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "10点细刻度",
+      "fill": "#81908D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "minute-mark-10-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "11点细刻度",
+      "fill": "#81908D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "minute-mark-11-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "短时针",
+      "fill": "#29475C",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "hour-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "短时针圆头",
+      "fill": "#29475C",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "hour-tip-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "短时针窄高光",
+      "fill": "#758C99",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "hour-highlight-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "暖铜长分针",
+      "fill": "#D9823B",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "minute-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "长分针圆头",
+      "fill": "#D9823B",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "minute-tip-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "长分针窄高光",
+      "fill": "#F5B86B",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "minute-highlight-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "共轴深蓝轴座",
+      "fill": "#29475C",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "hub-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "暖铜轴心",
+      "fill": "#DDA25F",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "hub-pin-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "轴心细高光",
+      "fill": "#FFE0AB",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "hub-glint-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    }
+  ],
+  "treatments": [
+    {
+      "id": "group-fade-root",
+      "operation": {
+        "channels": [
+          {
+            "keys": [
+              {
+                "easing": "linear",
+                "time": 0.0,
+                "value": 0.0
+              },
+              {
+                "easing": "linear",
+                "time": 0.1,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 0.8,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 1.0,
+                "value": 0.0
+              }
+            ],
+            "property": "opacity"
+          },
+          {
+            "keys": [
+              {
+                "easing": "linear",
+                "time": 0.0,
+                "value": 0.93
+              },
+              {
+                "easing": "ease_out",
+                "time": 0.13,
+                "value": 1.018
+              },
+              {
+                "easing": "ease_out",
+                "time": 0.2,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 1.0,
+                "value": 1.0
+              }
+            ],
+            "property": "scale"
+          },
+          {
+            "keys": [
+              {
+                "easing": "linear",
+                "time": 0.0,
+                "value": 5.0
+              },
+              {
+                "easing": "ease_out",
+                "time": 0.2,
+                "value": 0.0
+              },
+              {
+                "easing": "linear",
+                "time": 1.0,
+                "value": 0.0
+              }
+            ],
+            "property": "y"
+          }
+        ],
+        "kind": "motion",
+        "motionTiming": {
+          "enterEnd": 0.2,
+          "enterSeconds": 0.1,
+          "exitSeconds": 0.045,
+          "exitStart": 0.8
+        }
+      }
+    }
+  ],
+  "usageGuide": {
+    "adjustments": "Agent按实际画面调整整体位置和等比大小；本次可覆盖最短展示时长minDisplaySeconds（0.1–3秒），未覆盖继承样式0.65秒。图层局部策略优先于应用，应用优先于样式；无值才沿用宿主节奏。各针、圆头和高光保持共轴补偿。坐标、输出比例和选中的词范围属于本次Application/输入，不保存为全库默认。",
+    "constraints": "时间提示默认争取至少0.65秒展示，其中约100ms外壳入场、135ms指针运动、45ms整组退场，正常可留约0.47秒稳定段。下一个关键词、输入结束、maxSeconds或明确endAnchor仍优先截止，极密事件不保证达到最短值。保护人物、字幕和讲解图示；需看清外壳、主刻度及双针，实际输出尺寸另验。不得把定性指针动作解释为真实时刻或倒计时。",
+    "coverage": "r6基于r5短关键词稳定段不足的真实发现增加原生展示规则；造型不变。当前版本等待新实际导出与逐帧复查，不继承r5的86分。计划回归既有三个实测正例及负例，增加密集实测语音、新背景、竖屏和较小尺度；实际覆盖与失败保留在clock-lifecycle-20261007。未试听、不声称20款已达标。",
+    "fallback": "画面拥挤先换位置或换整体尺度，仍无法清楚辨认则换简洁图标或不用。连续时间词属于同一语义时，Agent可合并本次关键词范围为一次提示，减少反复入退场；不改原转写词时间。密集边界无法保留稳定段时，抑制次要提示或换构图，不能越过明确结束边界硬延长。",
+    "invariants": "保留蓝灰外壳、暖白表盘、十二刻度层级、短蓝针与长暖铜针、共同轴心。外壳轮廓和窄高光分离；短针轻微回正、长针轻转，再留稳定段；整个图标同步淡出。",
+    "purpose": "用于时间、等待、期限或时段相关语义的辅助图标；Agent按原文选择词范围。没有相应语义时不触发。指针是时间感提示，不表示真实时刻、倒计时或量化数据。"
+  }
+}

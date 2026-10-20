@@ -1,0 +1,12 @@
+import fs from 'node:fs/promises';import assert from 'node:assert/strict';import {createHash} from 'node:crypto';
+const root=process.env.PHRASE_REPAIR?'/Users/zhengwei/Downloads/offset-chinese-phrase-20260929':'/Users/zhengwei/Downloads/offset-chinese-real-20260929',base='http://127.0.0.1:3000/api/footage/templates';await fs.mkdir(root,{recursive:true});
+async function api(path,body){const r=await fetch(base+path,{method:body?'POST':'GET',headers:{'content-type':'application/json','x-requested-with':'moirai-footage'},body:body?JSON.stringify(body):undefined});const d=await r.json();assert.ok(r.ok,JSON.stringify(d));return d;}
+const {definition}=await api('/dynamic-assets/style-pilot-20260923-offset');assert.deepEqual(definition,JSON.parse(await fs.readFile('/Users/zhengwei/Downloads/offset-chinese-20260929/saved-definition.json')));
+const application={assetId:definition.id,assetRevision:definition.revision,canvas:{width:1280,height:720,fps:30},placement:{x:0,y:0,width:1,height:1},transform:{scale:.65,centerX:.5,centerY:.5}};
+const {template}=await api('/dynamic-assets/application',application);template.id=process.env.PHRASE_REPAIR?'offset-chinese-phrase-20260929':'offset-chinese-real-20260929';
+const previous=JSON.parse(await fs.readFile('/Users/zhengwei/Downloads/caption-measured-chinese-20260929/designs.json'));const samples=process.env.PHRASE_REPAIR?[previous.samples[2]]:previous.samples;
+if(process.env.PHRASE_REPAIR)samples[0].layoutPhrases=[{wordSpan:{startWord:35,endWord:37}}];
+for(const sample of samples){const input=await api('/inputs/'+sample.inputId);assert.equal(input.transcript.revision,sample.transcriptRevision);}
+const designs=[{template,baseRevision:0}];const manifest={name:'双层花字 · 中文实测声音验证',brief:'Saved offset v5 on three existing local Chinese measured TTS inputs, fast/slow same script and longer narration. Audio-only black background, not live-action footage. Preserve word times; no listening or aesthetic acceptance claimed.',previewOnly:true,designs,samples,idempotencyKey:'offset-chinese-'+createHash('sha256').update(JSON.stringify({designs,samples})).digest('hex')};
+const validation=await api('/samples/validate',{template,samples});for(const [k,v]of Object.entries({asset:definition,application,designs:manifest,validation}))await fs.writeFile(root+'/'+k+'.json',JSON.stringify(v,null,2));
+const batch=await api('/production/author',manifest);await fs.writeFile(root+'/submission.json',JSON.stringify(batch,null,2));console.log(JSON.stringify({batchId:batch.id,root}));

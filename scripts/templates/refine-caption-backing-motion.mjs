@@ -1,0 +1,13 @@
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+const root='/Users/zhengwei/Downloads/caption-backing-motion-20260929',prior='/Users/zhengwei/Downloads/caption-saved-20260929';
+const api=async(path,body)=>{const r=await fetch('http://127.0.0.1:3000/api/footage/templates'+path,{method:body?'POST':'GET',headers:{'content-type':'application/json','x-requested-with':'moirai-footage'},body:body?JSON.stringify(body):undefined});const d=await r.json();assert.ok(r.ok,JSON.stringify(d));return d;};
+const original=JSON.parse(await fs.readFile(prior+'/designs.json','utf8'));
+const style=JSON.parse(await fs.readFile(prior+'/style.json','utf8'));assert.deepEqual((await api('/dynamic-assets/'+style.id)).definition,style);
+const designs=structuredClone(original.designs),t=designs[0].template;t.id='composition-caption-backing-motion-trial';t.name='清晰逐词字幕 · 独立底板淡入退场';
+const e=t.elements.find(e=>e.id==='headline');assert.ok(e);assert.deepEqual(e.motions.map(m=>m.property),['y']);
+e.motions.push({property:'background_opacity',keys:[{time:0,value:0,easing:'ease_out'},{time:.2,value:.62,easing:'linear'},{time:.8,value:.62,easing:'ease_in'},{time:1,value:0,easing:'linear'}]});
+for(const sample of original.samples)assert.equal((await api('/inputs/'+sample.inputId)).transcript.revision,sample.transcriptRevision);
+const manifest={name:t.name,brief:'Preview-only comparison: independent background opacity fade at existing 140ms/100ms phase boundaries. Preserve full glyph opacity, measured words, wrapping, highlight and position motion. Pending visual acceptance; no inherited score.',previewOnly:true,designs,samples:original.samples,idempotencyKey:'caption-backing-motion-'+createHash('sha256').update(JSON.stringify({designs,samples:original.samples})).digest('hex')};
+await fs.mkdir(root,{recursive:true});await fs.copyFile(prior+'/application.json',root+'/application.json');await fs.writeFile(root+'/designs.json',JSON.stringify(manifest,null,2));const b=await api('/production/author',manifest);await fs.writeFile(root+'/submission.json',JSON.stringify(b,null,2));console.log(JSON.stringify({root,batchId:b.id}));

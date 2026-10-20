@@ -1,0 +1,1160 @@
+{
+  "applications": [
+    {
+      "enabled": true,
+      "target": {
+        "id": "root",
+        "kind": "group"
+      },
+      "treatmentId": "group-fade-root"
+    }
+  ],
+  "canvas": {
+    "fps": 30,
+    "height": 720,
+    "width": 720
+  },
+  "evidence": [],
+  "id": "style-study-20260929-globe",
+  "inputs": [],
+  "layers": [
+    {
+      "content": {
+        "composite": true,
+        "id": "root",
+        "kind": "group",
+        "region": {
+          "height": 1.0,
+          "width": 1.0,
+          "x": 0.0,
+          "y": 0.0
+        },
+        "separateInstances": true
+      },
+      "parentId": null
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "深海蓝剪影",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "edge",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.66,
+            "width": 0.66,
+            "x": 0.17,
+            "y": 0.17
+          },
+          "resourceId": null,
+          "styleId": "edge-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 1
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "暗部球面",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "ocean",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.63,
+            "width": 0.63,
+            "x": 0.185,
+            "y": 0.185
+          },
+          "resourceId": null,
+          "styleId": "ocean-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 2
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "青蓝球面中间调",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "ocean-mid",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.594,
+            "width": 0.594,
+            "x": 0.191,
+            "y": 0.191
+          },
+          "resourceId": null,
+          "styleId": "ocean-mid-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 3
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "左上受光球面",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "ocean-lit",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.55,
+            "width": 0.55,
+            "x": 0.198,
+            "y": 0.195
+          },
+          "resourceId": null,
+          "styleId": "ocean-lit-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 4
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "顶部柔亮层",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "ocean-light",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.443,
+            "width": 0.443,
+            "x": 0.23,
+            "y": 0.208
+          },
+          "resourceId": null,
+          "styleId": "ocean-light-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 5
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "外经线展开",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": true,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "meridian-wide",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -18.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -18.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.12
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale_x"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.59,
+            "width": 0.412,
+            "x": 0.294,
+            "y": 0.205
+          },
+          "resourceId": null,
+          "styleId": "meridian-wide-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "内经线展开",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": true,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "meridian",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -18.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -18.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.12
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale_x"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.59,
+            "width": 0.232,
+            "x": 0.384,
+            "y": 0.205
+          },
+          "resourceId": null,
+          "styleId": "meridian-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "赤道示意",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": true,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "equator",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -18.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -18.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.214,
+            "width": 0.59,
+            "x": 0.205,
+            "y": 0.393
+          },
+          "resourceId": null,
+          "styleId": "equator-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 8
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "北侧纬线示意",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": true,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "latitude-north",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -18.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -18.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.146,
+            "width": 0.515,
+            "x": 0.23,
+            "y": 0.319
+          },
+          "resourceId": null,
+          "styleId": "latitude-north-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "南侧纬线示意",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": true,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "latitude-south",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -18.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -18.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.134,
+            "width": 0.49,
+            "x": 0.255,
+            "y": 0.535
+          },
+          "resourceId": null,
+          "styleId": "latitude-south-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "薄暖白内缘",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": true,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "rim",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.596,
+            "width": 0.596,
+            "x": 0.202,
+            "y": 0.202
+          },
+          "resourceId": null,
+          "styleId": "rim-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 10
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "左上反光带",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "glint-soft",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 33.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 33.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.133,
+            "width": 0.073,
+            "x": 0.272,
+            "y": 0.242
+          },
+          "resourceId": null,
+          "styleId": "glint-soft-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 11
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "暖白主高光",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "glint",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 33.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 33.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.072,
+            "width": 0.03,
+            "x": 0.282,
+            "y": 0.252
+          },
+          "resourceId": null,
+          "styleId": "glint-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 12
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "高光端点",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "glint-dot",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.025,
+            "width": 0.025,
+            "x": 0.319,
+            "y": 0.224
+          },
+          "resourceId": null,
+          "styleId": "glint-dot-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 12
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    }
+  ],
+  "name": "地球科普 · 经纬展开",
+  "provenance": "Original schematic globe made of independently editable native ellipses: layered ocean lighting, fine meridian/latitude motif and restrained highlights. No continent geometry, geographic claims, physical lighting simulation, raster artwork or external asset. Generic shape/motion revision candidate, not final aesthetic approval.",
+  "purposes": [
+    "decoration"
+  ],
+  "resourceBindings": [],
+  "resourceSlots": [],
+  "revision": 0,
+  "schemaVersion": "moirai.dynamic-asset.v1",
+  "styles": [
+    {
+      "background": null,
+      "description": "深海蓝剪影",
+      "fill": "#102F43",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "edge-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#102F43",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "暗部球面",
+      "fill": "#115A75",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "ocean-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#115A75",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "青蓝球面中间调",
+      "fill": "#20879B",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "ocean-mid-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#20879B",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "左上受光球面",
+      "fill": "#37A6B1",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "ocean-lit-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#37A6B1",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "顶部柔亮层",
+      "fill": "#51BAC0",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "ocean-light-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#51BAC0",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "外经线展开",
+      "fill": "#B8E9DC",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "meridian-wide-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#B8E9DC",
+      "strokeWidth": 9.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "内经线展开",
+      "fill": "#E1F2D9",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "meridian-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#E1F2D9",
+      "strokeWidth": 12.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "赤道示意",
+      "fill": "#D5EEE0",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "equator-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#D5EEE0",
+      "strokeWidth": 11.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "北侧纬线示意",
+      "fill": "#B3E2D7",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "latitude-north-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#B3E2D7",
+      "strokeWidth": 7.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "南侧纬线示意",
+      "fill": "#96CECD",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "latitude-south-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#96CECD",
+      "strokeWidth": 7.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "薄暖白内缘",
+      "fill": "#D9F2E2",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "rim-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#D9F2E2",
+      "strokeWidth": 4.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "左上反光带",
+      "fill": "#ACDDD4",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "glint-soft-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#ACDDD4",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "暖白主高光",
+      "fill": "#F5F3D5",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "glint-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#F5F3D5",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "高光端点",
+      "fill": "#E5F0D7",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "glint-dot-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#E5F0D7",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    }
+  ],
+  "treatments": [
+    {
+      "id": "group-fade-root",
+      "operation": {
+        "channels": [
+          {
+            "keys": [
+              {
+                "easing": "linear",
+                "time": 0.0,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 0.8,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 1.0,
+                "value": 0.0
+              }
+            ],
+            "property": "opacity"
+          },
+          {
+            "keys": [
+              {
+                "easing": "ease_out",
+                "time": 0.0,
+                "value": 0.86
+              },
+              {
+                "easing": "linear",
+                "time": 0.2,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 1.0,
+                "value": 1.0
+              }
+            ],
+            "property": "scale"
+          }
+        ],
+        "kind": "motion",
+        "motionTiming": {
+          "enterEnd": 0.2,
+          "enterSeconds": 0.16,
+          "exitSeconds": 0.06,
+          "exitStart": 0.8
+        }
+      }
+    }
+  ],
+  "usageGuide": {
+    "adjustments": "可整体移动和等比缩放，与说明文字或字幕组合；不要将某条经纬线独立拉长成不一致球面。 所有应用修改保存在本次应用，不隐式更新模板。",
+    "constraints": "仅定性地球/全球图标；没有地图、大陆、真实轴倾角或科学比例。小尺寸检查高光与多条经纬线是否拥挤；图标不能挡原科学示意、脸和手势。",
+    "coverage": "已与r3进行John同源同尺寸实际导出对照，抽帧确认球面层次及细经纬线、两个事件组退场；未连续观片/试听。其他原应用回归、新背景与更小尺寸尚待验证，不继承r3评分。",
+    "fallback": "先调整位置，再放大或移除装饰；若需要具体地理信息改用有来源地图，不用该图形伪装科学数据。",
+    "invariants": "青蓝球面包含深部、中间调和左上受光层，细经纬线整体附着球面；轻弹、经线展开及事件整体淡出保持独立可编辑。所有层一起等比调整，不拆拉某条线。",
+    "purpose": "用于地球、全球或空间观察的定性提示；它是经纬示意，不能替代地图、国界或科学比例模型。"
+  }
+}

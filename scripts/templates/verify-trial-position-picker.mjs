@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import {chromium} from '/Users/zhengwei/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+const base='http://127.0.0.1:3000',id='style-study-20260928-growth';
+const read=async()=>{const r=await fetch(base+'/api/footage/templates/dynamic-assets');assert.ok(r.ok);return r.json();};
+const before=await read(),asset=before.assets.find(x=>x.id===id);assert.ok(asset);
+const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
+try{
+ const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const response=(endpoint='/application')=>page.waitForResponse(r=>r.url().endsWith('/dynamic-assets'+endpoint)&&r.request().method()==='POST');
+ const ready=()=>page.waitForFunction(()=>document.querySelector('.tw-trial-visual')?.getAttribute('aria-busy')==='false');
+ let next=response();await page.goto(`${base}/templates/effects/${id}/try?revision=${asset.revision}&scale=0.26&centerX=0.16&centerY=0.24`);const original=(await(await next).json()).template;await ready();
+ const picker=page.getByRole('group',{name:'主样式快速摆放',exact:true});
+ next=response();await picker.getByRole('button',{name:'左上',exact:true}).click();const movedResponse=await next;assert.ok(movedResponse.ok());const moved=(await movedResponse.json()).template;await ready();
+ assert.deepEqual(movedResponse.request().postDataJSON().transform,{scale:.26,centerX:.25,centerY:.25});
+ assert.deepEqual(moved.elements.map(e=>[e.id,e.timing,e.motionTiming,e.motions]),original.elements.map(e=>[e.id,e.timing,e.motionTiming,e.motions]));
+ assert.equal(await picker.getByRole('button',{name:'左上',exact:true}).getAttribute('aria-pressed'),'true');
+ next=response();await page.getByRole('slider',{name:'水平中心',exact:true}).fill('0.23');await next;await ready();assert.equal(await picker.locator('[aria-pressed=true]').count(),0);
+ next=response();await page.reload();await next;await ready();assert.equal(await page.getByRole('slider',{name:'水平中心',exact:true}).inputValue(),'0.23');
+ await page.getByRole('combobox',{name:'选择叠加样式',exact:true}).selectOption(id);
+ next=response('/insert');await page.getByRole('button',{name:'叠加到试映',exact:true}).click();await next;await ready();
+ next=response('/insert');await page.getByRole('checkbox',{name:'叠加样式1独立位置与大小',exact:true}).check();const enabled=await next;assert.ok(enabled.ok(),await enabled.text());await ready();
+ const extra=page.getByRole('group',{name:'叠加样式1快速摆放',exact:true});
+ next=response('/insert');await extra.getByRole('button',{name:'右下',exact:true}).click();const inserted=await next;assert.ok(inserted.ok());assert.deepEqual(inserted.request().postDataJSON().transform,{scale:.65,centerX:.75,centerY:.75});await ready();
+ assert.equal(await page.getByRole('slider',{name:'水平中心',exact:true}).inputValue(),'0.23');
+ next=response('/insert');await page.reload();await next;await ready();assert.equal(await extra.getByRole('button',{name:'右下',exact:true}).getAttribute('aria-pressed'),'true');
+ await page.waitForFunction(()=>document.querySelector('.tw-effect-preview')?.getAttribute('aria-busy')==='false'&&document.querySelector('canvas[aria-label="效果实时画面"]')?.style.visibility==='visible');
+ assert.ok(await page.locator('canvas[aria-label="效果实时画面"]').evaluate(canvas=>{const d=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;let n=0;for(let i=0;i<d.length;i+=4)if(d[i+3]>40&&Math.max(d[i],d[i+1],d[i+2])>80)n++;return n>100;}));
+ await picker.screenshot({path:'/tmp/trial-position-desktop.png'});
+ await page.setViewportSize({width:390,height:844});await picker.scrollIntoViewIfNeeded();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);await page.screenshot({path:'/tmp/trial-position-mobile.png'});
+ assert.deepEqual(await read(),before);assert.deepEqual(errors,[]);
+ console.log('PASS primary/extra native position, preserved scale and motion/timing, custom position, reload, mobile, unchanged library');
+}finally{await browser.close();}

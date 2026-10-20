@@ -1,0 +1,35 @@
+{
+  "application": {
+    "assetId": "style-study-20260929-note-paper",
+    "assetRevision": 1,
+    "canvas": {
+      "width": 1280,
+      "height": 720,
+      "fps": 30
+    },
+    "placement": {
+      "x": 0,
+      "y": 0,
+      "width": 1,
+      "height": 1
+    },
+    "transform": {
+      "scale": 0.5,
+      "centerX": 0.2,
+      "centerY": 0.25
+    }
+  },
+  "padding": 0.02,
+  "candidates": [
+    {
+      "id": "upper_left",
+      "centerX": 0.2,
+      "centerY": 0.25
+    },
+    {
+      "id": "upper_right",
+      "centerX": 0.86,
+      "centerY": 0.25
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+import fs from 'node:fs/promises';import assert from 'node:assert/strict';import {createHash} from 'node:crypto';
+const root='/Users/zhengwei/Downloads/offset-multiline-real-20260929',base='http://127.0.0.1:3000/api/footage/templates';await fs.mkdir(root,{recursive:true});
+async function api(path,body){const r=await fetch(base+path,{method:body?'POST':'GET',headers:{'content-type':'application/json','x-requested-with':'moirai-footage'},body:body?JSON.stringify(body):undefined});const d=await r.json();assert.ok(r.ok,JSON.stringify(d));return d;}
+const {definition}=await api('/dynamic-assets/style-pilot-20260923-offset');assert.deepEqual(definition,JSON.parse(await fs.readFile('/Users/zhengwei/Downloads/offset-chinese-20260929/saved-definition.json')));
+const application={assetId:definition.id,assetRevision:definition.revision,canvas:{width:1280,height:720,fps:30},placement:{x:0,y:0,width:1,height:1},transform:{scale:.65,centerX:.5,centerY:.85}};
+const {template}=await api('/dynamic-assets/application',application);template.id='offset-multiline-real-20260929';
+const previous=JSON.parse(await fs.readFile('/Users/zhengwei/Downloads/offset-readable-2026-09-28/designs.json'));const samples=previous.samples;
+const designs=[{template,baseRevision:0}];const manifest={name:'双层花字 · 两行实拍验证',brief:'Saved offset v5 on the same three measured public footage inputs and original application. Validate multiline readability and motion without changing audio or source framing. No aesthetic acceptance claimed.',previewOnly:true,designs,samples,idempotencyKey:'offset-multiline-'+createHash('sha256').update(JSON.stringify({designs,samples})).digest('hex')};
+const validation=await api('/samples/validate',{template,samples});for(const [k,v]of Object.entries({asset:definition,application,designs:manifest,validation}))await fs.writeFile(root+'/'+k+'.json',JSON.stringify(v,null,2));
+const batch=await api('/production/author',manifest);await fs.writeFile(root+'/submission.json',JSON.stringify(batch,null,2));console.log(JSON.stringify({batchId:batch.id,root}));

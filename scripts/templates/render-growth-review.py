@@ -1,0 +1,12 @@
+from pathlib import Path
+import json
+p=Path('/Users/zhengwei/Downloads/growth-rule-20260929')
+item=json.load(open(p/'item-1.json'));revision=json.load(open(p/'saved.json'))['revision']
+style='body{margin:0;background:#10151e;color:#edf3fa;font:16px/1.7 system-ui}main{max-width:1080px;margin:auto;padding:24px}section{background:#1b2533;padding:22px;border-radius:16px;margin:24px 0}video,img{display:block;width:100%;border-radius:8px}button{padding:10px;background:#304657;color:#fff;border:0;border-radius:8px;margin:10px 8px 10px 0;cursor:pointer}a{color:#8ce0d2}p{color:#bbcbd9}details{margin:16px 0}summary{cursor:pointer}*{box-sizing:border-box}'
+s=f'<!doctype html><html lang="zh"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>增长提示 · 圆顶柱动效</title><style>{style}</style><main><h1>增长提示 · 圆顶柱动效</h1><p>三柱依次沿底边长出，圆顶与柱身同步，最后整组淡出。以下所有真实画面使用同一套样式、大小与位置。</p><a href="http://127.0.0.1:3000/templates?effect=style-study-20260928-growth">在工作台编辑</a><section><h2>轮廓与运动对比</h2><img src="normal-comparison.jpg"><p>上：旧版方柱；下：圆顶与整组淡出候选。合成时序，六个时刻包含入场、稳定和退场。当前保存版仅将组动效标识统一到编辑入口约定，造型和曲线相同。</p></section>'
+for i,label in enumerate(['浅色背景','高亮背景','背景标识较多']):
+ project=item['fixtureProjects'][i]['projectId']
+ s+=f'<section><h2>{label}</h2><button data-i="{i}" data-v="1">新版 r{revision}</button><button data-i="{i}" data-v="0">旧版 r1</button><span id="label-{i}">新版 r{revision}</span><video id="v-{i}" controls preload="metadata" src="preview-1-{i}.mp4"></video><p><a href="http://127.0.0.1:3000/editor/{project}">独立可编辑样例</a> · 切换版本保留播放位置</p><details><summary>入场与稳定帧（左旧右新）</summary><img loading="lazy" src="entry-{i}.jpg"><img loading="lazy" src="hold-{i}.jpg"></details><details><summary>新版最短事件连续帧</summary><img loading="lazy" src="shortest-{i}.jpg"></details></section>'
+s+='<section><h2>验证范围</h2><p>三个真实来源、六个前后导出；原始音频 PCM 和事件时序保持一致。八个形状可独立选中，组淡出可在面板调整。三根柱子是装饰符号，不表示测量数据。</p><p>这些是视觉适配样例，不是口播语义匹配验收。第三组固定位置会遮挡背景标识；尚未进行听感与实时连续观看验收，不授予 90 分。应用层仍需按内容选择图标并避让重要背景。</p></section></main>'
+s+=f'''<script>document.querySelectorAll('button[data-i]').forEach(b=>b.onclick=()=>{{const i=b.dataset.i,v=document.getElementById('v-'+i),t=v.currentTime,playing=!v.paused;v.pause();v.src='preview-'+b.dataset.v+'-'+i+'.mp4';document.getElementById('label-'+i).textContent=b.dataset.v==='1'?'新版 r{revision}':'旧版 r1';v.addEventListener('loadedmetadata',()=>{{v.currentTime=Math.min(t,v.duration);if(playing)v.play().catch(()=>{{}});}},{{once:true}});v.load();}});</script></html>'''
+(p/'review.html').write_text(s)

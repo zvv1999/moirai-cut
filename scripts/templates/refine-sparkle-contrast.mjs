@@ -1,0 +1,25 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {createRequire} from 'node:module';
+import {createHash} from 'node:crypto';
+import assert from 'node:assert/strict';
+const require=createRequire(path.resolve('apps/web/package.json'));
+const React=require('react'),{renderToStaticMarkup}=require('react-dom/server'),{Sparkles}=require('lucide-react'),sharp=require('sharp');
+const root='/Users/zhengwei/Downloads/sparkle-contrast-2026-09-29';await fs.mkdir(root,{recursive:true});
+async function api(p,b){const r=await fetch('http://127.0.0.1:3000/api/footage/templates'+p,{method:b?'POST':'GET',headers:{'content-type':'application/json','x-requested-with':'moirai-footage'},body:b?JSON.stringify(b):undefined});const d=await r.json();assert.ok(r.ok,JSON.stringify(d));return d;}
+const original=(await api('/dynamic-assets/style-pilot-20260923-sparkle-follow')).definition;assert.equal(original.revision,4);
+await fs.writeFile(root+'/original-v4.json',JSON.stringify(original,null,2));
+const packageRoot=path.dirname(require.resolve('lucide-react/package.json'));
+const license=await fs.readFile(path.join(packageRoot,'LICENSE'),'utf8');await fs.writeFile(root+'/LICENSE.txt',license);
+const version=JSON.parse(await fs.readFile(path.join(packageRoot,'package.json'),'utf8')).version;
+const icon=(color,strokeWidth)=>renderToStaticMarkup(React.createElement(Sparkles,{size:384,color,strokeWidth}));
+const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="384" height="384" viewBox="0 0 384 384">${icon('#493269',3.6)}${icon('#FFE08A',1.9)}</svg>`;
+await fs.writeFile(root+'/sparkle-outlined.svg',svg);
+await sharp(Buffer.from(svg)).resize(320,320).extend({top:32,bottom:32,left:32,right:32,background:{r:0,g:0,b:0,alpha:0}}).png().toFile(root+'/sparkle-outlined.png');
+const asset=await api('/assets',{path:root+'/sparkle-outlined.png',kind:'image',name:'图标 · 星光双色描边',description:'金色线条配深紫外描边，透明底；与星光弹字配套，源SVG与许可留存。',tags:['icon','lucide','星光','双色描边','透明'],provenance:`Lucide ${version}, Sparkles, https://github.com/lucide-icons/lucide. Two recolored stroke layers; derived locally, not AI-generated. Source ${root}/sparkle-outlined.svg. License:\n${license}`});
+assert.ok(asset.id);await fs.writeFile(root+'/asset.json',JSON.stringify(asset,null,2));
+const definition=structuredClone(original);definition.resourceBindings.find(b=>b.slotId==='sparkle-slot').assetId=asset.id;
+definition.resourceSlots.find(s=>s.id==='sparkle-slot').description='金色星光 · 深紫外描边';
+definition.provenance+=' Revision 5: licensed Lucide sparkle derivative with deep-purple outer stroke and pale-gold core for light/dark background legibility. Text, attachment, timing and motion unchanged. Re-evaluation required.';
+const saved=(await api('/dynamic-assets',{definition,baseRevision:4,idempotencyKey:'sparkle-contrast-'+createHash('sha256').update(JSON.stringify(definition)).digest('hex')})).definition;assert.equal(saved.revision,5);
+await fs.writeFile(root+'/saved-v5.json',JSON.stringify(saved,null,2));console.log(JSON.stringify({assetId:asset.id,styleRevision:saved.revision,root}));

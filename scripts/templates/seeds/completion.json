@@ -1,0 +1,932 @@
+{
+  "applications": [
+    {
+      "enabled": true,
+      "target": {
+        "id": "root",
+        "kind": "group"
+      },
+      "treatmentId": "group-fade-root"
+    }
+  ],
+  "canvas": {
+    "fps": 30,
+    "height": 720,
+    "width": 720
+  },
+  "evidence": [],
+  "id": "style-study-20260929-completion",
+  "inputs": [],
+  "layers": [
+    {
+      "content": {
+        "composite": true,
+        "id": "root",
+        "kind": "group",
+        "region": {
+          "height": 1.0,
+          "width": 1.0,
+          "x": 0.0,
+          "y": 0.0
+        },
+        "separateInstances": true
+      },
+      "parentId": null
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "薄荷色外圈",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "halo",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.32,
+            "enterSeconds": 0.18,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.85,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.9
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.32,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.76,
+            "width": 0.76,
+            "x": 0.12,
+            "y": 0.12
+          },
+          "resourceId": null,
+          "styleId": "halo-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 0
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "深绿圆章",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "disc",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.32,
+            "enterSeconds": 0.18,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.85,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "overshoot",
+                  "time": 0.0,
+                  "value": 0.84
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.32,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.64,
+            "width": 0.64,
+            "x": 0.18,
+            "y": 0.18
+          },
+          "resourceId": null,
+          "styleId": "disc-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 1
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选短笔",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "check-short",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.32,
+            "enterSeconds": 0.18,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.015,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.85,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 45.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 45.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.02
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale_x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": -42.336
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": -42.336
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.065,
+            "width": 0.16970562748477142,
+            "x": 0.29514718625761427,
+            "y": 0.5275000000000001
+          },
+          "resourceId": null,
+          "styleId": "check-short-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 2
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选长笔",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "check-long",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.32,
+            "enterSeconds": 0.18,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.15500000000000003,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.85,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -47.12109639666146
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -47.12109639666146
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.02
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.14,
+                  "value": 0.02
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.32,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale_x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -91.72799999999998
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.14,
+                  "value": -91.72799999999998
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.32,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 98.78399999999998
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.14,
+                  "value": 98.78399999999998
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.32,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.065,
+            "width": 0.38209946349085594,
+            "x": 0.378950268254572,
+            "y": 0.4475
+          },
+          "resourceId": null,
+          "styleId": "check-long-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 2
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "短笔圆端",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "cap-start",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.32,
+            "enterSeconds": 0.18,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.015,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.85,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.065,
+            "width": 0.065,
+            "x": 0.2875,
+            "y": 0.4675
+          },
+          "resourceId": null,
+          "styleId": "cap-start-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 3
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "圆角接缝",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "cap-joint",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.32,
+            "enterSeconds": 0.18,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.125,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.14,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.85,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.065,
+            "width": 0.065,
+            "x": 0.4075,
+            "y": 0.5875
+          },
+          "resourceId": null,
+          "styleId": "cap-joint-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 3
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "长笔圆端",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "cap-end",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.32,
+            "enterSeconds": 0.18,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.305,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.32,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.85,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.065,
+            "width": 0.065,
+            "x": 0.6675,
+            "y": 0.3075
+          },
+          "resourceId": null,
+          "styleId": "cap-end-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 3
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    }
+  ],
+  "name": "完成提示 · 勾选成形",
+  "provenance": "Original native editable completion symbol: two discs, two sequentially revealed check strokes and three round caps. No external bitmap. Keyword timing is supplied by the applied content; use only where completion or confirmation is semantically appropriate.",
+  "purposes": [
+    "decoration"
+  ],
+  "resourceBindings": [],
+  "resourceSlots": [],
+  "revision": 0,
+  "schemaVersion": "moirai.dynamic-asset.v1",
+  "styles": [
+    {
+      "background": null,
+      "description": "薄荷色外圈",
+      "fill": "#D9F2E8",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "halo-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "深绿圆章",
+      "fill": "#19765F",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "disc-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选短笔",
+      "fill": "#F4FFF9",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "check-short-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选长笔",
+      "fill": "#F4FFF9",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "check-long-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "短笔圆端",
+      "fill": "#F4FFF9",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "cap-start-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "圆角接缝",
+      "fill": "#F4FFF9",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "cap-joint-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "长笔圆端",
+      "fill": "#F4FFF9",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "cap-end-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    }
+  ],
+  "treatments": [
+    {
+      "id": "group-fade-root",
+      "operation": {
+        "channels": [
+          {
+            "keys": [
+              {
+                "easing": "linear",
+                "time": 0.0,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 0.8,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 1.0,
+                "value": 0.0
+              }
+            ],
+            "property": "opacity"
+          }
+        ],
+        "kind": "motion",
+        "motionTiming": {
+          "enterEnd": 0.2,
+          "enterSeconds": 0.18,
+          "exitSeconds": 0.06,
+          "exitStart": 0.8
+        }
+      }
+    }
+  ],
+  "usageGuide": {
+    "adjustments": "可调整位置、等比尺寸，与实际确认短语组合；保留短笔到长笔的方向和连续关系。 所有应用修改保存在本次应用，不隐式更新模板。",
+    "constraints": "完整勾形须有稳定展示；不覆盖选项文本或真实控件，不把多个任务合并成一次已完成宣告。",
+    "coverage": "旧视觉r4有separateInstances修复与三图标复测；这里只能证明相应结构和帧序列，不代表“已完成”语义自动判断或听感已通过。 本次仅核对定义并补指南，未重新渲染、连续观片或试听；新版本应用评审未完成，旧分数不自动继承。",
+    "fallback": "短事件先简化成形动作的定制组合，仍无法辨识则用静态文本；语义不确定时不触发。",
+    "invariants": "保持勾选符号与圆形衬底的整体关系、勾形逐段成形和组同步消失；图形仅表示状态，不能替代内容。",
+    "purpose": "用于已完成、确认、通过的正向反馈；建议尚未执行或存在否定时不得显示已完成。"
+  }
+}

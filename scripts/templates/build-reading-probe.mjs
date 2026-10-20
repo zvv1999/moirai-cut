@@ -1,0 +1,4 @@
+import path from 'node:path';
+const bg=path.resolve('node_modules/.bun/opencut-wasm@0.2.10/node_modules/opencut-wasm/opencut_wasm_bg.js');
+const result=await Bun.build({entrypoints:['apps/web/src/text/measure-element.ts'],target:'browser',outdir:'/tmp/moirai-reading-probe',plugins:[{name:'load-real-wasm-in-browser',setup(build){build.onResolve({filter:/^opencut-wasm$/},()=>({path:'opencut-wasm',namespace:'reading-wasm'}));build.onLoad({filter:/.*/,namespace:'reading-wasm'},()=>({loader:'js',contents:`import * as bindings from ${JSON.stringify(bg)}; export * from ${JSON.stringify(bg)}; const {instance}=await WebAssembly.instantiateStreaming(fetch('/__reading_wasm__'),{'./opencut_wasm_bg.js':bindings}); bindings.__wbg_set_wasm(instance.exports); instance.exports.__wbindgen_start();`}));}}]});
+if(!result.success){console.error(result.logs);process.exit(1);}console.log(result.outputs.map(o=>o.path));

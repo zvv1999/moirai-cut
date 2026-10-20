@@ -1,0 +1,36 @@
+import fs from "node:fs/promises";
+import {createHash} from "node:crypto";
+import {isDeepStrictEqual} from "node:util";
+const root=process.env.PILOT_OUTPUT??"/Users/zhengwei/Downloads/effect-follow-pilot-2026-09-23";
+const base="http://127.0.0.1:3000/api/footage/templates";
+async function api(path,body){const r=await fetch(base+path,{method:body?"POST":"GET",headers:{"content-type":"application/json","x-requested-with":"moirai-footage"},body:body?JSON.stringify(body):undefined});const d=await r.json();if(!r.ok)throw new Error(JSON.stringify(d));return d;}
+const assets=(await api("/dynamic-assets")).assets;
+let definition=structuredClone(assets.find(a=>a.id==="style-pilot-20260923-adaptive"));
+if(!definition)throw new Error("Adaptive style is required");
+definition.id="style-pilot-20260923-sparkle-follow";
+definition.name="重点标记 · 闪亮跟随";
+definition.provenance="Original editable follow-motion study using the existing licensed Lucide Sparkles library asset. Not reference fidelity or aesthetic certification.";
+const mediaId="visual-12a7c035ca89c69d1303040b30207b9c3c5e799dd8d477131bf79a88868979ae";
+const added=await api("/dynamic-assets/media",{definition,assetId:mediaId,parentId:"root"});
+definition=added.definition;
+const text=definition.layers.find(l=>l.content.kind==="element"&&l.content.element.id==="headline").content.element;
+const icon=definition.layers.find(l=>l.content.kind==="element"&&l.content.element.id===added.selectedLayerId).content.element;
+const oldSlot=icon.resourceId;icon.id="sparkle";icon.resourceId="sparkle-slot";
+definition.resourceSlots.find(s=>s.id===oldSlot).id=icon.resourceId;
+definition.resourceBindings.find(b=>b.slotId===oldSlot).slotId=icon.resourceId;
+icon.description="闪亮装饰";icon.binding=text.binding;icon.timing=structuredClone(text.timing);icon.motionTiming=structuredClone(text.motionTiming);
+icon.region={x:0.6,y:0.2,width:0.14,height:0.14};
+icon.motions=[structuredClone(text.motions.find(m=>m.property==="opacity")),{property:"scale",keys:[{time:0,value:0.8,easing:"linear"},{time:1,value:0.8,easing:"linear"}]}];
+definition.spatialRelations=[{elementId:icon.id,relativeTo:text.id,placement:"above",gap:0,offsetX:0.2,offsetY:0.13,followMotion:true}];
+const existing=assets.find(a=>a.id===definition.id);definition.revision=existing?.revision??0;
+definition.purposes=existing?.purposes ?? ["keyword","decorative_text"];
+definition=(await api("/dynamic-assets/inspect",definition)).definition;
+const fingerprint=createHash("sha256").update(JSON.stringify(definition)).digest("hex");
+const saved=existing&&isDeepStrictEqual(existing,definition)?existing:(await api("/dynamic-assets",{definition,baseRevision:definition.revision,idempotencyKey:`follow-style-${fingerprint}`})).definition;
+const template=(await api("/dynamic-assets/application",{assetId:saved.id,assetRevision:saved.revision,canvas:{width:1280,height:720,fps:30},placement:{x:0,y:0,width:1,height:1},transform:{scale:0.85,centerX:0.5,centerY:0.75}})).template;
+const source=JSON.parse(await fs.readFile("/Users/zhengwei/Downloads/effect-style-pilot-2026-09-23/designs.json","utf8"));
+for(const sample of source.samples){const input=await api(`/inputs/${sample.inputId}`);if(input.transcript.revision!==sample.transcriptRevision)throw new Error("Transcript revision changed");}
+const designs=[{template,baseRevision:0}];
+const hash=createHash("sha256").update(JSON.stringify({designs,samples:source.samples})).digest("hex").slice(0,24);
+await fs.mkdir(root,{recursive:true});await fs.writeFile(`${root}/designs.json`,JSON.stringify({idempotencyKey:`follow-pilot-${hash}`,name:"透明图标跟随重点词试映",brief:"Verify editable image relation, measured keyword timing and independent opacity in actual exports. Preview-only original study.",previewOnly:true,designs,samples:source.samples},null,2));
+console.log(JSON.stringify({id:saved.id,revision:saved.revision,manifest:`${root}/designs.json`}));

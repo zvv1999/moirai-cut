@@ -1,0 +1,10 @@
+import fs from 'node:fs/promises';import assert from 'node:assert/strict';import {createHash} from 'node:crypto';
+const root='/Users/zhengwei/Downloads/caption-three-inputs-20260929';
+const api=async(p,b)=>{const r=await fetch('http://127.0.0.1:3000/api/footage/templates'+p,{method:b?'POST':'GET',headers:{'content-type':'application/json','x-requested-with':'moirai-footage'},body:b?JSON.stringify(b):undefined});const raw=await r.text();assert.ok(r.ok,raw);return JSON.parse(raw)};
+const style=(await api('/dynamic-assets/style-pilot-20260923-caption')).definition;assert.equal(style.revision,3);
+const application={assetId:style.id,assetRevision:style.revision,canvas:{width:1280,height:720,fps:30},placement:{x:0,y:0,width:1,height:1},transform:{scale:.7,centerX:.5,centerY:.86},captionWidth:.84};
+const template=(await api('/dynamic-assets/application',application)).template;
+const {samples}=JSON.parse(await fs.readFile('/Users/zhengwei/Downloads/cyan-accent-saved-20260929/designs.json','utf8'));
+for(const s of samples)assert.equal((await api('/inputs/'+s.inputId)).transcript.revision,s.transcriptRevision);
+const manifest={name:'逐词字幕 · 三输入适配验证',brief:'Saved caption r3 applied to three measured inputs. Verify complete caption coverage, word-level highlights, readability and line transitions. No saved-style overwrite or aesthetic acceptance.',previewOnly:true,designs:[{template,baseRevision:0}],samples,idempotencyKey:'caption-three-'+createHash('sha256').update(JSON.stringify({template,samples})).digest('hex')};
+await fs.mkdir(root,{recursive:true});for(const [n,data]of Object.entries({'style.json':style,'application.json':application,'designs.json':manifest}))await fs.writeFile(root+'/'+n,JSON.stringify(data,null,2));const batch=await api('/production/author',manifest);await fs.writeFile(root+'/submission.json',JSON.stringify(batch,null,2));console.log(JSON.stringify({root,batchId:batch.id}));

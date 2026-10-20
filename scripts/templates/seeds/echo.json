@@ -1,0 +1,455 @@
+{
+  "applications": [],
+  "canvas": {
+    "fps": 30,
+    "height": 720,
+    "width": 720
+  },
+  "evidence": [],
+  "id": "style-study-20260924-echo",
+  "inputs": [
+    {
+      "default": "重点来了",
+      "id": "text",
+      "label": "主文字",
+      "layerIds": [
+        "headline",
+        "echo-text",
+        "echo-right"
+      ],
+      "maxCharacters": 100
+    }
+  ],
+  "layers": [
+    {
+      "content": {
+        "id": "root",
+        "kind": "group",
+        "region": {
+          "height": 1.0,
+          "width": 1.0,
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "parentId": null
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "入场强调 · 消散重影",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "text",
+            "role": "emphasis"
+          },
+          "id": "headline",
+          "intents": [],
+          "literal": "重点来了",
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.16,
+            "exitSeconds": 0.1,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.9
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.08,
+                  "value": 1.035
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.125,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.8,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.3,
+            "width": 0.85,
+            "x": 0.075,
+            "y": 0.35
+          },
+          "resourceId": null,
+          "styleId": "headline-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 1
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "珊瑚色左侧入场重影",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "text",
+            "role": "decoration"
+          },
+          "id": "echo-text",
+          "intents": [],
+          "literal": "重点来了",
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.16,
+            "exitSeconds": 0.1,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.035,
+                  "value": 0.55
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": -30.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.9
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.08,
+                  "value": 1.035
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.125,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.3,
+            "width": 0.85,
+            "x": 0.075,
+            "y": 0.35
+          },
+          "resourceId": null,
+          "styleId": "echo-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 0
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "青色右侧入场重影",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "text",
+            "role": "decoration"
+          },
+          "id": "echo-right",
+          "intents": [],
+          "literal": "重点来了",
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.16,
+            "exitSeconds": 0.1,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.035,
+                  "value": 0.55
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 30.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "x"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.9
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.08,
+                  "value": 1.035
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.125,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.3,
+            "width": 0.85,
+            "x": 0.075,
+            "y": 0.35
+          },
+          "resourceId": null,
+          "styleId": "echo-right-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": -1
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    }
+  ],
+  "name": "入场强调 · 消散重影",
+  "provenance": "Original editable typography study, native text and motion rather than extracted reference imagery. White headline with two opposed chromatic reading replicas. Generic5% font-size outline, main shadow2% font-size blur/offset at20% opacity,160ms entrance and100ms exit. All layers share content and typography; no case-specific words or keyframes. Short events use native phase compression and require fresh reading-budget verification. Revision8 cleans the current usage contract without changing the revision7 visual graph; no review score or aesthetic approval inherited.",
+  "purposes": [
+    "keyword",
+    "decorative_text"
+  ],
+  "readingReplicas": [
+    {
+      "elementId": "echo-text",
+      "primaryId": "headline"
+    },
+    {
+      "elementId": "echo-right",
+      "primaryId": "headline"
+    }
+  ],
+  "resourceBindings": [],
+  "resourceSlots": [],
+  "revision": 0,
+  "schemaVersion": "moirai.dynamic-asset.v1",
+  "styles": [
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#FFFFFF",
+      "fontFamily": "PingFang SC",
+      "fontSize": 100.0,
+      "id": "headline-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.15,
+      "maxLines": 2,
+      "shadow": {
+        "blur": 2.0,
+        "color": "#101419",
+        "opacity": 0.2,
+        "x": 0.0,
+        "y": 2.0
+      },
+      "stroke": "#151C22",
+      "strokeWidth": 5.0,
+      "textAlign": "center",
+      "weight": 900
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#F45B79",
+      "fontFamily": "PingFang SC",
+      "fontSize": 100.0,
+      "id": "echo-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.15,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#F45B79",
+      "strokeWidth": 5.0,
+      "textAlign": "center",
+      "weight": 900
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#45D7EF",
+      "fontFamily": "PingFang SC",
+      "fontSize": 100.0,
+      "id": "echo-right-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.15,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#45D7EF",
+      "strokeWidth": 5.0,
+      "textAlign": "center",
+      "weight": 900
+    }
+  ],
+  "treatments": [],
+  "usageGuide": {
+    "adjustments": "Agent可在单次Application调整位置、行宽与整体比例，不隐式更新素材库；重影位移或透明度修改属于明确的定制组合，须重新审查视觉竞争。字号变化应按比例保持描边和阴影；画幅变化使用原生Application适配。",
+    "constraints": "主文不可被重影遮没，稳定期不可成为三重文本；关键帧边界保持安全区。三个文本均按keyword绑定、最多2行。主字承担稳定阅读；只有当前实片证据证明同源同文且主字预算通过，装饰副本才可沿用主字停留预算，副本字号/换行/溢出/边界检查仍保留。退出100ms可能压缩稳定窗，必须按当前事件重新测量，不能降低原阅读预算或延长源词时间。",
+    "coverage": "当前规则来自既有三输入的A/B草稿：深色太阳访谈、浅墙访谈与中文黑底TTS。旧r6及过渡r7证据保留但不继承其评分；r8精确Application必须重新导出并核对实际差异。代表帧和技术检查不替代连续观片/原声试听，未声明最终审美通过或复杂背景泛化。",
+    "fallback": "先降低强调密度或选择安静位置；短窗口不满足阅读时，换静态主字或较轻效果，不保留仅有彩色糊影的入口。调整后重新导出和检查，不靠更改源词时间让测量通过。",
+    "invariants": "三层原生文本：白色主字与红/青同文装饰副本。默认源字号100px，三层描边5px（字号5%）；主字阴影blur/y各2px（字号2%）、opacity20%。入口160ms，红青重影从两侧收敛并消散，主字回弹后稳定；退出100ms。保留readingReplicas、相同文字/字号/换行和独立可编辑动效。",
+    "purpose": "用于短促冲击、反差或情绪强调；不作为持续正文的阅读方式。"
+  }
+}

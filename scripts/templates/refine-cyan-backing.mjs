@@ -1,0 +1,12 @@
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+const root='/Users/zhengwei/Downloads/cyan-backing-trial-20260929';
+const api=async(path,body)=>{const r=await fetch('http://127.0.0.1:3000/api/footage/templates'+path,{method:body?'POST':'GET',headers:{'content-type':'application/json','x-requested-with':'moirai-footage'},body:body?JSON.stringify(body):undefined});const d=await r.json();assert.ok(r.ok,JSON.stringify(d));return d;};
+const prior=JSON.parse(await fs.readFile('/Users/zhengwei/Downloads/cyan-landscape-side-20260929/designs.json','utf8'));
+const designs=structuredClone(prior.designs);const template=designs[0].template;
+template.id='composition-cyan-backing-trial';template.name='青色弹字 · 深色底板候选';
+const text=template.elements.find(e=>e.id==='headline'),style=template.styles.find(s=>s.id===text.styleId);assert.ok(style);style.background='#17232E';style.backgroundPadding={x:14,y:8};style.strokeWidth=2;
+const samples=prior.samples;for(const s of samples)assert.equal((await api('/inputs/'+s.inputId)).transcript.revision,s.transcriptRevision);
+const manifest={name:template.name,brief:'Preview-only candidate from cyan r2 left-side application. Add native measured solid navy text background and padding, reduce outline. Existing schema has no separate background opacity; do not claim translucency. Same samples and timing, no saved-style overwrite or aesthetic score transfer.',previewOnly:true,designs,samples,idempotencyKey:'cyan-backing-'+createHash('sha256').update(JSON.stringify({designs,samples})).digest('hex')};
+await fs.mkdir(root,{recursive:true});await fs.writeFile(root+'/designs.json',JSON.stringify(manifest,null,2));const batch=await api('/production/author',manifest);await fs.writeFile(root+'/submission.json',JSON.stringify(batch,null,2));console.log(JSON.stringify({batchId:batch.id,root}));

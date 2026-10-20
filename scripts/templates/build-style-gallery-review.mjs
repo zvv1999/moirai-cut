@@ -1,0 +1,7 @@
+import fs from 'node:fs/promises';
+const root=process.env.PILOT_OUTPUT??'/Users/zhengwei/Downloads/style-quality-gallery-events-2026-09-29';
+const m=JSON.parse(await fs.readFile(root+'/manifest.json','utf8'));
+const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cards=m.results.map(a=>`<article><h2>${a.index+1}. ${escape(a.name)}</h2><p>版本 ${a.revision} · ${escape(a.purposes.join(' / '))}</p><img src="${a.index}-detail.png" alt="${escape(a.name)}的局部细节"><p>局部放大，仅供看样式；不代表成片大小。</p><details><summary>查看实际画幅与位置</summary><img src="${a.index}-${a.sampleTimes[0]}.png" alt="${escape(a.name)}的完整画幅"></details><p>实际事件采样 ${a.sampleTimes[0]} 秒</p><a href="http://127.0.0.1:3000/templates?effect=${encodeURIComponent(a.id)}">编辑样式</a></article>`);
+await fs.writeFile(root+'/review.html',`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>20个样式 · 同文案视觉筛查</title><style>body{background:#131820;color:#eef1f5;font:16px system-ui;margin:30px}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px}article{padding:16px;background:#202833;border-radius:12px}h2{font-size:17px}img{width:100%;height:260px;object-fit:contain;background:black}a{color:#9ad7ff}p{line-height:1.7}</style><h1>20个样式 · 同文案视觉筛查</h1><p>示例句子：${escape(m.exampleText)}；重点词：${escape(m.exampleKeyword)}。按各样式实际事件取帧，库定义未改。</p><p>这是合成示例的静态筛查，用于比较层级、配色和风格差异。不是原声成片、连续动效或审美评分，不能据此认定达到90分。</p><main>${cards.join('')}</main>`);
+console.log(root+'/review.html');

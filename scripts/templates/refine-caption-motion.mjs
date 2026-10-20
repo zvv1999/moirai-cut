@@ -1,0 +1,14 @@
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+const root='/Users/zhengwei/Downloads/caption-motion-20260929',prior='/Users/zhengwei/Downloads/caption-saved-20260929';
+const api=async(path,body)=>{const r=await fetch('http://127.0.0.1:3000/api/footage/templates'+path,{method:body?'POST':'GET',headers:{'content-type':'application/json','x-requested-with':'moirai-footage'},body:body?JSON.stringify(body):undefined});const d=await r.json();assert.ok(r.ok,JSON.stringify(d));return d;};
+const original=JSON.parse(await fs.readFile(prior+'/designs.json','utf8'));
+const style=JSON.parse(await fs.readFile(prior+'/style.json','utf8'));assert.deepEqual((await api('/dynamic-assets/'+style.id)).definition,style);
+const designs=structuredClone(original.designs),t=designs[0].template;t.id='composition-caption-motion-trial';t.name='清晰逐词字幕 · 轻移入退场对照';
+const e=t.elements.find(e=>e.id==='headline');assert.ok(e);assert.deepEqual(e.motions.map(m=>m.property),['y']);
+e.motionTiming={enterEnd:.2,exitStart:.8,enterSeconds:.18,exitSeconds:.1};
+e.motions=[{property:'y',keys:[{time:0,value:10,easing:'ease_out'},{time:.2,value:0,easing:'linear'},{time:.8,value:0,easing:'ease_in'},{time:1,value:5,easing:'linear'}]}];
+for(const sample of original.samples)assert.equal((await api('/inputs/'+sample.inputId)).transcript.revision,sample.transcriptRevision);
+const manifest={name:t.name,brief:'Preview-only comparison: ten pixel 180ms settling entry and five pixel 100ms departing motion. Preserve full text opacity, measured speech, wrapping, highlight and appearance. Not a saved revision or qualified design.',previewOnly:true,designs,samples:original.samples,idempotencyKey:'caption-motion-'+createHash('sha256').update(JSON.stringify({designs,samples:original.samples})).digest('hex')};
+await fs.mkdir(root,{recursive:true});await fs.copyFile(prior+'/application.json',root+'/application.json');await fs.writeFile(root+'/designs.json',JSON.stringify(manifest,null,2));const b=await api('/production/author',manifest);await fs.writeFile(root+'/submission.json',JSON.stringify(b,null,2));console.log(JSON.stringify({root,batchId:b.id}));

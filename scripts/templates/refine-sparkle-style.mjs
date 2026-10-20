@@ -1,0 +1,26 @@
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+const root='/Users/zhengwei/Downloads/sparkle-refine-2026-09-29';
+async function api(path,body){const r=await fetch('http://127.0.0.1:3000/api/footage/templates'+path,{method:body?'POST':'GET',headers:{'content-type':'application/json','x-requested-with':'moirai-footage'},body:body?JSON.stringify(body):undefined});const d=await r.json();assert.ok(r.ok,JSON.stringify(d));return d;}
+assert.ok((await api('/schema')).productionAuthoringInput);
+const original=(await api('/dynamic-assets/style-pilot-20260923-sparkle-follow')).definition;
+assert.equal(original.revision,3,'Re-read newer revisions before editing');
+await fs.mkdir(root,{recursive:true});await fs.writeFile(root+'/original-v3.json',JSON.stringify(original,null,2));
+const d=structuredClone(original);d.name='灵动强调 · 星光弹字';
+const text=d.layers.find(l=>l.content.element?.id==='headline').content.element;
+const star=d.layers.find(l=>l.content.element?.id==='sparkle').content.element;
+const motion=(property,values)=>({property,keys:values.map(([time,value,easing='linear'])=>({time,value,easing}))});
+text.features.role='emphasis';text.region={x:.10,y:.34,width:.72,height:.32};
+for(const e of [text,star])e.motionTiming={enterEnd:.2,exitStart:.8,enterSeconds:.12,exitSeconds:.07};
+const opacity=motion('opacity',[[0,0,'ease_out'],[.12,1],[.8,1,'ease_in'],[1,0]]);
+text.motions=[opacity,motion('scale',[[0,.88,'ease_out'],[.14,1.035,'ease_out'],[.2,1],[1,1]])];
+star.region={x:.84,y:.37,width:.11,height:.11};
+star.motions=[structuredClone(opacity),motion('rotation',[[0,-24,'ease_out'],[.2,0],[1,0]]),motion('scale',[[0,.55,'ease_out'],[.14,1.08,'ease_out'],[.2,1],[1,1]])];
+d.spatialRelations=[{elementId:'sparkle',relativeTo:'headline',placement:'right',referenceBounds:'text_box',gap:.018,offsetX:0,offsetY:-.045,followMotion:true}];
+Object.assign(d.styles[0],{fontSize:84,weight:800,fill:'#F4E8FF',background:null,stroke:'#493269',strokeWidth:5,lineHeight:1.12,maxLines:2,shadow:{color:'#231433',opacity:.6,blur:2,x:2,y:5}});
+delete d.styles[0].backgroundPadding;
+d.provenance+=' Revision 4: replace fluorescent panel with lavender outlined display lettering; measured right-edge gold sparkle with a brief rotation/pop. Preserve independent editable image and keyword timing. Requires visual/audio review; no score inherited.';
+const normalized=(await api('/dynamic-assets/inspect',d)).definition;
+const saved=(await api('/dynamic-assets',{definition:normalized,baseRevision:3,idempotencyKey:'sparkle-refine-'+createHash('sha256').update(JSON.stringify(normalized)).digest('hex')})).definition;
+assert.equal(saved.revision,4);await fs.writeFile(root+'/saved-v4.json',JSON.stringify(saved,null,2));console.log(JSON.stringify({id:saved.id,revision:saved.revision,root}));

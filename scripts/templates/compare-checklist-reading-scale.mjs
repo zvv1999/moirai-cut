@@ -1,0 +1,18 @@
+import fs from 'node:fs/promises';import assert from 'node:assert/strict';import {execFileSync} from 'node:child_process';
+const root='/Users/zhengwei/Downloads/checklist-reading-scale-20260930',base='http://127.0.0.1:3000/api/footage/templates',ff='/Users/zhengwei/.local/share/moirai-cut/bin/ffmpeg',results=[];
+const read=p=>fs.readFile(p,'utf8').then(JSON.parse);
+for(const i of [0,1,2]){
+ const folder=root+'/'+i,previous='/Users/zhengwei/Downloads/'+(i===0?'checklist-side-reading-20260930':'checklist-side-phrases-20260930')+'/'+i;
+ const item=await read(folder+'/item.json'),plan=item.output.fixtures[0].compilation.plan,measurements=await read(folder+'/reading-measurements.json');
+ const pcm=p=>execFileSync(ff,['-v','error','-i',p,'-vn','-f','s16le','-acodec','pcm_s16le','-'],{maxBuffer:16*1024*1024});assert.ok(pcm(folder+'/0.mp4').equals(pcm(previous+'/0.mp4')));
+ assert.ok(measurements.every(m=>m.sample.fontSizePx===40&&m.sample.lineCount<=3&&!m.sample.overflowing));
+ const request=await read(folder+'/reading-request.json');request.readingCheck.minFontSizePx=40;
+ const response=await fetch(base+'/dynamic-assets/placement-advice',{method:'POST',headers:{'content-type':'application/json','x-requested-with':'moirai-footage'},body:JSON.stringify(request)}),advice=await response.json();assert.ok(response.ok);assert.equal(advice.readingCheck.status,'passed');assert.equal(advice.selectedId,i===2?'right':'left');await fs.writeFile(folder+'/reading-advice.json',JSON.stringify(advice,null,2));
+ if(i>0){const old=await read(previous+'/item.json');assert.deepEqual(plan.captions.map(c=>[c.text,c.start,c.end]),old.output.fixtures[0].compilation.plan.captions.map(c=>[c.text,c.start,c.end]));}
+ const time=i===0?4:plan.captions[0].start+(plan.captions[0].end-plan.captions[0].start)/2;
+ for(const [label,file]of[['before',previous+'/0.mp4'],['after',folder+'/0.mp4']])execFileSync(ff,['-v','error','-y','-ss',String(time),'-i',file,'-frames:v','1',folder+'/'+label+'.png']);
+ results.push({fixture:i,captions:plan.captions.length,actualFontSize:40,maxLines:Math.max(...measurements.map(m=>m.sample.lineCount)),sourcePcmUnchanged:true,readingSpeedWarnings:plan.warnings.filter(w=>w.includes('reading_speed')),sameCueTiming:i>0,readingGate:advice.readingCheck});
+}
+await fs.writeFile(root+'/comparison.json',JSON.stringify({results,decision:'improved_size_not_default_full_captions',score:null,listened:false},null,2));
+const sections=results.map(r=>`<section><h2>样例 ${r.fixture+1} · ${r.captions} 句</h2><p>40px，最多${r.maxLines}行；阅读速度警告${r.readingSpeedWarnings.length}处。${r.sameCueTiming?'与上一版字幕时间完全相同。':'自动分段变为9句，切换过碎，仍需调整。'}</p><div class="pair"><figure><figcaption>之前 · 32px</figcaption><img src="${r.fixture}/before.png"></figure><figure><figcaption>本轮 · 40px</figcaption><img src="${r.fixture}/after.png"></figure></div><video controls preload="metadata" src="${r.fixture}/0.mp4"></video><details><summary>全部字幕中点</summary><img src="${r.fixture}/0-captions.jpg"></details></section>`).join('');
+await fs.writeFile(root+'/review.html',`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>侧栏大字效果对照</title><style>body{max-width:1400px;margin:auto;padding:24px;background:#17212a;color:#eee;font:16px system-ui}h1{font-size:28px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:16px}figure{margin:0}img,video{max-width:100%}video{display:block;width:900px;margin:20px auto}section{margin:40px 0}figcaption{margin:10px 0}@media(max-width:800px){.pair{grid-template-columns:1fr}}</style><h1>侧栏大字：视觉分量提升，完整字幕适配仍待完善</h1><p>三份输入共用40px、26%栏宽、最多三行、轻描边、左对齐，左右位置由原生保护区建议选择。22句实测无缩字、无溢出，原声PCM不变。不是三款新模板，不授予90分，也不设为完整字幕默认。未试听、未实时连续观看。</p>${sections}`);console.log(JSON.stringify(results));

@@ -1,0 +1,14 @@
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+const root='/Users/zhengwei/Downloads/cyan-landscape-refined-20260929';
+const api=async(path,body)=>{const r=await fetch('http://127.0.0.1:3000/api/footage/templates'+path,{method:body?'POST':'GET',headers:{'content-type':'application/json','x-requested-with':'moirai-footage'},body:body?JSON.stringify(body):undefined});const d=await r.json();assert.ok(r.ok,JSON.stringify(d));return d;};
+const style=(await api('/dynamic-assets/style-study-20260928-cyan-impact')).definition;assert.equal(style.revision,2);
+const application={assetId:style.id,assetRevision:2,canvas:{width:1280,height:720,fps:30},placement:{x:0,y:0,width:1,height:1},transform:{scale:1.45,centerX:.5,centerY:.76}};
+const {template}=await api('/dynamic-assets/application',application);
+const prior=JSON.parse(await fs.readFile('/Users/zhengwei/Downloads/cyan-formats-20260929/designs.json','utf8'));
+const third=JSON.parse(await fs.readFile('/Users/zhengwei/Downloads/effect-editorial-styles-2026-09-28/designs.json','utf8')).samples.find(s=>s.inputId==='input-cde88118397f50e922df4e606786d79f');assert.ok(third);
+const samples=[...prior.samples,{...third,focalPoint:{x:.5,y:.4}}];for(const s of samples)assert.equal((await api('/inputs/'+s.inputId)).transcript.revision,s.transcriptRevision);
+const designs=[{template,baseRevision:0}],manifest={name:'青色弹字 · 横屏阅读尺度修正',brief:'Saved style r2; landscape application scale .95 to 1.45, centerY .72 to .76. Two existing inputs plus a third measured interview; no authored word timing or aesthetic score transfer.',previewOnly:true,designs,samples,idempotencyKey:'cyan-landscape-'+createHash('sha256').update(JSON.stringify({designs,samples})).digest('hex')};
+await fs.mkdir(root,{recursive:true});await fs.writeFile(root+'/designs.json',JSON.stringify(manifest,null,2));await fs.writeFile(root+'/application.json',JSON.stringify(application,null,2));await fs.writeFile(root+'/style.json',JSON.stringify(style,null,2));
+const batch=await api('/production/author',manifest);await fs.writeFile(root+'/submission.json',JSON.stringify(batch,null,2));assert.deepEqual((await api('/dynamic-assets/'+style.id)).definition,style);console.log(JSON.stringify({batchId:batch.id,root}));

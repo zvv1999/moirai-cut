@@ -1,0 +1,1588 @@
+{
+  "applications": [
+    {
+      "enabled": true,
+      "target": {
+        "id": "root",
+        "kind": "group"
+      },
+      "treatmentId": "group-fade-root"
+    }
+  ],
+  "canvas": {
+    "fps": 30,
+    "height": 720,
+    "width": 720
+  },
+  "evidence": [],
+  "id": "style-study-20260929-checklist",
+  "inputs": [],
+  "layers": [
+    {
+      "content": {
+        "composite": true,
+        "id": "root",
+        "kind": "group",
+        "region": {
+          "height": 1.0,
+          "width": 1.0,
+          "x": 0.0,
+          "y": 0.0
+        },
+        "separateInstances": true
+      },
+      "parentId": null
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "纸张偏移阴影",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "shadow",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.72,
+            "width": 0.54,
+            "x": 0.255,
+            "y": 0.16
+          },
+          "resourceId": null,
+          "styleId": "shadow-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 1
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单深蓝外框",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "edge",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.72,
+            "width": 0.54,
+            "x": 0.23,
+            "y": 0.13
+          },
+          "resourceId": null,
+          "styleId": "edge-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 2
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "暖白清单纸",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "paper",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.68,
+            "width": 0.5,
+            "x": 0.25,
+            "y": 0.15
+          },
+          "resourceId": null,
+          "styleId": "paper-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 3
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "靛蓝标题条",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "header",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.11,
+            "width": 0.5,
+            "x": 0.25,
+            "y": 0.15
+          },
+          "resourceId": null,
+          "styleId": "header-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 4
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "奶油色装订夹",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "clip",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.075,
+            "width": 0.18,
+            "x": 0.41,
+            "y": 0.105
+          },
+          "resourceId": null,
+          "styleId": "clip-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 5
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "完成底块1",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "box-0",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.1,
+            "width": 0.1,
+            "x": 0.3,
+            "y": 0.34
+          },
+          "resourceId": null,
+          "styleId": "box-0-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选短笔1",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "tick-short-0",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.08,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 42.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 42.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.017,
+            "width": 0.035,
+            "x": 0.316,
+            "y": 0.385
+          },
+          "resourceId": null,
+          "styleId": "tick-short-0-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选长笔1",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "tick-long-0",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.08,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -48.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -48.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.017,
+            "width": 0.052,
+            "x": 0.339,
+            "y": 0.375
+          },
+          "resourceId": null,
+          "styleId": "tick-long-0-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "条目主线1",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "line-0",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.021,
+            "width": 0.23,
+            "x": 0.445,
+            "y": 0.3650000000000001
+          },
+          "resourceId": null,
+          "styleId": "line-0-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "条目辅线1",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "subline-0",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.014,
+            "width": 0.17,
+            "x": 0.445,
+            "y": 0.406
+          },
+          "resourceId": null,
+          "styleId": "subline-0-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "完成底块2",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "box-1",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.1,
+            "width": 0.1,
+            "x": 0.3,
+            "y": 0.5
+          },
+          "resourceId": null,
+          "styleId": "box-1-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选短笔2",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "tick-short-1",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.08,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 42.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 42.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.017,
+            "width": 0.035,
+            "x": 0.316,
+            "y": 0.545
+          },
+          "resourceId": null,
+          "styleId": "tick-short-1-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选长笔2",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "tick-long-1",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.08,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -48.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -48.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.017,
+            "width": 0.052,
+            "x": 0.339,
+            "y": 0.535
+          },
+          "resourceId": null,
+          "styleId": "tick-long-1-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "条目主线2",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "line-1",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.021,
+            "width": 0.21,
+            "x": 0.445,
+            "y": 0.525
+          },
+          "resourceId": null,
+          "styleId": "line-1-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "条目辅线2",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "subline-1",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.014,
+            "width": 0.15000000000000002,
+            "x": 0.445,
+            "y": 0.5660000000000001
+          },
+          "resourceId": null,
+          "styleId": "subline-1-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "完成底块3",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "box-2",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.1,
+            "width": 0.1,
+            "x": 0.3,
+            "y": 0.66
+          },
+          "resourceId": null,
+          "styleId": "box-2-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选短笔3",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "tick-short-2",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.08,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 42.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 42.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.017,
+            "width": 0.035,
+            "x": 0.316,
+            "y": 0.7050000000000001
+          },
+          "resourceId": null,
+          "styleId": "tick-short-2-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选长笔3",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "tick-long-2",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.08,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -48.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -48.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.017,
+            "width": 0.052,
+            "x": 0.339,
+            "y": 0.6950000000000001
+          },
+          "resourceId": null,
+          "styleId": "tick-long-2-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "条目主线3",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "line-2",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.021,
+            "width": 0.19,
+            "x": 0.445,
+            "y": 0.685
+          },
+          "resourceId": null,
+          "styleId": "line-2-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "条目辅线3",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "subline-2",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.014,
+            "width": 0.13,
+            "x": 0.445,
+            "y": 0.726
+          },
+          "resourceId": null,
+          "styleId": "subline-2-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    }
+  ],
+  "name": "行动清单 · 勾选确认",
+  "provenance": "Original editable checklist illustration: warm paper, indigo header, mint checkboxes, staggered check marks. Abstract action cue, not a claim that user tasks have completed. Native geometry; no external artwork. Visual acceptance pending. Revision 2: common 80ms simultaneous check reveal for concise events; no duration-specific condition or source retiming. Headline uses a wider reading budget and 78px type to preserve valid phrase groups.",
+  "purposes": [
+    "decoration"
+  ],
+  "resourceBindings": [],
+  "resourceSlots": [],
+  "revision": 0,
+  "schemaVersion": "moirai.dynamic-asset.v1",
+  "styles": [
+    {
+      "background": null,
+      "description": "纸张偏移阴影",
+      "fill": "#181D36",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "shadow-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单深蓝外框",
+      "fill": "#343C66",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "edge-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "暖白清单纸",
+      "fill": "#FFF8E9",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "paper-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "靛蓝标题条",
+      "fill": "#626BCC",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "header-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "奶油色装订夹",
+      "fill": "#F5C66B",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "clip-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "完成底块1",
+      "fill": "#80CCB8",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "box-0-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选短笔1",
+      "fill": "#214B49",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "tick-short-0-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选长笔1",
+      "fill": "#214B49",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "tick-long-0-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "条目主线1",
+      "fill": "#59617D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "line-0-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "条目辅线1",
+      "fill": "#C5C5CC",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "subline-0-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "完成底块2",
+      "fill": "#80CCB8",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "box-1-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选短笔2",
+      "fill": "#214B49",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "tick-short-1-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选长笔2",
+      "fill": "#214B49",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "tick-long-1-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "条目主线2",
+      "fill": "#59617D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "line-1-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "条目辅线2",
+      "fill": "#C5C5CC",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "subline-1-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "完成底块3",
+      "fill": "#80CCB8",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "box-2-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选短笔3",
+      "fill": "#214B49",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "tick-short-2-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选长笔3",
+      "fill": "#214B49",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "tick-long-2-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "条目主线3",
+      "fill": "#59617D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "line-2-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "条目辅线3",
+      "fill": "#C5C5CC",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "subline-2-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    }
+  ],
+  "treatments": [
+    {
+      "id": "group-fade-root",
+      "operation": {
+        "channels": [
+          {
+            "keys": [
+              {
+                "easing": "linear",
+                "time": 0.0,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 0.8,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 1.0,
+                "value": 0.0
+              }
+            ],
+            "property": "opacity"
+          }
+        ],
+        "kind": "motion",
+        "motionTiming": {
+          "enterEnd": 0.2,
+          "enterSeconds": 0.16,
+          "exitSeconds": 0.06,
+          "exitStart": 0.8
+        }
+      }
+    }
+  ],
+  "usageGuide": {
+    "adjustments": "可整体移动和等比缩放，与独立正文或重点词组合；图标不提供文字行宽参数。若按真实任务数量增减勾选行，另存定制组合，不能把装饰三行自动当三项任务。",
+    "constraints": "图标不能挡住正在讲述的实际物件，勾形及三条横线须能分辨；正文与侧栏重点不得同时争抢阅读。长步骤不适合压缩成细小侧栏。",
+    "coverage": "旧视觉r2为20图形的独立清单，已有勾选节奏修订；任何包含文字的组合均需单独检查，不迁移花字或分层样式的评审。 本次仅核对定义并补指南，未重新渲染、连续观片或试听；新版本应用评审未完成，旧分数不自动继承。",
+    "fallback": "先扩大可阅读区域或换到下方/侧面，再缩短本次强调范围；完整正文须保留在独立字幕。仍不清楚时仅保留正文，不能伪称图标完成了信息表达。",
+    "invariants": "20个原生矩形构成暖白纸、深蓝外缘、靛蓝标题、奶油夹子和三行绿底勾选；各部件保持相对几何，组整体退场。三行是装饰，不是与三项真实任务绑定。",
+    "purpose": "用于步骤建议或清单确认的独立图标；无可读正文，需与声音相关文字或其他字幕组合。"
+  }
+}

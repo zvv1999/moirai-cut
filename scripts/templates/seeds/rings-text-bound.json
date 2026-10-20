@@ -1,0 +1,896 @@
+{
+  "applications": [],
+  "canvas": {
+    "fps": 30,
+    "height": 720,
+    "width": 720
+  },
+  "evidence": [],
+  "id": "candidate-rings-text-bound-20261008",
+  "inputs": [
+    {
+      "default": "重点来了",
+      "id": "headline-text",
+      "label": "圈内重点词",
+      "layerIds": [
+        "headline"
+      ],
+      "maxCharacters": 80
+    }
+  ],
+  "layers": [
+    {
+      "content": {
+        "id": "root",
+        "kind": "group",
+        "region": {
+          "height": 1.0,
+          "width": 1.0,
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "parentId": null
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "主圈描边（随原生文字尺寸）",
+          "ellipseArc": {
+            "cap": "round",
+            "startDegrees": -35.0,
+            "sweepDegrees": 320.0
+          },
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": true,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "ring-main-edge",
+          "intents": [],
+          "literal": null,
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.24,
+            "exitSeconds": 0.1,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.037500000000000006,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.8,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": -3.5
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1,
+                  "value": -2.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -2.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 1.035
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666668,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "stroke_reveal"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.32,
+            "width": 0.6,
+            "x": 0.2,
+            "y": 0.34
+          },
+          "resourceId": null,
+          "styleId": "ring-main-edge-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 0
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "辅助圈描边（随原生文字尺寸）",
+          "ellipseArc": {
+            "cap": "round",
+            "startDegrees": 20.0,
+            "sweepDegrees": 155.0
+          },
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": true,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "ring-echo-edge",
+          "intents": [],
+          "literal": null,
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.24,
+            "exitSeconds": 0.1,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13333333333333336,
+                  "value": 0.78
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.8,
+                  "value": 0.78
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 5.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.15000000000000002,
+                  "value": 3.5
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 3.5
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 1.035
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.15000000000000002,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "stroke_reveal"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.3,
+            "width": 0.62,
+            "x": 0.19,
+            "y": 0.35
+          },
+          "resourceId": null,
+          "styleId": "ring-echo-edge-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 1
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "主圈（随原生文字尺寸）",
+          "ellipseArc": {
+            "cap": "round",
+            "startDegrees": -35.0,
+            "sweepDegrees": 320.0
+          },
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": true,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "ring-main-ink",
+          "intents": [],
+          "literal": null,
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.24,
+            "exitSeconds": 0.1,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.037500000000000006,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.8,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": -3.5
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1,
+                  "value": -2.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -2.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 1.035
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.11666666666666668,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "stroke_reveal"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.32,
+            "width": 0.6,
+            "x": 0.2,
+            "y": 0.34
+          },
+          "resourceId": null,
+          "styleId": "ring-main-ink-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 2
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "辅助圈（随原生文字尺寸）",
+          "ellipseArc": {
+            "cap": "round",
+            "startDegrees": 20.0,
+            "sweepDegrees": 155.0
+          },
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": true,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "ring-echo-ink",
+          "intents": [],
+          "literal": null,
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.24,
+            "exitSeconds": 0.1,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.13333333333333336,
+                  "value": 0.78
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.8,
+                  "value": 0.78
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 5.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.15000000000000002,
+                  "value": 3.5
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 3.5
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 1.035
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.15000000000000002,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "stroke_reveal"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.3,
+            "width": 0.62,
+            "x": 0.19,
+            "y": 0.35
+          },
+          "resourceId": null,
+          "styleId": "ring-echo-ink-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 3
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "双圈的原生重点词宿主",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "text",
+            "role": "emphasis"
+          },
+          "id": "headline",
+          "intents": [],
+          "literal": "重点来了",
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.08,
+            "exitSeconds": 0.1,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.8,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 3.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.26,
+            "width": 0.6,
+            "x": 0.2,
+            "y": 0.37
+          },
+          "resourceId": null,
+          "styleId": "headline-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 4
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    }
+  ],
+  "minDisplaySeconds": 1.6,
+  "name": "双圈强调 · 文字依附候选",
+  "provenance": "同族原生文字候选r3：主笔开放长弧先画，辅笔仅在下侧补短弧；保留原生文字、文字尺寸绑定及原rotation/scale时序。r2、r1与原对象圈的评审及失败保留。新r3需按精确Application独立生产、检查后评审，尚无90分或最终审美接受证明。",
+  "purposes": [
+    "keyword",
+    "decorative_text"
+  ],
+  "resourceBindings": [],
+  "resourceSlots": [],
+  "revision": 0,
+  "schemaVersion": "moirai.dynamic-asset.v1",
+  "spatialRelations": [
+    {
+      "elementId": "ring-main-edge",
+      "followMotion": true,
+      "gap": 0.0,
+      "offsetX": 0.0,
+      "offsetY": 0.0,
+      "placement": "overlay",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline",
+      "sizeBinding": {
+        "height": {
+          "factor": 1.65,
+          "padding": 0.02013888888888889
+        },
+        "width": {
+          "factor": 1.5,
+          "padding": 0.02013888888888889
+        }
+      }
+    },
+    {
+      "elementId": "ring-echo-edge",
+      "followMotion": true,
+      "gap": 0.0,
+      "offsetX": 0.003,
+      "offsetY": 0.003,
+      "placement": "overlay",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline",
+      "sizeBinding": {
+        "height": {
+          "factor": 1.68,
+          "padding": 0.02013888888888889
+        },
+        "width": {
+          "factor": 1.56,
+          "padding": 0.02013888888888889
+        }
+      }
+    },
+    {
+      "elementId": "ring-main-ink",
+      "followMotion": true,
+      "gap": 0.0,
+      "offsetX": 0.0,
+      "offsetY": 0.0,
+      "placement": "overlay",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline",
+      "sizeBinding": {
+        "height": {
+          "factor": 1.65,
+          "padding": 0.016666666666666666
+        },
+        "width": {
+          "factor": 1.5,
+          "padding": 0.016666666666666666
+        }
+      }
+    },
+    {
+      "elementId": "ring-echo-ink",
+      "followMotion": true,
+      "gap": 0.0,
+      "offsetX": 0.003,
+      "offsetY": 0.003,
+      "placement": "overlay",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline",
+      "sizeBinding": {
+        "height": {
+          "factor": 1.68,
+          "padding": 0.016666666666666666
+        },
+        "width": {
+          "factor": 1.56,
+          "padding": 0.016666666666666666
+        }
+      }
+    }
+  ],
+  "styles": [
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#192A2B",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "ring-main-edge-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#192A2B",
+      "strokeWidth": 20.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#233133",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "ring-echo-edge-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#233133",
+      "strokeWidth": 12.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#FFDA58",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "ring-main-ink-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#FFDA58",
+      "strokeWidth": 12.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#FFE69A",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "ring-echo-ink-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#FFE69A",
+      "strokeWidth": 7.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "暖白原生粗体，深色细边用于实拍可读",
+      "fill": "#FFFCED",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "headline-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.12,
+      "maxLines": 2,
+      "shadow": {
+        "blur": 2.0,
+        "color": "#102027",
+        "opacity": 0.16,
+        "x": 0.0,
+        "y": 1.5
+      },
+      "stroke": "#17282B",
+      "strokeWidth": 4.25,
+      "textAlign": "center",
+      "weight": 800
+    }
+  ],
+  "treatments": [],
+  "usageGuide": {
+    "adjustments": "Agent仅在Application调整位置、比例、行宽、保持时间及当前输入关键词/自然短语标注；用当前画面实测安全边距与保护区。输入坐标、台词、词下标和绝对时刻均不写回通用模板。",
+    "constraints": "最多两行。保留可读字号，按实际导出记录核对layout、text_box、叶子与祖先姿态；要求textMeasurementGeometryCoverage/geometryCoverage=constant_record_pose_v1且droppedRecords=0。完整稳定期须由全部真实decoded PTS对应的记录覆盖，不能用第一条入场姿态代表稳定字号或位置。检查全部可见入退场和实际描边弧、画布边距、人物/手势保护区；完整椭圆内沿可作为字角留白的保守设计验证，不代表开放弧在每一刻包围文字。390宽显示字号的本族当前预算至少19px，输入Agent需另给稳定阅读预算；主辅弧定型为240ms，比旧180ms装饰多60ms，文字80ms和输入阅读窗口不变。短于340ms实例会压缩phase，尚不算已验证覆盖。",
+    "coverage": "r3基于通用顺序弧草稿对照后保存，精确保存定义仍须四输入正式生产与逐帧核验。历史实拍仅两种背景和三个人物构图，中文声音黑底仅排版控制；同源返修不算新增背景。旧版本全部分数/失败/系列保留；r3尚未评分、未试听、未最终审美接受，fontIdentityVerified=false。",
+    "fallback": "已烧录重复字幕不叠同词；无留白、窗口过短或保护区/可读性检查不过，先换位置和自然行宽，再跳过或改用简单标记。不能缩字到不可读、删除完整概念的一半、伪造ASR或延长原声。skip需保留失败记录，不算成功覆盖。",
+    "invariants": "原生暖白文字深描边，金色主笔与较细浅金辅笔，深边每侧比金墨多2.5设计像素；主宽/高1.50/1.65、副1.56/1.68，均绑定同一text_box。主笔从-35°画320°开放弧，0–140ms ease_out显现，45ms达到完全不透明；辅笔从20°画155°下侧短弧，120–240ms线性显现、160ms达到0.78不透明度。文字80ms完整；主/辅原120/180ms的1.035→1收束和-2°/+3.5°最终倾角保持，统一100ms退出。圆弧graphic使用240ms入场phase，其他channel关键点按原秒数重映射；独立reveal、opacity、rotation和scale可组合编辑。",
+    "purpose": "同族原生重点词组合：用于语义明确的短概念，在实拍留白区稀疏提示。原生文字尺寸驱动两笔圆弧；烧录字、人物与画面对象由Agent另选对象标记方式。"
+  }
+}

@@ -1,0 +1,15 @@
+import fs from 'node:fs/promises';import assert from 'node:assert/strict';import {createHash} from 'node:crypto';
+const root='/Users/zhengwei/Downloads/caption-layout-20260929';
+const api=async(p,b)=>{const r=await fetch('http://127.0.0.1:3000/api/footage/templates'+p,{method:b?'POST':'GET',headers:{'content-type':'application/json','x-requested-with':'moirai-footage'},body:b?JSON.stringify(b):undefined});const data=await r.json();assert.ok(r.ok,JSON.stringify(data));return data;};
+const t=JSON.parse(await fs.readFile(root+'/designs.json','utf8')).designs[0].template;
+const original=(await api('/dynamic-assets/style-pilot-20260923-caption')).definition;
+const d=structuredClone(original);Object.assign(d,{id:'style-caption-compact-candidate-20260929',revision:0,name:'候选 · 清晰逐词字幕',canvas:t.canvas,styles:t.styles,provenance:'Editable caption readability candidate: compact two-line region, thin stroke and translucent backing. Three input preview-only renders inspected at 30fps, exact measured word alignment verified. Pending aesthetic and listening acceptance; not an additional qualified design.'});
+d.layers=[{parentId:null,content:{kind:'group',id:'root',region:{x:0,y:0,width:1,height:1}}},...t.elements.map(element=>({parentId:'root',content:{kind:'element',element}}))];
+assert.ok(!(await api('/dynamic-assets')).assets.some(a=>a.id===d.id),'Already exists; inspect instead of overwriting');
+const saved=(await api('/dynamic-assets',{definition:d,baseRevision:0,idempotencyKey:'caption-compact-save-'+createHash('sha256').update(JSON.stringify(d)).digest('hex')})).definition;
+assert.deepEqual((await api('/dynamic-assets/'+original.id)).definition,original);
+const application={assetId:saved.id,assetRevision:saved.revision,canvas:t.canvas,placement:{x:0,y:0,width:1,height:1}};
+const projected=(await api('/dynamic-assets/application',application)).template;
+for(const field of ['elements','styles','treatments'])assert.deepEqual(projected[field],t[field],field);
+await fs.writeFile(root+'/saved-style.json',JSON.stringify(saved,null,2));await fs.writeFile(root+'/saved-application.json',JSON.stringify(application,null,2));
+console.log(JSON.stringify({id:saved.id,revision:saved.revision,projectionMatches:true}));

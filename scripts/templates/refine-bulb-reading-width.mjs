@@ -1,0 +1,22 @@
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+const source='/Users/zhengwei/Downloads/bulb-attachment-coverage-20260929';
+const phrases=process.env.WITH_PHRASES==='1';
+const root=phrases?'/Users/zhengwei/Downloads/bulb-reading-phrases-20260929':'/Users/zhengwei/Downloads/bulb-reading-width-20260929';
+const base='http://127.0.0.1:3000/api/footage/templates';
+async function api(path,body){const r=await fetch(base+path,body?{method:'POST',headers:{'content-type':'application/json','x-requested-with':'moirai-footage'},body:JSON.stringify(body)}:undefined);const t=await r.text();assert.ok(r.ok,t);return JSON.parse(t);}
+const old=JSON.parse(await fs.readFile(source+'/manifest.json'));
+const template=structuredClone(old.designs[0].template);
+template.id='composition-bulb-reading-width-20260929';template.revision=0;
+template.name='科普随想 · 紧凑阅读对照';
+const region=template.elements.find(e=>e.id==='headline').region;
+const center=region.x+region.width/2;region.width=.64;region.x=center-region.width/2;
+const samples=structuredClone(old.samples);
+if(phrases)samples[2].layoutPhrases=[{wordSpan:{startWord:11,endWord:18}}];
+assert.ok((await api('/samples/validate',{template,samples})).validated);
+const designs=[{template,baseRevision:0}];
+const manifest={name:template.name,brief:'Shared caption width .64 with unchanged center, font size, height, motion, attachment, source words and timings. Optional input phrase annotation keeps the causal phrase together; the template contains no sentence-specific breaks.',previewOnly:true,designs,samples,idempotencyKey:'bulb-reading-'+createHash('sha256').update(JSON.stringify({designs,samples})).digest('hex')};
+await fs.mkdir(root,{recursive:true});await fs.writeFile(root+'/manifest.json',JSON.stringify(manifest,null,2));
+for(const n of ['definition.json','inputs.json'])await fs.copyFile(source+'/'+n,root+'/'+n);
+const result=await api('/production/author',manifest);await fs.writeFile(root+'/submission.json',JSON.stringify(result,null,2));console.log(result.id);

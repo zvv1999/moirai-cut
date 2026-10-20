@@ -1,0 +1,40 @@
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {chromium} from '/Users/zhengwei/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+import {archiveTestStyle} from './archive-test-style.mjs';
+const base='http://127.0.0.1:3000',root='/Users/zhengwei/Downloads/style-combination-save-2026-09-28';
+await fs.mkdir(root,{recursive:true});
+const original=JSON.parse(await fs.readFile('/Users/zhengwei/Downloads/composed-trial-ui-attachments-2026-09-28/submission.json','utf8'));
+const url=new URL(original.link);url.searchParams.set('revision','2');
+const before=await(await fetch(base+'/api/footage/templates/dynamic-assets')).json();
+const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
+try{
+ const page=await browser.newPage({viewport:{width:1280,height:1000}});
+ const ready=async()=>{await page.waitForFunction(()=>document.querySelector('.tw-trial-visual')?.getAttribute('aria-busy')==='false');};
+ const pixels=async(stem,time)=>{
+  const slider=page.getByRole('slider',{name:'效果预览进度',exact:true});await slider.fill(String(time+0.01));await slider.fill(String(time));
+  await page.waitForFunction(time=>{const s=document.querySelector('.tw-effect-stage'),c=s?.querySelector('canvas');return c&&c.dataset.renderGeneration===s.dataset.previewGeneration&&Math.abs(Number(c.dataset.renderTime)-time)<0.001;},time);
+  const data=await page.locator('.tw-effect-stage canvas').evaluate(c=>c.toDataURL());
+  await fs.writeFile(root+'/'+stem+'.png',Buffer.from(data.split(',')[1],'base64'));return data;
+ };
+ await page.goto(url.href);await ready();const first=[];for(const time of [0.35,0.5,0.65,0.9,1.5])first.push(await pixels('before-'+time,time));
+ await page.getByRole('textbox',{name:'组合样式名称',exact:true}).fill('组合保存验证 '+crypto.randomUUID());
+ const capture=page.waitForResponse(r=>r.url().endsWith('/dynamic-assets/capture'));
+ const save=page.waitForResponse(r=>r.url().endsWith('/dynamic-assets')&&r.request().method()==='POST');
+ await page.getByRole('button',{name:'保存组合为新样式',exact:true}).click();
+ const captured=await capture;assert.ok(captured.ok(),await captured.text());const savedResponse=await save;assert.ok(savedResponse.ok(),await savedResponse.text());
+ const saved=(await savedResponse.json()).definition;
+ assert.equal(saved.layers.filter(l=>l.content.kind==='element').length,5);
+ assert.equal(saved.spatialRelations.length,3);
+ assert.ok(saved.treatments.some(t=>t.operation.kind==='text_highlight'));
+ assert.equal(saved.revision,1);
+ await page.getByRole('link',{name:'打开组合样式继续编辑'}).click();
+ await page.getByRole('textbox',{name:'效果名称'}).waitFor();assert.equal(await page.getByRole('textbox',{name:'效果名称'}).inputValue(),saved.name);
+ await page.getByRole('link',{name:'用声音试效果',exact:true}).click();await ready();const second=[];for(const time of [0.35,0.5,0.65,0.9,1.5])second.push(await pixels('after-'+time,time));
+ assert.deepEqual(first,second,'Saved combination must render identically at the same sample frame');
+ const after=await(await fetch(base+'/api/footage/templates/dynamic-assets')).json();
+ for(const asset of before.assets)assert.deepEqual(after.assets.find(a=>a.id===asset.id),asset);
+ await fs.writeFile(root+'/receipt.json',JSON.stringify({assetId:saved.id,revision:1,identicalFrame:true},null,2));
+ await archiveTestStyle(base,saved.id);
+ console.log(JSON.stringify({assetId:saved.id,identicalFrame:true,archived:true,root}));
+}finally{await browser.close();}

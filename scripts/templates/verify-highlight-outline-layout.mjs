@@ -1,0 +1,19 @@
+import fs from 'node:fs/promises';import assert from 'node:assert/strict';
+import {chromium} from '/Users/zhengwei/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+const base='http://127.0.0.1:3000',id='style-caption-inline-cyan-candidate-20260929',root='/Users/zhengwei/Downloads/highlight-outline-layout-20260929';await fs.mkdir(root,{recursive:true});
+const read=async()=>await(await fetch(base+'/api/footage/templates/dynamic-assets')).json(),before=await read();const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
+try{
+ const page=await browser.newPage({viewport:{width:1440,height:1100}}),errors=[],records=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/templates?effect='+id);const canvas=page.getByLabel('效果实时画面',{exact:true});await canvas.waitFor({state:'visible',timeout:60000});
+ async function update(action){const old=await page.locator('.tw-effect-stage').getAttribute('data-preview-generation');const wait=page.waitForResponse(r=>r.ok()&&r.url().endsWith('/dynamic-assets/preview'));await action();const data=await(await wait).json();await page.waitForFunction(g=>document.querySelector('.tw-effect-stage')?.dataset.previewGeneration!==g,old);await canvas.waitFor({state:'visible',timeout:60000});return data;}
+ await update(()=>page.getByRole('checkbox',{name:'高亮文字单独描边',exact:true}).click());await update(()=>page.getByLabel('高亮描边颜色',{exact:true}).fill('#ff3366'));await update(()=>page.getByRole('spinbutton',{name:'高亮描边宽度',exact:true}).fill('12'));await update(()=>page.getByRole('spinbutton',{name:'效果预览时长',exact:true}).fill('6'));
+ for(const [label,slug] of [['长中文','zh'],['长英文','en']]){
+  const preview=await update(()=>page.getByRole('group',{name:'快速试文案'}).getByRole('button',{name:label,exact:true}).click());const p=preview.tracks.overlay.flatMap(t=>t.elements).find(e=>e.type==='text').params;
+  assert.ok(Math.abs(p['text.maxWidth']-(p['template.textLayoutWidth']-24))<1e-6);assert.ok(Math.abs(p['text.maxHeight']-(p['template.textLayoutHeight']-24))<1e-6);assert.equal(p['geometry.stroke.width'],3);
+  const rendered=await canvas.evaluate(c=>{const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let left=c.width,right=-1,top=c.height,bottom=-1,count=0;for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++){const at=(y*c.width+x)*4;if(d[at]>220&&d[at+1]>30&&d[at+1]<80&&d[at+2]>75&&d[at+2]<130){left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y);count++;}}return {png:c.toDataURL(),bounds:{left,right,top,bottom,count}};});
+  assert.ok(rendered.bounds.count>100);assert.ok(rendered.bounds.left>=1280*.08&&rendered.bounds.right<1280*.92);assert.ok(rendered.bounds.top>=720*.83&&rendered.bounds.bottom<720*.97);
+  await fs.writeFile(root+'/'+slug+'.png',Buffer.from(rendered.png.split(',')[1],'base64'));records.push({label,params:p,bounds:rendered.bounds});
+ }
+ const active=await update(()=>page.getByRole('combobox',{name:'文字高亮方式',exact:true}).selectOption('active_word'));const params=active.tracks.overlay.flatMap(t=>t.elements).find(e=>e.type==='text').params;assert.equal(params['text.maxWidth'],records[1].params['text.maxWidth']);assert.equal(params['text.maxHeight'],records[1].params['text.maxHeight']);
+ await page.getByRole('button',{name:'撤销未保存修改',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[aria-label="撤销未保存修改"]').disabled);assert.deepEqual(await read(),before);assert.deepEqual(errors,[]);
+ await fs.writeFile(root+'/verification.json',JSON.stringify({passed:true,syntheticOnly:true,records,activeWordUsesSameLayoutBudget:true,libraryUnchanged:true,pageErrors:errors},null,2));console.log('PASS thick outline budgets, Chinese/English rendered bounds, stable active-word budget and unchanged library');
+}finally{await browser.close();}

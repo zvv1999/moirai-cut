@@ -1,0 +1,17 @@
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+const root='/Users/zhengwei/Downloads/saved-combination-export-2026-09-28';
+const {batch:submission}=JSON.parse(await fs.readFile(root+'/submission.json','utf8'));
+const batch=await(await fetch('http://127.0.0.1:3000/api/footage/templates/production/'+submission.id)).json();assert.equal(batch.renderJob.status,'succeeded');
+const preview=batch.items[0].previews[0];assert.ok(preview.decodeVerified&&preview.audioQuality.validated);
+const video=root+'/saved-combination.mp4';await fs.copyFile(preview.path,video);await fs.writeFile(root+'/batch.json',JSON.stringify(batch,null,2));
+const baseline='/Users/zhengwei/Downloads/composed-trial-ui-attachments-2026-09-28/three-0-0.mp4';
+const ffmpeg='/Users/zhengwei/.local/share/moirai-cut/bin/ffmpeg';
+const hash=(path,stream)=>execFileSync(ffmpeg,['-v','error','-i',path,'-map',stream,'-f','framemd5','-'],{encoding:'utf8',maxBuffer:4e6}).split('\n').filter(line=>line&&!line.startsWith('#'));
+const oldVideo=hash(baseline,'0:v:0'),newVideo=hash(video,'0:v:0'),oldAudio=hash(baseline,'0:a:0'),newAudio=hash(video,'0:a:0');
+const report={batchId:batch.id,frames:oldVideo.length,newFrames:newVideo.length,differentVideoFrames:oldVideo.filter((v,i)=>v!==newVideo[i]).length,audioPackets:oldAudio.length,audioExact:JSON.stringify(oldAudio)===JSON.stringify(newAudio),listened:false};
+await fs.writeFile(root+'/comparison.json',JSON.stringify(report,null,2));
+execFileSync(ffmpeg,['-v','error','-y','-ss','4.2','-i',video,'-frames:v','1',root+'/stable.jpg']);
+console.log(JSON.stringify(report));
+assert.equal(oldVideo.length,newVideo.length);assert.equal(report.differentVideoFrames,0);assert.ok(report.audioExact);

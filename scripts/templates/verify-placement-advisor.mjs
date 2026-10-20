@@ -1,0 +1,35 @@
+import fs from 'node:fs/promises';import assert from 'node:assert/strict';
+import {chromium} from '/Users/zhengwei/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+const root='/Users/zhengwei/Downloads/placement-advice-20260929',base='http://127.0.0.1:3000',id='style-study-20260928-growth';await fs.mkdir(root,{recursive:true});
+const read=async p=>{const r=await fetch(base+'/api/footage/templates'+p);assert.ok(r.ok);return r.json();};const before=await read('/dynamic-assets');const asset=before.assets.find(a=>a.id===id);
+const source=JSON.parse(await fs.readFile('/Users/zhengwei/Downloads/growth-rule-20260929/designs.json'));const samples=source.samples.slice(1),payload={version:1,entries:samples.map(s=>({...s,resourceBindings:[],layoutPhrases:[]})),liveInputId:samples[1].inputId};
+const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
+try{
+ const p=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];p.on('pageerror',e=>errors.push(e.message));
+ await p.goto(base+'/templates/effects/'+id+'/try?revision='+asset.revision+'&scale=.25&centerX=.18&centerY=.3');
+ await p.getByText('与 AI 交换试映内容',{exact:true}).click();await p.getByLabel('导入试映内容文件',{exact:true}).setInputFiles({name:'samples.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(payload))});
+ await p.getByText(/^已导入素材引用、内容标注和分段，并核对当前转写版本。/).waitFor();
+ await p.waitForFunction(()=>document.querySelector('.tw-effect-preview audio')&&document.querySelector('.tw-effect-preview')?.getAttribute('aria-busy')==='false');
+ const seek=async()=>{await p.getByLabel('效果预览进度',{exact:true}).fill('4.76');await p.waitForFunction(()=>document.querySelector('canvas[aria-label="效果实时画面"]')?.dataset.renderTime==='4.76');};
+ await seek();await fs.writeFile(root+'/before.png',Buffer.from((await p.locator('canvas[aria-label="效果实时画面"]').evaluate(c=>c.toDataURL())).split(',')[1],'base64'));
+ await p.getByText('避开画面里的重要内容',{exact:true}).click();await p.getByRole('button',{name:'取当前预览画面',exact:true}).click();await p.getByAltText('用于圈选保护区的预览帧').waitFor();
+ await p.getByRole('button',{name:'添加保护框',exact:true}).click();
+ for(const [k,v] of Object.entries({x:0,y:0,width:.38,height:1}))await p.getByLabel('保护区1'+k,{exact:true}).fill(String(v*100));
+ await p.getByRole('button',{name:'添加保护框',exact:true}).click();for(const [k,v] of Object.entries({x:.4,y:.1,width:.3,height:.85}))await p.getByLabel('保护区2'+k,{exact:true}).fill(String(v*100));
+ const pending=p.waitForResponse(r=>r.url().endsWith('/placement-advice'));await p.getByRole('button',{name:'比较备用位置',exact:true}).click();const r=await pending;const advice=await r.json();assert.ok(r.ok(),JSON.stringify(advice));assert.equal(advice.selectedId,'upper_right');
+ await fs.writeFile(root+'/request.json',JSON.stringify(r.request().postDataJSON(),null,2));await fs.writeFile(root+'/advice.json',JSON.stringify(advice,null,2));await p.getByText('建议：右上',{exact:true}).waitFor();await p.locator('.tw-placement-advisor').screenshot({path:root+'/advisor.png'});
+ const updated=p.waitForResponse(r=>r.url().endsWith('/sample-preview')&&r.ok());await p.getByRole('button',{name:'应用建议位置',exact:true}).click();await updated;await p.waitForFunction(()=>document.querySelector('.tw-effect-preview')?.getAttribute('aria-busy')==='false');
+ assert.equal(Number(await p.getByLabel('水平中心',{exact:true}).inputValue()),.82);assert.equal(Number(await p.getByLabel('效果大小',{exact:true}).inputValue()),.25);
+ await seek();await fs.writeFile(root+'/after.png',Buffer.from((await p.locator('canvas[aria-label="效果实时画面"]').evaluate(c=>c.toDataURL())).split(',')[1],'base64'));
+ await p.getByLabel('保护区1width',{exact:true}).fill('100');const blocked=p.waitForResponse(r=>r.url().endsWith('/placement-advice'));await p.getByRole('button',{name:'比较备用位置',exact:true}).click();const none=await(await blocked).json();assert.equal(none.selectedId,null);await p.getByText('没有能完整避开保护区的位置。请调整大小、保护框或手动摆放。',{exact:true}).waitFor();assert.equal(await p.getByRole('button',{name:'应用建议位置',exact:true}).count(),0);assert.equal(Number(await p.getByLabel('水平中心',{exact:true}).inputValue()),.82);
+ await p.setViewportSize({width:390,height:844});await p.locator('.tw-placement-advisor').scrollIntoViewIfNeeded();assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await p.screenshot({path:root+'/mobile.png'});
+ const other=await read('/inputs/'+samples[0].inputId);const changed=p.waitForResponse(r=>r.url().endsWith('/sample-preview')&&r.request().postDataJSON().sample.inputId===samples[0].inputId);await p.getByRole('button',{name:'预览 '+other.input.name,exact:true}).click();await changed;assert.equal(await p.getByLabel('保护区1width',{exact:true}).count(),0);
+ await p.setViewportSize({width:1440,height:1000});await p.getByText('避开画面里的重要内容',{exact:true}).click();const board=p.getByLabel('拖动圈选保护区',{exact:true});await board.scrollIntoViewIfNeeded();const box=await board.boundingBox();await p.mouse.move(box.x+box.width*.1,box.y+box.height*.1);await p.mouse.down();await p.mouse.move(box.x+box.width*.3,box.y+box.height*.35);await p.mouse.up();assert.ok(Math.abs(Number(await p.getByLabel('保护区1width',{exact:true}).inputValue())-20)<1);
+ let release;const gate=new Promise(resolve=>release=resolve);let intercepted;const entered=new Promise(resolve=>intercepted=resolve);
+ await p.route('**/dynamic-assets/placement-advice',async route=>{const response=await route.fetch();const data=await response.json();intercepted();await gate;try{await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});}catch{/* The browser has aborted this stale request. */}});
+ await p.getByRole('button',{name:'比较备用位置',exact:true}).click();await entered;
+ await p.getByLabel('水平中心',{exact:true}).fill('0.5');release();await p.unrouteAll({behavior:'wait'});
+ await p.waitForFunction(()=>document.querySelector('.tw-effect-preview')?.getAttribute('aria-busy')==='false');
+ assert.equal(await p.getByRole('button',{name:'应用建议位置',exact:true}).count(),0,'A result for the previous application must not be applied');
+ assert.deepEqual(await read('/dynamic-assets'),before);assert.deepEqual(errors,[]);await fs.writeFile(root+'/ui-verification.json',JSON.stringify({passed:true,selectedId:advice.selectedId,realMediaBeforeAfter:true,sizePreserved:true,allBlockedNoApply:true,sourceChangeClearsRegions:true,dragSelection:true,staleResponseSuppressed:true,mobileNoOverflow:true,libraryUnchanged:true,errors},null,2));console.log('PASS real-media placement advice, apply, blocked result, source invalidation, drawing and mobile');
+}catch(e){const p=browser.contexts()[0]?.pages()[0];if(p){await p.screenshot({path:root+'/error.png'});console.error(await p.getByRole('alert').allTextContents());}throw e;}finally{await browser.close();}

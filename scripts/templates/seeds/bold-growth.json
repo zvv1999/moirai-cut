@@ -1,0 +1,1097 @@
+{
+  "applications": [
+    {
+      "enabled": true,
+      "target": {
+        "id": "root",
+        "kind": "group"
+      },
+      "treatmentId": "group-fade-root"
+    }
+  ],
+  "canvas": {
+    "fps": 30,
+    "height": 720,
+    "width": 720
+  },
+  "evidence": [],
+  "id": "style-study-20260929-bold-growth",
+  "inputs": [],
+  "layers": [
+    {
+      "content": {
+        "composite": true,
+        "id": "root",
+        "kind": "group",
+        "region": {
+          "height": 1.0,
+          "width": 1.0,
+          "x": 0.0,
+          "y": 0.0
+        },
+        "separateInstances": true
+      },
+      "parentId": null
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "增长柱1 depth",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "bar-0-depth",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.22,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.12
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.22,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale_y"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 58.92479999999998
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.22,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.23,
+            "width": 0.17,
+            "x": 0.212,
+            "y": 0.562
+          },
+          "resourceId": null,
+          "styleId": "bar-0-depth-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 0
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "增长柱1 edge",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "bar-0-edge",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.22,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.12
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.22,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale_y"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 72.864
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.22,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.23,
+            "width": 0.17,
+            "x": 0.19,
+            "y": 0.54
+          },
+          "resourceId": null,
+          "styleId": "bar-0-edge-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 3
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "增长柱1 fill",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "bar-0-fill",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.22,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.12
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.22,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale_y"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 72.864
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.22,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.194,
+            "width": 0.134,
+            "x": 0.208,
+            "y": 0.558
+          },
+          "resourceId": null,
+          "styleId": "bar-0-fill-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "增长柱2 depth",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "bar-1-depth",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.22,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.12
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.04,
+                  "value": 0.12
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale_y"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 106.44479999999996
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.04,
+                  "value": 106.44479999999996
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.38,
+            "width": 0.17,
+            "x": 0.4320000000000001,
+            "y": 0.412
+          },
+          "resourceId": null,
+          "styleId": "bar-1-depth-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 1
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "增长柱2 edge",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "bar-1-edge",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.22,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.12
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.04,
+                  "value": 0.12
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale_y"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 120.38399999999996
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.04,
+                  "value": 120.38399999999996
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.38,
+            "width": 0.17,
+            "x": 0.41,
+            "y": 0.39
+          },
+          "resourceId": null,
+          "styleId": "bar-1-edge-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 4
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "增长柱2 fill",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "bar-1-fill",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.22,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.12
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.04,
+                  "value": 0.12
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale_y"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 120.38399999999996
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.04,
+                  "value": 120.38399999999996
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.26,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.34400000000000003,
+            "width": 0.134,
+            "x": 0.4280000000000001,
+            "y": 0.408
+          },
+          "resourceId": null,
+          "styleId": "bar-1-fill-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "增长柱3 depth",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "bar-2-depth",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.22,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.12
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.08,
+                  "value": 0.12
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale_y"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 157.1328
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.08,
+                  "value": 157.1328
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.54,
+            "width": 0.17,
+            "x": 0.652,
+            "y": 0.252
+          },
+          "resourceId": null,
+          "styleId": "bar-2-depth-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 2
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "增长柱3 edge",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "bar-2-edge",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.22,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.12
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.08,
+                  "value": 0.12
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale_y"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 171.072
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.08,
+                  "value": 171.072
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.54,
+            "width": 0.17,
+            "x": 0.63,
+            "y": 0.23
+          },
+          "resourceId": null,
+          "styleId": "bar-2-edge-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 5
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "增长柱3 fill",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "bar-2-fill",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.22,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.12
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.08,
+                  "value": 0.12
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale_y"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 171.072
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.08,
+                  "value": 171.072
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "y"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.504,
+            "width": 0.134,
+            "x": 0.648,
+            "y": 0.24799999999999997
+          },
+          "resourceId": null,
+          "styleId": "bar-2-fill-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 8
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    }
+  ],
+  "name": "复古增长 · 三阶跃升",
+  "provenance": "Original editable stepped growth motif. Cream silhouette, dark offset depth, red and yellow bars. Qualitative decoration, not measured data. No absolute audio times or reference-video geometry in this asset. Visual acceptance pending.",
+  "purposes": [
+    "decoration"
+  ],
+  "resourceBindings": [],
+  "resourceSlots": [],
+  "revision": 0,
+  "schemaVersion": "moirai.dynamic-asset.v1",
+  "styles": [
+    {
+      "background": null,
+      "description": "增长柱1 depth",
+      "fill": "#241C19",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "bar-0-depth-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "增长柱1 edge",
+      "fill": "#FFF2C9",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "bar-0-edge-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "增长柱1 fill",
+      "fill": "#B34531",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "bar-0-fill-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "增长柱2 depth",
+      "fill": "#241C19",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "bar-1-depth-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "增长柱2 edge",
+      "fill": "#FFF2C9",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "bar-1-edge-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "增长柱2 fill",
+      "fill": "#E99A38",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "bar-1-fill-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "增长柱3 depth",
+      "fill": "#241C19",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "bar-2-depth-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "增长柱3 edge",
+      "fill": "#FFF2C9",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "bar-2-edge-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "增长柱3 fill",
+      "fill": "#F2DA74",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "bar-2-fill-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    }
+  ],
+  "treatments": [
+    {
+      "id": "group-fade-root",
+      "operation": {
+        "channels": [
+          {
+            "keys": [
+              {
+                "easing": "linear",
+                "time": 0.0,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 0.85,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 1.0,
+                "value": 0.0
+              }
+            ],
+            "property": "opacity"
+          }
+        ],
+        "kind": "motion",
+        "motionTiming": {
+          "enterEnd": 0.3,
+          "enterSeconds": 0.18,
+          "exitSeconds": 0.06,
+          "exitStart": 0.85
+        }
+      }
+    }
+  ],
+  "usageGuide": {
+    "adjustments": "本次应用可整体移动和等比缩放，与独立文字组合；本条目没有文字行宽。若需要真实数值、更改柱数或高低关系，使用数据图表/定制组合并单独验证。",
+    "constraints": "三柱完全展开后必须能辨认阶梯关系；文字上方图形依附随换行更新，不与讲解中的真实图表混淆。",
+    "coverage": "旧视觉r1的bold-growth-20260929为75秒原片及同源12秒裁片，两段不是独立内容多样性；九图形可编辑，不继承增长花字的文字适配结果。 本次仅核对定义并补指南，未重新渲染、连续观片或试听；新版本应用评审未完成，旧分数不自动继承。",
+    "fallback": "先找不干扰真实数据的空位，短事件减少动作幅度或换静态强调；若文案不是增长语义，则不放柱图。定制动作单独记录。",
+    "invariants": "九个原生矩形组成三柱，每柱有深色错位底、奶油边、红/橙/黄内层；保留递增高度、统一基线和逐级展开。",
+    "purpose": "用于增长、积累和进步的定性复古柱形图标，没有文字或真实数值绑定。"
+  }
+}

@@ -1,0 +1,823 @@
+{
+  "applications": [],
+  "canvas": {
+    "fps": 30,
+    "height": 720,
+    "width": 720
+  },
+  "evidence": [],
+  "id": "style-pilot-20260923-sparkle-follow",
+  "inputs": [
+    {
+      "default": "重点来了",
+      "id": "text-0",
+      "label": "主文字",
+      "layerIds": [
+        "headline"
+      ],
+      "maxCharacters": 2000
+    }
+  ],
+  "layers": [
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "主文字",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "text",
+            "role": "emphasis"
+          },
+          "id": "headline",
+          "intents": [],
+          "literal": "重点来了",
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.07,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.12,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_in",
+                  "time": 0.8,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.88
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.14,
+                  "value": 1.035
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.32,
+            "width": 0.72,
+            "x": 0.1,
+            "y": 0.34
+          },
+          "resourceId": null,
+          "styleId": "headline-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 1
+        },
+        "kind": "element"
+      },
+      "parentId": null
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "四角主次星光 main-edge",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "star",
+            "role": "decoration"
+          },
+          "id": "main-edge",
+          "intents": [],
+          "literal": null,
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.1,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.04,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.12,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.65,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.8,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.35
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.13,
+                  "value": 1.18
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.8,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 1.0,
+                  "value": 0.8
+                }
+              ],
+              "property": "scale"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -22.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.2,
+                  "value": 12.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 1.0,
+                  "value": 12.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.15633333333333332,
+            "width": 0.15633333333333332,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "resourceId": null,
+          "starGeometry": {
+            "depth": 18.0,
+            "points": 4
+          },
+          "styleId": "main-edge-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 3
+        },
+        "kind": "element"
+      },
+      "parentId": null
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "四角主次星光 main-core",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "star",
+            "role": "decoration"
+          },
+          "id": "main-core",
+          "intents": [],
+          "literal": null,
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.1,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.04,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.12,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.65,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.8,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.35
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.13,
+                  "value": 1.18
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.8,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 1.0,
+                  "value": 0.8
+                }
+              ],
+              "property": "scale"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -22.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.2,
+                  "value": 12.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 1.0,
+                  "value": 12.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.14583333333333334,
+            "width": 0.14583333333333334,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "resourceId": null,
+          "starGeometry": {
+            "depth": 18.0,
+            "points": 4
+          },
+          "styleId": "main-core-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 4
+        },
+        "kind": "element"
+      },
+      "parentId": null
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "四角主次星光 satellite-edge",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "star",
+            "role": "decoration"
+          },
+          "id": "satellite-edge",
+          "intents": [],
+          "literal": null,
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.1,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.1,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.65,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.8,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.35
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.18,
+                  "value": 1.18
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.8,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 1.0,
+                  "value": 0.8
+                }
+              ],
+              "property": "scale"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 15.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.2,
+                  "value": 12.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 1.0,
+                  "value": 12.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.10383333333333332,
+            "width": 0.10383333333333332,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "resourceId": null,
+          "starGeometry": {
+            "depth": 30.0,
+            "points": 4
+          },
+          "styleId": "satellite-edge-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 5
+        },
+        "kind": "element"
+      },
+      "parentId": null
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "四角主次星光 satellite-core",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "star",
+            "role": "decoration"
+          },
+          "id": "satellite-core",
+          "intents": [],
+          "literal": null,
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.2,
+            "exitSeconds": 0.1,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.1,
+                  "value": 0.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.65,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.8,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "opacity"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.35
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.18,
+                  "value": 1.18
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.8,
+                  "value": 1.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 1.0,
+                  "value": 0.8
+                }
+              ],
+              "property": "scale"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 15.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 0.2,
+                  "value": 12.0
+                },
+                {
+                  "easing": "ease_out",
+                  "time": 1.0,
+                  "value": 12.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.09333333333333332,
+            "width": 0.09333333333333332,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "resourceId": null,
+          "starGeometry": {
+            "depth": 30.0,
+            "points": 4
+          },
+          "styleId": "satellite-core-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": null
+    }
+  ],
+  "name": "灵动强调 · 星光弹字",
+  "provenance": "Original editable native four-point star study. Four independent native star layers with warm primary and white satellite plus separate purple backings. Current satellite core .80 font-size and depth30; main1.25 font-size/depth18, backing extras .09 font-size. Relative measured-text attachment and independent motion preserved. Earlier image and smaller satellite revisions remain immutable history. No reference fidelity or aesthetic certification claimed.",
+  "purposes": [
+    "keyword",
+    "decorative_text"
+  ],
+  "resourceBindings": [],
+  "resourceSlots": [],
+  "revision": 0,
+  "schemaVersion": "moirai.dynamic-asset.v1",
+  "spatialRelations": [
+    {
+      "elementId": "main-edge",
+      "followMotion": true,
+      "gap": 0.023333333333333334,
+      "offsetX": -0.005250000000000005,
+      "offsetY": -0.045,
+      "placement": "right",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "main-core",
+      "followMotion": true,
+      "gap": 0.023333333333333334,
+      "offsetX": 0.0,
+      "offsetY": -0.045,
+      "placement": "right",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "satellite-edge",
+      "followMotion": true,
+      "gap": 0.023333333333333334,
+      "offsetX": 0.112,
+      "offsetY": -0.09866666666666668,
+      "placement": "right",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "satellite-core",
+      "followMotion": true,
+      "gap": 0.023333333333333334,
+      "offsetX": 0.11725,
+      "offsetY": -0.09866666666666668,
+      "placement": "right",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    }
+  ],
+  "styles": [
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#FFF7FF",
+      "fontFamily": "PingFang SC",
+      "fontSize": 84.0,
+      "id": "headline-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.12,
+      "maxLines": 2,
+      "shadow": {
+        "blur": 2.0,
+        "color": "#231433",
+        "opacity": 0.6,
+        "x": 2.0,
+        "y": 5.0
+      },
+      "stroke": "#493269",
+      "strokeWidth": 5.0,
+      "textAlign": "center",
+      "weight": 800
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#493269",
+      "fontFamily": "PingFang SC",
+      "fontSize": 84.0,
+      "id": "main-edge-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.12,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#493269",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 800
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#FFF6A7",
+      "fontFamily": "PingFang SC",
+      "fontSize": 84.0,
+      "id": "main-core-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.12,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#493269",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 800
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#493269",
+      "fontFamily": "PingFang SC",
+      "fontSize": 84.0,
+      "id": "satellite-edge-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.12,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#493269",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 800
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#FFFFFF",
+      "fontFamily": "PingFang SC",
+      "fontSize": 84.0,
+      "id": "satellite-core-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.12,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#493269",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 800
+    }
+  ],
+  "treatments": [],
+  "usageGuide": {
+    "adjustments": "Agent可按当前应用调整体比例、行宽、位置与颜色；主星尺寸基于字号1.25倍，辅星0.80倍，衬底各增加0.09倍；使用相同中心对齐，保留各层独立动画。几何points/depth可编辑但修改后应重新渲染。保存应用调整不隐式改变模板定义。",
+    "constraints": "星光不能压字或挡住主体；390px移动端核对真实字高、边界与主次辨识。浅墙背景白色辅星可能对比不足。独立衬底是填充图形，并非模糊发光或真实描边；没有资源槽，不沿用旧图片替换参数。",
+    "coverage": "当前规则经同一访谈人物的两处英文重点及中文黑底TTS的A/B/C对照，未证明独立人物/多背景覆盖。加厚衬底B收益不足，采用辅星白核0.80倍字号/depth30的C造型；正式r8必须重导精确Application再独立评审，不继承r7或候选分数。代表帧与技术检查不等于连续观片或试听，未声明最终审美通过。",
+    "fallback": "先调应用位置、比例或颜色并重测；空间不足时移除辅星形成独立定制组合或换普通重点词。不能延长词时间或伪造源字幕以通过检查。",
+    "invariants": "暖白居中粗字配深紫描边；四个独立原生star叶层组成暖黄主星与白色辅星及各自紫色衬底，主星4角depth18，辅星与其衬底4角depth30。星光依附headline实测文字框右侧；主星与辅星保持不同出现时机，入场后稳定停留，退场不改变源词时间。",
+    "purpose": "用于轻快、惊喜、积极语义的关键词花字；按语义事件触发，不逐词泛用星光。"
+  }
+}

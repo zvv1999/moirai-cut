@@ -1,0 +1,390 @@
+{
+  "applications": [
+    {
+      "enabled": true,
+      "target": {
+        "id": "root",
+        "kind": "group"
+      },
+      "treatmentId": "group-fade-root"
+    }
+  ],
+  "canvas": {
+    "fps": 30,
+    "height": 720,
+    "width": 720
+  },
+  "evidence": [
+    {
+      "description": "Typography and motion study; visual review pending",
+      "endSeconds": null,
+      "referenceId": null,
+      "startSeconds": null,
+      "status": "authored"
+    }
+  ],
+  "id": "style-study-20260929-note-paper",
+  "inputs": [
+    {
+      "default": "先完成最重要的事",
+      "id": "text",
+      "label": "主文字",
+      "layerIds": [
+        "headline"
+      ],
+      "maxCharacters": 80
+    }
+  ],
+  "layers": [
+    {
+      "content": {
+        "composite": true,
+        "id": "root",
+        "kind": "group",
+        "region": {
+          "height": 1.0,
+          "width": 1.0,
+          "x": 0.0,
+          "y": 0.0
+        },
+        "separateInstances": true
+      },
+      "parentId": null
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "便签正文",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "text",
+            "role": "subtitle"
+          },
+          "id": "headline",
+          "intents": [],
+          "literal": "重点来了",
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.94
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": -4.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": -2.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -2.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.32,
+            "width": 0.7,
+            "x": 0.15,
+            "y": 0.37
+          },
+          "resourceId": null,
+          "styleId": "headline-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 1
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "上沿纸胶带",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "tape",
+          "intents": [],
+          "literal": "",
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 7.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 7.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.032,
+            "width": 0.16,
+            "x": 0.4,
+            "y": 0.3
+          },
+          "resourceId": null,
+          "styleId": "tape-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 4
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "纸胶带高光",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "tape-highlight",
+          "intents": [],
+          "literal": "",
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 7.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 7.0
+                }
+              ],
+              "property": "rotation"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.006,
+            "width": 0.16,
+            "x": 0.4,
+            "y": 0.3
+          },
+          "resourceId": null,
+          "styleId": "tape-highlight-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 5
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    }
+  ],
+  "name": "注释便签 · 暖黄纸条",
+  "provenance": "Original editable note-paper keyword composition. Left-aligned dark ink, measured padded text background, tape attached to the measured text box and following text motion. No fixed sentence width or audio timestamps. Not a scanned texture or generated bitmap; visual acceptance pending.",
+  "purposes": [
+    "keyword",
+    "decorative_text"
+  ],
+  "resourceBindings": [],
+  "resourceSlots": [],
+  "revision": 0,
+  "schemaVersion": "moirai.dynamic-asset.v1",
+  "spatialRelations": [
+    {
+      "elementId": "tape",
+      "followMotion": true,
+      "gap": 0.0,
+      "offsetX": 0.0,
+      "offsetY": 0.0,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "tape-highlight",
+      "followMotion": true,
+      "gap": 0.0,
+      "offsetX": 0.0,
+      "offsetY": -0.012,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    }
+  ],
+  "styles": [
+    {
+      "background": "#FFE7A0",
+      "backgroundPadding": {
+        "x": 26.0,
+        "y": 22.0
+      },
+      "description": "字幕样式",
+      "fill": "#3D3022",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "headline-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.22,
+      "maxLines": 3,
+      "shadow": null,
+      "stroke": "#171B20",
+      "strokeWidth": 0.0,
+      "textAlign": "left",
+      "weight": 700
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#B9975D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "tape-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.22,
+      "maxLines": 3,
+      "shadow": null,
+      "stroke": "#171B20",
+      "strokeWidth": 0.0,
+      "textAlign": "left",
+      "weight": 700
+    },
+    {
+      "background": null,
+      "description": "字幕样式",
+      "fill": "#E7CD8E",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "tape-highlight-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.22,
+      "maxLines": 3,
+      "shadow": null,
+      "stroke": "#171B20",
+      "strokeWidth": 0.0,
+      "textAlign": "left",
+      "weight": 700
+    }
+  ],
+  "treatments": [
+    {
+      "id": "group-fade-root",
+      "operation": {
+        "channels": [
+          {
+            "keys": [
+              {
+                "easing": "linear",
+                "time": 0.0,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 0.8,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 1.0,
+                "value": 0.0
+              }
+            ],
+            "property": "opacity"
+          }
+        ],
+        "kind": "motion",
+        "motionTiming": {
+          "enterEnd": 0.2,
+          "enterSeconds": 0.12,
+          "exitSeconds": 0.06,
+          "exitStart": 0.8
+        }
+      }
+    }
+  ],
+  "usageGuide": {
+    "adjustments": "可调整纸条宽度、整体比例及位置。长词依靠自然换行；原始纸签轻倾斜是身份特征，字幕版保持轻量上移。 所有应用修改保存在本次应用，不隐式更新模板。",
+    "constraints": "纸面与文字两侧留白必须保留；阴影与主文字采用一致换行和字形，胶带不能飘离纸边；不把纸条铺成人物面部遮罩。 当前定义：headline按keyword绑定、最多3行。",
+    "coverage": "旧视觉r1的note-paper-20260929测试2字、4字和长中文配音三份，三层可编辑；黑底语音样例不证明复杂实拍背景适配，不继承另一纸签r8的证据。 本次仅核对定义并补指南，未重新渲染、连续观片或试听；新版本应用评审未完成，旧分数不自动继承。",
+    "fallback": "先换空位和行宽，再用较简洁便签变体；满句拥挤时转普通字幕。延长视觉停留只能在本次编排中表达，并受下一关键词约束。",
+    "invariants": "三叶层为深棕左对齐字及暖黄背景、上沿胶带和高光；轻缩放及轻倾斜，图层共同退场，没有独立阴影层。",
+    "purpose": "用于短批注和关键词的暖黄纸条；按keyword_start显示，不承担全文逐词跟读。"
+  }
+}

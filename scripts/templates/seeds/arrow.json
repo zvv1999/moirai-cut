@@ -1,0 +1,705 @@
+{
+  "applications": [
+    {
+      "enabled": true,
+      "target": {
+        "id": "root",
+        "kind": "group"
+      },
+      "treatmentId": "solid-arrow-composite-fade"
+    }
+  ],
+  "canvas": {
+    "fps": 30,
+    "height": 720,
+    "width": 720
+  },
+  "evidence": [],
+  "id": "style-study-20260928-arrow",
+  "inputs": [],
+  "layers": [
+    {
+      "content": {
+        "composite": true,
+        "id": "root",
+        "kind": "group",
+        "region": {
+          "height": 1.0,
+          "width": 1.0,
+          "x": 0.0,
+          "y": 0.0
+        },
+        "separateInstances": true
+      },
+      "parentId": null
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "深衬粗杆",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "decoration"
+          },
+          "id": "arrow-shaft-edge",
+          "intents": [],
+          "literal": null,
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.08,
+            "exitSeconds": 0.07,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": -8.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "x"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.068,
+            "width": 0.17,
+            "x": 0.284,
+            "y": 0.466
+          },
+          "resourceId": null,
+          "styleId": "arrow-shaft-edge-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 0
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "深衬实心三角头",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "star",
+            "role": "decoration"
+          },
+          "id": "arrow-upper-edge",
+          "intents": [],
+          "literal": null,
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.08,
+            "exitSeconds": 0.07,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 90.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 90.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": -8.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "x"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.22,
+            "width": 0.22,
+            "x": 0.34,
+            "y": 0.39
+          },
+          "resourceId": null,
+          "starGeometry": {
+            "depth": 50.0,
+            "points": 3
+          },
+          "styleId": "arrow-upper-edge-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 1
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "深衬圆尾",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "arrow-lower-edge",
+          "intents": [],
+          "literal": null,
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.08,
+            "exitSeconds": 0.07,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": -8.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "x"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.068,
+            "width": 0.068,
+            "x": 0.25,
+            "y": 0.466
+          },
+          "resourceId": null,
+          "styleId": "arrow-lower-edge-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 2
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "暖黄粗杆",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "decoration"
+          },
+          "id": "arrow-shaft-ink",
+          "intents": [],
+          "literal": null,
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.08,
+            "exitSeconds": 0.07,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": -8.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "x"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.046,
+            "width": 0.175,
+            "x": 0.284,
+            "y": 0.477
+          },
+          "resourceId": null,
+          "styleId": "arrow-shaft-ink-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 3
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "暖黄实心三角头",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "star",
+            "role": "decoration"
+          },
+          "id": "arrow-upper-ink",
+          "intents": [],
+          "literal": null,
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.08,
+            "exitSeconds": 0.07,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 90.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 90.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": -8.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "x"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.18,
+            "width": 0.18,
+            "x": 0.36,
+            "y": 0.41
+          },
+          "resourceId": null,
+          "starGeometry": {
+            "depth": 50.0,
+            "points": 3
+          },
+          "styleId": "arrow-upper-ink-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 4
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "暖黄圆尾",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "decoration"
+          },
+          "id": "arrow-lower-ink",
+          "intents": [],
+          "literal": null,
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.08,
+            "exitSeconds": 0.07,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": -8.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 0.0
+                }
+              ],
+              "property": "x"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.046,
+            "width": 0.046,
+            "x": 0.261,
+            "y": 0.477
+          },
+          "resourceId": null,
+          "styleId": "arrow-lower-ink-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 5
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    }
+  ],
+  "name": "方向提示 · 粗墨实心箭头",
+  "provenance": "Original editable native six-shape attention mark: double-layer rounded shaft and solid triangular head, isolated group opacity, one short local push. No external raster artwork or generated-image claim. Application position and target evidence are chosen by an agent or person; not automatic tracking.",
+  "purposes": [
+    "decoration"
+  ],
+  "resourceBindings": [],
+  "resourceSlots": [],
+  "revision": 0,
+  "schemaVersion": "moirai.dynamic-asset.v1",
+  "styles": [
+    {
+      "background": null,
+      "description": "深衬粗杆",
+      "fill": "#243034",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "arrow-shaft-edge-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#243034",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "深衬实心三角头",
+      "fill": "#243034",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "arrow-upper-edge-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#243034",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "深衬圆尾",
+      "fill": "#243034",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "arrow-lower-edge-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#243034",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "暖黄粗杆",
+      "fill": "#FFD15E",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "arrow-shaft-ink-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#FFD15E",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "暖黄实心三角头",
+      "fill": "#FFD15E",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "arrow-upper-ink-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#FFD15E",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "暖黄圆尾",
+      "fill": "#FFD15E",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "arrow-lower-ink-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#FFD15E",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    }
+  ],
+  "treatments": [
+    {
+      "id": "solid-arrow-composite-fade",
+      "operation": {
+        "channels": [
+          {
+            "keys": [
+              {
+                "easing": "ease_out",
+                "time": 0.0,
+                "value": 0.0
+              },
+              {
+                "easing": "linear",
+                "time": 0.2,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 0.8,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 1.0,
+                "value": 0.0
+              }
+            ],
+            "property": "opacity"
+          }
+        ],
+        "kind": "motion",
+        "motionTiming": {
+          "enterEnd": 0.2,
+          "enterSeconds": 0.08,
+          "exitSeconds": 0.07,
+          "exitStart": 0.8
+        }
+      }
+    }
+  ],
+  "usageGuide": {
+    "adjustments": "各输入只通过Application调整位置、比例与整体rotationDegrees；Sample保留目标来源、语义和可用显示窗口。所有个案参数独立保存，不隐式更新样式。",
+    "constraints": "尖端不盖目标核心，整段运动不得穿越人脸、正文或画框。目标可见窗口须留足该内容需要的稳定识别与退出时间；没有自动目标识别或追踪能力。",
+    "coverage": "已检查已知横屏与竖屏输入的上/左真实目标、右/下纯几何技术方向及无目标负例，覆盖轮廓连接、整体透明度和实际入退场帧。三正例输入来自两母片，不代表未见背景泛化。未连续观片或试听，正式修订的每次应用仍需独立评审，旧分数不继承。",
+    "fallback": "目标不明、空间或识别窗口不足、已有重点足够而新增指向收益低时跳过；不得延长到目标替换之后。必要时选静态侧标或其他明确说明。",
+    "invariants": "保持六叶连接与同一朝向；先合成完整图形再统一透明度。80ms局部短推入、70ms退出、稳定段不抖动；推进不越过最终尖端。",
+    "purpose": "在存在明确内容依据与可见静止目标时提供方向提示；小屏上的粗杆、圆尾、实心三角头和深衬保证轮廓完整。"
+  }
+}

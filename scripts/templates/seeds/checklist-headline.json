@@ -1,0 +1,3770 @@
+{
+  "applications": [
+    {
+      "enabled": true,
+      "target": {
+        "id": "root",
+        "kind": "group"
+      },
+      "treatmentId": "group-fade-root"
+    }
+  ],
+  "canvas": {
+    "fps": 30,
+    "height": 720,
+    "width": 720
+  },
+  "evidence": [
+    {
+      "description": "Typography and motion study; visual review pending",
+      "endSeconds": null,
+      "referenceId": null,
+      "startSeconds": null,
+      "status": "authored"
+    }
+  ],
+  "id": "style-study-20260929-checklist-headline",
+  "inputs": [
+    {
+      "default": "开始行动",
+      "id": "text",
+      "label": "主文字",
+      "layerIds": [
+        "headline"
+      ],
+      "maxCharacters": 80
+    }
+  ],
+  "layers": [
+    {
+      "content": {
+        "composite": true,
+        "id": "root",
+        "kind": "group",
+        "region": {
+          "height": 1.0,
+          "width": 1.0,
+          "x": 0.0,
+          "y": 0.0
+        },
+        "separateInstances": true
+      },
+      "parentId": null
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "行动重点文字",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "text",
+            "role": "subtitle"
+          },
+          "id": "headline",
+          "intents": [],
+          "literal": "开始行动",
+          "motionTiming": {
+            "enterEnd": 0.2,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.8
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "ease_out",
+                  "time": 0.0,
+                  "value": 0.94
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "scale"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.3,
+            "width": 0.88,
+            "x": 0.06,
+            "y": 0.42
+          },
+          "resourceId": null,
+          "styleId": "headline-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 1
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜右下投影｜纵向连接片",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "shadow-core-x",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.26136,
+            "width": 0.16602,
+            "x": 0.364675,
+            "y": 0.18306500000000003
+          },
+          "resourceId": null,
+          "styleId": "shadow-core-x-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 4
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜右下投影｜横向连接片",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "shadow-core-y",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.23136,
+            "width": 0.19602,
+            "x": 0.349675,
+            "y": 0.198065
+          },
+          "resourceId": null,
+          "styleId": "shadow-core-y-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 4
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜右下投影｜上圆角",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "shadow-left-top",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.03,
+            "width": 0.03,
+            "x": 0.34967499999999996,
+            "y": 0.18306500000000003
+          },
+          "resourceId": null,
+          "styleId": "shadow-left-top-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 4
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜右下投影｜下圆角",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "shadow-left-bottom",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.03,
+            "width": 0.03,
+            "x": 0.34967499999999996,
+            "y": 0.414425
+          },
+          "resourceId": null,
+          "styleId": "shadow-left-bottom-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 4
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜右下投影｜上圆角",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "shadow-right-top",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.03,
+            "width": 0.03,
+            "x": 0.515695,
+            "y": 0.18306500000000003
+          },
+          "resourceId": null,
+          "styleId": "shadow-right-top-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 4
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜右下投影｜下圆角",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "shadow-right-bottom",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.03,
+            "width": 0.03,
+            "x": 0.515695,
+            "y": 0.414425
+          },
+          "resourceId": null,
+          "styleId": "shadow-right-bottom-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 4
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜靛蓝厚轮廓｜纵向连接片",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "edge-core-x",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.26136,
+            "width": 0.16602,
+            "x": 0.3556,
+            "y": 0.17217500000000002
+          },
+          "resourceId": null,
+          "styleId": "edge-core-x-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 5
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜靛蓝厚轮廓｜横向连接片",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "edge-core-y",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.23136,
+            "width": 0.19602,
+            "x": 0.3406,
+            "y": 0.187175
+          },
+          "resourceId": null,
+          "styleId": "edge-core-y-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 5
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜靛蓝厚轮廓｜上圆角",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "edge-left-top",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.03,
+            "width": 0.03,
+            "x": 0.3406,
+            "y": 0.17217500000000002
+          },
+          "resourceId": null,
+          "styleId": "edge-left-top-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 5
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜靛蓝厚轮廓｜下圆角",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "edge-left-bottom",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.03,
+            "width": 0.03,
+            "x": 0.3406,
+            "y": 0.403535
+          },
+          "resourceId": null,
+          "styleId": "edge-left-bottom-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 5
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜靛蓝厚轮廓｜上圆角",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "edge-right-top",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.03,
+            "width": 0.03,
+            "x": 0.50662,
+            "y": 0.17217500000000002
+          },
+          "resourceId": null,
+          "styleId": "edge-right-top-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 5
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜靛蓝厚轮廓｜下圆角",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "edge-right-bottom",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.03,
+            "width": 0.03,
+            "x": 0.50662,
+            "y": 0.403535
+          },
+          "resourceId": null,
+          "styleId": "edge-right-bottom-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 5
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜奶油纸面｜纵向连接片",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "paper-core-x",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.24336,
+            "width": 0.16002000000000002,
+            "x": 0.3586,
+            "y": 0.181175
+          },
+          "resourceId": null,
+          "styleId": "paper-core-x-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜奶油纸面｜横向连接片",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "paper-core-y",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.22536,
+            "width": 0.17802,
+            "x": 0.3496,
+            "y": 0.190175
+          },
+          "resourceId": null,
+          "styleId": "paper-core-y-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜奶油纸面｜上圆角",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "paper-left-top",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.018,
+            "width": 0.018,
+            "x": 0.34959999999999997,
+            "y": 0.18117500000000003
+          },
+          "resourceId": null,
+          "styleId": "paper-left-top-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜奶油纸面｜下圆角",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "paper-left-bottom",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.018,
+            "width": 0.018,
+            "x": 0.34959999999999997,
+            "y": 0.406535
+          },
+          "resourceId": null,
+          "styleId": "paper-left-bottom-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜奶油纸面｜上圆角",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "paper-right-top",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.018,
+            "width": 0.018,
+            "x": 0.50962,
+            "y": 0.18117500000000003
+          },
+          "resourceId": null,
+          "styleId": "paper-right-top-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "清单板｜奶油纸面｜下圆角",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "paper-right-bottom",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.018,
+            "width": 0.018,
+            "x": 0.50962,
+            "y": 0.406535
+          },
+          "resourceId": null,
+          "styleId": "paper-right-bottom-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 6
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "夹扣｜外轮廓｜中段",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "clip-edge-center",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.044,
+            "width": 0.05600000000000001,
+            "x": 0.41061,
+            "y": 0.16310000000000002
+          },
+          "resourceId": null,
+          "styleId": "clip-edge-center-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "夹扣｜外轮廓｜左端",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "clip-edge-left",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.044,
+            "width": 0.044,
+            "x": 0.38861,
+            "y": 0.16310000000000002
+          },
+          "resourceId": null,
+          "styleId": "clip-edge-left-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "夹扣｜外轮廓｜右端",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "clip-edge-right",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.044,
+            "width": 0.044,
+            "x": 0.44461,
+            "y": 0.16310000000000002
+          },
+          "resourceId": null,
+          "styleId": "clip-edge-right-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 7
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "夹扣｜金色主体｜中段",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "clip-gold-center",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.03,
+            "width": 0.058,
+            "x": 0.40961,
+            "y": 0.17010000000000003
+          },
+          "resourceId": null,
+          "styleId": "clip-gold-center-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 8
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "夹扣｜金色主体｜左端",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "clip-gold-left",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.03,
+            "width": 0.03,
+            "x": 0.39461,
+            "y": 0.17010000000000003
+          },
+          "resourceId": null,
+          "styleId": "clip-gold-left-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 8
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "夹扣｜金色主体｜右端",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "clip-gold-right",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.03,
+            "width": 0.03,
+            "x": 0.45261,
+            "y": 0.17010000000000003
+          },
+          "resourceId": null,
+          "styleId": "clip-gold-right-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 8
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "夹扣｜深色凹槽｜中段",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "clip-slot-center",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.007,
+            "width": 0.029,
+            "x": 0.42411,
+            "y": 0.1821
+          },
+          "resourceId": null,
+          "styleId": "clip-slot-center-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "夹扣｜深色凹槽｜左端",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "clip-slot-left",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.007,
+            "width": 0.007,
+            "x": 0.42061,
+            "y": 0.1821
+          },
+          "resourceId": null,
+          "styleId": "clip-slot-left-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "夹扣｜深色凹槽｜右端",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "clip-slot-right",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.007,
+            "width": 0.007,
+            "x": 0.44961,
+            "y": 0.1821
+          },
+          "resourceId": null,
+          "styleId": "clip-slot-right-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜薄荷底圆 1",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "box-0",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.0363,
+            "width": 0.0363,
+            "x": 0.36601,
+            "y": 0.24840500000000004
+          },
+          "resourceId": null,
+          "styleId": "box-0-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜条目主线 1｜中段",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "line-0-center",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.0105,
+            "width": 0.07299,
+            "x": 0.423895,
+            "y": 0.26130500000000006
+          },
+          "resourceId": null,
+          "styleId": "line-0-center-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜条目主线 1｜左端",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "line-0-left",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.0105,
+            "width": 0.0105,
+            "x": 0.418645,
+            "y": 0.26130500000000006
+          },
+          "resourceId": null,
+          "styleId": "line-0-left-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜条目主线 1｜右端",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "line-0-right",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.0105,
+            "width": 0.0105,
+            "x": 0.491635,
+            "y": 0.26130500000000006
+          },
+          "resourceId": null,
+          "styleId": "line-0-right-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜勾的短笔 1",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "tick-short-0",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.18,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 42.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 42.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.006170999999999999,
+            "width": 0.012705,
+            "x": 0.371818,
+            "y": 0.26474000000000003
+          },
+          "resourceId": null,
+          "styleId": "tick-short-0-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 10
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜勾的长笔 1",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "tick-long-0",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.18,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -48.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -48.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.006170999999999999,
+            "width": 0.018876,
+            "x": 0.380167,
+            "y": 0.26111
+          },
+          "resourceId": null,
+          "styleId": "tick-long-0-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 10
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜薄荷底圆 2",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "box-1",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.0363,
+            "width": 0.0363,
+            "x": 0.36601,
+            "y": 0.306485
+          },
+          "resourceId": null,
+          "styleId": "box-1-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜条目主线 2｜中段",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "line-1-center",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.0105,
+            "width": 0.06573000000000001,
+            "x": 0.423895,
+            "y": 0.31938500000000003
+          },
+          "resourceId": null,
+          "styleId": "line-1-center-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜条目主线 2｜左端",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "line-1-left",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.0105,
+            "width": 0.0105,
+            "x": 0.418645,
+            "y": 0.31938500000000003
+          },
+          "resourceId": null,
+          "styleId": "line-1-left-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜条目主线 2｜右端",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "line-1-right",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.0105,
+            "width": 0.0105,
+            "x": 0.484375,
+            "y": 0.31938500000000003
+          },
+          "resourceId": null,
+          "styleId": "line-1-right-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜勾的短笔 2",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "tick-short-1",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.18,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 42.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 42.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.006170999999999999,
+            "width": 0.012705,
+            "x": 0.371818,
+            "y": 0.32282000000000005
+          },
+          "resourceId": null,
+          "styleId": "tick-short-1-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 10
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜勾的长笔 2",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "tick-long-1",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.18,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -48.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -48.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.1,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.006170999999999999,
+            "width": 0.018876,
+            "x": 0.380167,
+            "y": 0.31919000000000003
+          },
+          "resourceId": null,
+          "styleId": "tick-long-1-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 10
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜薄荷底圆 3",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "box-2",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.0363,
+            "width": 0.0363,
+            "x": 0.36601,
+            "y": 0.364565
+          },
+          "resourceId": null,
+          "styleId": "box-2-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜条目主线 3｜中段",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "line-2-center",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.0105,
+            "width": 0.05847,
+            "x": 0.423895,
+            "y": 0.377465
+          },
+          "resourceId": null,
+          "styleId": "line-2-center-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜条目主线 3｜左端",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "line-2-left",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.0105,
+            "width": 0.0105,
+            "x": 0.418645,
+            "y": 0.377465
+          },
+          "resourceId": null,
+          "styleId": "line-2-left-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜条目主线 3｜右端",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "ellipse",
+            "role": "supporting_visual"
+          },
+          "id": "line-2-right",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.12,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [],
+          "priority": 50,
+          "region": {
+            "height": 0.0105,
+            "width": 0.0105,
+            "x": 0.477115,
+            "y": 0.377465
+          },
+          "resourceId": null,
+          "styleId": "line-2-right-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 9
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜勾的短笔 3",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "tick-short-2",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.18,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 42.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 42.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.006170999999999999,
+            "width": 0.012705,
+            "x": 0.371818,
+            "y": 0.38090000000000007
+          },
+          "resourceId": null,
+          "styleId": "tick-short-2-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 10
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    },
+    {
+      "content": {
+        "element": {
+          "binding": "keyword",
+          "description": "勾选行｜勾的长笔 3",
+          "evidence": [],
+          "exclusiveGroup": null,
+          "features": {
+            "accent": false,
+            "avoidProtectedRegions": false,
+            "mediaUse": null,
+            "outline": false,
+            "placement": "fixed",
+            "representation": "rectangle",
+            "role": "supporting_visual"
+          },
+          "id": "tick-long-2",
+          "intents": [],
+          "literal": "",
+          "motionTiming": {
+            "enterEnd": 0.3,
+            "enterSeconds": 0.18,
+            "exitSeconds": 0.06,
+            "exitStart": 0.85
+          },
+          "motions": [
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": -48.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": -48.0
+                }
+              ],
+              "property": "rotation"
+            },
+            {
+              "keys": [
+                {
+                  "easing": "linear",
+                  "time": 0.0,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.2,
+                  "value": 0.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 0.3,
+                  "value": 1.0
+                },
+                {
+                  "easing": "linear",
+                  "time": 1.0,
+                  "value": 1.0
+                }
+              ],
+              "property": "opacity"
+            }
+          ],
+          "priority": 50,
+          "region": {
+            "height": 0.006170999999999999,
+            "width": 0.018876,
+            "x": 0.380167,
+            "y": 0.3772700000000001
+          },
+          "resourceId": null,
+          "styleId": "tick-long-2-style",
+          "timing": {
+            "anchor": "keyword_start",
+            "maxSeconds": 600.0,
+            "minSeconds": 0.1,
+            "offsetSeconds": 0.0
+          },
+          "z": 10
+        },
+        "kind": "element"
+      },
+      "parentId": "root"
+    }
+  ],
+  "name": "行动清单 · 方法花字",
+  "provenance": "Generic r5 clipboard refinement from current r4: editable rounded cream board with indigo contour, short gold clip, single row lines and sequential decorative checks at60/120/180ms. Body type settles120ms, root exits60ms. Shared measured-text attachment and original typography preserved. Three rows are a checklist icon, not three detected tasks. No source words/times/coordinates in definition. Candidate AB reviewed on Chinese short/medium/long emphasis and original mentor Application; formal saved-r5 revalidation pending.",
+  "purposes": [
+    "keyword",
+    "decorative_text"
+  ],
+  "resourceBindings": [],
+  "resourceSlots": [],
+  "revision": 0,
+  "schemaVersion": "moirai.dynamic-asset.v1",
+  "spatialRelations": [
+    {
+      "elementId": "shadow-core-x",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.009075,
+      "offsetY": 0.0,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "shadow-core-y",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.009075,
+      "offsetY": -0.015,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "shadow-left-top",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.073935,
+      "offsetY": -0.23136,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "shadow-left-bottom",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.073935,
+      "offsetY": 0.0,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "shadow-right-top",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.092085,
+      "offsetY": -0.23136,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "shadow-right-bottom",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.092085,
+      "offsetY": 0.0,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "edge-core-x",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.0,
+      "offsetY": -0.01089,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "edge-core-y",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.0,
+      "offsetY": -0.02589,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "edge-left-top",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.08301,
+      "offsetY": -0.24225,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "edge-left-bottom",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.08301,
+      "offsetY": -0.01089,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "edge-right-top",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.08301,
+      "offsetY": -0.24225,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "edge-right-bottom",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.08301,
+      "offsetY": -0.01089,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "paper-core-x",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.0,
+      "offsetY": -0.01989,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "paper-core-y",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.0,
+      "offsetY": -0.02889,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "paper-left-top",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.08001000000000001,
+      "offsetY": -0.24525,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "paper-left-bottom",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.08001000000000001,
+      "offsetY": -0.01989,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "paper-right-top",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.08001000000000001,
+      "offsetY": -0.24525,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "paper-right-bottom",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.08001000000000001,
+      "offsetY": -0.01989,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "clip-edge-center",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.0,
+      "offsetY": -0.237325,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "clip-edge-left",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.028000000000000004,
+      "offsetY": -0.237325,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "clip-edge-right",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.028000000000000004,
+      "offsetY": -0.237325,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "clip-gold-center",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.0,
+      "offsetY": -0.244325,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "clip-gold-left",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.029,
+      "offsetY": -0.244325,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "clip-gold-right",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.029,
+      "offsetY": -0.244325,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "clip-slot-center",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.0,
+      "offsetY": -0.255325,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "clip-slot-left",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.0145,
+      "offsetY": -0.255325,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "clip-slot-right",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.0145,
+      "offsetY": -0.255325,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "box-0",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.05445000000000001,
+      "offsetY": -0.15971999999999997,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "line-0-center",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.02178,
+      "offsetY": -0.17261999999999997,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "line-0-left",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.014715,
+      "offsetY": -0.17261999999999997,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "line-0-right",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.058275,
+      "offsetY": -0.17261999999999997,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "tick-short-0",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.0604395,
+      "offsetY": -0.173514,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "tick-long-0",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.04900499999999998,
+      "offsetY": -0.177144,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "box-1",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.05445000000000001,
+      "offsetY": -0.10164,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "line-1-center",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.01815,
+      "offsetY": -0.11454,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "line-1-left",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.014715000000000006,
+      "offsetY": -0.11454,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "line-1-right",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.051015000000000005,
+      "offsetY": -0.11454,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "tick-short-1",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.0604395,
+      "offsetY": -0.11543399999999998,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "tick-long-1",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.04900499999999998,
+      "offsetY": -0.11906399999999998,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "box-2",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.05445000000000001,
+      "offsetY": -0.043559999999999995,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "line-2-center",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.01452,
+      "offsetY": -0.05646,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "line-2-left",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.014715,
+      "offsetY": -0.05646,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "line-2-right",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": 0.043755,
+      "offsetY": -0.05646,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "tick-short-2",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.0604395,
+      "offsetY": -0.057353999999999974,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    },
+    {
+      "elementId": "tick-long-2",
+      "followMotion": true,
+      "gap": 0.028,
+      "offsetX": -0.04900499999999998,
+      "offsetY": -0.060983999999999976,
+      "placement": "above",
+      "referenceBounds": "text_box",
+      "relativeTo": "headline"
+    }
+  ],
+  "styles": [
+    {
+      "background": null,
+      "description": "行动重点文字",
+      "fill": "#FFF8E9",
+      "fontFamily": "PingFang SC",
+      "fontSize": 78.0,
+      "id": "headline-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.12,
+      "maxLines": 2,
+      "shadow": {
+        "blur": 2.0,
+        "color": "#252E55",
+        "opacity": 0.7,
+        "x": 1.0,
+        "y": 2.0
+      },
+      "stroke": "#343C66",
+      "strokeWidth": 2.8,
+      "textAlign": "center",
+      "weight": 700
+    },
+    {
+      "background": null,
+      "description": "清单板｜右下投影｜纵向连接片",
+      "fill": "#181D36",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "shadow-core-x-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单板｜右下投影｜横向连接片",
+      "fill": "#181D36",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "shadow-core-y-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单板｜右下投影｜上圆角",
+      "fill": "#181D36",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "shadow-left-top-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单板｜右下投影｜下圆角",
+      "fill": "#181D36",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "shadow-left-bottom-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单板｜右下投影｜上圆角",
+      "fill": "#181D36",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "shadow-right-top-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单板｜右下投影｜下圆角",
+      "fill": "#181D36",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "shadow-right-bottom-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单板｜靛蓝厚轮廓｜纵向连接片",
+      "fill": "#343C66",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "edge-core-x-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单板｜靛蓝厚轮廓｜横向连接片",
+      "fill": "#343C66",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "edge-core-y-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单板｜靛蓝厚轮廓｜上圆角",
+      "fill": "#343C66",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "edge-left-top-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单板｜靛蓝厚轮廓｜下圆角",
+      "fill": "#343C66",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "edge-left-bottom-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单板｜靛蓝厚轮廓｜上圆角",
+      "fill": "#343C66",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "edge-right-top-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单板｜靛蓝厚轮廓｜下圆角",
+      "fill": "#343C66",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "edge-right-bottom-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单板｜奶油纸面｜纵向连接片",
+      "fill": "#FFF8E9",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "paper-core-x-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单板｜奶油纸面｜横向连接片",
+      "fill": "#FFF8E9",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "paper-core-y-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单板｜奶油纸面｜上圆角",
+      "fill": "#FFF8E9",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "paper-left-top-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单板｜奶油纸面｜下圆角",
+      "fill": "#FFF8E9",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "paper-left-bottom-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单板｜奶油纸面｜上圆角",
+      "fill": "#FFF8E9",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "paper-right-top-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "清单板｜奶油纸面｜下圆角",
+      "fill": "#FFF8E9",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "paper-right-bottom-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "夹扣｜外轮廓｜中段",
+      "fill": "#343C66",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "clip-edge-center-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "夹扣｜外轮廓｜左端",
+      "fill": "#343C66",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "clip-edge-left-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "夹扣｜外轮廓｜右端",
+      "fill": "#343C66",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "clip-edge-right-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "夹扣｜金色主体｜中段",
+      "fill": "#F5C66B",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "clip-gold-center-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "夹扣｜金色主体｜左端",
+      "fill": "#F5C66B",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "clip-gold-left-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "夹扣｜金色主体｜右端",
+      "fill": "#F5C66B",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "clip-gold-right-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "夹扣｜深色凹槽｜中段",
+      "fill": "#9F702F",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "clip-slot-center-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "夹扣｜深色凹槽｜左端",
+      "fill": "#9F702F",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "clip-slot-left-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "夹扣｜深色凹槽｜右端",
+      "fill": "#9F702F",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "clip-slot-right-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜薄荷底圆 1",
+      "fill": "#80CCB8",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "box-0-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜条目主线 1｜中段",
+      "fill": "#59617D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "line-0-center-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜条目主线 1｜左端",
+      "fill": "#59617D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "line-0-left-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜条目主线 1｜右端",
+      "fill": "#59617D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "line-0-right-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜勾的短笔 1",
+      "fill": "#214B49",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "tick-short-0-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜勾的长笔 1",
+      "fill": "#214B49",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "tick-long-0-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜薄荷底圆 2",
+      "fill": "#80CCB8",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "box-1-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜条目主线 2｜中段",
+      "fill": "#59617D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "line-1-center-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜条目主线 2｜左端",
+      "fill": "#59617D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "line-1-left-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜条目主线 2｜右端",
+      "fill": "#59617D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "line-1-right-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜勾的短笔 2",
+      "fill": "#214B49",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "tick-short-1-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜勾的长笔 2",
+      "fill": "#214B49",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "tick-long-1-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜薄荷底圆 3",
+      "fill": "#80CCB8",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "box-2-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜条目主线 3｜中段",
+      "fill": "#59617D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "line-2-center-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜条目主线 3｜左端",
+      "fill": "#59617D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "line-2-left-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜条目主线 3｜右端",
+      "fill": "#59617D",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "line-2-right-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜勾的短笔 3",
+      "fill": "#214B49",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "tick-short-2-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    },
+    {
+      "background": null,
+      "description": "勾选行｜勾的长笔 3",
+      "fill": "#214B49",
+      "fontFamily": "PingFang SC",
+      "fontSize": 72.0,
+      "id": "tick-long-2-style",
+      "italic": false,
+      "letterSpacing": 0.0,
+      "lineHeight": 1.2,
+      "maxLines": 2,
+      "shadow": null,
+      "stroke": "#202426",
+      "strokeWidth": 0.0,
+      "textAlign": "center",
+      "weight": 600
+    }
+  ],
+  "treatments": [
+    {
+      "id": "group-fade-root",
+      "operation": {
+        "channels": [
+          {
+            "keys": [
+              {
+                "easing": "linear",
+                "time": 0.0,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 0.8,
+                "value": 1.0
+              },
+              {
+                "easing": "linear",
+                "time": 1.0,
+                "value": 0.0
+              }
+            ],
+            "property": "opacity"
+          }
+        ],
+        "kind": "motion",
+        "motionTiming": {
+          "enterEnd": 0.2,
+          "enterSeconds": 0.12,
+          "exitSeconds": 0.06,
+          "exitStart": 0.8
+        }
+      }
+    }
+  ],
+  "usageGuide": {
+    "adjustments": "可选择关键词花字或正文/重点分层应用，按画面空位调整整体大小与文字行宽；图标相对文字距离可在本次定制组合中调整。 所有应用修改保存在本次应用，不隐式更新模板。",
+    "constraints": "必须有明确行动语义；按390px检查勾形与文字，优先保证可读区域和脸/手势保护。正文稳定阅读预算从120ms后计，完整图标识别从最后勾180ms成形后另计，二者都扣除60ms退出；当前识别基准至少0.6s，具体文案阅读预算按内容决定。短事件不足应调整本次事件/跳过，不能压缩关键帧或以正文提前稳定掩盖图标未成形。连续播放、试听和最终审美需单独确认。",
+    "coverage": "r4四案最低87、r3最低79和旧失败保留。r5为圆角轮廓、短夹扣、单行笔画和分层勾选的通用修订；中文三长度/导师正负例候选AB已审查，保存版四Application正式出片待复核，不继承旧revision分数。",
+    "fallback": "先扩大可阅读区域或换到下方/侧面，再缩短本次强调范围；完整正文须保留在独立字幕。仍不清楚时仅保留正文，不能伪称图标完成了信息表达。",
+    "invariants": "奶油纸、靛蓝厚轮廓、短金色夹扣、三行薄荷勾选符号；板身直立圆角，条目为清楚单横线。正文120ms稳定，三个勾分别60/120/180ms确认，60ms整体退出。三行是清单符号，不表示检测出三个真实任务。矩形与椭圆保留语义描述；整个root共享透明度避免拼接接缝。",
+    "purpose": "用于步骤、行动建议或完成事项；必须有明确可执行内容，不能把一般论述也标成任务。"
+  }
+}

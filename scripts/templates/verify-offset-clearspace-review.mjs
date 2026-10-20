@@ -1,0 +1,10 @@
+import fs from 'node:fs/promises';import assert from 'node:assert/strict';import {chromium} from '/Users/zhengwei/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+const root='/Users/zhengwei/Downloads/offset-clearspace-20260929',b=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
+try{const p=await b.newPage({viewport:{width:1440,height:1000}}),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto('file://'+root+'/review.html');await p.waitForFunction(()=>document.querySelectorAll('video').length===3&&[...document.querySelectorAll('video')].every(v=>v.readyState>=1&&v.videoWidth===1280));
+for(const section of await p.locator('section').all()){
+ await section.locator('video').evaluate(v=>{v.currentTime=1});await section.getByRole('button',{name:'原下方位置',exact:true}).click();await section.locator('video').evaluate(v=>new Promise(resolve=>{if(v.readyState>=1&&Math.abs(v.currentTime-1)<.1)return resolve();v.addEventListener('seeked',resolve,{once:true})}));assert.ok(Math.abs(await section.locator('video').evaluate(v=>v.currentTime)-1)<.1);
+}
+const links=await p.getByRole('link',{name:'按本次位置试用',exact:true}).evaluateAll(a=>a.map(e=>e.href));assert.equal(links.length,3);await p.setViewportSize({width:390,height:844});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+for(const [i,link]of links.entries()){const pending=p.waitForResponse(r=>r.ok()&&r.url().endsWith('/dynamic-assets/application'));await p.goto(link);const actual=(await(await pending).json()).template;const expected=JSON.parse(await fs.readFile(root+'/'+i+'/designs.json')).designs[0].template;expected.id=actual.id;assert.deepEqual(actual,expected);}
+assert.deepEqual(errors,[]);await fs.writeFile(root+'/ui-verification.json',JSON.stringify({passed:true,videoVersionsLoaded:6,switchRetainsPosition:true,exactApplicationLinks:true,mobileNoOverflow:true,pageErrors:errors},null,2));console.log('PASS six versions, same-time switching, exact links and mobile');
+}finally{await b.close()}

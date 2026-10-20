@@ -1,0 +1,232 @@
+{
+  "sourceSha256": "ac199d3105e3203a23d97e8180bd725f4308dae38b07b52e6524fabafe4eb81b",
+  "source": "IRA Design / Creative Tim, SVG/Examples/bg5-1.svg",
+  "license": "MIT, LICENSE.txt",
+  "canvas": {
+    "width": 1200,
+    "height": 900
+  },
+  "parts": [
+    {
+      "key": "background",
+      "name": "空间衬底",
+      "svg": "background.svg",
+      "sourceElements": [
+        "path",
+        "path"
+      ],
+      "png": "background.png",
+      "svgSha256": "0983828529818ed019e4d2eda6e150dfac6c28af0e7ae1fa2a27a435a71c3d9f",
+      "bounds": {
+        "left": 0,
+        "top": 62,
+        "width": 1200,
+        "height": 775
+      },
+      "alphaBounds": {
+        "left": 0,
+        "top": 66,
+        "width": 1200,
+        "height": 767
+      },
+      "visiblePixels": 631679,
+      "partiallyTransparentPixels": 5551,
+      "sha256": "e2e387bcc59a928b4309078443b06eb7ed1a248f14183a8df119969d31433b3c"
+    },
+    {
+      "key": "books",
+      "name": "书架",
+      "svg": "books.svg",
+      "sourceElements": [
+        "books"
+      ],
+      "png": "books.png",
+      "svgSha256": "ea2e82840a4e6d5d791cddfe757a4a69303b9fe7d1cfc63ab271012bbcb54108",
+      "bounds": {
+        "left": 165,
+        "top": 178,
+        "width": 272,
+        "height": 420
+      },
+      "alphaBounds": {
+        "left": 169,
+        "top": 182,
+        "width": 264,
+        "height": 412
+      },
+      "visiblePixels": 96427,
+      "partiallyTransparentPixels": 2311,
+      "sha256": "2d3f7a73459713f9437fd8ab7b51591ade06be7895d470112694d8058049c559"
+    },
+    {
+      "key": "plant",
+      "name": "绿植",
+      "svg": "plant.svg",
+      "sourceElements": [
+        "flower"
+      ],
+      "png": "plant.png",
+      "svgSha256": "8df55fe337c5289cf66d1c9d0d06c9d4c795d0aed2ea2d1d1fa970a58c3d5791",
+      "bounds": {
+        "left": 805,
+        "top": 345,
+        "width": 253,
+        "height": 376
+      },
+      "alphaBounds": {
+        "left": 809,
+        "top": 349,
+        "width": 245,
+        "height": 368
+      },
+      "visiblePixels": 40173,
+      "partiallyTransparentPixels": 2618,
+      "sha256": "7184bf64c50547ebfc185702448b70b5e232c7625d5459e813762700c11557d6"
+    },
+    {
+      "key": "sofa",
+      "name": "沙发",
+      "svg": "sofa.svg",
+      "sourceElements": [
+        "path",
+        "path",
+        "polygon",
+        "polygon",
+        "path"
+      ],
+      "png": "sofa.png",
+      "svgSha256": "4b03a7d91fc68a9d8b24a84dd0a98d9b8dcc7ca00b0188676e28b486c17d653c",
+      "bounds": {
+        "left": 344,
+        "top": 388,
+        "width": 543,
+        "height": 303
+      },
+      "alphaBounds": {
+        "left": 348,
+        "top": 392,
+        "width": 535,
+        "height": 295
+      },
+      "visiblePixels": 99465,
+      "partiallyTransparentPixels": 3152,
+      "sha256": "caa9f46bd5ac0040342536c5940f825f49ad0c319e2574c333448c83ffc2d327"
+    },
+    {
+      "key": "lamp",
+      "name": "吊灯",
+      "svg": "lamp.svg",
+      "sourceElements": [
+        "polygon",
+        "path",
+        "path",
+        "path"
+      ],
+      "png": "lamp.png",
+      "svgSha256": "a1eef3aa790e1fa1d6c1bf6614daed66c9bab29d81968515c64e3613dd820ae8",
+      "bounds": {
+        "left": 555,
+        "top": 62,
+        "width": 104,
+        "height": 175
+      },
+      "alphaBounds": {
+        "left": 559,
+        "top": 66,
+        "width": 96,
+        "height": 167
+      },
+      "visiblePixels": 7225,
+      "partiallyTransparentPixels": 707,
+      "sha256": "9bffefa5547bbbd2ad82afd92ca0926463a059c18d6ff68fb045a870874962bb"
+    },
+    {
+      "key": "light",
+      "name": "柔光",
+      "svg": "light.svg",
+      "sourceElements": [
+        "polygon"
+      ],
+      "png": "light.png",
+      "svgSha256": "b7e0fd4d46e98ae52eca23d9d2e6f9104d423691bae1eac431426aeb6c7dbdf6",
+      "bounds": {
+        "left": 513,
+        "top": 214,
+        "width": 189,
+        "height": 168
+      },
+      "alphaBounds": {
+        "left": 517,
+        "top": 218,
+        "width": 181,
+        "height": 160
+      },
+      "visiblePixels": 21504,
+      "partiallyTransparentPixels": 21504,
+      "sha256": "4ee13f90650361d2383ff00353b5957ec1ec8e0d009109ccb6c59a4c4a3e1711"
+    },
+    {
+      "key": "bag",
+      "name": "随身包",
+      "svg": "bag.svg",
+      "sourceElements": [
+        "bag"
+      ],
+      "png": "bag.png",
+      "svgSha256": "32b14e0a40cfca3179d6e0f1bc87d52868128390bc16cd44112a53b1de728fb4",
+      "bounds": {
+        "left": 850,
+        "top": 605,
+        "width": 118,
+        "height": 116
+      },
+      "alphaBounds": {
+        "left": 854,
+        "top": 609,
+        "width": 110,
+        "height": 108
+      },
+      "visiblePixels": 7923,
+      "partiallyTransparentPixels": 884,
+      "sha256": "48f048446c02569f24316859f662d683f5b6ab3125ba7ab7084ee6633c889fbf"
+    },
+    {
+      "key": "reader",
+      "name": "学习者与电脑",
+      "svg": "reader.svg",
+      "sourceElements": [
+        "g"
+      ],
+      "png": "reader.png",
+      "svgSha256": "212695efefebe0e43ba72b44f3b869879951a85d46a1420a9643ca83b3eb5e14",
+      "bounds": {
+        "left": 485,
+        "top": 254,
+        "width": 256,
+        "height": 349
+      },
+      "alphaBounds": {
+        "left": 489,
+        "top": 258,
+        "width": 248,
+        "height": 341
+      },
+      "visiblePixels": 45471,
+      "partiallyTransparentPixels": 2466,
+      "sha256": "be67b2f1eb93fe490b313393a37f37c0cfc86e5ae4fffcb07c4d73d0b8fe710a"
+    }
+  ],
+  "derivation": "Local MIT SVG derivative: reader and laptop scaled 1.30 about the visible bottom center; sofa planes, shelf recesses, plant leaves, and laptop edge clarified. Eight semantic resource layers retained. No AI bitmap generation.",
+  "derivativeOf": "learning-room-v1",
+  "derivativeVersion": 2,
+  "sourceArchiveCommit": "e2e7f9f6aaff3170526a67a2434732e07407fb1e",
+  "sourceArchiveSha256": "8da78c4d4671b8f440781114ea82149f9c32c903e7b22c702bfb8b9ff1efccc1",
+  "readerTransform": {
+    "scale": 1.3,
+    "anchorCanvasPixels": {
+      "x": 613,
+      "y": 599
+    },
+    "appliedIn": "SVG geometry only; candidate regions are computed from new raster bounds, never scaled a second time"
+  }
+}
