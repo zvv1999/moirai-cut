@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createReadStream } from "node:fs";
-import { mkdir, rename, rm, stat, writeFile } from "node:fs/promises";
-import { randomUUID } from "node:crypto";
+import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import path from "node:path";
 import type { ReadableOptions } from "node:stream";
@@ -111,6 +111,8 @@ const failed = (error: unknown, status = 400) =>
     { error: error instanceof Error ? error.message : String(error) },
     { status },
   );
+
+class UploadCompletionConflict extends Error {}
 
 type Context = { params: Promise<{ projectId: string; assetId?: string[] }> };
 
@@ -338,6 +340,14 @@ export async function PATCH(request: Request, { params }: Context) {
       throw new Error("Media metadata merge requires an object value");
     }
     const value = action === "merge" ? mutation.value : undefined;
+    const expectedUpload = mutation.expectedUpload;
+    if (expectedUpload !== undefined && (
+      action !== "merge" || !isRecord(expectedUpload) ||
+      Object.keys(expectedUpload).some((key) => !["ext", "mimeType", "sha256"].includes(key)) ||
+      typeof expectedUpload.ext !== "string" || !SAFE_EXT.test(expectedUpload.ext) ||
+      typeof expectedUpload.mimeType !== "string" ||
+      typeof expectedUpload.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(expectedUpload.sha256)
+    )) throw new Error("Invalid upload completion precondition");
     const removeKeys =
       action === "merge" && Array.isArray(mutation.removeKeys)
         ? mutation.removeKeys
@@ -355,7 +365,7 @@ export async function PATCH(request: Request, { params }: Context) {
     }
     await mutateMediaIndex({
       directory: mediaDir(projectId),
-      update: (index) => {
+      update: async (index) => {
         if (action === "remove") {
           delete index[id];
           return;
@@ -363,6 +373,24 @@ export async function PATCH(request: Request, { params }: Context) {
         if (!isRecord(value)) throw new Error("Invalid media metadata value");
         const current = index[id];
         if (!current) throw new Error(`No media bytes for asset ${id}`);
+        if (isRecord(expectedUpload)) {
+          // PUT and PATCH share this lock: certify only the still-unfinished
+          // upload and its actual bytes, without overwriting concurrent edits.
+          if (Object.keys(current).length !== 2 ||
+              current.ext !== expectedUpload.ext || current.mimeType !== expectedUpload.mimeType ||
+              Object.keys(current).some((key) => key !== "ext" && key !== "mimeType"))
+            throw new UploadCompletionConflict(`Upload metadata changed: ${id}`);
+          let digest: string;
+          try {
+            digest = createHash("sha256").update(await readFile(assetPath(projectId, id, current.ext))).digest("hex");
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code === "ENOENT")
+              throw new UploadCompletionConflict(`Upload bytes missing: ${id}`);
+            throw error;
+          }
+          if (digest !== expectedUpload.sha256)
+            throw new UploadCompletionConflict(`Upload bytes changed: ${id}`);
+        }
         const accepted = { ...value };
         for (const reserved of ["__proto__", "constructor", "prototype"]) {
           delete accepted[reserved];
@@ -395,7 +423,7 @@ export async function PATCH(request: Request, { params }: Context) {
     });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return failed(error);
+    return failed(error, error instanceof UploadCompletionConflict ? 409 : 400);
   }
 }
 

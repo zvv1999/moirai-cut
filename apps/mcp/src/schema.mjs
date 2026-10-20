@@ -223,6 +223,7 @@ export const OperationSchema = z
             "transform.positionX", "transform.positionY",
             "transform.scaleX", "transform.scaleY", "transform.rotate",
             "opacity", "volume", "fontSize", "letterSpacing", "lineHeight",
+            "background.opacity",
             "background.cornerRadius", "background.paddingX", "background.paddingY",
             "background.offsetX", "background.offsetY",
             "geometry.cornerRadius", "geometry.shadow.blur",

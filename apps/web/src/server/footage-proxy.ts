@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import { prepareProductionAssets } from "../../../mcp/src/template-assets.mjs";
+import { produceTemplates } from "../../../mcp/src/template-authoring.mjs";
 
 // This adapter only transports HTTP to the native Rust service.
 export async function proxyFootage(request: Request, segments: string[]) {
@@ -37,6 +39,24 @@ export async function proxyFootage(request: Request, segments: string[]) {
 	if (segments.some((part) => !/^[a-zA-Z0-9_-]+$/.test(part))) {
 		return Response.json({ error: "无效路径。" }, { status: 400 });
 	}
+	if (
+		request.method === "POST" &&
+		segments.join("/") === "templates/production/author"
+	) {
+		try {
+			return Response.json(
+				await produceTemplates({
+					request: await request.json(),
+					base: publicUrl.origin,
+				}),
+			);
+		} catch (error) {
+			return Response.json(
+				{ error: error instanceof Error ? error.message : String(error) },
+				{ status: 400 },
+			);
+		}
+	}
 	try {
 		const configPath =
 			process.env.MOIRAI_FOOTAGE_CONFIG ??
@@ -61,8 +81,27 @@ export async function proxyFootage(request: Request, segments: string[]) {
 			signal: request.signal,
 		};
 		if (request.method !== "GET" && request.method !== "HEAD") {
-			init.body = request.body;
-			init.duplex = "half";
+			if (
+				request.method === "POST" &&
+				segments.join("/") === "templates/production"
+			) {
+				try {
+					init.body = JSON.stringify(
+						await prepareProductionAssets(
+							await request.json(),
+							publicUrl.origin,
+						),
+					);
+				} catch (error) {
+					return Response.json(
+						{ error: error instanceof Error ? error.message : String(error) },
+						{ status: 400 },
+					);
+				}
+			} else {
+				init.body = request.body;
+				init.duplex = "half";
+			}
 		}
 		const response = await fetch(
 			`http://127.0.0.1:${config.port}/${segments.join("/")}${url.search}`,

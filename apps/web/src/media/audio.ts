@@ -245,6 +245,9 @@ async function resolveAudioBufferForElement({
 		return await audioContext.decodeAudioData(arrayBuffer.slice(0));
 	} catch (error) {
 		console.warn("Failed to decode audio:", error);
+		if (!isElementMuted({ element }) && element.params["template.soundSha256"]) {
+			throw new Error(`模板声音加载失败：${element.name}`, { cause: error });
+		}
 		return null;
 	}
 }
@@ -256,14 +259,18 @@ async function resolveAudioBufferForAsset({
 	asset: MediaAsset;
 	audioContext: AudioContext;
 }): Promise<AudioBuffer | null> {
-	if (asset.type === "audio") {
-		try {
-			const arrayBuffer = await asset.file.arrayBuffer();
-			return await audioContext.decodeAudioData(arrayBuffer.slice(0));
-		} catch (error) {
+	// The browser's container decoder applies AAC priming/edit-list trimming.
+	// Decoding isolated packets can retain priming samples even when the first
+	// decoded buffer is timestamped at zero, shifting the entire soundtrack.
+	try {
+		const arrayBuffer = await asset.file.arrayBuffer();
+		return await audioContext.decodeAudioData(arrayBuffer);
+	} catch (error) {
+		if (asset.type === "audio") {
 			console.warn("Failed to decode audio asset:", error);
 			return null;
 		}
+		// Keep packet decoding for video containers unsupported by Web Audio.
 	}
 
 	const input = new Input({
@@ -394,8 +401,8 @@ async function fetchLibraryAudioSource({
 		}
 
 		const blob = await response.blob();
-		const file = new File([blob], `${element.name}.mp3`, {
-			type: "audio/mpeg",
+		const file = new File([blob], element.name, {
+			type: blob.type || "application/octet-stream",
 		});
 
 		return {
@@ -410,6 +417,9 @@ async function fetchLibraryAudioSource({
 		};
 	} catch (error) {
 		console.warn("Failed to fetch library audio:", error);
+		if (element.params["template.soundSha256"]) {
+			throw new Error(`模板声音加载失败：${element.name}`, { cause: error });
+		}
 		return null;
 	}
 }
@@ -430,8 +440,8 @@ async function fetchLibraryAudioClip({
 		}
 
 		const blob = await response.blob();
-		const file = new File([blob], `${element.name}.mp3`, {
-			type: "audio/mpeg",
+		const file = new File([blob], element.name, {
+			type: blob.type || "application/octet-stream",
 		});
 
 		return {
@@ -449,6 +459,9 @@ async function fetchLibraryAudioClip({
 		};
 	} catch (error) {
 		console.warn("Failed to fetch library audio:", error);
+		if (!muted && element.params["template.soundSha256"]) {
+			throw new Error(`模板声音加载失败：${element.name}`, { cause: error });
+		}
 		return null;
 	}
 }

@@ -46,6 +46,7 @@ import {
 	GraphicNode,
 	type ResolvedGraphicNodeState,
 } from "./nodes/graphic-node";
+import { GroupNode } from "./nodes/group-node";
 import { ImageNode, loadImageSource } from "./nodes/image-node";
 import { StickerNode, loadStickerSource } from "./nodes/sticker-node";
 import { TextNode, type ResolvedTextNodeState } from "./nodes/text-node";
@@ -58,6 +59,7 @@ import type {
 import { resolveTrackingOffset } from "@/motion-tracking";
 import { resolveStabilizedPosition } from "@/visual/keying";
 import type { Transform } from "@/rendering";
+import { applyTextAttachments, collectTextAttachments, type TextAttachmentBinding } from "./text-attachments";
 
 type ResolveContext = {
 	renderer: CanvasRenderer;
@@ -295,10 +297,12 @@ export async function resolveRenderTree({
 	node,
 	renderer,
 	time,
+	textAttachments = [],
 }: {
 	node: AnyBaseNode;
 	renderer: CanvasRenderer;
 	time: number;
+	textAttachments?: readonly TextAttachmentBinding[];
 }): Promise<void> {
 	await resolveNode({
 		node,
@@ -307,6 +311,7 @@ export async function resolveRenderTree({
 			time,
 		},
 	});
+	applyTextAttachments(node,[...collectTextAttachments(node),...textAttachments]);
 }
 
 async function resolveNode({
@@ -333,7 +338,15 @@ async function resolveNode({
 	}
 
 	await Promise.all(
-		node.children.map((child) => resolveNode({ node: child, context })),
+		node.children.map((child) =>
+			resolveNode({
+				node: child,
+				context:
+					node instanceof GroupNode
+						? { ...context, time: context.time - node.childTimeOffset }
+						: context,
+			}),
+		),
 	);
 }
 

@@ -1,4 +1,5 @@
 import { drawCssBackground } from "@/gradients";
+import { containedSourceSize } from "../visual-source-size";
 import { getMaskDefinition } from "@/masks";
 import { buildMaskStackPlan } from "@/masks/stack";
 import type { Mask } from "@/masks/types";
@@ -15,6 +16,8 @@ import {
 } from "../nodes/graphic-node";
 import { ImageNode } from "../nodes/image-node";
 import { RootNode } from "../nodes/root-node";
+import { GroupNode } from "../nodes/group-node";
+import { wasmCompositor } from "./wasm-compositor";
 import { StickerNode } from "../nodes/sticker-node";
 import { renderTextToContext, TextNode } from "../nodes/text-node";
 import { VideoNode } from "../nodes/video-node";
@@ -85,6 +88,73 @@ async function collectNode({
 	items: FrameItemDescriptor[];
 	textures: Map<string, TextureUploadDescriptor>;
 }): Promise<void> {
+	if (node instanceof GroupNode) {
+		if (!node.resolved) return;
+		const childItems: FrameItemDescriptor[] = [];
+		const childTextures = new Map<string, TextureUploadDescriptor>();
+		for (let i = 0; i < node.children.length; i++)
+			await collectNode({
+				node: node.children[i],
+				renderer,
+				path: `${path}:group:${i}`,
+				items: childItems,
+				textures: childTextures,
+			});
+		wasmCompositor.ensureInitialized({
+			width: renderer.width,
+			height: renderer.height,
+		});
+		wasmCompositor.syncTextures([...childTextures.values()]);
+		wasmCompositor.render({
+			width: renderer.width,
+			height: renderer.height,
+			clear: { color: [0, 0, 0, 0] },
+			items: childItems,
+		});
+		const surface = createCanvasSurface({
+			width: renderer.width,
+			height: renderer.height,
+		});
+		surface.context.drawImage(wasmCompositor.getCanvas(), 0, 0);
+		const treated = createCanvasSurface({
+			width: renderer.width,
+			height: renderer.height,
+		});
+		drawCanvasEffectSource({
+			ctx: treated.context,
+			source: surface.canvas,
+			width: renderer.width,
+			height: renderer.height,
+			canvasEffects: node.resolved.canvasEffects,
+		});
+		const textureId = `${path}:group-surface`;
+		textures.set(textureId, {
+			kind: "external",
+			id: textureId,
+			source: treated.canvas,
+			width: renderer.width,
+			height: renderer.height,
+		});
+		const transform = node.resolved.transform;
+		items.push({
+			type: "layer",
+			textureId,
+			transform: {
+				centerX: renderer.width / 2 + transform.position.x,
+				centerY: renderer.height / 2 + transform.position.y,
+				width: renderer.width * transform.scaleX,
+				height: renderer.height * transform.scaleY,
+				rotationDegrees: transform.rotate,
+				flipX: false,
+				flipY: false,
+			},
+			opacity: node.resolved.opacity,
+			blendMode: "normal",
+			effectPassGroups: node.resolved.effectPasses,
+			mask: null,
+		});
+		return;
+	}
 	if (node instanceof RootNode) {
 		for (let index = 0; index < node.children.length; index++) {
 			await collectNode({
@@ -265,10 +335,12 @@ async function collectVisualSourceNode({
 		textures.set(textureId, {
 			kind: "rendered",
 			id: textureId,
-			contentHash: `visual:${identityKey(source)}:${sourceWidth}x${sourceHeight}:${JSON.stringify({
-				appearance: node.resolved.appearance,
-				canvasEffects: node.resolved.canvasEffects,
-			})}`,
+			contentHash: `visual:${identityKey(source)}:${sourceWidth}x${sourceHeight}:${JSON.stringify(
+				{
+					appearance: node.resolved.appearance,
+					canvasEffects: node.resolved.canvasEffects,
+				},
+			)}`,
 			width: sourceWidth,
 			height: sourceHeight,
 			draw: (ctx) => {
@@ -298,6 +370,25 @@ async function collectVisualSourceNode({
 		sourceWidth,
 		sourceHeight,
 	});
+	// The GPU quad supports rotation/scale only. Rasterize a resolved affine
+	// source in the shared preview/export path rather than discarding its shear.
+	let outputTextureId = textureId;
+	if (transform.basis) {
+		const originalTexture = textures.get(textureId)!;
+		outputTextureId = `${path}:affine-source`;
+		textures.delete(textureId);
+		textures.set(outputTextureId, {
+			kind: "rendered", id: outputTextureId,
+			contentHash: `affine:${originalTexture.kind === "rendered" ? originalTexture.contentHash : identityKey(source)}:${sourceWidth}x${sourceHeight}:${transformHash(transform)}:${renderer.width}x${renderer.height}`,
+			width: renderer.width, height: renderer.height,
+			draw: (ctx) => {
+				const surface = createCanvasSurface({width: sourceWidth,height: sourceHeight});
+				if (originalTexture.kind === "rendered") originalTexture.draw(surface.context);
+				else surface.context.drawImage(originalTexture.source,0,0,sourceWidth,sourceHeight);
+				drawTransformedCanvas({ctx,source:surface.canvas,transform});
+			},
+		});
+	}
 	const { mask, strokeLayers } = buildMaskArtifacts({
 		node,
 		renderer,
@@ -308,8 +399,8 @@ async function collectVisualSourceNode({
 
 	items.push({
 		type: "layer",
-		textureId,
-		transform,
+		textureId: outputTextureId,
+		transform: transform.basis ? fullCanvasTransform(renderer) : transform,
 		opacity: node.resolved.opacity,
 		blendMode: node.params.blendMode ?? "normal",
 		effectPassGroups: node.resolved.effectPasses,
@@ -455,14 +546,18 @@ function computeVisualTransform({
 	sourceWidth: number;
 	sourceHeight: number;
 }): QuadTransformDescriptor {
-	const containScale = Math.min(
-		renderer.width / sourceWidth,
-		renderer.height / sourceHeight,
-	);
-	const scaledWidth = sourceWidth * containScale * resolved.transform.scaleX;
-	const scaledHeight = sourceHeight * containScale * resolved.transform.scaleY;
+	const contained = containedSourceSize(renderer, {width:sourceWidth,height:sourceHeight});
+	const scaledWidth = contained.width * resolved.transform.scaleX;
+	const scaledHeight = contained.height * resolved.transform.scaleY;
 	const absWidth = Math.abs(scaledWidth);
 	const absHeight = Math.abs(scaledHeight);
+	if (resolved.transform.basis) return {
+		centerX: renderer.width / 2 + resolved.transform.position.x,
+		centerY: renderer.height / 2 + resolved.transform.position.y,
+		width: contained.width, height: contained.height,
+		rotationDegrees: 0, flipX: resolved.appearance.mirrorX, flipY: resolved.appearance.mirrorY,
+		basis: resolved.transform.basis,
+	};
 
 	return {
 		centerX: renderer.width / 2 + resolved.transform.position.x,
@@ -470,8 +565,8 @@ function computeVisualTransform({
 		width: absWidth,
 		height: absHeight,
 		rotationDegrees: resolved.transform.rotate,
-		flipX: (scaledWidth < 0) !== resolved.appearance.mirrorX,
-		flipY: (scaledHeight < 0) !== resolved.appearance.mirrorY,
+		flipX: scaledWidth < 0 !== resolved.appearance.mirrorX,
+		flipY: scaledHeight < 0 !== resolved.appearance.mirrorY,
 	};
 }
 
@@ -510,7 +605,8 @@ function buildMaskArtifacts({
 	const masks = (node.resolved?.masks ?? node.params.masks ?? []).filter(
 		(mask) => getMaskDefinition(mask.type).isActive?.(mask.params) !== false,
 	);
-	if (masks.length === 0) {
+	const clip = node.params.canvasClip?.["clip.enabled"] === true ? node.params.canvasClip : null;
+	if (masks.length === 0 && !clip) {
 		return { mask: null, strokeLayers: [] };
 	}
 
@@ -524,8 +620,15 @@ function buildMaskArtifacts({
 			inverted: mask.params.inverted,
 		})),
 	});
-	const maskContentHash = `mask-stack:${JSON.stringify(masks)}:${transformHash(transform)}:${canvasWidth}x${canvasHeight}`;
+	const maskContentHash = `mask-stack:${JSON.stringify(masks)}:${JSON.stringify(clip)}:${transformHash(transform)}:${canvasWidth}x${canvasHeight}`;
 	const drawMask: TextureCanvasDrawFn = (ctx) => {
+		ctx.save();
+		if (clip) {
+			ctx.beginPath();
+			ctx.rect(Number(clip["clip.x"] ?? 0), Number(clip["clip.y"] ?? 0), Math.max(0, Number(clip["clip.width"] ?? 100)), Math.max(0, Number(clip["clip.height"] ?? 100)));
+			ctx.clip();
+			if (!masks.length) { ctx.fillStyle = "white"; ctx.fillRect(0,0,canvasWidth,canvasHeight); }
+		}
 		for (let index = 0; index < masks.length; index++) {
 			const authoredMask = masks[index];
 			const { canvas: fullMaskCanvas, context: fullMaskCtx } =
@@ -571,6 +674,7 @@ function buildMaskArtifacts({
 			}
 		}
 		ctx.globalCompositeOperation = "source-over";
+		ctx.restore();
 	};
 	textures.set(maskTextureId, {
 		kind: "rendered",
@@ -588,7 +692,7 @@ function buildMaskArtifacts({
 		const stroke = definition.renderer.stroke;
 		if (authoredMask.params.strokeWidth <= 0 || !stroke) continue;
 		const strokeTextureId = `${path}:mask-stroke:${index}`;
-		const strokeContentHash = `stroke:${authoredMask.type}:${JSON.stringify(authoredMask.params)}:${transformHash(transform)}:${canvasWidth}x${canvasHeight}:stroke=${stroke.kind}`;
+		const strokeContentHash = `stroke:${authoredMask.type}:${JSON.stringify(authoredMask.params)}:${JSON.stringify(clip)}:${transformHash(transform)}:${canvasWidth}x${canvasHeight}:stroke=${stroke.kind}`;
 		const drawStroke: TextureCanvasDrawFn = (ctx) => {
 			const { canvas: strokeCanvas, context: strokeCtx } = createCanvasSurface({
 				width: Math.max(1, Math.round(transform.width)),
@@ -617,7 +721,10 @@ function buildMaskArtifacts({
 				}
 			}
 
+			ctx.save();
+			if (clip) { ctx.beginPath(); ctx.rect(Number(clip["clip.x"] ?? 0),Number(clip["clip.y"] ?? 0),Math.max(0,Number(clip["clip.width"] ?? 100)),Math.max(0,Number(clip["clip.height"] ?? 100))); ctx.clip(); }
 			drawTransformedCanvas({ ctx, source: strokeCanvas, transform });
+			ctx.restore();
 		};
 		textures.set(strokeTextureId, {
 			kind: "rendered",
@@ -722,6 +829,14 @@ function drawTransformedCanvas({
 		transform.rotationDegrees !== 0 || flipX !== 1 || flipY !== 1;
 
 	ctx.save();
+	if (transform.basis) {
+		ctx.translate(transform.centerX,transform.centerY);
+		ctx.transform(...transform.basis,0,0);
+		ctx.scale(flipX,flipY);
+		ctx.drawImage(source,-transform.width/2,-transform.height/2,transform.width,transform.height);
+		ctx.restore();
+		return;
+	}
 	if (requiresTransform) {
 		ctx.translate(transform.centerX, transform.centerY);
 		ctx.rotate((transform.rotationDegrees * Math.PI) / 180);
@@ -733,7 +848,7 @@ function drawTransformedCanvas({
 }
 
 function transformHash(transform: QuadTransformDescriptor): string {
-	return `${transform.centerX}:${transform.centerY}:${transform.width}:${transform.height}:${transform.rotationDegrees}:${transform.flipX ? 1 : 0}:${transform.flipY ? 1 : 0}`;
+	return `${transform.centerX}:${transform.centerY}:${transform.width}:${transform.height}:${transform.rotationDegrees}:${transform.flipX ? 1 : 0}:${transform.flipY ? 1 : 0}:${transform.basis?.join(",") ?? ""}`;
 }
 
 // Stable identity key for CanvasImageSource. Using a WeakMap → counter keeps

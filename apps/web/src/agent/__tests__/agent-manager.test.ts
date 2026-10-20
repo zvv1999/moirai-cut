@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
+import { DuplicateElementsCommand } from "@/commands/timeline/element/duplicate-elements";
 import { AgentManager } from "../agent-manager";
 import {
   InvalidOperationError,
@@ -60,6 +61,46 @@ function makeEditorStub({ mutate = true }: { mutate?: boolean } = {}) {
 }
 
 const OP: Operation = { type: "track.toggleMute", trackId: "track-1" };
+
+test("project initialization refuses edits before paused autosave is resumed", async () => {
+  const { editor, executed } = makeEditorStub();
+  editor.project.getIsLoading = () => true;
+  const agent = new AgentManager(editor);
+  const envelope = { operation: OP, baseRevision: 0, idempotencyKey: "loading" };
+  expect(() => agent.applyOperation(envelope)).toThrow("still loading");
+  await expect(agent.applyOperationAsync(envelope)).rejects.toThrow("still loading");
+  expect(executed).toHaveLength(0);
+  expect(agent.revision).toBe(0);
+  editor.project.getIsLoading = () => false;
+  expect(agent.applyOperation(envelope).applied).toBe(true);
+});
+
+test("async duplicate checks revision after preparation and deduplicates without another request", async () => {
+  const { editor, project, executed } = makeEditorStub();
+  // This fixture checks the concurrency envelope; command/reference behavior is
+  // exercised separately by duplicate-elements.test.ts and Rust remap tests.
+  editor.scenes.getActiveSceneOrNull = () => ({ tracks: { main: { id: "track", elements: [{ id: "element" }] }, overlay: [], audio: [] } });
+  const agent = new AgentManager(editor);
+  let release!: () => void;
+  const prepare = spyOn(DuplicateElementsCommand.prototype, "prepare").mockImplementation(() => new Promise<void>(resolve => { release = resolve; }));
+  const envelope = { operation: { type: "element.duplicate", elements: [{ trackId: "track", elementId: "element" }] } as Operation, baseRevision: 0, idempotencyKey: "async-copy", expectedProjectId: "p1" };
+  try {
+    const pending = agent.applyOperationAsync(envelope);
+    agent.applyOperation({ operation: OP, baseRevision: 0, idempotencyKey: "intervening" });
+    release();
+    await expect(pending).rejects.toBeInstanceOf(OperationConflictError);
+    expect(executed.length).toBe(1);
+    prepare.mockResolvedValue(undefined);
+    const applied = await agent.applyOperationAsync({ ...envelope, baseRevision: 1 });
+    expect(applied.applied).toBe(true);
+    const count = prepare.mock.calls.length;
+    const replay = await agent.applyOperationAsync({ ...envelope, baseRevision: 1 });
+    expect(replay.deduplicated).toBe(true);
+    expect(prepare.mock.calls.length).toBe(count);
+    project.metadata.id = "p2";
+    await expect(agent.applyOperationAsync(envelope)).rejects.toBeInstanceOf(ProjectMismatchError);
+  } finally { prepare.mockRestore(); }
+});
 
 describe("AgentManager concurrency envelope", () => {
   test("starts at revision 0 and increments once per applied operation", () => {

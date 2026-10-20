@@ -45,6 +45,20 @@ test("SCHEMA_OPERATION_TYPES matches the zod union it claims to describe", () =>
 	);
 });
 
+test("keyframe schema exposes editor parameter paths used by agents", () => {
+	for (const propertyPath of ["transform.positionX", "background.opacity"]) {
+		const result = OperationSchema.safeParse({
+			type: "element.upsertKeyframe",
+			trackId: "track",
+			elementId: "element",
+			propertyPath,
+			timeSeconds: 0,
+			value: 0.5,
+		});
+		assert.equal(result.success, true, `${propertyPath} must be writable by Agent file operations`);
+	}
+});
+
 test("a malformed operation is refused by the schema, not sent to the page", () => {
 	assert.equal(
 		OperationSchema.safeParse({ type: "track.toggleMute" }).success,

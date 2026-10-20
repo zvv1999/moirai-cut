@@ -13,6 +13,7 @@ import {
 import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
 import type { MediaAsset } from "@/media/types";
 import type { TProject } from "@/project/types";
+import { ActiveLayerPicker } from "./components/active-layer-picker";
 
 export function PropertiesPanel() {
 	const editor = useEditor();
@@ -40,8 +41,11 @@ export function PropertiesPanel() {
 
 	if (selectedElements.length === 0) {
 		return (
-			<div className="panel bg-background flex h-full flex-col items-center justify-center overflow-hidden rounded-md border">
-				<EmptyView />
+			<div className="panel bg-background flex h-full flex-col overflow-hidden rounded-md border">
+				<ActiveLayerPicker />
+				<div className="flex flex-1 items-center justify-center">
+					<EmptyView />
+				</div>
 			</div>
 		);
 	}
@@ -49,6 +53,9 @@ export function PropertiesPanel() {
 	if (selectedElements.length > 1) {
 		return (
 			<div className="panel bg-background flex h-full flex-col items-center justify-center overflow-hidden rounded-md border">
+				<div className="w-full">
+					<ActiveLayerPicker />
+				</div>
 				<p className="text-muted-foreground text-sm">
 					已选择 {selectedElements.length} 个素材
 				</p>
@@ -93,6 +100,7 @@ export function PropertiesPanel() {
 			className="panel bg-background flex h-full flex-col overflow-hidden rounded-md border"
 			data-testid="properties-panel"
 		>
+			<ActiveLayerPicker />
 			<InspectorTabNavigation
 				tabs={visibleTabs}
 				activeTabId={activeTab.id}

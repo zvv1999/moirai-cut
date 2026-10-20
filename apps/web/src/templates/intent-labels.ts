@@ -1,0 +1,1 @@
+export const intentChoices=[['neutral','普通叙述'],['hook','开场吸引'],['question','提问'],['contrast','对比'],['list','列举'],['metric','数量与变化'],['emphasis','强调'],['explanation','解释'],['conclusion','结论'],['call_to_action','行动引导']] as const;

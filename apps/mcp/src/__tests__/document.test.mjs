@@ -447,7 +447,9 @@ test("the keyframable param table matches the editor's registry", async () => {
   const num = (raw) =>
     raw === undefined ? null : raw in constants ? constants[raw] : Number(raw.replace(/_/g, ""));
 
-  const blocks = [...source.matchAll(/\{\s*key:\s*"([^"]+)",([\s\S]*?)\n\t*\}/g)];
+  // Start at a multiline entry: the preceding inline clip.enabled declaration
+  // must not consume positionX's closing brace and hide it from this check.
+  const blocks = [...source.matchAll(/\{\s*\n\t+key:\s*"([^"]+)",([\s\S]*?)\n\t\},?/g)];
   const registry = new Map();
   for (const [, key, body] of blocks) {
     if (registry.has(key)) continue;

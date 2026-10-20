@@ -1,6 +1,8 @@
 import type { ParamValues } from "@/params";
 
 export interface Transform {
+	/** Resolved renderer-only linear basis; includes shear from group composition. */
+	basis?: [number, number, number, number];
 	scaleX: number;
 	scaleY: number;
 	position: {

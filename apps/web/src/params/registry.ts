@@ -100,6 +100,8 @@ const BLEND_MODE_OPTIONS: Array<{ value: BlendMode; label: string }> = [
 ];
 
 const visualElementParams: ElementParamDefinition[] = [
+	{ key: "clip.enabled", label: "固定窗口裁切", type: "boolean", default: false, keyframable: false },
+	...(["x", "y", "width", "height"] as const).map(key => ({ key: `clip.${key}`, label: ({x:"窗口 X", y:"窗口 Y", width:"窗口宽度", height:"窗口高度"})[key], type: "number" as const, default: key === "width" || key === "height" ? 100 : 0, min: 0, max: 8192, step: 1, keyframable: false, dependencies: [{param:"clip.enabled", equals:true}] })),
 	{
 		key: "transform.positionX",
 		label: "位置 X",
@@ -377,6 +379,7 @@ const textElementParams: ElementParamDefinition[] = [
 		options: [
 			{ value: "normal", label: "常规" },
 			{ value: "bold", label: "粗体" },
+			...[100,200,300,400,500,600,700,800,900].map(weight=>({value:String(weight),label:String(weight)})),
 		],
 	},
 	{
@@ -430,6 +433,14 @@ const textElementParams: ElementParamDefinition[] = [
 		label: "背景颜色",
 		type: "color",
 		default: DEFAULTS.text.background.color,
+		dependencies: [{ param: "background.enabled", equals: true }],
+	},
+	{
+		key: "background.opacity",
+		label: "底板不透明度",
+		type: "number",
+		default: 1,
+		min: 0, max: 1, step: 0.01, displayMultiplier: 100, keyframable: true,
 		dependencies: [{ param: "background.enabled", equals: true }],
 	},
 	{
@@ -499,7 +510,22 @@ elementParamRegistry.register({
 });
 elementParamRegistry.register({
 	key: "text",
-	definition: [...textElementParams, ...visualElementParams],
+	definition: [
+		...textElementParams,
+		...visualElementParams,
+		...mediaGeometryParams.filter((param) =>
+			param.key.startsWith("geometry.shadow.") ||
+			param.key.startsWith("geometry.stroke."),
+		),
+		{ key: "text.maxWidth", label: "最大宽度", type: "number", default: 0, min: 0, step: 1, keyframable: false },
+		{ key: "text.maxHeight", label: "最大高度", type: "number", default: 0, min: 0, step: 1, keyframable: false },
+		{ key: "text.maxLines", label: "最大行数", type: "number", default: 0, min: 0, max: 8, step: 1, keyframable: false },
+		{ key: "text.highlightEnabled", label: "关键词着色", type: "boolean", default: false, keyframable: false },
+		{ key: "text.highlightStrokeEnabled", label: "关键词独立描边", type: "boolean", default: false, keyframable: false },
+		{ key: "text.highlightStrokeColor", label: "关键词描边颜色", type: "color", default: "#fff2d4", keyframable: false, dependencies: [{ param: "text.highlightStrokeEnabled", equals: true }] },
+		{ key: "text.highlightStrokeWidth", label: "关键词描边宽度", type: "number", default: 3, min: 0, max: 30, step: 0.1, keyframable: false, dependencies: [{ param: "text.highlightStrokeEnabled", equals: true }] },
+		{ key: "text.highlightColor", label: "关键词颜色", type: "color", default: "#ffcf4a", keyframable: false, dependencies: [{ param: "text.highlightEnabled", equals: true }] },
+	],
 });
 elementParamRegistry.register({
 	key: "sticker",

@@ -181,3 +181,15 @@ describe("agent draft exports", () => {
     });
   });
 });
+
+test("completed export attaches measured facts to the exact uploaded bytes", async()=>{
+ const evidence={version:1 as const,status:"sampled" as const,producer:"production-scene-exporter" as const,timebase:120000 as const,framesObserved:1,droppedRecords:0,records:[]};
+ const bytes=new Uint8Array([1,2,3]).buffer;
+ const editor={project:{getActiveOrNull:()=>({metadata:{id:"p",name:"P"}}),cancelExport:()=>undefined},agent:{revision:1},renderer:{exportProject:async()=>({success:true,buffer:bytes,textMeasurements:evidence})}};
+ const job=startExportJob({options:{format:"mp4",quality:"high"},dependencies:{editor,randomUUID:()=>"measurement-test",save:async({init})=>{
+  expect(init.body).toBe(bytes);return {ok:true,statusText:"OK",json:async()=>({path:"/exports/m.mp4",sizeBytes:3})};
+ }}});
+ for(let i=0;i<100 && job.status==="running";i++)await new Promise(resolve=>setTimeout(resolve,1));
+ expect(job.status).toBe("completed");
+ expect(job.textMeasurements).toEqual({...evidence,outputSha256:"039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81"});
+});

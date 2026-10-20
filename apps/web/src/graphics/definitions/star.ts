@@ -72,7 +72,8 @@ export const starGraphicDefinition: GraphicDefinition = {
 		const strokeAlign = (params.strokeAlign ?? "center") as GraphicStrokeAlign;
 		const points = Math.max(3, Math.min(12, Math.round(Number(params.points ?? 5))));
 		const depth = Math.max(1, Math.min(99, Number(params.depth ?? 45))) / 100;
-		const inset = strokeAlign === "center" ? strokeWidth / 2 : 0;
+		// Leave half a source pixel for antialiasing at the tangent extremum.
+		const inset = strokeAlign === "center" && strokeWidth > 0 ? strokeWidth / 2 + 0.5 : 0;
 		const outerRadius = Math.max(1, Math.min(width, height) / 2 - inset);
 		const innerRadius = outerRadius * depth;
 		const centerX = width / 2;
@@ -97,6 +98,11 @@ export const starGraphicDefinition: GraphicDefinition = {
 		ctx.fill(path);
 
 		if (strokeWidth > 0) {
+			// A miter can extend far beyond a sharp star tip even after the
+			// half-width inset. Round joins keep centered strokes within the
+			// source box; preserve inside/outside alignment and caller state.
+			ctx.save();
+			if (strokeAlign === "center") ctx.lineJoin = "round";
 			applyAlignedStroke({
 				ctx,
 				path,
@@ -104,6 +110,7 @@ export const starGraphicDefinition: GraphicDefinition = {
 				strokeAlign,
 				strokeColor: stroke,
 			});
+			ctx.restore();
 		}
 	},
 };

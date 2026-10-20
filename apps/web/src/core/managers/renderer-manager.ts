@@ -424,6 +424,7 @@ export class RendererManager {
 				return {
 					success: true,
 					buffer,
+					textMeasurements: exporter.getTextMeasurements(),
 				};
 			} finally {
 				clearInterval(cancelInterval);

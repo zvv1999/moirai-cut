@@ -1,6 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { ellipseArcState } from "../definitions/ellipse";
+import { hasKeyframesForPath } from "@/animation";
 import { useElementPlayhead } from "@/components/editor/panels/properties/hooks/use-element-playhead";
 import {
 	useKeyframedParamProperty,
@@ -8,7 +10,11 @@ import {
 } from "@/components/editor/panels/properties/hooks/use-keyframed-param-property";
 import type { ParamDefinition, ParamValues } from "@/params";
 import type { GraphicElement } from "@/timeline";
-import { graphicsRegistry, registerDefaultGraphics, resolveGraphicElementParamsAtTime } from "@/graphics";
+import {
+	graphicsRegistry,
+	registerDefaultGraphics,
+	resolveGraphicElementParamsAtTime,
+} from "@/graphics";
 import { useElementPreview } from "@/timeline/hooks/use-element-preview";
 import { useEditor } from "@/editor/use-editor";
 import {
@@ -29,6 +35,21 @@ registerDefaultGraphics();
 
 const DEFAULT_STROKE_WIDTH = 2;
 
+export function ellipseEditingIssue(
+	element: GraphicElement,
+	params: ParamValues,
+): string | null {
+	if (element.definitionId !== "ellipse") return null;
+	// A reveal channel must remain supported through its open-path frames, not
+	// merely look valid when the playhead happens to be on its completed frame.
+	const animated = hasKeyframesForPath({
+		animations: element.animations,
+		propertyPath: "params.strokeReveal",
+	});
+	return ellipseArcState(animated ? { ...params, strokeReveal: 0.5 } : params)
+		.issue;
+}
+
 export function GraphicTab({
 	element,
 	trackId,
@@ -37,6 +58,7 @@ export function GraphicTab({
 	trackId: string;
 }) {
 	const definition = graphicsRegistry.get(element.definitionId);
+	const editor = useEditor();
 	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
 		startTime: element.startTime,
 		duration: element.duration,
@@ -55,9 +77,47 @@ export function GraphicTab({
 
 	const shapeParams = definition.params.filter((p) => p.group !== "stroke");
 	const hasStrokeParams = definition.params.some((p) => p.group === "stroke");
+	const arcIssue = ellipseEditingIssue(liveElement, resolvedParams);
+	const needsArcPreparation =
+		element.definitionId === "ellipse" &&
+		!!ellipseArcState({ ...resolvedParams, strokeReveal: 0.5 }).issue;
+	const prepareArc = () => {
+		const animations = { ...liveElement.animations };
+		delete animations["params.fill"];
+		delete animations["params.strokeAlign"];
+		editor.timeline.updateElements({
+			updates: [
+				{
+					trackId,
+					elementId: element.id,
+					patch: {
+						params: {
+							...liveElement.params,
+							fill: "#00000000",
+							strokeAlign: "center",
+						},
+						animations,
+					},
+				},
+			],
+		});
+	};
 
 	return (
 		<div className="flex flex-col">
+			{element.definitionId === "ellipse" && (
+				<div className="px-4 py-2 text-xs">
+					<p>
+						开口弧线与描边显现使用透明填充、中心描边。起点与扫角是静态几何；描边显现可添加关键帧。
+					</p>
+					{arcIssue && <p role="alert">{arcIssue}</p>}
+					{needsArcPreparation && (
+						<Button variant="outline" size="sm" onClick={prepareArc}>
+							改为透明填充与中心描边（清除这两项动画）
+						</Button>
+					)}
+				</div>
+			)}
 			<Section collapsible sectionKey={`${element.id}:graphic`}>
 				<SectionHeader>
 					<SectionTitle>{definition.name}</SectionTitle>
@@ -205,6 +265,7 @@ function AnimatedGraphicParamField({
 	isPlayheadWithinElementRange: boolean;
 	resolvedParams: ParamValues;
 }) {
+	const [issue, setIssue] = useState<string | null>(null);
 	const animatedParam: KeyframedParamPropertyResult = useKeyframedParamProperty(
 		{
 			param,
@@ -225,22 +286,55 @@ function AnimatedGraphicParamField({
 		},
 	);
 
+	const preview = (value: number | string | boolean) => {
+		const invalid = ellipseEditingIssue(element, {
+			...resolvedParams,
+			[param.key]: value,
+		});
+		if (invalid) {
+			setIssue(invalid);
+			return;
+		}
+		setIssue(null);
+		animatedParam.onPreview(value);
+	};
+	const toggle = () => {
+		if (param.key === "strokeReveal" && element.definitionId === "ellipse") {
+			const invalid = ellipseArcState({
+				...resolvedParams,
+				strokeReveal: 0.5,
+			}).issue;
+			if (invalid && !animatedParam.isKeyframedAtTime) {
+				setIssue(invalid);
+				return;
+			}
+		}
+		setIssue(null);
+		animatedParam.toggleKeyframe();
+	};
 	return (
-		<PropertyParamField
-			param={param}
-			value={resolvedParams[param.key] ?? param.default}
-			onPreview={animatedParam.onPreview}
-			onCommit={animatedParam.onCommit}
-			keyframe={{
-				isActive: animatedParam.isKeyframedAtTime,
-				isDisabled: !isPlayheadWithinElementRange,
-				keyframeCount: animatedParam.keyframeCount,
-				canGoPrevious: animatedParam.canGoPrevious,
-				canGoNext: animatedParam.canGoNext,
-				onPrevious: animatedParam.goToPreviousKeyframe,
-				onToggle: animatedParam.toggleKeyframe,
-				onNext: animatedParam.goToNextKeyframe,
-			}}
-		/>
+		<>
+			<PropertyParamField
+				param={param}
+				value={resolvedParams[param.key] ?? param.default}
+				onPreview={preview}
+				onCommit={animatedParam.onCommit}
+				keyframe={{
+					isActive: animatedParam.isKeyframedAtTime,
+					isDisabled: !isPlayheadWithinElementRange,
+					keyframeCount: animatedParam.keyframeCount,
+					canGoPrevious: animatedParam.canGoPrevious,
+					canGoNext: animatedParam.canGoNext,
+					onPrevious: animatedParam.goToPreviousKeyframe,
+					onToggle: toggle,
+					onNext: animatedParam.goToNextKeyframe,
+				}}
+			/>
+			{issue && (
+				<p role="alert" className="text-xs">
+					{issue}
+				</p>
+			)}
+		</>
 	);
 }

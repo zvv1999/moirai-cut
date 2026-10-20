@@ -11,6 +11,7 @@ export const ANIMATION_PROPERTY_PATHS = [
 	"volume",
 	"color",
 	"background.color",
+	"background.opacity",
 	"background.paddingX",
 	"background.paddingY",
 	"background.offsetX",

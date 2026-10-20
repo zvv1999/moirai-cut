@@ -4,6 +4,41 @@ import type { SceneTracks } from "@/timeline";
 import { mediaTimeFromSeconds } from "@/wasm";
 import { buildScene } from "../scene-builder";
 import { VideoNode } from "../nodes/video-node";
+import type { AnyBaseNode } from "../nodes/base-node";
+
+test("render origins retain instance identity and nested group clocks for preview and export", () => {
+	const base = { startTime: 1, duration: 200, trimStart: 0, trimEnd: 0, name: "layer", params: {"template.elementId": "keyword", "template.instanceId": "occurrence-2", "template.textLayoutLeft":-14,"template.textLayoutTop":-30,"template.textLayoutWidth":600,"template.textLayoutHeight":60} };
+	const leaves = [
+		{...base, id:"text", type:"text"},
+		{...base, id:"graphic", type:"graphic", definitionId:"rectangle"},
+		{...base, id:"sticker", type:"sticker", stickerId:"sparkle"},
+		{...base, id:"video", type:"video", mediaId:"video-media"},
+		{...base, id:"image", type:"image", mediaId:"image-media"},
+		{...base, id:"effect", type:"effect", effectType:"blur"},
+	];
+	const track = (id: string, elements: unknown[]) => ({id, name:id, type:"graphic", elements});
+	const nested = {...base, id:"inner", type:"graphic", definitionId:"rectangle", startTime:30, trimStart:2, renderGroup:{timeOrigin:10, tracks:[track("leaf-track",leaves)]}};
+	const outer = {...base, id:"outer", type:"graphic", definitionId:"rectangle", startTime:100, trimStart:5, renderGroup:{timeOrigin:20, tracks:[track("inner-track",[nested])]}};
+	const tracks = {main:track("main",[outer]),overlay:[track("second",[...leaves])],audio:[]} as unknown as SceneTracks;
+	const before=JSON.stringify(tracks);
+	for(const isPreview of [true,false]) {
+		const scene=buildScene({tracks,canvasSize:{width:720,height:720},duration:mediaTimeFromSeconds({seconds:1}),background:{type:"color",color:"black"},isPreview,mediaAssets:[videoAsset(),{...videoAsset(),id:"image-media",type:"image"}]});
+		const all:AnyBaseNode[]=[];
+		const visit=(node:AnyBaseNode)=>{all.push(node);node.children.forEach(visit);};
+		visit(scene);
+		for(const leaf of leaves) {
+			const instances=all.filter(node=>node.source?.elementId===leaf.id);
+			expect(instances).toHaveLength(2);
+			const nestedNode=instances.find(node=>node.source?.groupPath.length===2)!;
+			expect(nestedNode.source).toEqual({elementId:leaf.id,trackId:"leaf-track",groupPath:["outer","inner"],sceneTimeOffset:93,templateElementId:"keyword",templateInstanceId:"occurrence-2",...(leaf.type==="text"?{textLayoutBox:{left:-14,top:-30,width:600,height:60}}:{})});
+			expect(instances.find(node=>node!==nestedNode)?.source?.sceneTimeOffset).toBe(0);
+		}
+		expect(all.find(node=>node.source?.elementId==="inner")?.source?.sceneTimeOffset).toBe(75);
+		expect(scene.source).toBeUndefined();
+		expect(all.find(node=>node.constructor.name==="ColorNode")?.source).toBeUndefined();
+	}
+	expect(JSON.stringify(tracks)).toBe(before);
+});
 
 function legacyTrimmedVideoTracks({
 	sourceDuration,

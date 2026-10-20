@@ -33,10 +33,12 @@ import { OcShapesIcon } from "@/components/icons";
 import { AudioWorkbenchTab } from "./components/audio-workbench-tab";
 import { JianyingAdjustmentsTab } from "./components/jianying-adjustments-tab";
 import { JianyingAiEffectsTab } from "./components/jianying-ai-effects-tab";
+import { TextLayoutPhraseEditor } from "./components/text-layout-phrase-editor";
+import { TextKeywordEditor } from "./components/text-keyword-editor";
 
 export { VISUAL_PARAM_SECTIONS, VISUAL_SUBTABS };
 
-const TEXT_PARAM_KEYS = [
+export const TEXT_PARAM_KEYS = [
 	"content",
 	"fontFamily",
 	"fontSize",
@@ -47,8 +49,29 @@ const TEXT_PARAM_KEYS = [
 	"textDecoration",
 	"letterSpacing",
 	"lineHeight",
+	"text.maxWidth",
+	"text.maxHeight",
+	"text.maxLines",
+	"text.highlightEnabled",
+	"text.highlightColor",
+	"text.highlightStrokeEnabled",
+	"text.highlightStrokeColor",
+	"text.highlightStrokeWidth",
+	"clip.enabled",
+	"clip.x",
+	"clip.y",
+	"clip.width",
+	"clip.height",
+	"geometry.stroke.width",
+	"geometry.stroke.color",
+	"geometry.shadow.enabled",
+	"geometry.shadow.color",
+	"geometry.shadow.blur",
+	"geometry.shadow.offsetX",
+	"geometry.shadow.offsetY",
 	"background.enabled",
 	"background.color",
+	"background.opacity",
 	"background.cornerRadius",
 	"background.paddingX",
 	"background.paddingY",
@@ -189,12 +212,69 @@ function buildTextTab({ element }: { element: TextElement }): PropertiesTabDef {
 		label: "文本",
 		icon: <HugeiconsIcon icon={TextFontIcon} size={16} />,
 		content: ({ trackId }) => (
-			<ElementParamsTab
-				element={element}
-				trackId={trackId}
-				paramKeys={TEXT_PARAM_KEYS}
-				sectionKey="text"
-			/>
+			<>
+				<ElementParamsTab
+					element={element}
+					trackId={trackId}
+					paramKeys={TEXT_PARAM_KEYS}
+					sections={[
+						{
+							id: "content",
+							label: "文本",
+							paramKeys: [
+								"content",
+								"fontFamily",
+								"fontSize",
+								"color",
+								"fontWeight",
+								"fontStyle",
+								"textDecoration",
+							],
+						},
+						{
+							id: "layout",
+							label: "排版",
+							paramKeys: [
+								"textAlign",
+								"letterSpacing",
+								"lineHeight",
+								"text.maxWidth",
+								"text.maxHeight",
+								"text.maxLines",
+							],
+						},
+						{
+							id: "keyword",
+							label: "关键词",
+							paramKeys: TEXT_PARAM_KEYS.filter(key => key.startsWith("text.highlight")),
+						},
+						{ id: "clip", label: "画布裁切", paramKeys: TEXT_PARAM_KEYS.filter(key => key.startsWith("clip.")), defaultOpen: false },
+						{
+							id: "stroke",
+							label: "描边与阴影",
+							paramKeys: TEXT_PARAM_KEYS.filter((key) =>
+								key.startsWith("geometry."),
+							),
+							defaultOpen: false,
+						},
+						{
+							id: "background",
+							label: "背景",
+							paramKeys: TEXT_PARAM_KEYS.filter((key) =>
+								key.startsWith("background."),
+							),
+							defaultOpen: false,
+						},
+					]}
+					sectionKey="text"
+				/>
+				<TextLayoutPhraseEditor key={`layout-${element.id}`} element={element} trackId={trackId} />
+				<TextKeywordEditor
+					key={element.id}
+					element={element}
+					trackId={trackId}
+				/>
+			</>
 		),
 	};
 }

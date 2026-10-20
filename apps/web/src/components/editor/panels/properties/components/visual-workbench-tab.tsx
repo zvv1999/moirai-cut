@@ -45,6 +45,7 @@ type VisualSubtabId = (typeof VISUAL_SUBTABS)[number]["id"];
 
 const BLENDING_PARAM_KEYS = ["opacity", "blendMode"] as const;
 const DEFORMATION_PARAM_KEYS = [
+	"clip.enabled", "clip.x", "clip.y", "clip.width", "clip.height",
 	"geometry.mirrorX",
 	"geometry.mirrorY",
 	"crop.left",

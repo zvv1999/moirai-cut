@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { basename, extname, join } from "node:path";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
-import { omitArchivedOriginalStub } from "./media-index.mjs";
 
 /**
  * Import a media file into a project, from Node.
@@ -280,13 +279,7 @@ export async function importMedia({ projectId, filePath, name, base = process.en
   // Metadata second, exactly like the editor's own saveMediaAsset: the index is
   // what enumerates assets, so writing it last means an interrupted import
   // leaves an unreferenced file rather than an entry pointing at nothing.
-  const indexResponse = await fetch(`${base}/api/media/${encodeURIComponent(projectId)}`);
-  const fetchedIndex = indexResponse.ok ? ((await indexResponse.json()).assets ?? {}) : {};
-  const index = original
-    ? omitArchivedOriginalStub({ index: fetchedIndex, assetId })
-    : fetchedIndex;
-  index[assetId] = {
-    ...(index[assetId] ?? {}),
+  const metadata = {
     id: assetId,
     name: fileName,
     type: probed.type,
@@ -313,14 +306,22 @@ export async function importMedia({ projectId, filePath, name, base = process.en
     height: probed.height,
     durationSeconds: probed.durationSeconds,
   });
-  if (thumbnailUrl) index[assetId].thumbnailUrl = thumbnailUrl;
-  const writeResponse = await fetch(`${base}/api/media/${encodeURIComponent(projectId)}`, {
-    method: "PUT",
+  if (thumbnailUrl) metadata.thumbnailUrl = thumbnailUrl;
+  const writeResponse = await fetch(`${base}/api/media/${encodeURIComponent(projectId)}/${encodeURIComponent(assetId)}`, {
+    method: "PATCH",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(index),
+    body: JSON.stringify({ action: "merge", value: metadata }),
   });
   if (!writeResponse.ok) {
     throw new MediaImportError(`Writing the media index failed: ${writeResponse.statusText}`);
+  }
+  if (original) {
+    const removeStub = await fetch(`${base}/api/media/${encodeURIComponent(projectId)}/${encodeURIComponent(`${assetId}-original`)}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "remove" }),
+    });
+    if (!removeStub.ok) throw new MediaImportError(`Removing archived original metadata failed: ${removeStub.statusText}`);
   }
 
   // Report the SERVED asset — its dims are what timeline math sees. The

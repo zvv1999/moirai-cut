@@ -425,17 +425,30 @@ impl GpuContext {
             return Err(GpuError::UnsupportedSurfaceFormat);
         }
 
+        let alpha_mode = caps
+            .alpha_modes
+            .iter()
+            .find(|mode| **mode == wgpu::CompositeAlphaMode::PreMultiplied)
+            .or_else(|| caps.alpha_modes.first())
+            .copied()
+            .unwrap_or(wgpu::CompositeAlphaMode::Auto);
+        // wgpu's WebGPU backend currently reports only Opaque capabilities, but
+        // its configure() explicitly supports PreMultiplied (GPUCanvasContext's
+        // standard alpha mode). Group surfaces must retain alpha when copied.
+        #[cfg(all(feature = "wasm", target_arch = "wasm32"))]
+        let alpha_mode = if self.gl_canvas.is_none() {
+            wgpu::CompositeAlphaMode::PreMultiplied
+        } else {
+            alpha_mode
+        };
+
         Ok(wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: self.texture_format,
             width,
             height,
             present_mode: wgpu::PresentMode::Fifo,
-            alpha_mode: caps
-                .alpha_modes
-                .first()
-                .copied()
-                .unwrap_or(wgpu::CompositeAlphaMode::Auto),
+            alpha_mode,
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         })

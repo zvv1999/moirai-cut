@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 import { withBotId } from "botid/next/config";
 import { withContentCollections } from "@content-collections/next";
+import { existsSync } from "node:fs";
+import path from "node:path";
+
+// Use the repository's compiled Rust renderer when available. Otherwise local
+// Rust fixes would silently keep running the published npm binary in the editor.
+// Generate it with `bun run build:wasm` before starting Next.
+const localWasmEntry = path.resolve(__dirname, "../../rust/wasm/pkg/opencut_wasm.js");
 
 // These routes read user project media from an external runtime directory.
 // Turbopack cannot infer that boundary from the dynamic filesystem paths, so
@@ -42,6 +49,7 @@ const nextConfig: NextConfig = {
 	// exclusions below. Suppress only that exact warning; all other Turbopack
 	// diagnostics remain visible.
 	turbopack: {
+		...(existsSync(localWasmEntry) ? { resolveAlias: { "opencut-wasm": "../../rust/wasm/pkg/opencut_wasm.js" } } : {}),
 		ignoreIssue: [
 			{
 				path: "**/next.config.ts",

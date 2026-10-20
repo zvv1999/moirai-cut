@@ -22,7 +22,6 @@ export class VideoCache {
 	private sinks = new Map<string, VideoSinkData>();
 	private initPromises = new Map<string, Promise<void>>();
 	private frameChain = new Map<string, Promise<unknown>>();
-	private seekGenerations = new Map<string, number>();
 	private lastAccess = new Map<string, number>();
 
 	async prewarm({
@@ -51,16 +50,10 @@ export class VideoCache {
 		const sinkData = this.sinks.get(mediaId);
 		if (!sinkData) return null;
 
-		const generation = (this.seekGenerations.get(mediaId) ?? 0) + 1;
-		this.seekGenerations.set(mediaId, generation);
-
 		const previous = this.frameChain.get(mediaId) ?? Promise.resolve();
-		const current = previous.then(() => {
-			if (this.seekGenerations.get(mediaId) !== generation) {
-				return sinkData.currentFrame ?? null;
-			}
-			return this.resolveFrame({ sinkData, time });
-		});
+		// Captures and preview can request different times concurrently. Every
+		// caller must receive its requested frame, even when a newer seek is queued.
+		const current = previous.then(() => this.resolveFrame({ sinkData, time }));
 		this.frameChain.set(
 			mediaId,
 			current.catch(() => {}),
@@ -293,7 +286,9 @@ export class VideoCache {
 			}
 
 			const sink = new CanvasSink(videoTrack, {
-				poolSize: 3,
+				// Render trees retain canvases across async work, and the compositor
+				// caches textures by canvas identity. A reused pool canvas breaks both.
+				poolSize: 0,
 				fit: "contain",
 			});
 
@@ -348,7 +343,6 @@ export class VideoCache {
 
 		this.initPromises.delete(mediaId);
 		this.frameChain.delete(mediaId);
-		this.seekGenerations.delete(mediaId);
 		this.lastAccess.delete(mediaId);
 	}
 

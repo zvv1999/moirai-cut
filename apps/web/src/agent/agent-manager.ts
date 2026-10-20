@@ -1,5 +1,7 @@
 import type { EditorCore } from "@/core";
 import { BatchCommand } from "@/commands/batch-command";
+import type { Command } from "@/commands/base-command";
+import { DuplicateElementsCommand } from "@/commands/timeline/element/duplicate-elements";
 import {
   buildCommand,
   OperationConflictError,
@@ -51,6 +53,8 @@ export interface RenderFramesResult {
 
 /** One clip, addressable. Times are seconds — see ./time.ts. */
 export interface ElementSummary {
+	/** Exact compiled parent reference, including its enclosing group scope. */
+	textAttachment?: import("@/timeline/types").TimelineTextAttachment;
   id: string;
   type: string;
   name: string;
@@ -254,14 +258,39 @@ export class AgentManager {
    * agent edit. This is the mutation boundary behind the visible plan preview:
    * previewing is inert; Apply is one atomic, undoable decision.
    */
-  applyPlan({
+  async applyOperationAsync(input: OperationEnvelope): Promise<OperationResult> {
+    if (this.editor.project.getIsLoading?.()) throw new InvalidOperationError("Project is still loading; retry after initialization");
+    const envelope = structuredClone(input);
+    if (envelope.operation.type !== "element.duplicate") return this.applyOperation(envelope);
+    const actual = this.editor.project.getActiveOrNull()?.metadata?.id ?? null;
+    if (envelope.expectedProjectId !== undefined && envelope.expectedProjectId !== actual) {
+      throw new ProjectMismatchError(envelope.expectedProjectId, actual);
+    }
+    if (this.appliedKeySet.has(envelope.idempotencyKey)) return this.applyOperation(envelope);
+    if (envelope.baseRevision !== this.revisionValue) throw new OperationConflictError(envelope.baseRevision, this.revisionValue);
+    this.validateReferences(envelope.operation);
+    this.validateTiming(envelope.operation);
+    const command = buildCommand({ operation: envelope.operation });
+    if (!(command instanceof DuplicateElementsCommand)) throw new InvalidOperationError("Invalid duplication command");
+    await command.prepare();
+    // Recheck revision/project/idempotency after native preparation. A human edit
+    // or another request during the await must not be overwritten.
+    return this.executePlan({ ...envelope, operations: [envelope.operation] }, [command]);
+  }
+
+  applyPlan(envelope: Omit<OperationEnvelope, "operation"> & { operations: Operation[] }): OperationResult {
+    return this.executePlan(envelope);
+  }
+
+  private executePlan({
     operations,
     baseRevision,
     idempotencyKey,
     expectedProjectId,
   }: Omit<OperationEnvelope, "operation"> & {
     operations: Operation[];
-  }): OperationResult {
+  }, preparedCommands?: Command[]): OperationResult {
+    if (this.editor.project.getIsLoading?.()) throw new InvalidOperationError("Project is still loading; retry after initialization");
     // Checked before dedupe: if the caller is aimed at a different document,
     // even "you already did this" is the wrong answer.
     if (expectedProjectId !== undefined) {
@@ -298,7 +327,7 @@ export class AgentManager {
     // Building can itself perform operation-specific validation. Do it for the
     // entire plan before BatchCommand.execute() so malformed step N cannot leave
     // steps 1…N-1 applied.
-    const commands = prepared.map((operation) => buildCommand({ operation }));
+    const commands = preparedCommands ?? prepared.map((operation) => buildCommand({ operation }));
 
     // Executing a command is not proof that anything changed. The editor runs
     // reactors after every execute() — notably one that prunes element-less
@@ -798,6 +827,9 @@ export class AgentManager {
           }
         : {}),
       ...(typeof element.effectType === "string" ? { effectType: element.effectType } : {}),
+      ...(element.textAttachment && typeof element.textAttachment === "object"
+        ? { textAttachment: structuredClone(element.textAttachment) as import("@/timeline/types").TimelineTextAttachment }
+        : {}),
       ...(element.params && typeof element.params === "object"
         ? { params: element.params as Record<string, unknown> }
         : {}),

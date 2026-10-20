@@ -9,6 +9,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import {
 	DELETE,
 	PATCH,
@@ -85,6 +86,41 @@ function context({
 }
 
 describe("media route index transactions", () => {
+	test("completes an intact upload and rejects concurrent metadata or byte changes", async () => {
+		const source = await fixture();
+		const indexPath = path.join(source.mediaDirectory, "index.json");
+		const filePath = path.join(source.mediaDirectory, `${source.assetId}.mp4`);
+		const stub = { ext: "mp4", mimeType: "video/mp4" };
+		const sha256 = createHash("sha256").update("source").digest("hex");
+		const metadata = { ...stub, name: "Imported.mp4", templateAsset: { sha256 } };
+		const complete = () => PATCH(new Request("http://localhost/media", {
+			method: "PATCH", headers: { "content-type": "application/json" },
+			body: JSON.stringify({ action: "merge", value: metadata,
+				expectedUpload: { ...stub, sha256 } }),
+		}), context(source));
+		await writeFile(indexPath, JSON.stringify({ [source.assetId]: stub }));
+		expect((await complete()).status).toBe(200);
+		expect(JSON.parse(await readFile(indexPath, "utf8"))[source.assetId]).toEqual(metadata);
+
+		for (const change of ["metadata", "bytes", "missing"] as const) {
+			await writeFile(indexPath, JSON.stringify({ [source.assetId]: stub }));
+			await writeFile(filePath, "source");
+			let pending: ReturnType<typeof complete> | undefined;
+			await withMediaIndexLock({ directory: source.mediaDirectory, action: async () => {
+				pending = complete(); // Waits behind a concurrent writer's lock.
+				if (change === "metadata")
+					await writeFile(indexPath, JSON.stringify({ [source.assetId]: { ...stub, name: "User edit", tags: ["keep"] } }));
+				else if (change === "bytes") await writeFile(filePath, "replacement");
+				else await rm(filePath);
+			} });
+			const response = await pending!;
+			expect(response.status).toBe(409);
+			expect(JSON.parse(await readFile(indexPath, "utf8"))[source.assetId]).toEqual(
+				change === "metadata" ? { ...stub, name: "User edit", tags: ["keep"] } : stub,
+			);
+		}
+	});
+
 	test("preserves both entries when different assets are imported concurrently", async () => {
 		const source = await fixture();
 		const imports = [

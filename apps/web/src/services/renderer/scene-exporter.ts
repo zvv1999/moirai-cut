@@ -1,8 +1,10 @@
+import { ExportTextMeasurementCollector } from "./export-text-measurements";
 import EventEmitter from "eventemitter3";
 
 import {
 	Output,
 	Mp4OutputFormat,
+	MovOutputFormat,
 	WebMOutputFormat,
 	BufferTarget,
 	CanvasSource,
@@ -24,6 +26,7 @@ import type {
 	ExportVideoCodec,
 } from "@/export";
 import { CanvasRenderer } from "./canvas-renderer";
+import { checkNativeAudioEncoder, finalizeNativeAudio } from "./native-audio";
 
 type ExportParams = {
 	width: number;
@@ -58,6 +61,8 @@ export type SceneExporterEvents = {
 
 export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 	private renderer: CanvasRenderer;
+	private textMeasurements = new ExportTextMeasurementCollector();
+	getTextMeasurements() { return this.textMeasurements.snapshot(); }
 	private format: ExportFormat;
 	private quality: AgentExportQuality;
 	private videoCodec: ExportVideoCodec;
@@ -70,6 +75,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 	private audioBuffer?: AudioBuffer;
 
 	private isCancelled = false;
+	private audioRequest = new AbortController();
 
 	constructor({
 		width,
@@ -107,6 +113,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 	cancel(): void {
 		this.isCancelled = true;
+		this.audioRequest.abort();
 	}
 
 	async export({
@@ -118,6 +125,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		startTime?: number;
 		endTime?: number;
 	}): Promise<ArrayBuffer | null> {
+		this.textMeasurements = new ExportTextMeasurementCollector();
 		const fps = this.renderer.fps;
 		const fpsFloat = frameRateToFloat(fps);
 		const ticksPerFrame = Math.round(
@@ -135,8 +143,27 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 			throw new Error("Export range contains no complete video frames");
 		}
 
-		const outputFormat =
-			this.format === "webm" ? new WebMOutputFormat() : new Mp4OutputFormat();
+		const useNativeAudio = Boolean(
+			this.format === "mp4" &&
+			this.audioCodec === "aac" &&
+			this.shouldIncludeAudio &&
+			this.audioBuffer,
+		);
+		// Keep PCM until native muxing can record AAC encoder priming accurately.
+		const outputFormat = useNativeAudio
+			? new MovOutputFormat()
+			: this.format === "webm"
+				? new WebMOutputFormat()
+				: new Mp4OutputFormat();
+		if (useNativeAudio) {
+			try {
+				await checkNativeAudioEncoder(this.audioRequest.signal);
+			} catch (error) {
+				if (!this.isCancelled) throw error;
+				this.emit("cancelled");
+				return null;
+			}
+		}
 
 		const output = new Output({
 			format: outputFormat,
@@ -155,7 +182,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		let audioSource: AudioBufferSource | null = null;
 		if (this.shouldIncludeAudio && this.audioBuffer) {
 			audioSource = new AudioBufferSource({
-				codec: this.audioCodec,
+				codec: useNativeAudio ? "pcm-f32" : this.audioCodec,
 				bitrate: this.audioBitrate ?? qualityMap[this.quality],
 			});
 			output.addAudioTrack(audioSource);
@@ -177,10 +204,11 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 			const sourceTimeTicks = safeStartTime + i * ticksPerFrame;
 			const outputTimeSeconds = i / fpsFloat;
-			await this.renderer.render({ node: rootNode, time: sourceTimeTicks });
+			const measurements = await this.renderer.render({ node: rootNode, time: sourceTimeTicks });
+			this.textMeasurements.observe(measurements);
 			await videoSource.add(outputTimeSeconds, 1 / fpsFloat);
 
-			this.emit("progress", i / frameCount);
+			this.emit("progress", (i / frameCount) * (useNativeAudio ? 0.95 : 1));
 		}
 
 		if (this.isCancelled) {
@@ -191,13 +219,31 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 		videoSource.close();
 		await output.finalize();
-		this.emit("progress", 1);
 
-		const buffer = output.target.buffer;
+		let buffer = output.target.buffer;
 		if (!buffer) {
 			this.emit("error", new Error("Failed to export video"));
 			return null;
 		}
+		if (useNativeAudio) {
+			try {
+				buffer = await finalizeNativeAudio({
+					buffer,
+					quality: this.quality,
+					bitrate: this.audioBitrate,
+					signal: this.audioRequest.signal,
+				});
+			} catch (error) {
+				if (!this.isCancelled) throw error;
+				this.emit("cancelled");
+				return null;
+			}
+		}
+		if (this.isCancelled) {
+			this.emit("cancelled");
+			return null;
+		}
+		this.emit("progress", 1);
 
 		this.emit("complete", buffer);
 		return buffer;

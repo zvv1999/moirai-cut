@@ -97,6 +97,7 @@ export interface AgentBridge {
     idempotencyKey: string;
     expectedProjectId?: string;
   }): BridgeResult<OperationResult>;
+  applyOperationAsync(envelope: Parameters<AgentBridge["applyOperation"]>[0]): Promise<BridgeResult<OperationResult>>;
   undo(): BridgeResult<{ revision: number }>;
   redo(): BridgeResult<{ revision: number }>;
   /** Async: rendering is asynchronous, so this alone returns a promise. */
@@ -262,7 +263,11 @@ export function installAgentBridge(): () => void {
 
   const bridge: AgentBridge = {
     version: 1,
-    getState: () => guard(() => EditorCore.getInstance().agent.getState()),
+    getState: () => guard(() => {
+      const editor = EditorCore.getInstance();
+      if (editor.project.getIsLoading()) throw new InvalidOperationError("Project is still loading; retry after initialization");
+      return editor.agent.getState();
+    }),
     getContext: () =>
       guard(() => {
         const editor = EditorCore.getInstance();
@@ -296,6 +301,8 @@ export function installAgentBridge(): () => void {
       guard(() => EditorCore.getInstance().agent.supportedOperations() as string[]),
     applyOperation: (envelope) =>
       guard(() => EditorCore.getInstance().agent.applyOperation(envelope)),
+    applyOperationAsync: (envelope) =>
+      guardAsync(() => EditorCore.getInstance().agent.applyOperationAsync(envelope)),
     undo: () => guard(() => ({ revision: EditorCore.getInstance().agent.undo() })),
     redo: () => guard(() => ({ revision: EditorCore.getInstance().agent.redo() })),
     renderFrames: (request) =>

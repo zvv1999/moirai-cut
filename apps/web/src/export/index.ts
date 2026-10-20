@@ -1,3 +1,4 @@
+import type { ExportTextMeasurements } from "@/services/renderer/export-text-measurements";
 import type { FrameRate } from "opencut-wasm";
 import { EXPORT_MIME_TYPES } from "./mime-types";
 
@@ -50,6 +51,7 @@ export interface ExportOptions {
 }
 
 export interface ExportResult {
+	textMeasurements?: ExportTextMeasurements;
 	success: boolean;
 	buffer?: ArrayBuffer;
 	error?: string;

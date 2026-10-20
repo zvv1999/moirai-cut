@@ -33,6 +33,7 @@ const PROPERTY_LABELS: Partial<Record<string, string>> = {
 	volume: "音量",
 	color: "颜色",
 	"background.color": "背景颜色",
+	"background.opacity": "底板不透明度",
 	"background.paddingX": "背景边距 X",
 	"background.paddingY": "背景边距 Y",
 	"background.offsetX": "背景偏移 X",

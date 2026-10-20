@@ -184,6 +184,12 @@ function ProjectsHeader() {
 
 				<div className="flex items-center gap-3 md:gap-4">
 					<Button variant="outline" className="px-2 sm:px-3" asChild>
+						<Link href="/templates" aria-label="模板工作台" title="模板工作台">
+							<HugeiconsIcon icon={Video01Icon} className="size-4" />
+							<span className="hidden lg:inline">模板工作台</span>
+						</Link>
+					</Button>
+					<Button variant="outline" className="px-2 sm:px-3" asChild>
 						<Link href="/footage" aria-label="产品素材库" title="产品素材库">
 							<HugeiconsIcon icon={Video01Icon} className="size-4" />
 							<span className="hidden lg:inline">产品素材库</span>

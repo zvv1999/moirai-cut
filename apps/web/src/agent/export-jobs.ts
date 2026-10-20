@@ -1,3 +1,4 @@
+import type { ExportTextMeasurements } from "@/services/renderer/export-text-measurements";
 import { EditorCore } from "@/core";
 import type { ExportOptions, ExportResult } from "@/export";
 import { EXPORT_MIME_TYPES } from "@/export/mime-types";
@@ -15,6 +16,7 @@ import { EXPORT_MIME_TYPES } from "@/export/mime-types";
 export type ExportJobStatus = "running" | "completed" | "cancelled" | "failed";
 
 export interface ExportJobState {
+  textMeasurements?: ExportTextMeasurements & {outputSha256:string};
   jobId: string;
   status: ExportJobStatus;
   progress: number;
@@ -239,6 +241,10 @@ export function startExportJob({
         return;
       }
       const saved = (await response.json()) as { path: string; sizeBytes: number };
+      if (result.textMeasurements) {
+        const hash = await crypto.subtle.digest("SHA-256", result.buffer);
+        current.textMeasurements = {...result.textMeasurements,outputSha256:Array.from(new Uint8Array(hash), value=>value.toString(16).padStart(2,"0")).join("")};
+      }
       current.status = "completed";
       current.progress = 1;
       current.path = saved.path;

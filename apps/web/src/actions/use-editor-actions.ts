@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useTimelineStore } from "@/timeline/timeline-store";
 import { useActionHandler } from "@/actions/use-action-handler";
 import { useEditor } from "@/editor/use-editor";
@@ -440,9 +441,9 @@ export function useEditorActions() {
 	useActionHandler(
 		"duplicate-selected",
 		() => {
-			editor.timeline.duplicateElements({
+			void editor.timeline.duplicateElements({
 				elements: selectedElements,
-			});
+			}).catch(error => toast.error(error instanceof Error ? error.message : "复制失败"));
 		},
 		undefined,
 	);

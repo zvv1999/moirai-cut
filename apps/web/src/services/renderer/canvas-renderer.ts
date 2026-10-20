@@ -4,6 +4,7 @@ import { createCanvasSurface } from "./canvas-utils";
 import { buildFrameDescriptor } from "./compositor/frame-descriptor";
 import { wasmCompositor } from "./compositor/wasm-compositor";
 import { resolveRenderTree } from "./resolve";
+import { collectFrameTextMeasurements } from "./text-measurements";
 import {
 	measureSpanAsync,
 	measureSpanSync,
@@ -71,6 +72,7 @@ export class CanvasRenderer {
 			name: "renderFrame",
 			fn: () => wasmCompositor.render(frame),
 		});
+		return collectFrameTextMeasurements(node,time);
 	}
 
 	async renderToCanvas({
@@ -82,7 +84,7 @@ export class CanvasRenderer {
 		time: number;
 		targetCanvas: HTMLCanvasElement;
 	}) {
-		await this.render({ node, time });
+		const textMeasurements=await this.render({ node, time });
 
 		const ctx = targetCanvas.getContext("2d");
 		if (!ctx) {
@@ -101,5 +103,6 @@ export class CanvasRenderer {
 				),
 		});
 		onRenderPerfFrameComplete();
+		return textMeasurements;
 	}
 }

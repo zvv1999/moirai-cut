@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { randomUUID } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -22,6 +23,7 @@ import {
 import { listProjects, readProject, writeProject } from "./project-file.mjs";
 import { importMedia, listMedia, mediaIndexOf } from "./media-import.mjs";
 import { analyzeAudio } from "./audio-analyze.mjs";
+import { registerTemplateTools } from "./template-workbench.mjs";
 import { inspectMedia, inspectMediaScenes } from "./video-inspect.mjs";
 import { lintDocument } from "./cut-lint.mjs";
 import { exportFcpxml } from "./interchange.mjs";
@@ -244,6 +246,7 @@ export function createOpenCutMcpServer() {
 		},
 	);
 
+	registerTemplateTools(server);
 	server.registerTool(
 		"status",
 		{
@@ -469,7 +472,7 @@ export function createOpenCutMcpServer() {
 		},
 		({ operation, baseRevision, idempotencyKey, projectId: id }) =>
 			bridge({
-				method: "applyOperation",
+				method: "applyOperationAsync",
 				args: [
 					{
 						operation,
@@ -719,12 +722,20 @@ export function createOpenCutMcpServer() {
 			annotations: mutating,
 		},
 		async ({ projectId: id, operations, baseRevision, idempotencyKey }) => {
-			// A lost response is the one case baseRevision cannot cover: the write
-			// succeeded, so a re-read shows a fresh revision and the retry sails
-			// through — inserting every clip a second time.
+			const replayKey = JSON.stringify([id, idempotencyKey]);
+			// Retry receipts belong to one project and one exact request.
 			if (idempotencyKey !== undefined) {
-				const remembered = appliedBatches.get(idempotencyKey);
-				if (remembered) return asText({ ...remembered, deduplicated: true });
+				const remembered = appliedBatches.get(replayKey);
+				if (remembered) {
+					if (
+						remembered.baseRevision !== baseRevision ||
+						!isDeepStrictEqual(remembered.operations, operations)
+					) return asError({
+						code: "idempotency_conflict",
+						message: "Replay key was already used for a different edit request in this project.",
+					});
+					return asText({ ...remembered.result, deduplicated: true });
+				}
 			}
 			try {
 				const document = await readProject({ projectId: id });
@@ -813,7 +824,11 @@ export function createOpenCutMcpServer() {
 					noEffect: false,
 					state: describeDocument({ document: { ...working, revision } }),
 				};
-				if (idempotencyKey !== undefined) rememberBatch(idempotencyKey, result);
+				if (idempotencyKey !== undefined) rememberBatch(replayKey, {
+					baseRevision,
+					operations: structuredClone(operations),
+					result,
+				});
 				return asText(result);
 			} catch (error) {
 				return asError({
@@ -1656,11 +1671,11 @@ export function createOpenCutMcpServer() {
 		},
 	);
 
-	server.registerTool(
-		"render_frames",
+	for (const renderToolName of ["render_frames", "render_dynamic_asset_frames"]) server.registerTool(
+		renderToolName,
 		{
 			description:
-				"Render frames from the timeline as PNGs, to check what an edit actually produced. Pixels come from the same renderer the exporter uses, so this is what the export would look like. Each result carries the revision it depicts — if that is not the revision you edited at, the image is not evidence.",
+				"Render frames from an open project timeline as PNGs using the export renderer. For dynamic assets, first insert and compile into an isolated preview project; this tool does not instantiate an asset or open a project. Each result carries revision and stability; reject stale evidence. Does not upload frames or modify the asset.",
 			inputSchema: {
 				atSeconds: z
 					.array(z.number().finite().nonnegative())

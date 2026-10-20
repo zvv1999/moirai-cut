@@ -137,7 +137,7 @@ export function TextEditOverlay({
 						typeof element.params.color === "string"
 							? element.params.color
 							: "#ffffff",
-					backgroundColor: shouldShowBackground ? bg.color : "transparent",
+					backgroundColor: shouldShowBackground ? `color-mix(in srgb, ${bg.color} ${Math.max(0, Math.min(1, bg.opacity ?? 1))*100}%, transparent)` : "transparent",
 					minHeight: lineHeightPx,
 					textDecoration: textParams.textDecoration ?? "none",
 					padding: shouldShowBackground

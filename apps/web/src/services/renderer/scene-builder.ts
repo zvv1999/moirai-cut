@@ -6,6 +6,7 @@ import { ImageNode } from "./nodes/image-node";
 import { TextNode } from "./nodes/text-node";
 import { StickerNode } from "./nodes/sticker-node";
 import { GraphicNode } from "./nodes/graphic-node";
+import { GroupNode } from "./nodes/group-node";
 import { ColorNode } from "./nodes/color-node";
 import { BlurBackgroundNode } from "./nodes/blur-background-node";
 import { EffectLayerNode } from "./nodes/effect-layer-node";
@@ -61,11 +62,15 @@ function buildTrackNodes({
 	mediaMap,
 	canvasSize,
 	isPreview,
+	groupPath = [],
+	sceneTimeOffset = 0,
 }: {
 	tracks: TimelineTrack[];
 	mediaMap: Map<string, MediaAsset>;
 	canvasSize: TCanvasSize;
 	isPreview?: boolean;
+	groupPath?: readonly string[];
+	sceneTimeOffset?: number;
 }): AnyBaseNode[] {
 	const nodes: AnyBaseNode[] = [];
 
@@ -73,8 +78,55 @@ function buildTrackNodes({
 		const elements = getVisibleSortedElements({ track });
 
 		for (const element of elements) {
+			const add = (node: AnyBaseNode) => {
+				node.textAttachment=element.textAttachment ? structuredClone(element.textAttachment) : undefined;
+				const [left,top,width,height]=["Left","Top","Width","Height"].map(key=>element.params[`template.textLayout${key}`]);
+				node.source = {
+					elementId: element.id,
+					trackId: track.id,
+					groupPath: [...groupPath],
+					sceneTimeOffset,
+					...(element.type==="text" && typeof left==="number" && typeof top==="number" && typeof width==="number" && typeof height==="number" && [left,top,width,height].every(Number.isFinite) && width>0 && height>0 ? {textLayoutBox:{left,top,width,height}} : {}),
+					...(typeof element.params["template.elementId"] === "string" ? {templateElementId: element.params["template.elementId"]} : {}),
+					...(element.params["template.attachedTo"] && !element.textAttachment ? {layoutAttachment:true} : {}),
+					...(typeof element.params["template.instanceId"] === "string" ? {templateInstanceId: element.params["template.instanceId"]} : {}),
+				};
+				nodes.push(node);
+			};
+			if (element.renderGroup) {
+				const group = new GroupNode({
+					definitionId: "rectangle",
+					params: element.params,
+					duration: element.duration,
+					timeOffset: element.startTime,
+					trimStart: 0,
+					trimEnd: 0,
+					transform: buildTransformFromParams({ params: element.params }),
+					animations: element.animations,
+					opacity: readOpacityFromParams({ params: element.params }),
+					blendMode: readBlendModeFromParams({ params: element.params }),
+					effects: "effects" in element ? element.effects : [],
+					appearance: normalizeVisualAppearance(element.params),
+				});
+				group.childTimeOffset =
+					element.startTime -
+					element.renderGroup.timeOrigin -
+					element.trimStart;
+				group.children = buildTrackNodes({
+					tracks: [...element.renderGroup.tracks]
+						.filter((t) => !("hidden" in t && t.hidden))
+						.reverse(),
+					mediaMap,
+					canvasSize,
+					isPreview,
+					groupPath: [...groupPath, element.id],
+					sceneTimeOffset: sceneTimeOffset + group.childTimeOffset,
+				});
+				add(group);
+				continue;
+			}
 			if (element.type === "effect") {
-				nodes.push(
+				add(
 					new EffectLayerNode({
 						effectType: element.effectType,
 						effectParams: element.params,
@@ -96,8 +148,9 @@ function buildTrackNodes({
 				});
 
 				if (element.type === "video" && mediaAsset.type === "video") {
-					nodes.push(
+					add(
 						new VideoNode({
+							canvasClip: element.params,
 							mediaId: playbackSource.mediaId,
 							url: playbackSource.url,
 							file: playbackSource.file,
@@ -123,8 +176,9 @@ function buildTrackNodes({
 					);
 				}
 				if (element.type === "image" && mediaAsset.type === "image") {
-					nodes.push(
+					add(
 						new ImageNode({
+							canvasClip: element.params,
 							url: playbackSource.url,
 							duration: element.duration,
 							timeOffset: element.startTime,
@@ -146,7 +200,7 @@ function buildTrackNodes({
 			}
 
 			if (element.type === "text") {
-				nodes.push(
+				add(
 					new TextNode({
 						...element,
 						transform: buildTransformFromParams({ params: element.params }),
@@ -162,8 +216,9 @@ function buildTrackNodes({
 			}
 
 			if (element.type === "sticker") {
-				nodes.push(
+				add(
 					new StickerNode({
+						canvasClip: element.params,
 						stickerId: element.stickerId,
 						intrinsicWidth: element.intrinsicWidth,
 						intrinsicHeight: element.intrinsicHeight,
@@ -182,8 +237,9 @@ function buildTrackNodes({
 			}
 
 			if (element.type === "graphic") {
-				nodes.push(
+				add(
 					new GraphicNode({
+						canvasClip: element.params,
 						definitionId: element.definitionId,
 						params: element.params,
 						duration: element.duration,

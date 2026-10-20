@@ -26,6 +26,8 @@ export type FrameItemDescriptor =
 	  };
 
 export type QuadTransformDescriptor = {
+	/** Canvas-only affine basis, rasterized before handing the quad to WASM. */
+	basis?: [number, number, number, number];
 	centerX: number;
 	centerY: number;
 	width: number;

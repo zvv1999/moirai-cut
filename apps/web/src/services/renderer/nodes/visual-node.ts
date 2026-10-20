@@ -11,6 +11,7 @@ import type { VisualAppearance } from "@/visual/appearance";
 import type { MotionTrackingData } from "@/motion-tracking";
 
 export interface VisualNodeParams {
+	canvasClip?: import("@/params").ParamValues;
 	duration: number;
 	timeOffset: number;
 	trimStart: number;

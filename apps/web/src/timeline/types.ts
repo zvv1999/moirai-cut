@@ -143,7 +143,23 @@ export interface LibraryAudioElement extends BaseAudioElement {
 
 export type AudioElement = UploadAudioElement | LibraryAudioElement;
 
+/** Native-compiled reference to one exact text instance; current-pose execution. */
+export type TimelineTextAttachment = {
+	parent: {elementId:string;trackId:string;groupPath:readonly string[]};
+	anchor: readonly [number,number];
+	/** Native-compiled measured base geometry; independent child motion is retained. */
+	sizeBinding?: {
+		width?: {factor:number;paddingPx:number};
+		height?: {factor:number;paddingPx:number};
+		baselineSizePx: readonly [number,number];
+		sourceSizePx: number;
+		childAnchor: readonly [number,number];
+	};
+};
+
 interface BaseTimelineElement {
+    textAttachment?: TimelineTextAttachment;
+    renderGroup?: { tracks: TimelineTrack[]; timeOrigin: number };
 	id: string;
 	name: string;
 	/** General edit group. Selecting one member selects the connected group. */

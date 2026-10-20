@@ -30,3 +30,14 @@ test("rejects external hosts, different origins and missing mutation markers", a
 		expect((await check(host, origin, marker)).status).toBe(403);
 	}
 });
+
+test("authoring requests cannot bypass origin and mutation checks", async () => {
+	for (const headers of [
+		{ host: "evil.example", origin: "http://evil.example", "x-requested-with": "moirai-footage" },
+		{ host: "localhost:3000", origin: "http://evil.example", "x-requested-with": "moirai-footage" },
+		{ host: "localhost:3000", origin: "http://localhost:3000", "x-requested-with": "" },
+	]) {
+		const response = await proxyFootage(new Request("http://localhost:3000/api/footage/templates/production/author", { method: "POST", headers, body: "{}" }), ["templates", "production", "author"]);
+		expect(response.status).toBe(403);
+	}
+});

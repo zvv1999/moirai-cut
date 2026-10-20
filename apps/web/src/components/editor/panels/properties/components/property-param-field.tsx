@@ -130,6 +130,7 @@ function ParamInput({
 	if (param.type === "boolean") {
 		return (
 			<Switch
+				aria-label={param.label}
 				checked={Boolean(value)}
 				onCheckedChange={(checked) => {
 					onPreview(checked);
@@ -148,7 +149,7 @@ function ParamInput({
 					onCommit();
 				}}
 			>
-				<SelectTrigger className="w-full">
+				<SelectTrigger className="w-full" aria-label={param.label}>
 					<SelectValue />
 				</SelectTrigger>
 				<SelectContent>
@@ -178,6 +179,7 @@ function ParamInput({
 	if (param.type === "text") {
 		return (
 			<Textarea
+				aria-label={param.label}
 				value={String(value)}
 				onChange={(event) => onPreview(event.currentTarget.value)}
 				onBlur={onCommit}
@@ -188,6 +190,7 @@ function ParamInput({
 	if (param.type === "font") {
 		return (
 			<input
+				aria-label={param.label}
 				className="border-input bg-accent h-9 w-full rounded-md border px-3 text-sm outline-none"
 				value={String(value)}
 				onChange={(event) => onPreview(event.currentTarget.value)}

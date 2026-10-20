@@ -3,6 +3,7 @@ import {
 	getPropertiesConfig,
 	VISUAL_PARAM_SECTIONS,
 	VISUAL_SUBTABS,
+	TEXT_PARAM_KEYS,
 } from "../registry";
 import { getElementParams } from "@/params/registry";
 import type { VideoElement } from "@/timeline";
@@ -23,6 +24,11 @@ function buildVideo(): VideoElement {
 }
 
 describe("Jianying-style properties registry", () => {
+	test("exposes imported text geometry and keyword controls", () => {
+		for (const key of ["text.maxWidth", "text.maxHeight", "text.maxLines", "text.highlightEnabled", "text.highlightColor", "geometry.stroke.width", "geometry.stroke.color", "geometry.shadow.enabled", "letterSpacing"] as const) {
+			expect(TEXT_PARAM_KEYS).toContain(key);
+		}
+	});
 	test("matches Jianying's video inspector category order", () => {
 		const config = getPropertiesConfig({
 			element: buildVideo(),

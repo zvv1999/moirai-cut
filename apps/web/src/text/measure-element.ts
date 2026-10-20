@@ -3,12 +3,16 @@ import { DEFAULTS } from "@/timeline/defaults";
 import type { TextElement } from "@/timeline";
 import type { TextBackground } from "@/text/background";
 import { resolveNumberAtTime } from "@/animation/values";
+import { fitTextRegion } from "./fit-region";
+import { readLayoutPhrases } from "./layout-phrases";
+import { readTextHighlight } from "./highlight";
 import {
 	getTextVisualRect,
 } from "./layout";
 import {
 	measureTextLayout,
 	resolveTextLayout,
+	resolveFontWeight,
 	type MeasuredTextLayout,
 	type TextAlign,
 	type TextDecoration,
@@ -81,12 +85,28 @@ export function measureTextElement({
 	localTime: number;
 	ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 }): MeasuredTextElement {
-	let text = buildTextLayoutParamsFromElement({ element });
+	let text = buildTextLayoutParamsFromElement({ element, localTime });
 	let measuredLayout = measureTextLayout({
 		text,
 		canvasHeight,
 		ctx,
 	});
+	const maxWidth = readNumberParam({ params: element.params, key: "text.maxWidth", fallback: 0 });
+	const maxHeight = readNumberParam({ params: element.params, key: "text.maxHeight", fallback: 0 });
+	const maxLines = readNumberParam({ params: element.params, key: "text.maxLines", fallback: 0 });
+	if (maxWidth > 0 && maxLines > 1) {
+		text = fitTextRegion({ text, canvasHeight, ctx, maxWidth, maxHeight, maxLines });
+		measuredLayout = measureTextLayout({ text, canvasHeight, ctx });
+	}
+	const fit = Math.min(
+		1,
+		maxWidth > 0 && measuredLayout.block.maxWidth > 0 ? maxWidth / measuredLayout.block.maxWidth : 1,
+		maxHeight > 0 && measuredLayout.block.height > 0 ? maxHeight / measuredLayout.block.height : 1,
+	);
+	if (fit < 1) {
+		text = { ...text, fontSize: text.fontSize * fit };
+		measuredLayout = measureTextLayout({ text, canvasHeight, ctx });
+	}
 	let bilingual: MeasuredTextElement["bilingual"];
 	const primaryText = readStringParam({
 		params: element.params,
@@ -176,6 +196,12 @@ export function measureTextElement({
 	const bg = buildTextBackgroundFromElement({ element });
 	const resolvedBackground: ResolvedTextBackground = {
 		...bg,
+		opacity: resolveNumberAtTime({
+			baseValue: bg.opacity ?? 1,
+			animations: element.animations,
+			propertyPath: "background.opacity",
+			localTime,
+		}),
 		paddingX: resolveNumberAtTime({
 			baseValue: bg.paddingX ?? DEFAULTS.text.background.paddingX,
 			animations: element.animations,
@@ -291,8 +317,8 @@ function readSubtitleStyleParam({
 			...(typeof record.fontFamily === "string"
 				? { fontFamily: record.fontFamily }
 				: {}),
-			...(record.fontWeight === "normal" || record.fontWeight === "bold"
-				? { fontWeight: record.fontWeight }
+			...(record.fontWeight !== undefined
+				? { fontWeight: resolveFontWeight(record.fontWeight) }
 				: {}),
 			...(record.fontStyle === "normal" || record.fontStyle === "italic"
 				? { fontStyle: record.fontStyle }
@@ -328,10 +354,14 @@ function isUnknownRecord(value: unknown): value is Record<string, unknown> {
 
 export function buildTextLayoutParamsFromElement({
 	element,
+	localTime = 0,
 }: {
 	element: TextElement;
+	localTime?: number;
 }): TextLayoutParams {
 	return {
+		highlight: readTextHighlight(element.params, element.animations, localTime),
+		layoutPhrases: readLayoutPhrases(element.params["text.layoutPhrases"], element.params.content),
 		content: readStringParam({
 			params: element.params,
 			key: "content",
@@ -392,6 +422,7 @@ export function buildTextBackgroundFromElement({
 			key: "background.color",
 			fallback: DEFAULTS.text.background.color,
 		}),
+		opacity: readNumberParam({params: element.params, key: "background.opacity", fallback: 1}),
 		cornerRadius: readNumberParam({
 			params: element.params,
 			key: "background.cornerRadius",
@@ -478,7 +509,7 @@ function readFontWeight({
 	value: unknown;
 	fallback: TextFontWeight;
 }): TextFontWeight {
-	return value === "bold" || value === "normal" ? value : fallback;
+	return value === undefined ? fallback : resolveFontWeight(value);
 }
 
 function readFontStyle({

@@ -876,12 +876,13 @@ export class TimelineManager {
 		};
 	}
 
-	duplicateElements({
+	async duplicateElements({
 		elements,
 	}: {
 		elements: { trackId: string; elementId: string }[];
-	}): { trackId: string; elementId: string }[] {
+	}): Promise<{ trackId: string; elementId: string }[]> {
 		const command = new DuplicateElementsCommand({ elements });
+		await command.prepare();
 		this.editor.command.execute({ command });
 		return command.getDuplicatedElements();
 	}
