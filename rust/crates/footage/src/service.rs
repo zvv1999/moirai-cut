@@ -122,6 +122,13 @@ fn enqueue_sync(db: &rusqlite::Connection, kind: &str, target: &str, revision: u
 
 pub fn router(app: Shared) -> Router {
     Router::new()
+        .merge(crate::templates::api::router())
+        .route(
+            "/exports/audio",
+            get(crate::export_audio::capabilities)
+                .post(crate::export_audio::finalize)
+                .layer(DefaultBodyLimit::disable()),
+        )
         .route("/state", get(state))
         .route("/releases", get(releases))
         .route("/releases/{id}", get(editor_asset))
@@ -543,7 +550,16 @@ pub fn worker(app: Shared) {
         vec!["render"],
         vec!["archive", "publish"],
         vec!["analyze"],
+        vec!["reference_analysis"],
+        vec!["template_production"],
+        vec!["template_render"],
         vec!["sync_source", "sync_release"],
+        vec![
+            "template_audio",
+            "template_transcribe",
+            "template_sound_assessment",
+            "template_recommendation",
+        ],
     ] {
         let app = app.clone();
         std::thread::spawn(move || {
@@ -576,8 +592,18 @@ pub fn worker(app: Shared) {
                                     src.status = "failed".into();
                                     src.error = Some(error.clone());
                                     store::put(db, "source", &src.id, &src)?;
-                                } else if !["sync_source", "sync_release"]
-                                    .contains(&job.kind.as_str())
+                                } else if ![
+                                    "sync_source",
+                                    "sync_release",
+                                    "template_audio",
+                                    "template_transcribe",
+                                    "template_sound_assessment",
+                                    "template_recommendation",
+                                    "template_production",
+                                    "template_render",
+                                    "reference_analysis",
+                                ]
+                                .contains(&job.kind.as_str())
                                 {
                                     let mut shot = store::get::<Shot>(db, "shot", &job.target_id)?;
                                     if shot.revision == job.revision {
@@ -606,6 +632,15 @@ pub fn worker(app: Shared) {
 }
 fn execute(app: &App, job: &Job) -> Result<()> {
     match job.kind.as_str() {
+        "reference_analysis" => crate::templates::reference::run(app, &job.target_id),
+        "template_production" => crate::templates::production::run(app, &job.target_id),
+        "template_render" => crate::templates::production_runner::run(app, &job.target_id),
+        "template_recommendation" => crate::templates::recommendation::run(app, &job.target_id),
+        "template_audio" => crate::templates::audio::separate(app, &job.target_id),
+        "template_transcribe" => crate::templates::transcription::transcribe(app, &job.target_id),
+        "template_sound_assessment" => {
+            crate::templates::audio_assessment::analyze(app, &job.target_id)
+        }
         "archive" => {
             let mut source = app.db.get::<Source>("source", &job.target_id)?;
             if source.nas_relative_path.is_some()
@@ -906,6 +941,23 @@ async fn media_file(
         }
         _ => return Err(anyhow::anyhow!("媒体不存在").into()),
     };
+    file_response(
+        path,
+        if variant == "poster" {
+            "image/jpeg"
+        } else {
+            "video/mp4"
+        },
+        headers,
+    )
+    .await
+}
+
+pub async fn file_response(
+    path: PathBuf,
+    content_type: &str,
+    headers: HeaderMap,
+) -> ApiResult<Response> {
     let mut file = tokio::fs::File::open(&path)
         .await
         .context("媒体文件不存在")?;
@@ -927,14 +979,7 @@ async fn media_file(
     let stream = tokio_util::io::ReaderStream::new(file.take(end - start + 1));
     let mut response = Response::builder()
         .status(if partial { 206 } else { 200 })
-        .header(
-            header::CONTENT_TYPE,
-            if variant == "poster" {
-                "image/jpeg"
-            } else {
-                "video/mp4"
-            },
-        )
+        .header(header::CONTENT_TYPE, content_type)
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::CONTENT_LENGTH, (end - start + 1).to_string())
         .header(header::CACHE_CONTROL, "private, no-store");

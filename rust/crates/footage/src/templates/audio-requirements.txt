@@ -1,0 +1,7 @@
+demucs==4.0.1
+torch==2.8.0
+torchaudio==2.8.0
+soundfile>=0.12,<1
+faster-whisper>=1.1,<2
+transformers==4.57.6
+scipy>=1.11,<2

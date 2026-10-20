@@ -65,6 +65,7 @@ async fn main() -> Result<()> {
         token,
     });
     moirai_footage::lineage::cache_legacy_releases(&app)?;
+    moirai_footage::templates::api::bootstrap(&app)?;
     service::worker(app.clone());
     let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, port)).await?;
     println!("Moirai footage service: http://127.0.0.1:{port}");
