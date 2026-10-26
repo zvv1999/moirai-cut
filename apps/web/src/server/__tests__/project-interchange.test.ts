@@ -22,6 +22,24 @@ import {
 import type { ProjectExportTarget } from "@/export/project-interchange";
 
 const exec = promisify(execFile);
+
+async function assertWellFormedXml(filePath: string) {
+	if (process.platform === "win32") {
+		await exec(
+			"powershell.exe",
+			[
+				"-NoProfile",
+				"-NonInteractive",
+				"-Command",
+				"$ErrorActionPreference = 'Stop'; $doc = New-Object System.Xml.XmlDocument; $doc.XmlResolver = $null; $doc.Load($env:MOIRAI_TEST_XML_PATH)",
+			],
+			{ env: { ...process.env, MOIRAI_TEST_XML_PATH: filePath } },
+		);
+		return;
+	}
+	await exec("xmllint", ["--noout", filePath]);
+}
+
 let root: string;
 const projectId = "interchange-test";
 function project() {
@@ -143,7 +161,7 @@ describe("project interchange with real media", () => {
 				path.join(root, projectId, "exports", result.archiveName),
 			]);
 			if (target === "premiere" || target === "fcpxml")
-				await exec("xmllint", ["--noout", result.entryPath]);
+				await assertWellFormedXml(result.entryPath);
 			else {
 				const drafts = path.join(root, `drafts-${target}`);
 				await mkdir(drafts);

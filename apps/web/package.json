@@ -57,7 +57,7 @@
 		"mediabunny": "^1.29.1",
 		"motion": "^12.18.1",
 		"nanoid": "^5.1.16",
-		"next": "16.3.3",
+		"next": "16.4.1",
 		"next-themes": "^0.4.4",
 		"opencut-wasm": "^0.2.10",
 		"pg": "^8.16.2",
@@ -83,7 +83,7 @@
 		"unified": "^11.0.5",
 		"use-deep-compare-effect": "^1.8.1",
 		"wavesurfer.js": "^7.9.8",
-		"zod": "4.3.6",
+		"zod": "4.6.6",
 		"zustand": "^5.0.2"
 	},
 	"devDependencies": {
@@ -101,7 +101,7 @@
 		"dotenv": "^16.5.0",
 		"drizzle-kit": "^0.31.4",
 		"postcss": "^8.5.26",
-		"sharp": "^0.35.4",
+		"sharp": "0.35.5",
 		"tailwindcss": "^4.2.1",
 		"typescript": "^5.8.3",
 		"wrangler": "^4.115.0"

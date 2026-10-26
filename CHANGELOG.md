@@ -26,6 +26,8 @@ Editable project bundles and evidence-based video Agent review.
   more closely; conversion reports explain remaining differences.
 - Background frame inspection restores the preview to the current playhead.
 - Footage labels and lineage remain available to the Agent media catalog.
+- Upgrade Next.js, MCP SDK, Zod and vulnerable transitive dependencies; retire
+  the archive-extraction audit exception and require an unfiltered clean audit.
 
 ### Compatibility and validation
 

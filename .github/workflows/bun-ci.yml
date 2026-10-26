@@ -43,6 +43,25 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Install media tools (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg zip unzip libxml2-utils
+
+      - name: Install media tools (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg
+
+      - name: Install media tools (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg zip unzip --yes --no-progress
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
       - name: Cache Rust build artifacts
         uses: actions/cache@v4
         with:
@@ -74,6 +93,15 @@ jobs:
 
       - name: Lint Rust footage
         run: cargo clippy -p moirai-footage --all-targets -- -D warnings
+
+      - name: Test Rust Agent analysis and project export
+        run: cargo test -p moirai-agent-analysis -p moirai-project-export --all-targets
+
+      - name: Lint Rust Agent analysis and project export
+        run: cargo clippy -p moirai-agent-analysis -p moirai-project-export --all-targets -- -D warnings
+
+      - name: Build native helpers for integration tests
+        run: cargo build -p moirai-agent-analysis -p moirai-project-export
 
       - name: Install Bun
         uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
