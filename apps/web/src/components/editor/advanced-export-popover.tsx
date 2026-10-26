@@ -1776,7 +1776,9 @@ export function AdvancedExportPopover({
 					</div>
 				) : null}
 
-				{tab === "interchange" ? <ProjectInterchangePanel /> : null}
+				{tab === "interchange" ? (
+					<ProjectInterchangePanel disabled={!!activeExportUi} />
+				) : null}
 
 				{tab === "queue" ? (
 					<div className="space-y-3">

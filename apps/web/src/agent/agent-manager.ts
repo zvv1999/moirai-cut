@@ -524,103 +524,109 @@ export class AgentManager {
       }
     }
 
-    const revisionBefore = this.revisionValue;
-    const frames: RenderedFrame[] = [];
-    for (const seconds of atSeconds) {
-      const time = toMediaTime("atSeconds", seconds);
-      const result = await this.editor.renderer.renderFrame({ time });
-      if (!result.success) {
-        frames.push({ atSeconds: seconds, error: result.error });
-        continue;
+    try {
+      const revisionBefore = this.revisionValue;
+      const frames: RenderedFrame[] = [];
+      for (const seconds of atSeconds) {
+        const time = toMediaTime("atSeconds", seconds);
+        const result = await this.editor.renderer.renderFrame({ time });
+        if (!result.success) {
+          frames.push({ atSeconds: seconds, error: result.error });
+          continue;
+        }
+        frames.push({
+          atSeconds: seconds,
+          // Reported separately because the renderer clamps past the last frame —
+          // silently returning a different moment than asked for would make a
+          // pixel comparison meaningless.
+          renderedAtSeconds: toSeconds(result.time) ?? seconds,
+          width: result.width,
+          height: result.height,
+          pngBase64: result.dataUrl.replace(/^data:image\/png;base64,/, ""),
+        });
       }
-      frames.push({
-        atSeconds: seconds,
-        // Reported separately because the renderer clamps past the last frame —
-        // silently returning a different moment than asked for would make a
-        // pixel comparison meaningless.
-        renderedAtSeconds: toSeconds(result.time) ?? seconds,
-        width: result.width,
-        height: result.height,
-        pngBase64: result.dataUrl.replace(/^data:image\/png;base64,/, ""),
-      });
-    }
 
-    if (!tile) {
-      return {
-        revision: this.revisionValue,
-        stable: this.revisionValue === revisionBefore,
-        frames,
-      };
-    }
+      if (!tile) {
+        return {
+          revision: this.revisionValue,
+          stable: this.revisionValue === revisionBefore,
+          frames,
+        };
+      }
 
-    // Contact-sheet mode: one modest JPEG instead of N full-res PNGs. Each
-    // look costing 20x less is what lets an agent look at every iteration
-    // instead of rationing its eyes for the end.
-    const rendered = frames.filter(
-      (frame): frame is Extract<RenderedFrame, { pngBase64?: string }> =>
-        !("error" in frame) && typeof frame.pngBase64 === "string",
-    );
-    const failed = frames.filter((frame) => "error" in frame);
-    if (rendered.length === 0) {
-      return {
-        revision: this.revisionValue,
-        stable: this.revisionValue === revisionBefore,
-        frames,
-      };
-    }
-    const cellWidth = maxDim ?? 320;
-    const aspect = rendered[0].height / rendered[0].width;
-    const cellHeight = Math.round(cellWidth * aspect);
-    const LABEL = 18;
-    const columns = Math.ceil(Math.sqrt(rendered.length));
-    const rows = Math.ceil(rendered.length / columns);
-
-    const canvas = document.createElement("canvas");
-    canvas.width = columns * cellWidth;
-    canvas.height = rows * (cellHeight + LABEL);
-    const context = canvas.getContext("2d");
-    if (!context) throw new InvalidOperationError("Could not create a canvas for the contact sheet");
-    context.fillStyle = "#000";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-
-    const cells: Array<{ cell: string; atSeconds: number; renderedAtSeconds: number }> = [];
-    for (const [index, frame] of rendered.entries()) {
-      const bitmap = await createImageBitmap(
-        await (await fetch(`data:image/png;base64,${frame.pngBase64}`)).blob(),
+      // Contact-sheet mode: one modest JPEG instead of N full-res PNGs. Each
+      // look costing 20x less is what lets an agent look at every iteration
+      // instead of rationing its eyes for the end.
+      const rendered = frames.filter(
+        (frame): frame is Extract<RenderedFrame, { pngBase64?: string }> =>
+          !("error" in frame) && typeof frame.pngBase64 === "string",
       );
-      const x = (index % columns) * cellWidth;
-      const y = Math.floor(index / columns) * (cellHeight + LABEL);
-      context.drawImage(bitmap, x, y, cellWidth, cellHeight);
-      bitmap.close();
-      context.fillStyle = "#000";
-      context.fillRect(x, y + cellHeight, cellWidth, LABEL);
-      context.fillStyle = "#fff";
-      context.font = "12px monospace";
-      context.fillText(`${frame.renderedAtSeconds}s`, x + 4, y + cellHeight + 13);
-      cells.push({
-        cell: `r${Math.floor(index / columns) + 1}c${(index % columns) + 1}`,
-        atSeconds: frame.atSeconds,
-        renderedAtSeconds: frame.renderedAtSeconds,
-      });
-    }
+      const failed = frames.filter((frame) => "error" in frame);
+      if (rendered.length === 0) {
+        return {
+          revision: this.revisionValue,
+          stable: this.revisionValue === revisionBefore,
+          frames,
+        };
+      }
+      const cellWidth = maxDim ?? 320;
+      const aspect = rendered[0].height / rendered[0].width;
+      const cellHeight = Math.round(cellWidth * aspect);
+      const LABEL = 18;
+      const columns = Math.ceil(Math.sqrt(rendered.length));
+      const rows = Math.ceil(rendered.length / columns);
 
-    return {
-      revision: this.revisionValue,
-      stable: this.revisionValue === revisionBefore,
-      frames: [
-        {
-          atSeconds: rendered[0].atSeconds,
-          renderedAtSeconds: rendered[0].renderedAtSeconds,
-          width: canvas.width,
-          height: canvas.height,
-          jpegBase64: canvas
-            .toDataURL("image/jpeg", 0.85)
-            .replace(/^data:image\/jpeg;base64,/, ""),
-          tile: { columns, rows, cells },
-        },
-        ...failed,
-      ],
-    };
+      const canvas = document.createElement("canvas");
+      canvas.width = columns * cellWidth;
+      canvas.height = rows * (cellHeight + LABEL);
+      const context = canvas.getContext("2d");
+      if (!context) throw new InvalidOperationError("Could not create a canvas for the contact sheet");
+      context.fillStyle = "#000";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      const cells: Array<{ cell: string; atSeconds: number; renderedAtSeconds: number }> = [];
+      for (const [index, frame] of rendered.entries()) {
+        const bitmap = await createImageBitmap(
+          await (await fetch(`data:image/png;base64,${frame.pngBase64}`)).blob(),
+        );
+        const x = (index % columns) * cellWidth;
+        const y = Math.floor(index / columns) * (cellHeight + LABEL);
+        context.drawImage(bitmap, x, y, cellWidth, cellHeight);
+        bitmap.close();
+        context.fillStyle = "#000";
+        context.fillRect(x, y + cellHeight, cellWidth, LABEL);
+        context.fillStyle = "#fff";
+        context.font = "12px monospace";
+        context.fillText(`${frame.renderedAtSeconds}s`, x + 4, y + cellHeight + 13);
+        cells.push({
+          cell: `r${Math.floor(index / columns) + 1}c${(index % columns) + 1}`,
+          atSeconds: frame.atSeconds,
+          renderedAtSeconds: frame.renderedAtSeconds,
+        });
+      }
+
+      return {
+        revision: this.revisionValue,
+        stable: this.revisionValue === revisionBefore,
+        frames: [
+          {
+            atSeconds: rendered[0].atSeconds,
+            renderedAtSeconds: rendered[0].renderedAtSeconds,
+            width: canvas.width,
+            height: canvas.height,
+            jpegBase64: canvas
+              .toDataURL("image/jpeg", 0.85)
+              .replace(/^data:image\/jpeg;base64,/, ""),
+            tile: { columns, rows, cells },
+          },
+          ...failed,
+        ],
+      };
+    } finally {
+      // Frame capture shares media/render state with the preview. Restore the
+      // current playhead, including if the user moved it during inspection.
+      await this.editor.renderer.renderFrame({ time: this.editor.playback.getCurrentTime() });
+    }
   }
 
   /**

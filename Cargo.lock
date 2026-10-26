@@ -3516,8 +3516,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "moirai-agent-analysis"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "moirai-cut-desktop"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "gpui",
 ]
@@ -3543,6 +3551,14 @@ dependencies = [
  "toml 0.8.23",
  "tower",
  "uuid",
+]
+
+[[package]]
+name = "moirai-project-export"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

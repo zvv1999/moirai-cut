@@ -33,6 +33,7 @@ function makeEditorStub({ mutate = true }: { mutate?: boolean } = {}) {
   };
 
   const editor = {
+    playback: { getCurrentTime: () => 0 },
     command: {
       execute: ({
         command,
@@ -425,6 +426,24 @@ describe("renderFrames contact sheets", () => {
         tile: true,
       }),
     ).rejects.toThrow("at most 24");
+  });
+
+  test("restores the latest playhead after inspection, including failed capture", async () => {
+    for (const fail of [false, true]) {
+      const { editor } = makeEditorStub();
+      const calls: number[] = [];
+      editor.playback.getCurrentTime = () => 360000;
+      editor.renderer = { renderFrame: async ({ time }: { time: number }) => {
+        calls.push(time);
+        if (fail && calls.length === 1) throw new Error("decoder failed");
+        return { success: false, error: "unavailable" };
+      } };
+      const result = new AgentManager(editor).renderFrames({ atSeconds: [1, 2] });
+      if (fail) await expect(result).rejects.toThrow("decoder failed");
+      else await result;
+      expect(calls.at(-1)).toBe(360000);
+      expect(calls).toHaveLength(fail ? 2 : 3);
+    }
   });
 
   test("combines successful renders into one labeled JPEG and retains failures", async () => {

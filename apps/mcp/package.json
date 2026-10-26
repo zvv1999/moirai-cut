@@ -1,6 +1,6 @@
 {
 	"name": "@moirai-cut/mcp",
-	"version": "0.7.0",
+	"version": "0.8.0",
 	"private": true,
 	"description": "Moirai Cut project, media-analysis and live-editor MCP tools.",
 	"license": "MIT",
@@ -19,8 +19,8 @@
 		"setup:local": "bun src/setup-local.mjs"
 	},
 	"dependencies": {
-		"@modelcontextprotocol/sdk": "^1.30.0",
+		"@modelcontextprotocol/sdk": "^1.32.0",
 		"ws": "^8.21.1",
-		"zod": "^3.25.76"
+		"zod": "^4.6.6"
 	}
 }

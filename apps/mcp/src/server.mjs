@@ -170,6 +170,46 @@ const asError = (value) => ({
  * is reported as such rather than as a successful-looking payload.
  */
 async function bridge({ method, args = [], projectId: id, target }) {
+	if (
+		id &&
+		!target &&
+		(method === "getState" ||
+			(method === "renderFrames" && args[0]?.tile === true))
+	) {
+		const presence = await activeEditorPresence().catch(() => null);
+		if (presence?.active === true && presence.projectId === id) {
+			try {
+				const base = process.env.OPENCUT_BASE_URL ?? "http://localhost:3000";
+				const response = await fetch(`${base}/api/editor-inspection`, {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						projectId: id,
+						method,
+						args:
+							method === "getState"
+								? null
+								: { ...args[0], maxDim: args[0].maxDim ?? 320 },
+					}),
+					signal: AbortSignal.timeout(35000),
+				});
+				const result = await response.json();
+				if (result.ok !== true)
+					return asError(
+						result.error ?? {
+							code: "editor_inspection_failed",
+							message: "Live editor inspection failed",
+						},
+					);
+				return asText({ ...result.data, tab: `${base}/editor/${id}` });
+			} catch (error) {
+				return asError({
+					code: "editor_inspection_failed",
+					message: String(error?.message ?? error),
+				});
+			}
+		}
+	}
 	let response;
 	// bridge_missing comes from inside the page BEFORE the method is invoked —
 	// the bindings unmount/remount for a beat during page load, and the bridge
@@ -225,6 +265,41 @@ async function bridge({ method, args = [], projectId: id, target }) {
 	if (!data || typeof data !== "object")
 		return asText({ result: data ?? null, tab: response.target.url });
 	return asText({ ...data, tab: response.target.url });
+}
+
+async function renderInspectionFrames({ projectId: id, options, sceneId }) {
+	const before = await bridge({ method: "getState", projectId: id });
+	if (before.isError) return before;
+	const initial = JSON.parse(before.content[0].text);
+	if (
+		(id && initial.projectId !== id) ||
+		(sceneId && initial.sceneId !== sceneId)
+	) {
+		return asError({
+			code: "scene_mismatch",
+			message: "The live editor is displaying a different project or scene.",
+		});
+	}
+	const response = await bridge({
+		method: "renderFrames",
+		projectId: id,
+		args: [options],
+	});
+	if (response.isError) return response;
+	const after = await bridge({ method: "getState", projectId: id });
+	if (after.isError) return after;
+	const final = JSON.parse(after.content[0].text);
+	const payload = JSON.parse(response.content[0].text);
+	return asText({
+		...payload,
+		projectId: initial.projectId,
+		sceneId: initial.sceneId,
+		stable:
+			payload.stable === true &&
+			initial.projectId === final.projectId &&
+			initial.sceneId === final.sceneId &&
+			initial.revision === final.revision,
+	});
 }
 
 export function createOpenCutMcpServer() {
@@ -376,11 +451,11 @@ export function createOpenCutMcpServer() {
 				const persisted = await readMediaCatalog({ projectId: id });
 				const catalog =
 					persisted ??
-					buildMediaCatalog({
+					(await buildMediaCatalog({
 						document,
 						mediaIndex,
 						generatedAt: new Date().toISOString(),
-					});
+					}));
 				return asText({
 					activeEditor:
 						presence?.active === true && presence.projectId === id
@@ -1031,7 +1106,7 @@ export function createOpenCutMcpServer() {
 		"inspect_timeline_range",
 		{
 			description:
-				"Look at a TIMELINE interval without a browser. Maps uniformly spaced timeline moments through trims/constant or curve speed/reverse into source-media seconds, groups them per asset, and returns one contact sheet per source. This is the tool named by range references in opencut.agent-context.v1.",
+				"Inspect every visible TIMELINE layer, including overlays and titles. Returns source contact sheets plus a revision-checked composite sheet from the live editor. Source-only mode works without a browser; missing composite evidence is explicitly reported. Source times account for trims, speed and reverse. Coverage limits are reported.",
 			inputSchema: {
 				projectId: z.string().min(1),
 				sceneId: z.string().min(1).optional(),
@@ -1052,7 +1127,7 @@ export function createOpenCutMcpServer() {
 		}) => {
 			try {
 				const document = await readProject({ projectId: id });
-				const plan = planTimelineRangeInspection({
+				const plan = await planTimelineRangeInspection({
 					document,
 					...(sceneId ? { sceneId } : {}),
 					startSeconds,
@@ -1068,13 +1143,64 @@ export function createOpenCutMcpServer() {
 						text: JSON.stringify(
 							{
 								...plan,
-								next: "Read every returned contact sheet as one time sequence. Persist reusable per-asset observations with save_media_analysis before editing.",
+								next: "Source sheets are not the final image. Read the composite sheet for titles, effects and occlusion; if unavailable, do not claim to have checked final composition. Persist reusable source observations with save_media_analysis.",
 							},
 							null,
 							2,
 						),
 					},
 				];
+				try {
+					const composite = await renderInspectionFrames({
+						projectId: id,
+						sceneId: plan.sceneId,
+						options: {
+							atSeconds: plan.compositeAtSeconds,
+							tile: true,
+							maxDim: cellWidth ?? 320,
+						},
+					});
+					if (composite.isError) throw new Error(composite.content[0].text);
+					const payload = JSON.parse(composite.content[0].text);
+					if (
+						payload.revision !== plan.revision ||
+						payload.stable !== true ||
+						payload.frames.some((f) => f.error) ||
+						!payload.frames.some((f) => f.jpegBase64 || f.pngBase64)
+					) {
+						throw new Error(
+							"Composite evidence is stale, unstable or incomplete.",
+						);
+					}
+					content.push({
+						type: "text",
+						text: JSON.stringify({
+							kind: "composite",
+							revision: payload.revision,
+							frames: payload.frames.map(
+								({ pngBase64, jpegBase64, ...frame }) => frame,
+							),
+						}),
+					});
+					for (const frame of payload.frames) {
+						if (frame.jpegBase64 || frame.pngBase64)
+							content.push({
+								type: "image",
+								data: frame.jpegBase64 ?? frame.pngBase64,
+								mimeType: frame.jpegBase64 ? "image/jpeg" : "image/png",
+							});
+					}
+				} catch (error) {
+					content.push({
+						type: "text",
+						text: JSON.stringify({
+							kind: "composite",
+							status: "unavailable",
+							warning: String(error?.message ?? error),
+						}),
+					});
+				}
+
 				for (const group of Object.values(plan.byAsset)) {
 					const asset = mediaIndex[group.assetId];
 					if (!asset || asset.type === "audio") {
@@ -1164,7 +1290,7 @@ export function createOpenCutMcpServer() {
 					() => ({}),
 				);
 				const existingCatalog = await readMediaCatalog({ projectId: id });
-				const catalog = buildMediaCatalog({
+				const catalog = await buildMediaCatalog({
 					document,
 					mediaIndex,
 					existingCatalog,
@@ -1298,7 +1424,7 @@ export function createOpenCutMcpServer() {
 		"analyze_audio",
 		{
 			description:
-				"Listen to an asset: overall loudness plus silence and sound intervals, in SOURCE-MEDIA seconds (feed them to trims/splits after adding the clip's own offset). This is how a cut lands on a pause instead of mid-word, and how dead air gets trimmed without guessing. Needs no browser.",
+				"Analyze an asset: loudness, silence and sound intervals, plus energy onsets, per-second energy and a confidence-scored tempo estimate (first 600s). Onsets are candidates, not verified downbeats. All times are in SOURCE-MEDIA seconds (feed them to trims/splits after adding the clip's own offset). This is how a cut lands on a pause instead of mid-word, and how dead air gets trimmed without guessing. Needs no browser.",
 			inputSchema: {
 				projectId: z.string().min(1),
 				assetId: z.string().min(1).describe("From list_media."),
@@ -1689,10 +1815,9 @@ export function createOpenCutMcpServer() {
 			annotations: readOnly,
 		},
 		async ({ atSeconds, tile, maxDim, projectId: id }) => {
-			const response = await bridge({
-				method: "renderFrames",
-				args: [{ atSeconds, ...(tile ? { tile, maxDim } : {}) }],
+			const response = await renderInspectionFrames({
 				projectId: id,
+				options: { atSeconds, ...(tile ? { tile, maxDim } : {}) },
 			});
 			if (response.isError) return response;
 			// Return the PNGs as image content so a vision-capable caller can actually
@@ -1703,6 +1828,8 @@ export function createOpenCutMcpServer() {
 					type: "text",
 					text: JSON.stringify(
 						{
+							projectId: payload.projectId,
+							sceneId: payload.sceneId,
 							revision: payload.revision,
 							stable: payload.stable,
 							tab: payload.tab,

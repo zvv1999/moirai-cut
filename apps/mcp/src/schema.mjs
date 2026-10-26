@@ -43,7 +43,7 @@ const elementDraft = z
     trimStartSeconds: seconds("Trimmed off the head of the source.").optional(),
     trimEndSeconds: seconds("Trimmed off the tail of the source.").optional(),
     params: z
-      .record(z.union([z.number(), z.string(), z.boolean()]))
+      .record(z.string(), z.union([z.number(), z.string(), z.boolean()]))
       .optional()
       .describe('Built-in element params. Text elements REQUIRE params.content.'),
     mediaId: z.string().min(1).optional().describe("Required for video/image/audio. From get_state().media."),
@@ -207,7 +207,7 @@ export const OperationSchema = z
         elementId,
         effectId: z.string().min(1),
         params: z
-          .record(z.union([z.number(), z.string(), z.boolean()]))
+          .record(z.string(), z.union([z.number(), z.string(), z.boolean()]))
           .describe(
             "Merged over current values. Supported registries include blur, color-grade, chroma-key, and background-removal.",
           ),
@@ -315,7 +315,7 @@ export const OperationSchema = z
           "cinematic-bars", "split", "text", "freeform",
         ]),
         params: z
-          .record(z.any())
+          .record(z.string(), z.any())
           .optional()
           .describe(
             "Geometry is NORMALISED, not pixels: centerX/centerY are offsets from the element's centre and width/height are fractions of its size (0.6 = 60%). Defaults to a centred 60% box. A text mask requires params.content; a freeform mask requires params.path.",
@@ -328,7 +328,7 @@ export const OperationSchema = z
         trackId,
         elementId,
         params: z
-          .record(z.union([z.number(), z.string(), z.boolean()]))
+          .record(z.string(), z.union([z.number(), z.string(), z.boolean()]))
           .describe("Merged over current values. For text: content, fontSize, color, fontFamily, textAlign..."),
       })
       .describe("Change a clip's static built-in params — restyle a caption, retint text, adjust volume."),
@@ -338,7 +338,7 @@ export const OperationSchema = z
         trackId,
         elementId,
         maskId: z.string().min(1),
-        params: z.record(z.any()),
+        params: z.record(z.string(), z.any()),
       })
       .describe("Tune a mask. Merged over the current values; unknown keys are refused."),
     z

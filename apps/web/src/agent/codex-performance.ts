@@ -37,7 +37,7 @@ export const CODEX_PERFORMANCE_PRESETS: readonly CodexPerformancePreset[] = [
 	{
 		id: "director",
 		label: "导演",
-		description: "自动理解选区画面，并在修改后生成完整验收证据。",
+		description: "理解多轨画面，修改后复核，发现问题时最多修正一次。",
 		effort: "xhigh",
 		toolProfile: "verify",
 		visualMode: "auto",

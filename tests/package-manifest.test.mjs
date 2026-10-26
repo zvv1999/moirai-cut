@@ -104,10 +104,10 @@ describe("root package manifest", () => {
 
 	test("pins transitive dependencies at their audited security floors", () => {
 		expect(manifest.overrides).toMatchObject({
-			"brace-expansion": "2.1.4",
-			"fast-uri": "3.1.7",
-			hono: "4.13.7",
-			undici: "7.29.0",
+			"brace-expansion": "2.1.7",
+			"fast-uri": "3.1.9",
+			hono: "4.13.11",
+			undici: "7.30.1",
 		});
 	});
 

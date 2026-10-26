@@ -10,6 +10,7 @@ import { useKeybindingsStore } from "@/actions/keybindings-store";
 import { useTimelineStore } from "@/timeline/timeline-store";
 import { useEditorActions } from "@/actions/use-editor-actions";
 import { installAgentBridge } from "@/agent/bridge";
+import { serveEditorInspections } from "@/agent/editor-inspection-client";
 import { buildAgentContextSnapshot } from "@/agent/context-references";
 import { useAgentContextStore } from "@/agent/context-store";
 import { toSeconds } from "@/agent/time";
@@ -176,6 +177,10 @@ function EditorRuntimeBindings() {
 		if (!activeProjectId) return;
 		return watchProjectFile({ projectId: activeProjectId });
 	}, [activeProjectId]);
+	useEffect(() => {
+		if (!activeProjectId) return;
+		return serveEditorInspections(editor, activeProjectId);
+	}, [activeProjectId, editor]);
 
 	// Publish a compact heartbeat so a Codex App conversation launched outside
 	// this panel can discover the human's current project and exact pinned/live
