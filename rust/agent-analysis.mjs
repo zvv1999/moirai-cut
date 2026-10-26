@@ -1,5 +1,6 @@
 // Process adapter only; media and review decisions live in the Rust crate.
 import { execFile, spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,10 +10,19 @@ let build;
 export async function agentAnalysis(input, { signal } = {}) {
 	const binary =
 		process.env.MOIRAI_AGENT_ANALYSIS_BIN ??
-		path.join(repo, "target/debug/moirai-agent-analysis");
+		path.join(
+			repo,
+			`target/debug/moirai-agent-analysis${process.platform === "win32" ? ".exe" : ""}`,
+		);
 	if (!process.env.MOIRAI_AGENT_ANALYSIS_BIN) {
+		const cargoName = process.platform === "win32" ? "cargo.exe" : "cargo";
+		const localCargo = path.join(
+			process.env.CARGO_HOME ?? path.join(homedir(), ".cargo"),
+			"bin",
+			cargoName,
+		);
 		build ??= promisify(execFile)(
-			process.env.CARGO ?? path.join(homedir(), ".cargo/bin/cargo"),
+			process.env.CARGO ?? (existsSync(localCargo) ? localCargo : cargoName),
 			["build", "--quiet", "-p", "moirai-agent-analysis"],
 			{ cwd: repo, timeout: 180000 },
 		).catch((error) => {

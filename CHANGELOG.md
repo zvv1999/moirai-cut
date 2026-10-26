@@ -25,6 +25,8 @@ Editable project bundles and evidence-based video Agent review.
 - Jianying portrait text sizing and mono audio gain match the tested timeline
   more closely; conversion reports explain remaining differences.
 - Background frame inspection restores the preview to the current playhead.
+- Native helper startup supports Cargo installed through PATH or CARGO_HOME,
+  including Homebrew installations and Windows executable names.
 - Footage labels and lineage remain available to the Agent media catalog.
 - Upgrade Next.js, MCP SDK, Zod and vulnerable transitive dependencies; retire
   the archive-extraction audit exception and require an unfiltered clean audit.

@@ -1,6 +1,6 @@
 import { execFile, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { constants } from "node:fs";
+import { constants, existsSync } from "node:fs";
 import {
 	copyFile,
 	cp,
@@ -46,10 +46,19 @@ export async function interchangeCommand<T>(
 ): Promise<T> {
 	const binary =
 		process.env.MOIRAI_PROJECT_EXPORT_BIN ??
-		path.join(repo, "target/debug/moirai-project-export");
+		path.join(
+			repo,
+			`target/debug/moirai-project-export${process.platform === "win32" ? ".exe" : ""}`,
+		);
 	if (!process.env.MOIRAI_PROJECT_EXPORT_BIN) {
+		const cargoName = process.platform === "win32" ? "cargo.exe" : "cargo";
+		const localCargo = path.join(
+			process.env.CARGO_HOME ?? path.join(homedir(), ".cargo"),
+			"bin",
+			cargoName,
+		);
 		build ??= exec(
-			process.env.CARGO ?? path.join(homedir(), ".cargo/bin/cargo"),
+			process.env.CARGO ?? (existsSync(localCargo) ? localCargo : cargoName),
 			["build", "--quiet", "-p", "moirai-project-export"],
 			{ cwd: repo, timeout: 180_000 },
 		).catch((error) => {

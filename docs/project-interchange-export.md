@@ -60,7 +60,7 @@ bun test src/server/__tests__/project-interchange.test.ts
 bun --bun node_modules/typescript/bin/tsc --noEmit
 ```
 
-原生测试使用 FFmpeg 构造媒体，验证四种格式、XML 语法、ZIP 完整性、素材复制、草稿路径重写、透明 ProRes 解码、缺帧失败、重试、取消和路径边界。集成测试需要 `ffmpeg`、`ffprobe`、`zip`、`unzip`、`xmllint`。
+原生测试使用 FFmpeg 构造媒体，验证四种格式、XML 语法、ZIP 完整性、素材复制、草稿路径重写、透明 ProRes 解码、缺帧失败、重试、取消和路径边界。集成测试需要 `ffmpeg`、`ffprobe`、`zip`、`unzip`；XML 校验在 macOS／Linux 使用 `xmllint`，Windows 使用 PowerShell 内置 XML 解析器。
 
 浏览器验收使用独立测试工程，检查导出入口、格式切换、真实画面渲染、完成报告、历史恢复和取消状态。
 
