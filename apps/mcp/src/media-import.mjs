@@ -240,7 +240,8 @@ export async function importMedia({ projectId, filePath, name, base = process.en
 
   const assetId = randomUUID();
   const fileName = name ?? basename(filePath);
-  const ext = (extname(fileName).slice(1) || "bin").toLowerCase();
+  // A display label must not change the on-disk container or its MIME type.
+  const ext = (extname(filePath).slice(1) || "bin").toLowerCase();
   const mimeType = MIME_BY_EXT[ext] ?? "application/octet-stream";
 
   let served = { bytes, ext, mimeType, width: probed.width, height: probed.height };

@@ -1,3 +1,4 @@
+import { agentAnalysis } from "../../../../rust/agent-analysis.mjs";
 import { spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { existsSync, readFileSync } from "node:fs";
@@ -345,7 +346,7 @@ export function buildCodexPrompt({
 		"- 若上下文包含时间段且任务需要理解画面，调用 inspect_timeline_range；若要先理解某个完整源视频，调用 inspect_media_scenes。",
 		"- 你能直接看上述工具返回的联系表图片并做多模态判断。可复用的素材理解结果用 save_media_analysis 写入素材 JSON 目录。",
 		verificationMode === "full"
-			? "- 系统会在本轮完成后自动核对工程 revision、等待编辑器同步并渲染关键画面；你仍应在修改前后正确处理 revision 冲突和工具报错。"
+			? "- 系统会在本轮完成后采集合成画面和结构检查，发起只读视觉复核；发现明确问题时最多允许一次针对性修正并重新复核。遵守用户的保留要求和 revision 协议，未检查到的声音、运动和细节必须如实标注。"
 			: verificationMode === "basic"
 				? "- 系统会在本轮完成后轻量核对工程 revision，不会阻塞回复去等待编辑器或渲染验收画面。"
 				: "- 按任务风险使用必要的读取与验证工具；不要为了展示过程执行无关检查。",
@@ -1156,6 +1157,14 @@ function threadHistoryFromResponse(response: unknown): CodexThreadHistory {
 			continue;
 		}
 		const turnId = rawTurn.id;
+		const automaticReview = rawTurn.items
+			.filter(isRecord)
+			.some(
+				(item) =>
+					item.type === "userMessage" &&
+					typeof item.clientId === "string" &&
+					item.clientId.startsWith("moirai-review:"),
+			);
 		const startedAt =
 			typeof rawTurn.startedAt === "number"
 				? rawTurn.startedAt
@@ -1167,6 +1176,11 @@ function threadHistoryFromResponse(response: unknown): CodexThreadHistory {
 		let offset = 0;
 		for (const item of rawTurn.items.filter(isRecord)) {
 			if (item.type !== "userMessage" || typeof item.id !== "string") continue;
+			if (
+				typeof item.clientId === "string" &&
+				/^moirai-(review|repair):/.test(item.clientId)
+			)
+				continue;
 			const content = userTextFromItem(item);
 			if (!content) continue;
 			messages.push({
@@ -1206,7 +1220,9 @@ function threadHistoryFromResponse(response: unknown): CodexThreadHistory {
 			messages.push({
 				id: finalAgent.id,
 				role: "assistant",
-				content: String(finalAgent.text).trim(),
+				content: automaticReview
+					? reviewHistoryText(String(finalAgent.text))
+					: String(finalAgent.text).trim(),
 				turnId,
 				streaming:
 					rawTurn.status !== "completed" &&
@@ -1279,6 +1295,17 @@ function finalMessageFromTurn(turn: Record<string, unknown>): string | null {
 	);
 	const text = messages.at(-1)?.text;
 	return typeof text === "string" && text.trim() ? text.trim() : null;
+}
+
+function reviewHistoryText(text: string): string {
+	try {
+		const report: unknown = JSON.parse(text);
+		if (isRecord(report) && typeof report.summary === "string")
+			return `自动画面检查记录：${report.summary}`;
+	} catch {
+		/* An incomplete structured response is not a successful review. */
+	}
+	return "自动画面检查未返回完整结论。";
 }
 
 function notificationTurnId(
@@ -2028,8 +2055,7 @@ function nativeImagesFromMcpResponse(response: unknown): NativeVisualInput[] {
 					url: `data:${item.mimeType};base64,${item.data}`,
 				},
 			];
-		})
-		.slice(0, 4);
+		});
 }
 
 function textFromMcpResponse(response: unknown): string {
@@ -2039,27 +2065,6 @@ function textFromMcpResponse(response: unknown): string {
 		.map((item) => (typeof item.text === "string" ? item.text : ""))
 		.filter(Boolean)
 		.join("\n");
-}
-
-function renderTimesFromContext(context: string): number[] {
-	const packet = agentContextPacket(context);
-	if (!packet) return [0];
-	const references = Array.isArray(packet.references)
-		? packet.references.filter(isRecord)
-		: [];
-	const range = references.find((reference) => reference.kind === "range");
-	const start = range
-		? numericField({ record: range, key: "startSeconds" })
-		: null;
-	const end = range ? numericField({ record: range, key: "endSeconds" }) : null;
-	if (start !== null && end !== null && end > start) {
-		return [start, start + (end - start) / 2, Math.max(start, end - 0.001)];
-	}
-	const project = isRecord(packet.project) ? packet.project : null;
-	const playhead = project
-		? numericField({ record: project, key: "playheadSeconds" })
-		: null;
-	return [Math.max(0, playhead ?? 0)];
 }
 
 async function visualInputsForTurn({
@@ -2112,18 +2117,12 @@ async function verificationFrames({
 	connection,
 	threadId,
 	projectId,
-	context,
 	beforeRevision,
-	tools,
-	mode,
 }: {
 	connection: CodexAppServerConnection;
 	threadId: string;
 	projectId: string;
-	context: string;
 	beforeRevision: number | null;
-	tools: string[];
-	mode: Exclude<CodexVerificationMode, "off">;
 }): Promise<CodexProtocolFrame[]> {
 	const response = await connection.request({
 		method: "mcpServer/tool/call",
@@ -2164,70 +2163,122 @@ async function verificationFrames({
 			detail: `revision ${beforeRevision} → ${revision}`,
 		},
 	];
-	if (mode === "basic") return frames;
-	if (tools.includes("wait_for_sync")) {
-		const sync = await connection.request({
-			method: "mcpServer/tool/call",
-			params: {
-				threadId,
-				server: "opencut",
-				tool: "wait_for_sync",
-				arguments: { projectId, revision, timeoutSeconds: 45 },
-			},
-		});
-		frames.push({
-			id: `verification:${threadId}:sync`,
-			method: "opencut/verification",
-			threadId,
-			itemType: "verification",
-			status: isRecord(sync) && sync.isError === true ? "failed" : "completed",
-			title:
-				isRecord(sync) && sync.isError === true
-					? "编辑器同步失败"
-					: "编辑器已同步",
-			detail: truncated(textFromMcpResponse(sync)),
-		});
-	}
-	if (tools.includes("render_frames")) {
-		const rendered = await connection.request({
-			method: "mcpServer/tool/call",
-			params: {
-				threadId,
-				server: "opencut",
-				tool: "render_frames",
-				arguments: {
-					projectId,
-					atSeconds: renderTimesFromContext(context),
-					tile: true,
-					maxDim: 320,
-				},
-			},
-		});
-		const images = nativeImagesFromMcpResponse(rendered);
-		frames.push({
-			id: `verification:${threadId}:frames`,
-			method: "opencut/verification",
-			threadId,
-			itemType: "verification",
-			status:
-				isRecord(rendered) && rendered.isError === true
-					? "failed"
-					: "completed",
-			title:
-				isRecord(rendered) && rendered.isError === true
-					? "画面验证失败"
-					: "验证证据已生成",
-			detail: truncated(
-				[
-					textFromMcpResponse(rendered),
-					images.length > 0 ? `${images.length} 张画面证据` : "",
-				]
-					.filter(Boolean)
-					.join("\n"),
-			),
-		});
-	}
+
 	return frames;
+}
+
+const REVIEW_OUTPUT_SCHEMA = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		revision: { type: "integer" },
+		verdict: { type: "string", enum: ["pass", "repair", "unresolved"] },
+		summary: { type: "string" },
+		findings: {
+			type: "array",
+			items: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					atSeconds: { type: "number" },
+					description: { type: "string" },
+				},
+				required: ["atSeconds", "description"],
+			},
+		},
+	},
+	required: ["revision", "verdict", "summary", "findings"],
+};
+
+async function collectReviewEvidence({
+	connection,
+	threadId,
+	projectId,
+	tools,
+	signal,
+}: {
+	connection: CodexAppServerConnection;
+	threadId: string;
+	projectId: string;
+	tools: string[];
+	signal?: AbortSignal;
+}) {
+	for (const required of [
+		"read_project",
+		"lint_cut",
+		"wait_for_sync",
+		"render_frames",
+	]) {
+		if (!tools.includes(required))
+			throw new CodexChatError(`复核缺少 ${required} 工具。`);
+	}
+	const call = async (tool: string, args: Record<string, unknown>) => {
+		signal?.throwIfAborted();
+		const response = await connection.request({
+			method: "mcpServer/tool/call",
+			params: {
+				threadId,
+				server: "opencut",
+				tool,
+				arguments: { projectId, ...args },
+			},
+		});
+		if (isRecord(response) && response.isError === true)
+			throw new CodexChatError(textFromMcpResponse(response));
+		return response;
+	};
+	const snapshot = projectSnapshotFromToolResponse(
+		await call("read_project", { detail: "full" }),
+	);
+	const revision = revisionFromProjectSnapshot(snapshot);
+	if (revision === null) throw new CodexChatError("无法确认复核版本。");
+	const plan = await agentAnalysis<{
+		atSeconds: number[];
+		omittedMoments: number;
+	}>({ command: "review_plan", document: JSON.parse(snapshot) }, { signal });
+	const lint = textFromMcpResponse(await call("lint_cut", {}));
+	const lintResult: unknown = JSON.parse(lint);
+	const lintErrors =
+		isRecord(lintResult) && isRecord(lintResult.counts)
+			? lintResult.counts.error
+			: null;
+	const sync = JSON.parse(
+		textFromMcpResponse(
+			await call("wait_for_sync", { revision, timeoutSeconds: 30 }),
+		),
+	);
+	if (sync.synced !== true)
+		throw new CodexChatError("编辑器尚未同步到复核版本。");
+	const rendered = await call("render_frames", {
+		atSeconds: plan.atSeconds,
+		tile: true,
+		maxDim: 640,
+	});
+	const metadata = JSON.parse(textFromMcpResponse(rendered));
+	const images = nativeImagesFromMcpResponse(rendered);
+	if (
+		metadata.revision !== revision ||
+		metadata.projectId !== projectId ||
+		metadata.sceneId !== JSON.parse(snapshot).sceneId ||
+		metadata.stable !== true ||
+		images.length === 0 ||
+		!Array.isArray(metadata.frames) ||
+		metadata.frames.some((frame: Record<string, unknown>) => frame.error)
+	) {
+		throw new CodexChatError("画面证据缺失、过期或不完整。");
+	}
+	return {
+		revision,
+		images,
+		lintErrors,
+		detail: JSON.stringify({
+			revision,
+			frames: metadata.frames,
+			omittedMoments: plan.omittedMoments,
+			lint: lintResult,
+			project: JSON.parse(snapshot),
+		}),
+	};
 }
 
 async function listOpenCutTools({
@@ -2791,6 +2842,11 @@ export function createCodexChatService({
 				});
 				let streamedMessage = "";
 				let nativeEventSequence = 0;
+				let phase: "edit" | "review" | "repair" = "edit";
+				let repairs = 0;
+				let editMessage = "";
+				let evidence: Awaited<ReturnType<typeof collectReviewEvidence>> | null =
+					null;
 
 				for (;;) {
 					if (signal?.aborted) {
@@ -2831,6 +2887,7 @@ export function createCodexChatService({
 						typeof notification.params.delta === "string"
 					) {
 						streamedMessage += notification.params.delta;
+						if (phase === "review") continue;
 						yield {
 							type: "delta",
 							delta: notification.params.delta,
@@ -2860,32 +2917,7 @@ export function createCodexChatService({
 							typeof completedTurn.error.message === "string"
 								? completedTurn.error.message
 								: "Codex 本轮处理失败。";
-						throw new CodexChatError(message);
-					}
-					if (completedTurn.status !== "completed") {
-						throw new CodexChatError("Codex 本轮处理已中断。");
-					}
-					const message =
-						finalMessageFromTurn(completedTurn) ||
-						streamedMessage.trim() ||
-						"Codex 已完成处理。";
-					if (
-						input.verificationMode === "basic" ||
-						input.verificationMode === "full"
-					) {
-						try {
-							for (const frame of await verificationFrames({
-								connection,
-								threadId: sessionId,
-								projectId: input.projectId,
-								context: input.context,
-								beforeRevision: binding.revision,
-								tools: binding.tools,
-								mode: input.verificationMode,
-							})) {
-								yield { type: "protocol", ...frame };
-							}
-						} catch (error) {
+						if (phase !== "edit" && !signal?.aborted) {
 							yield {
 								type: "protocol",
 								id: `verification:${sessionId}:failed`,
@@ -2895,9 +2927,220 @@ export function createCodexChatService({
 								itemType: "verification",
 								status: "failed",
 								title: "自动复核未完成",
-								detail:
-									error instanceof Error ? error.message : "验证工具返回异常。",
+								detail: message,
 							};
+							yield {
+								type: "done",
+								sessionId,
+								message: `${editMessage}\n\n自动复核未完成：${message}`,
+							};
+							return;
+						}
+						throw new CodexChatError(message);
+					}
+					if (completedTurn.status !== "completed") {
+						throw new CodexChatError("Codex 本轮处理已中断。");
+					}
+					let message =
+						finalMessageFromTurn(completedTurn) ||
+						streamedMessage.trim() ||
+						"Codex 已完成处理。";
+					if (input.verificationMode === "full" && input.mode !== "plan") {
+						try {
+							signal?.throwIfAborted();
+							let nextInput: Array<
+								{ type: "text"; text: string } | NativeVisualInput
+							> | null = null;
+							let reviewing = true;
+							if (phase === "review" && evidence) {
+								const current = await connection.request({
+									method: "mcpServer/tool/call",
+									params: {
+										threadId: sessionId,
+										server: "opencut",
+										tool: "read_project",
+										arguments: {
+											projectId: input.projectId,
+											detail: "summary",
+										},
+									},
+								});
+								const revision = revisionFromProjectSnapshot(
+									projectSnapshotFromToolResponse(current),
+								);
+								const decision = await agentAnalysis<{
+									action: "pass" | "repair" | "unresolved";
+									summary: string;
+									findings?: unknown;
+								}>(
+									{
+										command: "review_decision",
+										report: message,
+										revision,
+										evidenceRevision: evidence.revision,
+										stable: true,
+										lintErrors: evidence.lintErrors,
+										repairs,
+									},
+									{ signal },
+								);
+								yield {
+									type: "protocol",
+									id: `verification:${sessionId}:${turnId}`,
+									method: "opencut/verification",
+									threadId: sessionId,
+									turnId,
+									itemType: "verification",
+									status:
+										decision.action === "pass"
+											? "completed"
+											: decision.action === "repair"
+												? "info"
+												: "failed",
+									title:
+										decision.action === "pass"
+											? "代表帧复核通过"
+											: decision.action === "repair"
+												? "发现问题，进行一次修正"
+												: "复核仍有未解决问题",
+									detail: decision.summary,
+								};
+								if (decision.action === "repair") {
+									repairs += 1;
+									phase = "repair";
+									reviewing = false;
+									nextInput = [
+										{
+											type: "text",
+											text: [
+												"这是同一任务唯一一次自动修正。会话中用户追加的最新要求优先。仅修正下面有证据的问题，保留用户已确定的切点、镜头顺序和文案，不扩展任务。",
+												`唯一工程 ${input.projectId}，检查版本 ${evidence.revision}。先读取最新 revision；如果已经变化，停止修正并报告冲突。`,
+												"所有修改只通过 opencut.edit_project 的 baseRevision 和幂等键提交。修改后会由系统重新取帧复核，不要自行循环。",
+												`原始要求：${input.message}`,
+												`问题：${JSON.stringify(decision.findings)}`,
+											].join("\n"),
+										},
+									];
+								} else {
+									message = `${editMessage}\n\n${decision.action === "pass" ? "代表帧与结构复核通过" : "复核未通过"}：${decision.summary}`;
+								}
+							} else {
+								editMessage =
+									phase === "repair" ? `${editMessage}\n${message}` : message;
+								evidence = await collectReviewEvidence({
+									connection,
+									threadId: sessionId,
+									projectId: input.projectId,
+									tools: binding.tools,
+									signal,
+								});
+								phase = "review";
+								nextInput = [
+									{
+										type: "text",
+										text: [
+											"这是同一剪辑任务的只读质量复核。会话中用户追加的最新要求优先。检查附带的最终合成画面、文字可读性、商品遮挡、构图和结构检查结果。",
+											"本轮禁止修改工程或调用任何写工具；需要修正只在 findings 里说明，系统最多安排一次修正。",
+											"不要把截图当作连续播放或试听。说明声音、动态流畅性和未采样部分的证据边界。不要凭审美偏好推翻用户指定内容。",
+											`唯一工程 ${input.projectId}，revision 必须为 ${evidence.revision}。已修正 ${repairs} 次。`,
+											"返回严格 JSON：revision、verdict(pass/repair/unresolved)、summary(中文)、findings([{atSeconds,description}])。只有没有待解决问题且结构错误为零才可 pass；无法判断写 unresolved。",
+											`原始要求：${input.message}`,
+											`用户上下文：${input.context}`,
+											`检查证据：${evidence.detail}`,
+										].join("\n"),
+									},
+									...evidence.images,
+								];
+							}
+							if (nextInput) {
+								signal?.throwIfAborted();
+								const nextTurn = await connection.request({
+									method: "turn/start",
+									params: {
+										threadId: sessionId,
+										...(input.model ? { model: input.model } : {}),
+										...(input.effort ? { effort: input.effort } : {}),
+										...(reviewing
+											? { outputSchema: REVIEW_OUTPUT_SCHEMA }
+											: {}),
+										clientUserMessageId: `moirai-${reviewing ? "review" : "repair"}:${turnId}`,
+										additionalContext: {
+											"opencut.verification": {
+												kind: "application",
+												value: nextInput
+													.filter((part) => part.type === "text")
+													.map((part) => part.text)
+													.join("\n"),
+											},
+										},
+										input: [
+											{
+												type: "text",
+												text: reviewing
+													? "检查刚才修改后的画面与时间线，说明仍需处理的问题。"
+													: "根据检查结果修正已定位的问题，保留我的其他修改。",
+											},
+											...nextInput.filter((part) => part.type === "image"),
+										],
+									},
+								});
+								turnId = turnIdFromResponse(nextTurn);
+								streamedMessage = "";
+								yield { type: "turn", sessionId, turnId };
+								yield {
+									type: "protocol",
+									id: `verification:${sessionId}:${turnId}:start`,
+									method: "opencut/verification",
+									threadId: sessionId,
+									turnId,
+									itemType: "verification",
+									status: "started",
+									title: reviewing ? "检查合成画面与结构" : "修正已定位的问题",
+								};
+								continue;
+							}
+						} catch (error) {
+							signal?.throwIfAborted();
+							const detail =
+								error instanceof Error ? error.message : "验证工具返回异常。";
+							yield {
+								type: "protocol",
+								id: `verification:${sessionId}:failed`,
+								method: "opencut/verification",
+								threadId: sessionId,
+								turnId,
+								itemType: "verification",
+								status: "failed",
+								title: "自动复核未完成",
+								detail,
+							};
+							message = `${editMessage || message}\n\n自动复核未完成：${detail}`;
+						}
+					} else if (input.verificationMode === "basic") {
+						try {
+							for (const frame of await verificationFrames({
+								connection,
+								threadId: sessionId,
+								projectId: input.projectId,
+								beforeRevision: binding.revision,
+							})) {
+								yield { type: "protocol", ...frame };
+							}
+						} catch (error) {
+							const detail =
+								error instanceof Error ? error.message : "验证工具返回异常。";
+							yield {
+								type: "protocol",
+								id: `verification:${sessionId}:failed`,
+								method: "opencut/verification",
+								threadId: sessionId,
+								turnId,
+								itemType: "verification",
+								status: "failed",
+								title: "自动复核未完成",
+								detail,
+							};
+							message += `\n\n自动复核未完成：${detail}`;
 						}
 					}
 					yield { type: "done", sessionId, message };

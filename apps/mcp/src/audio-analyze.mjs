@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { MediaImportError, mediaIndexOf } from "./media-import.mjs";
+import { agentAnalysis } from "../../../rust/agent-analysis.mjs";
 
 const run = promisify(execFile);
 
@@ -26,98 +27,174 @@ const MAX_VOLUME = /max_volume:\s*(-?[\d.]+)\s*dB/;
 const round = (value) => Math.round(value * 1000) / 1000;
 
 export async function analyzeAudio({
-  projectId,
-  assetId,
-  noiseFloorDb = -35,
-  minSilenceSeconds = 0.35,
-  base = process.env.OPENCUT_BASE_URL ?? "http://localhost:3000",
+	projectId,
+	assetId,
+	noiseFloorDb = -35,
+	minSilenceSeconds = 0.35,
+	base = process.env.OPENCUT_BASE_URL ?? "http://localhost:3000",
 }) {
-  const index = await mediaIndexOf({ projectId, base });
-  const asset = index[assetId];
-  if (!asset) {
-    throw new MediaImportError(
-      `No asset ${assetId} in project ${projectId}. Use list_media for the ids.`,
-      "unknown_asset",
-    );
-  }
-  if (asset.hasAudio === false) {
-    throw new MediaImportError(
-      `${asset.name ?? assetId} has no audio stream — nothing to analyze.`,
-      "no_audio_stream",
-    );
-  }
+	const index = await mediaIndexOf({ projectId, base });
+	const asset = index[assetId];
+	if (!asset) {
+		throw new MediaImportError(
+			`No asset ${assetId} in project ${projectId}. Use list_media for the ids.`,
+			"unknown_asset",
+		);
+	}
+	if (asset.hasAudio === false) {
+		throw new MediaImportError(
+			`${asset.name ?? assetId} has no audio stream — nothing to analyze.`,
+			"no_audio_stream",
+		);
+	}
 
-  const url = `${base}/api/media/${encodeURIComponent(projectId)}/${encodeURIComponent(assetId)}`;
-  let stderr;
-  try {
-    ({ stderr } = await run(
-      "ffmpeg",
-      [
-        "-hide_banner", "-nostats",
-        "-i", url,
-        "-map", "a:0",
-        "-af", `silencedetect=noise=${noiseFloorDb}dB:d=${minSilenceSeconds},volumedetect`,
-        "-f", "null", "-",
-      ],
-      { maxBuffer: 16 * 1024 * 1024 },
-    ));
-  } catch (error) {
-    const detail = String(error?.stderr ?? error?.message ?? error);
-    if (/matches no streams/.test(detail)) {
-      throw new MediaImportError(
-        `${asset.name ?? assetId} has no audio stream — nothing to analyze.`,
-        "no_audio_stream",
-      );
-    }
-    throw new MediaImportError(`ffmpeg could not analyze ${assetId}: ${detail.slice(-400)}`);
-  }
+	const url = `${base}/api/media/${encodeURIComponent(projectId)}/${encodeURIComponent(assetId)}`;
+	if (
+		!Number.isFinite(noiseFloorDb) ||
+		noiseFloorDb > 0 ||
+		noiseFloorDb < -120 ||
+		!Number.isFinite(minSilenceSeconds) ||
+		minSilenceSeconds <= 0 ||
+		minSilenceSeconds > 60
+	) {
+		throw new MediaImportError(
+			"Invalid silence threshold or duration.",
+			"invalid_audio_options",
+		);
+	}
+	let stderr;
+	try {
+		({ stderr } = await run(
+			"ffmpeg",
+			[
+				"-hide_banner",
+				"-nostats",
+				"-i",
+				url,
+				"-map",
+				"a:0",
+				"-af",
+				`silencedetect=noise=${noiseFloorDb}dB:d=${minSilenceSeconds},volumedetect`,
+				"-f",
+				"null",
+				"-",
+			],
+			{ maxBuffer: 16 * 1024 * 1024, timeout: 120000 },
+		));
+	} catch (error) {
+		const detail = String(error?.stderr ?? error?.message ?? error);
+		if (/matches no streams/.test(detail)) {
+			throw new MediaImportError(
+				`${asset.name ?? assetId} has no audio stream — nothing to analyze.`,
+				"no_audio_stream",
+			);
+		}
+		throw new MediaImportError(
+			`ffmpeg could not analyze ${assetId}: ${detail.slice(-400)}`,
+		);
+	}
 
-  const durationSeconds = typeof asset.duration === "number" ? asset.duration : null;
-  const silences = [];
-  let openStart = null;
-  for (const line of stderr.split("\n")) {
-    const start = line.match(SILENCE_START);
-    if (start) openStart = Number(start[1]);
-    const end = line.match(SILENCE_END);
-    if (end && openStart !== null) {
-      silences.push({ startSeconds: round(Math.max(0, openStart)), endSeconds: round(Number(end[1])) });
-      openStart = null;
-    }
-  }
-  // Silence still running when the file ends produces a start with no end.
-  if (openStart !== null) {
-    silences.push({
-      startSeconds: round(Math.max(0, openStart)),
-      endSeconds: durationSeconds !== null ? round(durationSeconds) : null,
-    });
-  }
+	const durationSeconds =
+		typeof asset.duration === "number" ? asset.duration : null;
+	const silences = [];
+	let openStart = null;
+	for (const line of stderr.split("\n")) {
+		const start = line.match(SILENCE_START);
+		if (start) openStart = Number(start[1]);
+		const end = line.match(SILENCE_END);
+		if (end && openStart !== null) {
+			silences.push({
+				startSeconds: round(Math.max(0, openStart)),
+				endSeconds: round(Number(end[1])),
+			});
+			openStart = null;
+		}
+	}
+	// Silence still running when the file ends produces a start with no end.
+	if (openStart !== null) {
+		silences.push({
+			startSeconds: round(Math.max(0, openStart)),
+			endSeconds: durationSeconds !== null ? round(durationSeconds) : null,
+		});
+	}
 
-  // The complement is what a cut actually wants: the spans worth keeping.
-  const sounded = [];
-  if (durationSeconds !== null) {
-    let cursor = 0;
-    for (const { startSeconds, endSeconds } of silences) {
-      if (startSeconds - cursor > 0.05) {
-        sounded.push({ startSeconds: round(cursor), endSeconds: round(startSeconds) });
-      }
-      cursor = Math.max(cursor, endSeconds ?? durationSeconds);
-    }
-    if (durationSeconds - cursor > 0.05) {
-      sounded.push({ startSeconds: round(cursor), endSeconds: round(durationSeconds) });
-    }
-  }
+	// The complement is what a cut actually wants: the spans worth keeping.
+	const sounded = [];
+	if (durationSeconds !== null) {
+		let cursor = 0;
+		for (const { startSeconds, endSeconds } of silences) {
+			if (startSeconds - cursor > 0.05) {
+				sounded.push({
+					startSeconds: round(cursor),
+					endSeconds: round(startSeconds),
+				});
+			}
+			cursor = Math.max(cursor, endSeconds ?? durationSeconds);
+		}
+		if (durationSeconds - cursor > 0.05) {
+			sounded.push({
+				startSeconds: round(cursor),
+				endSeconds: round(durationSeconds),
+			});
+		}
+	}
 
-  return {
-    assetId,
-    name: asset.name,
-    durationSeconds,
-    loudness: {
-      meanDb: stderr.match(MEAN_VOLUME) ? Number(stderr.match(MEAN_VOLUME)[1]) : null,
-      maxDb: stderr.match(MAX_VOLUME) ? Number(stderr.match(MAX_VOLUME)[1]) : null,
-    },
-    noiseFloorDb,
-    minSilenceSeconds,
-    silences,
-    sounded,
-  };
+	let rhythm;
+	try {
+		const { stdout } = await run(
+			"ffmpeg",
+			[
+				"-hide_banner",
+				"-nostats",
+				"-v",
+				"error",
+				"-i",
+				url,
+				"-t",
+				"600",
+				"-map",
+				"a:0",
+				"-ac",
+				"1",
+				"-af",
+				"aresample=8000,asetnsamples=n=160:p=0,astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.RMS_level:file=-",
+				"-f",
+				"null",
+				"-",
+			],
+			{ maxBuffer: 16 * 1024 * 1024, timeout: 120000 },
+		);
+		rhythm = {
+			status: "analyzed",
+			...(await agentAnalysis({
+				command: "rhythm",
+				levels: stdout,
+				stepSeconds: 0.02,
+			})),
+			truncated: durationSeconds === null ? null : durationSeconds > 600,
+		};
+	} catch (error) {
+		rhythm = {
+			status: "unavailable",
+			error: String(error?.message ?? error).slice(-400),
+		};
+	}
+	return {
+		assetId,
+		name: asset.name,
+		durationSeconds,
+		loudness: {
+			meanDb: stderr.match(MEAN_VOLUME)
+				? Number(stderr.match(MEAN_VOLUME)[1])
+				: null,
+			maxDb: stderr.match(MAX_VOLUME)
+				? Number(stderr.match(MAX_VOLUME)[1])
+				: null,
+		},
+		noiseFloorDb,
+		minSilenceSeconds,
+		silences,
+		sounded,
+		rhythm,
+	};
 }

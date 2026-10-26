@@ -8,7 +8,7 @@
 
 ![Moirai Cut shared human-agent timeline](docs/brand/assets/moirai-cut-launch-landscape.png)
 
-> **v0.7.0 Public Preview** — Moirai Cut is ready for local editing and
+> **v0.8.0 Public Preview** — Moirai Cut is ready for local editing and
 > Agent-driven workflows. The project format and integration surface may still
 > evolve before 1.0, with migration notes published in the changelog.
 
@@ -56,6 +56,11 @@ Moirai 在这里不是“替你决定成片”的命运黑盒，而是一台人�
 - **开放 MCP 原子能力**：Agent 可进行工程读写、场景检测、时间序列取帧、实时标签页
   操作、渲染验证和 revision 冲突保护。
 - **本地素材与高画质输出**：预览可使用代理文件，最终导出始终读取原片。
+
+工程交付与质量复核：
+
+- [剪映／CapCut 草稿与 Premiere／Final Cut 工程包](docs/project-interchange-export.md)
+- [视频 Agent 画面、节奏分析与 Codex 完整复核](docs/video-agent-quality.md)
 
 ## 工作方式
 

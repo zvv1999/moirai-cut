@@ -490,7 +490,7 @@ describe("Codex direct Smart Edit streaming chat", () => {
 			"opencut://project/project-1/scene/main/track/text",
 		);
 		expect(prompt).toContain("直接执行");
-		expect(prompt).toContain("系统会在本轮完成后自动核对工程 revision");
+		expect(prompt).toContain("系统会在本轮完成后采集合成画面和结构检查");
 		expect(prompt).toContain("当前回合可能收到用户追加指令");
 		expect(prompt).toContain("使用 read_project 和 edit_project");
 		expect(prompt).toContain("inspect_timeline_range");
@@ -2684,4 +2684,285 @@ describe("Codex direct Smart Edit streaming chat", () => {
 
 		expect(consume()).rejects.toThrow("Codex 上游不可用");
 	});
+});
+
+describe("full visual review loop", () => {
+	async function runReview({
+		verdicts = ["pass"],
+		renderError = false,
+		changedDuringReview = false,
+		reviewFailed = false,
+		wrongScene = false,
+		planning = false,
+		lintErrors = 0,
+	}: {
+		verdicts?: string[];
+		renderError?: boolean;
+		changedDuringReview?: boolean;
+		reviewFailed?: boolean;
+		wrongScene?: boolean;
+		planning?: boolean;
+		lintErrors?: number;
+	} = {}) {
+		let revision = 7,
+			turn = 0,
+			review = 0;
+		const calls: Array<{ method: string; params: unknown }> = [];
+		const starts: Array<Record<string, unknown>> = [];
+		const text = (v: unknown) => ({
+			content: [{ type: "text", text: JSON.stringify(v) }],
+		});
+		const connection: CodexAppServerConnection = {
+			request: async ({ method, params }) => {
+				calls.push({ method, params });
+				if (method === "thread/start")
+					return { thread: { id: "review-thread", threadSource: "user" } };
+				if (method === "thread/name/set") return {};
+				if (method === "mcpServerStatus/list") {
+					const status = readyOpenCutStatus() as {
+						data: Array<{ tools: Record<string, unknown> }>;
+					};
+					for (const name of ["lint_cut", "wait_for_sync", "render_frames"])
+						status.data[0]!.tools[name] = { name };
+					return status;
+				}
+				if (method === "mcpServer/tool/call" && isRecord(params)) {
+					if (params.tool === "read_project")
+						return text({
+							revision,
+							projectId: "project-1",
+							projectName: "Review",
+							sceneId: "scene",
+							settings: { fps: { numerator: 30, denominator: 1 } },
+							tracks: [
+								{
+									elements: [
+										{ type: "video", startTimeSeconds: 0, durationSeconds: 12 },
+									],
+								},
+							],
+						});
+					if (params.tool === "lint_cut")
+						return text({ counts: { error: lintErrors }, findings: [] });
+					if (params.tool === "wait_for_sync") return text({ synced: true });
+					if (params.tool === "render_frames")
+						return renderError
+							? {
+									isError: true,
+									content: [{ type: "text", text: "render failed" }],
+								}
+							: {
+									content: [
+										{
+											type: "text",
+											text: JSON.stringify({
+												projectId: "project-1",
+												sceneId: wrongScene ? "another-scene" : "scene",
+												revision,
+												stable: true,
+												frames: [{ atSeconds: 6 }],
+											}),
+										},
+										{
+											type: "image",
+											mimeType: "image/jpeg",
+											data: "test-frame",
+										},
+									],
+								};
+				}
+				if (method === "turn/start" && isRecord(params)) {
+					starts.push(params);
+					turn++;
+					if (!params.outputSchema) revision++;
+					else if (changedDuringReview) revision++;
+					return { turn: { id: `review-turn-${turn}` } };
+				}
+				if (method === "turn/interrupt") return {};
+				throw new Error(`Unexpected request ${method}`);
+			},
+			subscribe: (threadId) => ({
+				async *[Symbol.asyncIterator]() {
+					for (let i = 0; i < 4; i++) {
+						const start = starts.at(-1)!;
+						const verdict = verdicts[review] ?? "pass";
+						const content = start.outputSchema
+							? JSON.stringify({
+									revision: changedDuringReview ? revision - 1 : revision,
+									verdict,
+									summary: "画面检查完成；未试听。",
+									findings:
+										verdict === "pass"
+											? []
+											: [{ atSeconds: 3, description: "文字超出边缘" }],
+								})
+							: "已调整视频";
+						if (start.outputSchema) review++;
+						yield {
+							method: "turn/completed",
+							params: {
+								threadId,
+								turn: {
+									id: `review-turn-${turn}`,
+									status:
+										start.outputSchema && reviewFailed ? "failed" : "completed",
+									items: [{ type: "agentMessage", text: content }],
+								},
+							},
+						};
+					}
+				},
+				close() {},
+			}),
+		};
+		const service = createCodexChatService({
+			runtime,
+			connect: async () => connection,
+		});
+		const events = [];
+		for await (const event of service.stream({
+			input: {
+				projectId: "project-1",
+				message: "调整标题，保留切点",
+				context: "",
+				verificationMode: "full",
+				...(planning ? { mode: "plan" as const } : {}),
+			},
+		}))
+			events.push(event);
+		return { events, calls, starts };
+	}
+	test("sends final composite evidence to the model and reports the verdict", async () => {
+		const { events, starts } = await runReview();
+		expect(starts).toHaveLength(2);
+		expect(starts[1]?.input).toContainEqual({
+			type: "image",
+			url: "data:image/jpeg;base64,test-frame",
+		});
+		expect(events.at(-1)).toMatchObject({
+			type: "done",
+			message: expect.stringContaining("代表帧与结构复核通过"),
+		});
+	});
+	test("repairs once and collects new images before the second verdict", async () => {
+		const { events, starts, calls } = await runReview({
+			verdicts: ["repair", "pass"],
+		});
+		expect(starts).toHaveLength(4);
+		expect(starts[2]?.outputSchema).toBeUndefined();
+		expect(
+			calls.filter(
+				(c) => isRecord(c.params) && c.params.tool === "render_frames",
+			),
+		).toHaveLength(2);
+		expect(events.at(-1)).toMatchObject({
+			type: "done",
+			message: expect.stringContaining("复核通过"),
+		});
+	});
+	test("a repeated defect ends as unresolved rather than an unlimited repair loop", async () => {
+		const { events, starts } = await runReview({
+			verdicts: ["repair", "repair"],
+		});
+		expect(starts).toHaveLength(4);
+		expect(events.at(-1)).toMatchObject({
+			type: "done",
+			message: expect.stringContaining("复核未通过"),
+		});
+	});
+	test("failed rendering is explicit in the final response and never starts a visual verdict", async () => {
+		const { events, starts } = await runReview({ renderError: true });
+		expect(starts).toHaveLength(1);
+		expect(events.at(-1)).toMatchObject({
+			type: "done",
+			message: expect.stringContaining("自动复核未完成"),
+		});
+	});
+	test("human changes during review invalidate evidence and prevent automatic repair", async () => {
+		const { events, starts } = await runReview({
+			verdicts: ["repair"],
+			changedDuringReview: true,
+		});
+		expect(starts).toHaveLength(2);
+		expect(events.at(-1)).toMatchObject({
+			type: "done",
+			message: expect.stringContaining("过期"),
+		});
+	});
+	test("a frame from a different scene is never accepted as review evidence", async () => {
+		const { events, starts } = await runReview({ wrongScene: true });
+		expect(starts).toHaveLength(1);
+		expect(events.at(-1)).toMatchObject({
+			type: "done",
+			message: expect.stringContaining("自动复核未完成"),
+		});
+	});
+
+	test("a model pass cannot conceal a structural error", async () => {
+		const { events } = await runReview({ lintErrors: 1 });
+		expect(events.at(-1)).toMatchObject({
+			type: "done",
+			message: expect.stringContaining("复核未通过"),
+		});
+	});
+	test("model review failure preserves the completed edit and reports the gap", async () => {
+		const { events, starts } = await runReview({ reviewFailed: true });
+		expect(starts).toHaveLength(2);
+		expect(events.at(-1)).toMatchObject({
+			type: "done",
+			message: expect.stringContaining("已调整视频\n\n自动复核未完成"),
+		});
+	});
+	test("planning mode never launches an automatic repair or review turn", async () => {
+		const { starts } = await runReview({ planning: true });
+		expect(starts).toHaveLength(1);
+	});
+});
+
+test("native history shows a concise review record instead of internal prompts and JSON", async () => {
+	const connection: CodexAppServerConnection = {
+		request: async () => ({
+			thread: {
+				id: "history",
+				createdAt: 100,
+				updatedAt: 110,
+				turns: [
+					{
+						id: "review",
+						status: "completed",
+						startedAt: 100,
+						completedAt: 110,
+						items: [
+							{
+								type: "userMessage",
+								id: "internal",
+								clientId: "moirai-review:original",
+								content: [{ type: "text", text: "Internal request" }],
+							},
+							{
+								type: "agentMessage",
+								id: "answer",
+								text: JSON.stringify({
+									revision: 2,
+									verdict: "pass",
+									summary: "标题清晰；声音未试听。",
+									findings: [],
+								}),
+							},
+						],
+					},
+				],
+			},
+		}),
+		subscribe: () => subscriptionOf({ notifications: [] }),
+	};
+	const service = createCodexChatService({
+		runtime,
+		connect: async () => connection,
+	});
+	const result = await service.readThread({ sessionId: "history" });
+	expect(result.messages).toHaveLength(1);
+	expect(result.messages[0]?.content).toBe(
+		"自动画面检查记录：标题清晰；声音未试听。",
+	);
 });

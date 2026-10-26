@@ -11,6 +11,7 @@ COPY Cargo.toml Cargo.lock ./
 COPY rust/ rust/
 COPY apps/desktop/ apps/desktop/
 RUN cargo build --locked --release -p interchange --bin moirai-interchange
+RUN cargo build --locked --release -p moirai-agent-analysis -p moirai-project-export
 
 FROM base AS builder
 
@@ -28,6 +29,7 @@ RUN bun install --frozen-lockfile
 
 COPY apps/web/ apps/web/
 COPY apps/mcp/ apps/mcp/
+COPY rust/agent-analysis.mjs rust/agent-analysis.d.mts ./rust/
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -47,15 +49,18 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN apk add --no-cache curl ffmpeg
+RUN apk add --no-cache curl ffmpeg zip
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 COPY --from=interchange-builder --chown=nextjs:nodejs /app/target/release/moirai-interchange /usr/local/bin/moirai-interchange
+COPY --from=interchange-builder --chown=nextjs:nodejs /app/target/release/moirai-agent-analysis /usr/local/bin/moirai-agent-analysis
+COPY --from=interchange-builder --chown=nextjs:nodejs /app/target/release/moirai-project-export /usr/local/bin/moirai-project-export
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/apps/mcp ./apps/mcp
+COPY --from=builder --chown=nextjs:nodejs /app/rust/agent-analysis.mjs ./rust/agent-analysis.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/package.json /app/bun.lock ./
 
 RUN bun install --production --frozen-lockfile --filter @moirai-cut/mcp
@@ -69,5 +74,7 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 ENV MOIRAI_INTERCHANGE_BIN="/usr/local/bin/moirai-interchange"
+ENV MOIRAI_AGENT_ANALYSIS_BIN="/usr/local/bin/moirai-agent-analysis"
+ENV MOIRAI_PROJECT_EXPORT_BIN="/usr/local/bin/moirai-project-export"
 
 CMD ["bun", "apps/web/server.js"]

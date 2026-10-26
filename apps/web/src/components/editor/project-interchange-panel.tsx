@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ProjectBundlePanel } from "@/components/editor/project-bundle-panel";
 import { useEditor } from "@/editor/use-editor";
 import {
 	requestProjectFcpxml,
@@ -28,7 +29,11 @@ const SEVERITY_LABELS = {
 	omitted: "已省略",
 } as const;
 
-export function ProjectInterchangePanel() {
+export function ProjectInterchangePanel({
+	disabled = false,
+}: {
+	disabled?: boolean;
+}) {
 	const editor = useEditor();
 	const project = useEditor((instance) => instance.project.getActive());
 	const scene = useEditor((instance) => instance.scenes.getActiveScene());
@@ -65,116 +70,123 @@ export function ProjectInterchangePanel() {
 	};
 
 	return (
-		<div className="space-y-3">
-			<div>
-				<div className="text-xs font-semibold">工程互通</div>
-				<div className="text-muted-foreground mt-0.5 text-[9px]">
-					导出可继续编辑的开放时间线，同时明确记录不等价的能力。
-				</div>
-			</div>
-
-			<section className="border-border rounded-lg border p-3">
-				<div className="flex items-start justify-between gap-4">
+		<div className="space-y-4">
+			<ProjectBundlePanel disabled={disabled || exporting} />
+			<details className="border-border rounded-lg border p-3">
+				<summary className="cursor-pointer text-xs font-semibold">
+					导出已保存版本的 FCPXML 与兼容性报告
+				</summary>
+				<div className="space-y-3">
 					<div>
-						<div className="text-xs font-semibold">FCPXML 1.10</div>
-						<p className="text-muted-foreground mt-1 max-w-md text-[9px] leading-4">
-							供 Final Cut Pro 等支持 FCPXML 的 NLE
-							使用，也是中国版剪映桌面端的实验性单向交接入口。 它不是剪映/CapCut
-							私有工程文件；国际版 CapCut 不支持第三方工程导入。
-						</p>
-					</div>
-					<Button
-						size="sm"
-						onClick={() => void exportFcpxml()}
-						disabled={exporting}
-					>
-						{exporting ? "正在生成…" : "生成 FCPXML"}
-					</Button>
-				</div>
-				<div className="mt-3 grid grid-cols-3 gap-2 text-[9px]">
-					<div className="bg-muted/40 rounded p-2">
-						<div className="font-medium">精确保留</div>
-						<div className="text-muted-foreground mt-0.5">
-							帧率、切点、源裁剪、主轨空隙、视频叠加和独立音频
+						<div className="text-xs font-semibold">工程互通</div>
+						<div className="text-muted-foreground mt-0.5 text-[9px]">
+							导出可继续编辑的开放时间线，同时明确记录不等价的能力。
 						</div>
 					</div>
-					<div className="bg-muted/40 rounded p-2">
-						<div className="font-medium">显式报告</div>
-						<div className="text-muted-foreground mt-0.5">
-							文字、动画、特效、遮罩、变速、静音和关系语义
-						</div>
-					</div>
-					<div className="bg-muted/40 rounded p-2">
-						<div className="font-medium">素材重连</div>
-						<div className="text-muted-foreground mt-0.5">
-							XML 使用本地 file:// 路径，并附带 relink manifest
-						</div>
-					</div>
-				</div>
-			</section>
 
-			{result ? (
-				<section className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
-					<div className="flex items-start justify-between gap-3">
-						<div className="min-w-0">
-							<div className="truncate text-[10px] font-semibold">
-								{result.name}
+					<section className="border-border rounded-lg border p-3">
+						<div className="flex items-start justify-between gap-4">
+							<div>
+								<div className="text-xs font-semibold">FCPXML 1.10</div>
+								<p className="text-muted-foreground mt-1 max-w-md text-[9px] leading-4">
+									供 Final Cut Pro 等支持 FCPXML 的 NLE 使用。剪映／CapCut
+									私有草稿请使用上方工程包导出，并按目标软件版本核对兼容性。
+								</p>
 							</div>
-							<div className="text-muted-foreground mt-0.5 text-[8px]">
-								工程 r{result.revision} · 发布前 revision 已校验
-							</div>
-						</div>
-						<div className="flex shrink-0 gap-2">
 							<Button
 								size="sm"
-								variant="outline"
-								onClick={() =>
-									void downloadArtifact({
-										url: result.reportDownloadUrl,
-										name: result.reportName,
-									})
-								}
+								onClick={() => void exportFcpxml()}
+								disabled={disabled || exporting}
 							>
-								下载报告
-							</Button>
-							<Button
-								size="sm"
-								onClick={() =>
-									void downloadArtifact({
-										url: result.downloadUrl,
-										name: result.name,
-									})
-								}
-							>
-								下载 XML
+								{exporting ? "正在生成…" : "生成 FCPXML"}
 							</Button>
 						</div>
-					</div>
-					{result.report.issues.length > 0 ? (
-						<ul className="mt-3 max-h-48 space-y-1 overflow-y-auto">
-							{result.report.issues.map((issue, index) => (
-								<li
-									key={`${issue.code}-${issue.trackId ?? ""}-${issue.elementId ?? ""}-${index}`}
-									className="bg-background/80 rounded p-2 text-[9px]"
-								>
-									<span className="mr-1 font-medium">
-										{SEVERITY_LABELS[issue.severity]}
-									</span>
-									{issue.message ?? issue.code}
-								</li>
-							))}
-						</ul>
+						<div className="mt-3 grid grid-cols-3 gap-2 text-[9px]">
+							<div className="bg-muted/40 rounded p-2">
+								<div className="font-medium">精确保留</div>
+								<div className="text-muted-foreground mt-0.5">
+									帧率、切点、源裁剪、主轨空隙、视频叠加和独立音频
+								</div>
+							</div>
+							<div className="bg-muted/40 rounded p-2">
+								<div className="font-medium">显式报告</div>
+								<div className="text-muted-foreground mt-0.5">
+									文字、动画、特效、遮罩、变速、静音和关系语义
+								</div>
+							</div>
+							<div className="bg-muted/40 rounded p-2">
+								<div className="font-medium">素材重连</div>
+								<div className="text-muted-foreground mt-0.5">
+									XML 使用本地 file:// 路径，并附带 relink manifest
+								</div>
+							</div>
+						</div>
+					</section>
+
+					{result ? (
+						<section className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+							<div className="flex items-start justify-between gap-3">
+								<div className="min-w-0">
+									<div className="truncate text-[10px] font-semibold">
+										{result.name}
+									</div>
+									<div className="text-muted-foreground mt-0.5 text-[8px]">
+										工程 r{result.revision} · 发布前 revision 已校验
+									</div>
+								</div>
+								<div className="flex shrink-0 gap-2">
+									<Button
+										size="sm"
+										variant="outline"
+										onClick={() =>
+											void downloadArtifact({
+												url: result.reportDownloadUrl,
+												name: result.reportName,
+											})
+										}
+									>
+										下载报告
+									</Button>
+									<Button
+										size="sm"
+										onClick={() =>
+											void downloadArtifact({
+												url: result.downloadUrl,
+												name: result.name,
+											})
+										}
+									>
+										下载 XML
+									</Button>
+								</div>
+							</div>
+							{result.report.issues.length > 0 ? (
+								<ul className="mt-3 max-h-48 space-y-1 overflow-y-auto">
+									{result.report.issues.map((issue, index) => (
+										<li
+											key={`${issue.code}-${issue.trackId ?? ""}-${issue.elementId ?? ""}-${index}`}
+											className="bg-background/80 rounded p-2 text-[9px]"
+										>
+											<span className="mr-1 font-medium">
+												{SEVERITY_LABELS[issue.severity]}
+											</span>
+											{issue.message ?? issue.code}
+										</li>
+									))}
+								</ul>
+							) : (
+								<p className="mt-3 text-[9px] text-emerald-700">
+									未发现需要降级或省略的时间线能力。
+								</p>
+							)}
+						</section>
 					) : (
-						<p className="mt-3 text-[9px] text-emerald-700">
-							未发现需要降级或省略的时间线能力。
-						</p>
+						<div className="border-border rounded-lg border border-dashed p-6 text-center text-[10px] opacity-55">
+							生成后会在这里显示已校验的 revision 和逐项互通报告。
+						</div>
 					)}
-				</section>
-			) : (
-				<div className="border-border rounded-lg border border-dashed p-6 text-center text-[10px] opacity-55">
-					生成后会在这里显示已校验的 revision 和逐项互通报告。
 				</div>
-			)}
+			</details>
 		</div>
 	);
 }

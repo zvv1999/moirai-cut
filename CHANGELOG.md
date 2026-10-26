@@ -4,6 +4,41 @@ All notable Moirai Cut changes are documented here. The repository is in develop
 preview and follows semantic versioning for public release artifacts; project
 schema and Agent surfaces may still change with migration notes.
 
+## 0.8.0 — 2026-10-26
+
+Editable project bundles and evidence-based video Agent review.
+
+### Added
+
+- Jianying and CapCut draft bundles, Premiere/Resolve XML and Final Cut Pro
+  FCPXML bundles with source media, subtitles and conversion reports.
+- Local draft installation with independent directories and rewritten media
+  paths. Existing revision-bound FCPXML export remains available.
+- Rust-owned composite/source sampling, audio energy and onset analysis, and
+  structured review decisions shared through MCP.
+- Codex full review sends rendered evidence back to the model, allows one
+  targeted repair, then checks a fresh project revision and new frames.
+
+### Fixed
+
+- Media display names no longer change the imported file extension or MIME type.
+- Jianying portrait text sizing and mono audio gain match the tested timeline
+  more closely; conversion reports explain remaining differences.
+- Background frame inspection restores the preview to the current playhead.
+- Footage labels and lineage remain available to the Agent media catalog.
+
+### Compatibility and validation
+
+- Existing projects require no schema migration. Unsupported target effects
+  may become rendered media and are listed in the conversion report.
+- Jianying 11.1.0 on macOS was tested with a real 12-second vertical project.
+  Native import acceptance for other target editors remains outstanding.
+- Claude shares the improved inspection/audio tools and instructions; the
+  automatic host-driven review loop is currently Codex-only. Live model repair
+  and multi-round creator acceptance remain outstanding.
+- This source update includes prebuilt helper paths for production images;
+  development can build the helpers with Rust/Cargo on first use.
+
 ## 0.7.0 — 2026-09-15
 
 Shared NAS footage coordination with local Rust edge workers.

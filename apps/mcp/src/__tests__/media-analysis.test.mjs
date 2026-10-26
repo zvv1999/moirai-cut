@@ -8,9 +8,9 @@ import { TICKS_PER_SECOND } from "../document.mjs";
 
 const ticks = (seconds) => seconds * TICKS_PER_SECOND;
 
-test("footage publication metadata and timeline uses reach the agent catalog", () => {
+test("footage publication metadata and timeline uses reach the agent catalog", async () => {
   const footage = { schemaVersion: "moirai.lineage.v1", releaseId: "release-a", shotId: "shot-a", shotRevision: 5, sourceId: "source-a", sourceStartTicks: ticks(12), sourceEndTicks: ticks(16), modelId: "glm-5.3-flash", description: "Product closeup", tags: ["detail"], roles: [{ role: "product_demo" }], unsupportedClaims: ["Unverified effect"] };
-  const catalog = buildMediaCatalog({ document: projectDocument(), mediaIndex: { "media-a": { type: "video", footage } } });
+  const catalog = await buildMediaCatalog({ document: projectDocument(), mediaIndex: { "media-a": { type: "video", footage } } });
   assert.deepEqual(catalog.assets["media-a"].footage, footage);
   assert.equal(catalog.assets["media-a"].analysis.summary, "Product closeup");
   assert.deepEqual(catalog.assets["media-a"].analysis.unsupportedClaims, ["Unverified effect"]);
@@ -79,8 +79,8 @@ function projectDocument() {
   };
 }
 
-test("timeline range inspection maps representative timeline frames to source media seconds", () => {
-  const plan = planTimelineRangeInspection({
+test("timeline range inspection maps representative timeline frames to source media seconds", async () => {
+  const plan = await planTimelineRangeInspection({
     document: projectDocument(),
     sceneId: "scene-1",
     startSeconds: 1,
@@ -109,8 +109,8 @@ test("timeline range inspection maps representative timeline frames to source me
   assert.deepEqual(plan.byAsset["media-b"].sourceSeconds, [3, 5]);
 });
 
-test("media catalog is compact, agent-readable, and records every timeline use", () => {
-  const catalog = buildMediaCatalog({
+test("media catalog is compact, agent-readable, and records every timeline use", async () => {
+  const catalog = await buildMediaCatalog({
     document: projectDocument(),
     mediaIndex: {
       "media-a": {
@@ -185,8 +185,8 @@ test("media catalog is compact, agent-readable, and records every timeline use",
   assert.equal(JSON.stringify(catalog).includes("base64"), false);
 });
 
-test("invalid timeline ranges are rejected before any frame work", () => {
-  assert.throws(
+test("invalid timeline ranges are rejected before any frame work", async () => {
+  await assert.rejects(
     () =>
       planTimelineRangeInspection({
         document: projectDocument(),

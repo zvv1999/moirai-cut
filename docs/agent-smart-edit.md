@@ -233,8 +233,8 @@ Codex 直接查看联系表，识别人、物、动作、环境、镜头类型�
 
 ### 识别时间轴片段
 
-引用时间段时调用 `inspect_timeline_range`。工具先在时间轴上均匀选择时刻，再映射回
-源素材时间。映射会处理：
+引用时间段时调用 `inspect_timeline_range`。工具采样所有可见主轨和叠加轨，并为落在
+均匀采样间隙中的短标题补充时刻，再映射回源素材时间。映射会处理：
 
 - `trimStart`；
 - 常规变速；
@@ -245,6 +245,15 @@ Codex 直接查看联系表，识别人、物、动作、环境、镜头类型�
 返回结果使用 `opencut.timeline-inspection.v1`，并同时给出 timeline time、
 source time、asset、track 和 element 的对应关系。这样 Agent 理解的是用户实际
 选择的剪辑片段，而不是源视频中错误的时刻。
+
+同时返回 `layers`、`compositeAtSeconds` 和 `coverage`。有活动编辑器时还会返回
+带 revision 的合成联系表，包含字幕、遮挡、变换和特效；没有编辑器时保留源素材
+联系表，并明确报告合成证据不可用。源素材图片不能代替最终画面验收。超过取帧预算
+会报告遗漏，需要缩小区间继续查看。时间映射和采样逻辑位于 `rust/crates/agent-analysis`。
+
+`analyze_audio` 增加 `rhythm`：源时间起音候选、逐秒能量、候选 BPM 和置信度。
+节奏分析最多覆盖前 600 秒；超出范围返回 `truncated`。这是能量分析，不是已验证的
+音乐重拍或语义断句；无可靠估计时 BPM 为 null。
 
 ### 保存分析
 
@@ -333,9 +342,15 @@ MCP 工具审批，并只在当前会话持久化；其他服务器或普通表�
 - `visualMode: "auto"` 会优先识别显式时间段、所选时间线元素或首个视觉素材，把
   `inspect_timeline_range` / `inspect_media_scenes` 返回的联系表转换成 app-server
   原生 `image` 输入；
-- `verificationMode: "full"` 会在 turn 完成后回读 revision、等待编辑器同步，并在
-  支持时调用 `render_frames` 生成关键画面证据。验证失败只标记证据失败，不覆盖
-  Codex 已完成的回复。
+- `verificationMode: "full"` 会回读工程、运行 `lint_cut`、等待同步、采集整条时间线的
+  代表合成帧，再把图片与结构检查交回同一模型会话，要求只读检查并返回结构化结论。
+  发现明确问题时最多启动一次修正 turn，随后重新取帧检查；重复问题、缺失证据、
+  版本变化或模型异常会明确写进最终回复。规划模式不触发修正。代表帧通过不等于
+  连续播放、试听或创作者审美验收通过。
+
+内置浏览器通过 `/api/editor-inspection` 处理只读 `getState` 和联系表 `renderFrames`
+请求，无需 Chrome 9222；旧 CDP 路径仍用于其他标签页操作。请求绑定工程和一次性
+领取标识，超时或取消后清理，不通过该通道提交剪辑修改。详见 [质量改进验收](video-agent-quality.md)。
 
 处理中不锁死输入框。以下操作走 app-server 原生协议：
 
